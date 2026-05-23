@@ -29,7 +29,7 @@ Processor Configuration
 
 import typing
 
-from logprep.ng.event.filtered_event import FilteredEvent
+from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.ng.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.processor.base.rule import Rule
@@ -68,8 +68,10 @@ class SelectiveExtractor(FieldManager):
         if flattened_fields:
             filtered_event_data: dict = {}
             add_fields_to(filtered_event_data, flattened_fields, rule)
-            filtered_event = FilteredEvent(
-                filtered_event_data,
-                outputs=rule.outputs,
-            )
-            self._event.extra_data.append(filtered_event)
+            for spec in rule.outputs:
+                filtered_event = FilteredEvent(
+                    filtered_event_data,
+                    output_name=spec.output_name,
+                    output_target=spec.output_target,
+                )
+                self._event.extra_data.append(filtered_event)

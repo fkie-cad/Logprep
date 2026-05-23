@@ -6,7 +6,7 @@ config_refresh_interval: 5
 error_backlog_size: 15000
 logger:
   level: WARNING
-  format: "%(asctime)-15s %(hostnab__me)-5s %(name)-10s %(levelname)-8s: %(message)s"
+  format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
     "py.warnings": {"level": "ERROR"}

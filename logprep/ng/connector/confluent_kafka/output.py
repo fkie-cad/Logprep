@@ -35,8 +35,8 @@ from confluent_kafka import KafkaException  # type: ignore
 from confluent_kafka.aio import AIOProducer
 
 from logprep.metrics.metrics import GaugeMetric, Metric
-from logprep.ng.abc.event import Event
-from logprep.ng.abc.output import FatalOutputError, Output
+from logprep.ng.abc.event import OutputEvent
+from logprep.ng.abc.output import FatalOutputError, Output, OutputEvent
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -280,39 +280,24 @@ class ConfluentKafkaOutput(Output):
             f"{self.config.kafka_config.get('bootstrap.servers')}"
         )
 
-    async def _store_batch(
-        self, events: Sequence[Event], target: str | None = None
-    ) -> Sequence[Event]:
-        store_target = target if target is not None else self.config.topic
+    async def _store(self, events: Sequence[OutputEvent]) -> None:
         for event in events:
-            await self._store_custom(event, store_target)
-
-        return events
-
-    async def _store_single(self, event: Event) -> None:
-        """Store a document in the producer topic.
-
-        Parameters
-        ----------
-        event : Event
-            The event to store.
-        """
-        await self._store_custom(event, self.config.topic)
+            target = event.output_target if event.output_target is not None else self.config.topic
+            await self._store_single(event, target)
 
     @Metric.measure_time_async()
-    async def _store_custom(self, event: Event, target: str) -> None:
+    async def _store_single(self, event: OutputEvent, target: str) -> None:
         """Write document to Kafka into target topic.
 
         Parameters
         ----------
-        event : Event
-            Event to store.
+        event : OutputEvent
+            OutputEvent to store.
         target : str
             Topic to store event data in.
         """
 
         document = event.data
-        self.metrics.number_of_processed_events += 1
 
         try:
             delivery_future = await self._producer.produce(
@@ -322,16 +307,15 @@ class ConfluentKafkaOutput(Output):
             await self._producer.flush()
             msg = await delivery_future
         except KafkaException as err:
-            event.errors.append(err)
+            event.mark_failed(err)
             logger.error("Kafka exception during produce: %s", err)
-            self.metrics.number_of_errors += 1
             return
         except Exception as err:
-            event.errors.append(err)
+            event.mark_failed(err)
             logger.error("Message delivery failed: %s", err)
-            self.metrics.number_of_errors += 1
             return
 
+        event.stored = True
         logger.debug(
             "Message delivered to '%s' partition %s, offset %s",
             msg.topic(),
@@ -360,7 +344,9 @@ class ConfluentKafkaOutput(Output):
         try:
             await super().setup()
         except KafkaException as error:
-            raise FatalOutputError(self, f"Could not setup kafka producer: {error}") from error
+            raise FatalOutputError.from_error(
+                self, error, "could not setup kafka producer"
+            ) from error
 
     async def shut_down(self) -> None:
         """Shut down the confluent kafka output connector and cleanup resources."""

@@ -12,7 +12,7 @@ from unittest import mock
 import pytest
 
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.grokker.processor import Grokker
 from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.util.getter import GetterFactory
@@ -37,7 +37,7 @@ class TestGrokker(BaseProcessorTestCase[Grokker]):
     async def test_testcases(self, rule, event, expected):
         await self._load_rule(rule)
         await self.object.setup()
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
@@ -45,7 +45,7 @@ class TestGrokker(BaseProcessorTestCase[Grokker]):
     async def test_testcases_failure_handling(self, rule, event, expected, error):
         await self._load_rule(rule)
         await self.object.setup()
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         if isinstance(error, str):
             result = await self.object.process(event)
             assert len(result.warnings) == 1
@@ -75,7 +75,7 @@ class TestGrokker(BaseProcessorTestCase[Grokker]):
             self.object = Factory.create({"grokker": config})
             await self._load_rule(rule)
             await self.object.setup()
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
@@ -112,6 +112,6 @@ class TestGrokker(BaseProcessorTestCase[Grokker]):
         self.object = Factory.create({"grokker": config})
         await self._load_rule(rule)
         await self.object.setup()
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected

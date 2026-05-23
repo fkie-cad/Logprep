@@ -16,9 +16,8 @@ import pytest
 
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from logprep.ng.abc.event import OutputSpec
-from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.pseudonym_event import PseudonymEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from logprep.ng.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
@@ -92,7 +91,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         if regex_mapping is not None:
             self.regex_mapping = regex_mapping
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected, testcase
 
@@ -120,7 +119,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         }
         self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
 
         assert event.data["do_not_pseudo_this"] == url
@@ -139,7 +138,9 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         assert self.object._rule_tree.rules[0].pseudonyms == {"something": expected_pattern}
 
     async def test_pseudonymize_string_adds_pseudonyms(self):
-        self.object._event = LogEvent({"does not": "matter"}, original=b"")
+        self.object._event = LogEvent(
+            {"does not": "matter"}, original=b"", metadata=EventMetadata()
+        )
         assert self.object._pseudonymize_string("foo").startswith("<pseudonym:")
         assert len(self.object._event.extra_data) == 1
 
@@ -167,7 +168,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
@@ -193,7 +194,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         # 1 subdomains -> pseudonym_cache, 1 url -> url_cache
         assert self.object.metrics.new_results == 2
@@ -235,7 +236,9 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         ],
     )
     async def test_pseudonymize_url(self, url, expected):
-        self.object._event = LogEvent({"does not": "matter"}, original=b"")
+        self.object._event = LogEvent(
+            {"does not": "matter"}, original=b"", metadata=EventMetadata()
+        )
         assert self.object._pseudonymize_url(url) == expected
 
     async def test_process_returns_extra_output(self):
@@ -258,15 +261,14 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             },
         }
         await self._load_rule(rule_dict)  # First call
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert len(event.extra_data) == 1, "Should contain only one pseudonym"
         pseudonym_event = event.extra_data[0]
         assert pseudonym_event.data
         assert isinstance(pseudonym_event, PseudonymEvent)
-        assert pseudonym_event.outputs == [
-            OutputSpec("kafka", "topic"),
-        ], "Output is set as in CONFIG"
+        assert pseudonym_event.output_name == "kafka"
+        assert pseudonym_event.output_target == "topic"
         assert pseudonym_event.data.get("pseudonym"), "pseudonym is set"
         assert pseudonym_event.data.get("origin"), "encrypted original is set"
         assert pseudonym_event.data.get("@timestamp"), "timestamp is set if present in event"
@@ -295,16 +297,15 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             },
         }
         await self._load_rule(rule_dict)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         assert (
             len(event.extra_data) == 1
         ), "Should contain only one pseudonym, as the value for both is the same"
         pseudonym_event = event.extra_data[0]
         assert pseudonym_event
-        assert pseudonym_event.outputs == [
-            OutputSpec("kafka", "topic"),
-        ], "Output is set as in CONFIG"
+        assert pseudonym_event.output_name == "kafka"
+        assert pseudonym_event.output_target == "topic"
         assert pseudonym_event.data.get("pseudonym"), "pseudonym is set"
         assert pseudonym_event.data.get("origin"), "encrypted original is set"
         assert pseudonym_event.data.get("@timestamp"), "timestamp is set if present in event"
@@ -331,7 +332,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             },
         }
         await self._load_rule(rule_dict)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         assert len(event.extra_data) == 2, "Should contain two pseudonyms, for each value one"
         pseudonym_1 = event.extra_data[0]
@@ -373,7 +374,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             },
         }
         await self._load_rule(rule_dict)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         extra_output = await self.object.process(event)
         pseudonym_event = extra_output.extra_data[0]
         assert pseudonym_event.data.get("pseudonym"), "pseudonym is set"
@@ -431,7 +432,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(deepcopy(event))
         await self.object.process(deepcopy(event))
         await self.object.process(event)

@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 from unittest import mock
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.dropper.processor import Dropper
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
@@ -22,7 +22,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
     async def test_not_nested_field_gets_dropped_with_rule_loaded_from_file(self):
         expected = {}
         document = {"drop_me": "something"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -32,7 +32,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {}
         document = {"drop": {"me": "something"}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -42,7 +42,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {}
         document = {"\\drop": {"me.pls\\": "something"}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -52,7 +52,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {"keep_me": {"keep_me_too": "something"}}
         document = {"keep_me": {"drop_me": "something", "keep_me_too": "something"}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -65,7 +65,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {"keep_me": {"drop": {}}}
         document = {"keep_me": {"drop": {"me": "something"}}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -75,7 +75,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {}
         document = {"please": {"drop": {"me": {"fully": "something"}}}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -88,7 +88,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {"keep_me": {"drop": {}, "keep_me_too": "something"}}
         document = {"keep_me": {"drop": {"me": "something"}, "keep_me_too": "something"}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -98,7 +98,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {}
         document = {"drop": {"child": "something"}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -108,7 +108,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {}
         document = {"drop": {"me": {"child": "foo"}}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -118,7 +118,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {"drop": {"neighbour": "bar"}}
         document = {"drop": {"me": {"child": "foo"}, "neighbour": "bar"}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -128,7 +128,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {"drop": {}}
         document = {"drop": {"me": {"child": "foo"}}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -140,7 +140,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {"drop": {"neighbour": "bar"}}
         document = {"drop": {"child": {"grand_child": "foo"}, "neighbour": "bar"}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -149,7 +149,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         rule = {"filter": "drop.child", "dropper": {"drop": ["drop.child"], "drop_full": False}}
         document = {"drop": {"child": {"grand_child": "foo"}, "neighbour": "bar"}}
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         with mock.patch(
             f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"
         ) as mock_apply_rules:
@@ -176,7 +176,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
             },
         }
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -196,7 +196,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
             },
         }
         await self._load_rule(rule)
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected

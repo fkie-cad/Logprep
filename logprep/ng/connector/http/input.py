@@ -118,7 +118,7 @@ from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.event import EventMetadata
 from logprep.ng.abc.input import Input
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.util.async_helpers import StoppableTask
 from logprep.ng.util.worker.types import SizeLimitedQueue
 from logprep.util import http, rstr
@@ -243,7 +243,7 @@ class JSONHttpEndpoint(HttpEndpoint):
 class JSONLHttpEndpoint(HttpEndpoint):
     """:code:`jsonl` endpoint to get jsonl from request"""
 
-    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder()
+    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder(type=dict)
 
     @raise_request_exceptions
     @basic_auth
@@ -520,6 +520,7 @@ class HttpInput(Input):
         try:
             async with asyncio.timeout(timeout):
                 message = await self.messages.get()
+            # TODO why not use self._encoder.encode?
             raw_message = str(message).encode("utf8")
             return message, raw_message, EventMetadata()
         except TimeoutError:

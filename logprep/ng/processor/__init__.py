@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from logprep.ng.abc.processor import Processor
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import LogEvent
 
 
 async def process(event: LogEvent, processors: Sequence[Processor]) -> LogEvent:

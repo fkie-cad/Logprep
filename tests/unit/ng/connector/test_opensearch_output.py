@@ -8,9 +8,9 @@
 # pylint: disable=line-too-long
 
 import json
-import re
-from collections.abc import Iterable
+from collections.abc import Callable, Sequence
 from contextlib import nullcontext
+from functools import partial
 from unittest import mock
 
 import pytest
@@ -18,8 +18,8 @@ from opensearchpy import AsyncOpenSearch
 from opensearchpy import OpenSearchException as SearchException
 from opensearchpy import helpers
 
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.connector.opensearch.output import BulkError, OpensearchOutput
-from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
 helpers.parallel_bulk = mock.MagicMock()
@@ -50,40 +50,55 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
             yield mock_client
 
     @pytest.fixture
-    def mock_async_streaming_bulk_results(self, request):
-        data = request.param if hasattr(request, "param") else None
-        return data
+    def mock_async_streaming_bulk(self):
+        with mock.patch(
+            f"{MODULE}.helpers.async_streaming_bulk",
+            wraps=helpers.async_streaming_bulk,
+        ) as mock_helper:
+            yield mock_helper
 
     @pytest.fixture
-    def mock_async_streaming_bulk(self, mock_async_streaming_bulk_results):
-        if mock_async_streaming_bulk_results is not None:
-            with mock.patch(
-                f"{MODULE}.helpers.async_streaming_bulk",
-                spec=helpers.async_streaming_bulk,
-            ) as mock_helper:
+    def mock_output_delivery_for_events(  # pylint: disable=arguments-differ
+        self, mock_async_streaming_bulk
+    ) -> Callable[[Sequence[bool | Exception | tuple[bool | Exception, dict]]], None]:
+        """Concrete implementation ensures the given events are delivered successfully"""
 
-                async def gen_return_values(*_, **__):
-                    for item in mock_async_streaming_bulk_results:
-                        yield item
+        def _set_side_effect(responses: Sequence[bool | Exception | tuple[bool | Exception, dict]]):
+            async def gen_return_values(helper_mock, *_, **kwargs):
+                actions = list(kwargs["actions"])
 
-                mock_helper.side_effect = gen_return_values
-                yield mock_helper
-        else:
-            # no mock results configured, calling actual implementation instead
-            with mock.patch(
-                f"{MODULE}.helpers.async_streaming_bulk",
-                wraps=helpers.async_streaming_bulk,
-            ) as mock_helper:
-                yield mock_helper
+                # we have exhausted the actions generator, let's restore it in the call record
+                helper_mock.mock_calls[-1].kwargs["actions"] = actions  # (a for a in actions)
+
+                for i, (action, response) in enumerate(zip(actions, responses)):
+                    if isinstance(response, tuple):
+                        response_ok, response_data = response
+                    else:
+                        response_ok, response_data = response, None
+                    if isinstance(response_ok, Exception):
+                        raise response_ok
+                    yield response_ok, (
+                        response_data
+                        if response_data is not None
+                        else {action["_op_type"]: {"_index": action["_index"], "_id": i}}
+                    )
+
+            mock_async_streaming_bulk.side_effect = partial(
+                gen_return_values, mock_async_streaming_bulk
+            )
+
+        return _set_side_effect
 
     @pytest.fixture(autouse=True)
     def autouse_central_fixtures(self, mock_client, mock_async_streaming_bulk):
         yield mock_client, mock_async_streaming_bulk  # return technically not required
 
-    @staticmethod
-    def set_async_streaming_bulk_results(tuples: Iterable[tuple[bool, dict]]):
-        """Convenience decorator configuring what `helpers.async_streaming_bulk` should return"""
-        return pytest.mark.parametrize("mock_async_streaming_bulk_results", [tuples], indirect=True)
+    @pytest.fixture
+    def mock_async_streaming_bulk_get_actions(self, mock_async_streaming_bulk):
+        def _get_actions(call_index: int = 0):
+            return list(mock_async_streaming_bulk.mock_calls[call_index].kwargs["actions"])
+
+        return _get_actions
 
     # ==========================================================================
 
@@ -93,25 +108,75 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
             == "OpensearchOutput (Test Instance Name) - Opensearch Output: ['localhost:9200']"
         )
 
-    @set_async_streaming_bulk_results([(True, {})])
-    async def test_store_sends_to_default_index(self):
-        event = LogEvent({"field": "content"}, original=b"")
+    async def test_store_sends_to_default_index(
+        self, mock_output_delivery_for_events, mock_async_streaming_bulk_get_actions
+    ):
+        event = LogEvent({"field": "content"}, original=b"", metadata=EventMetadata())
 
         await self.object.setup()
-        await self.object.store_batch([event])
+        mock_output_delivery_for_events([True])
+        await self.object.store([event])
 
         assert len(event.errors) == 0
-        assert event.data.get("_index") == self.CONFIG.get("default_index")
+        assert mock_async_streaming_bulk_get_actions()[0]["_index"] == self.CONFIG.get(
+            "default_index"
+        )
 
-    @set_async_streaming_bulk_results([(True, {})])
-    async def test_store_custom_sends_event_to_expected_index(self):
-        event = LogEvent({"field": "content"}, original=b"")
+    async def test_store_custom_sends_event_to_expected_index(
+        self, mock_output_delivery_for_events, mock_async_streaming_bulk_get_actions
+    ):
+        data_payload = {"field": "content"}
+        event = LogEvent(
+            data_payload, output_target="custom_index", original=b"", metadata=EventMetadata()
+        )
 
         await self.object.setup()
-        await self.object.store_batch([event], "custom_index")
+        mock_output_delivery_for_events([True])
+        await self.object.store([event])
 
         assert len(event.errors) == 0
-        assert event.data == {"field": "content", "_index": "custom_index", "_op_type": "index"}
+        assert mock_async_streaming_bulk_get_actions()[0] == {
+            **data_payload,
+            "_index": "custom_index",
+            "_op_type": "index",
+        }
+
+    async def test_store_handles_individual_errors(self, mock_output_delivery_for_events):
+        event1 = self._create_log_event({"message": "test message"}, output_target=None)
+        event2 = self._create_log_event({"message": "test message"}, output_target="custom")
+        await self.object.setup()
+        mock_output_delivery_for_events([False, False])
+        await self.object.store([event1, event2])
+        assert len(event1.errors) == 1
+        assert len(event2.errors) == 1
+
+    async def test_store_handles_immediate_helper_failures(self, mock_async_streaming_bulk):
+        helper_exception = Exception("something unexpected")
+        mock_async_streaming_bulk.side_effect = helper_exception
+        event1 = self._create_log_event({"message": "test message"}, output_target=None)
+        event2 = self._create_log_event({"message": "test message"}, output_target="custom")
+        await self.object.setup()
+        await self.object.store([event1, event2])
+        assert event1.errors == [helper_exception]
+        assert event2.errors == [helper_exception]
+
+    async def test_store_handles_intermediate_helper_failurs(self, mock_output_delivery_for_events):
+        event1 = self._create_log_event({"message": "test message"}, output_target=None)
+        event2 = self._create_log_event({"message": "test message"}, output_target="custom")
+        await self.object.setup()
+        mock_output_delivery_for_events([True, Exception("something unexpected")])
+        await self.object.store([event1, event2])
+        assert event1.stored
+        assert "something unexpected" == str(event2.errors[0])
+
+    async def test_store_handles_mixed_results(self, mock_output_delivery_for_events):
+        event1 = self._create_log_event({"message": "test message"})
+        event2 = self._create_log_event({"message": "test message"})
+        await self.object.setup()
+        mock_output_delivery_for_events([True, False])
+        await self.object.store([event1, event2])
+        assert len(event1.errors) == 0
+        assert len(event2.errors) == 1
 
     @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
     async def test_setup_populates_cached_properties(self, mock_getmembers):
@@ -148,77 +213,29 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
         await self.object.setup()
         assert not await self.object.health()
 
-    async def test_store_handles_errors(self):
-        self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"")
+    async def test_bulk_creates_bulk_error(self, mock_output_delivery_for_events):
+        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
         await self.object.setup()
-        with mock.patch.object(self.object, "_bulk") as mock_write:
-            mock_write.side_effect = Exception("test error")
-            await self.object.store_batch([event])
-        assert self.object.metrics.number_of_errors == 1
-        assert len(event.errors) == 1
-
-    async def test_store_custom_handles_errors(self):
-        self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"")
-        await self.object.setup()
-        with mock.patch.object(self.object, "_bulk") as mock_write:
-            mock_write.side_effect = Exception("test error")
-            await self.object.store_batch([event], "custom_index")
-        assert self.object.metrics.number_of_errors == 1
-        assert len(event.errors) == 1
-
-    @set_async_streaming_bulk_results(
-        [(True, {"index": {"_id": "1"}}), (False, {"index": {"_id": "1"}})]
-    )
-    async def test_store_batch_handles_failed_bulk_operations(self):
-        event1 = LogEvent({"message": "test message"}, original=b"")
-        event2 = LogEvent({"message": "test message"}, original=b"")
-        await self.object.setup()
-        await self.object.store_batch([event1, event2])
-        assert len(event1.errors) == 0
-        assert len(event2.errors) == 1
-
-    @set_async_streaming_bulk_results(
-        [
-            (
-                False,
-                {
-                    "create": {
-                        "error": "Failed to index document",
-                        "status": "503",
-                        "exception": "Service Unavailable",
-                    }
-                },
-            )
-        ]
-    )
-    async def test_bulk_creates_bulk_error(self):
-        event = LogEvent({"message": "test message"}, original=b"")
-        await self.object.setup()
-        await self.object.store_batch([event])
-        assert len(event.errors) == 1
-        error = event.errors[0]
+        mock_output_delivery_for_events(
+            [
+                (
+                    False,
+                    {
+                        "create": {
+                            "error": "Failed to index document",
+                            "status": "503",
+                            "exception": "Service Unavailable",
+                        }
+                    },
+                )
+            ]
+        )
+        await self.object.store([event])
+        [error] = event.errors
         assert isinstance(error, BulkError)
-        assert re.search("Failed to index document", str(error))
-        assert re.search("503", str(error))
-        assert re.search("Service Unavailable", str(error))
-
-    @set_async_streaming_bulk_results([(True, {"index": {"_id": "1"}})])
-    async def test_store_counts_processed_events(self):
-        await super().test_store_counts_processed_events()
-
-    # @set_async_streaming_bulk_results([(True, {})])
-    # async def test_thread_count_is_passed_to_client(self, mock_async_streaming_bulk):
-    #     self.object = self._create_test_instance(config_patch={"thread_count": 42})
-
-    #     event = LogEvent({"field": "content"}, original=b"")
-
-    #     await self.object.setup()
-    #     await self.object.store_batch([event])
-
-    #     mock_async_streaming_bulk.assert_called_once()
-    #     assert mock_async_streaming_bulk.call_args[1]["thread_count"] == 42
+        assert "Failed to index document" in str(error)
+        assert "503" in str(error)
+        assert "Service Unavailable" in str(error)
 
     @pytest.mark.parametrize(
         "status_codes, client_kwargs, maybe_expect_exception",

@@ -13,7 +13,7 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.key_checker.processor import KeyChecker
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -35,7 +35,7 @@ class TestKeyChecker(BaseProcessorTestCase[KeyChecker]):
         self, testcase, rule, event, expected
     ):  # pylint: disable=unused-argument
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected, testcase
 
@@ -56,7 +56,7 @@ class TestKeyChecker(BaseProcessorTestCase[KeyChecker]):
             "randomkey2": "randomvalue2",
             "missing_fields": ["i.exists.already"],
         }
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)

@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.replacer.processor import Replacer
 from logprep.processor.replacer.rule import Replacement
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -23,7 +23,7 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     async def test_testcases(self, testcase, rule, event, expected):
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected, testcase
 
@@ -38,7 +38,7 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
         expected = {"field": "anything"}
         await self._load_rule(rule)
         self.object.rules[0].templates["field"] = None
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
@@ -55,7 +55,7 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
         event = {"field": "anything"}
         expected = {"field": "anything"}
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
@@ -72,7 +72,7 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
         replacements = self.object.rules[0].templates["field"].replacements
         second_replacement = replacements[1]
         second_replacement.match = "exists and does not match"
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 

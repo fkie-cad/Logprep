@@ -7,7 +7,7 @@ from unittest import mock
 
 from dateutil.tz import tzoffset, tzutc  # type: ignore
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.datetime_extractor.processor import DatetimeExtractor
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -21,7 +21,11 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
 
     async def test_an_event_extracted_datetime_utc(self):
         timestamp = "2019-07-30T14:37:42.861Z"
-        document = LogEvent({"@timestamp": timestamp, "winlog": {"event_id": 123}}, original=b"")
+        document = LogEvent(
+            {"@timestamp": timestamp, "winlog": {"event_id": 123}},
+            original=b"",
+            metadata=EventMetadata(),
+        )
 
         await self.object.process(document)
 
@@ -42,11 +46,16 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
                 },
             },
             original=b"",
+            metadata=EventMetadata(),
         )
         assert document == expected
 
     async def test_an_event_extracted_datetime_missing_field(self):
-        document = LogEvent({"@timestamp": None, "winlog": {"event_id": 123}}, original=b"")
+        document = LogEvent(
+            {"@timestamp": None, "winlog": {"event_id": 123}},
+            original=b"",
+            metadata=EventMetadata(),
+        )
         mock_rule = mock.MagicMock()
         with mock.patch.object(self.object, "_handle_missing_fields", return_value=True):
             result = self.object._apply_rules(document, mock_rule)
@@ -54,7 +63,11 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
 
     async def test_an_event_extracted_datetime_plus_one(self):
         timestamp = "2019-07-30T14:37:42.861+01:00"
-        document = LogEvent({"@timestamp": timestamp, "winlog": {"event_id": 123}}, original=b"")
+        document = LogEvent(
+            {"@timestamp": timestamp, "winlog": {"event_id": 123}},
+            original=b"",
+            metadata=EventMetadata(),
+        )
 
         await self.object.process(document)
 
@@ -75,6 +88,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
                 },
             },
             original=b"",
+            metadata=EventMetadata(),
         )
         assert document == expected
 
@@ -85,7 +99,11 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
         )
 
         timestamp = "2019-07-30T14:37:42.861+00:00"
-        document = LogEvent({"@timestamp": timestamp, "winlog": {"event_id": 123}}, original=b"")
+        document = LogEvent(
+            {"@timestamp": timestamp, "winlog": {"event_id": 123}},
+            original=b"",
+            metadata=EventMetadata(),
+        )
 
         await self.object.process(document)
 
@@ -109,6 +127,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
                 },
             },
             original=b"",
+            metadata=EventMetadata(),
         )
         assert document == expected
 
@@ -121,6 +140,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
         document = LogEvent(
             {"@timestamp": "2019-07-30T14:37:42.861+00:00", "winlog": {"event_id": 123}},
             original=b"test_message",
+            metadata=EventMetadata(),
         )
         rule = {
             "filter": "@timestamp",
@@ -153,6 +173,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
                 },
             },
             original=b"test_message",
+            metadata=EventMetadata(),
         )
         assert document == expected
 
@@ -160,6 +181,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
         document = LogEvent(
             {"@timestamp": "2019-07-30T14:37:42.861+00:00", "winlog": {"event_id": 123}},
             original=b"",
+            metadata=EventMetadata(),
         )
         rule = {
             "filter": "@timestamp",
@@ -192,6 +214,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
                 },
             },
             original=b"",
+            metadata=EventMetadata(),
         )
         assert document == expected
 
@@ -199,6 +222,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
         document = LogEvent(
             {"@timestamp": "2019-07-30T14:37:42.861+00:00", "winlog": {"event_id": 123}},
             original=b"",
+            metadata=EventMetadata(),
         )
         rule = {
             "filter": "@timestamp",

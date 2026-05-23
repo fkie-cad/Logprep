@@ -4,6 +4,8 @@ import asyncio
 import logging
 import sys
 
+import msgspec
+
 from logprep.abc.component import Component
 from logprep.ng.util.defaults import EXITCODES
 
@@ -12,6 +14,8 @@ logger = logging.getLogger("Component")
 
 class NgComponent(Component):
     """Abstract Component Class to define the Interface"""
+
+    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder(type=dict)
 
     # pylint: disable=invalid-overridden-method, useless-parent-delegation
     # TODO fork ng-based Component properly

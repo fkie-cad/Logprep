@@ -8,18 +8,19 @@ from unittest import mock
 import pytest
 
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.pseudonym_event import PseudonymEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from logprep.ng.processor import process
+from logprep.util.helper import get_dotted_field_value
 
 
 @pytest.fixture(name="input_events")
 def get_input_mock():
     return iter(
         [
-            LogEvent({"message": "Log message 1"}, original=b""),
-            LogEvent({"message": "Log message 2"}, original=b""),
-            LogEvent({"user": {"name": "John Doe"}}, original=b""),
+            LogEvent({"message": "Log message 1"}, original=b"", metadata=EventMetadata()),
+            LogEvent({"message": "Log message 2"}, original=b"", metadata=EventMetadata()),
+            LogEvent({"user": {"name": "John Doe"}}, original=b"", metadata=EventMetadata()),
         ]
     )
 
@@ -77,7 +78,7 @@ class TestProcessing:
         for event in processed_events:
             assert isinstance(event, LogEvent)
             assert not event.errors
-            assert "generic added tag" in event.get_dotted_field_value("event.tags")
+            assert "generic added tag" in get_dotted_field_value(event.data, "event.tags")
 
     async def test_process_pipeline_failure(self, input_events, processors):
         with mock.patch.object(

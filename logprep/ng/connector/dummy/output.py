@@ -23,7 +23,7 @@ from collections.abc import Sequence
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.event import Event
+from logprep.ng.abc.event import OutputEvent
 from logprep.ng.abc.output import Output
 
 logger = logging.getLogger("DummyOutput")
@@ -54,8 +54,8 @@ class DummyOutput(Output):
         by the output decorator.
         """
 
-    _recorded_events: list[tuple[Event, str | None]]
-    failed_events: list[Event]
+    _recorded_events: list[tuple[OutputEvent, str | None]]
+    failed_events: list[OutputEvent]
     setup_called_count: int
     shut_down_called_count: int
     _exceptions: list[str | None]
@@ -81,16 +81,16 @@ class DummyOutput(Output):
         return typing.cast("DummyOutput.Config", self._config)
 
     @property
-    def events(self) -> Sequence[Event]:
+    def events(self) -> Sequence[OutputEvent]:
         """Returns events stored in this output"""
         return [event for (event, _) in self._recorded_events]
 
     @property
-    def events_with_targets(self) -> Sequence[tuple[Event, str | None]]:
+    def events_with_targets(self) -> Sequence[tuple[OutputEvent, str | None]]:
         """Returns events stored and their respective target in this output"""
         return self._recorded_events
 
-    async def _store_single(self, event: Event, target: str | None = None) -> None:
+    async def _store_single(self, event: OutputEvent) -> None:
         """Store the document in the output destination.
 
         Parameters
@@ -99,27 +99,24 @@ class DummyOutput(Output):
            Processed log event that will be stored.
         """
         if self.config.do_nothing:
+            event.stored = True
             return
         try:
             if self.exceptions:
                 exception = self.exceptions.pop(0)
                 if exception is not None:
                     raise ValueError(exception)
-            self._recorded_events.append((event, target))
-            self.metrics.number_of_processed_events += 1
+            self._recorded_events.append((event, event.output_target))
+            event.stored = True
         except Exception as error:  # pylint: disable=W0718
-            self.metrics.number_of_errors += 1
-            self._handle_error(event, error)
+            event.mark_failed(error)
 
-    async def _store_batch(
-        self, events: Sequence[Event], target: str | None = None
-    ) -> Sequence[Event]:
+    async def _store(self, events: Sequence[OutputEvent]) -> None:
         for event in events:
             try:
-                await self._store_single(event, target)
+                await self._store_single(event)
             except Exception as error:
-                pass  # TODO implement
-        return events
+                raise error
 
     async def shut_down(self):
         self.shut_down_called_count += 1

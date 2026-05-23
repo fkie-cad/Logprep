@@ -35,6 +35,7 @@ import logging
 import ssl
 import typing
 from collections.abc import Sequence
+from functools import cached_property
 from typing import Any, List, Optional
 
 from attrs import define, field, validators
@@ -47,8 +48,7 @@ from opensearchpy import (
 from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.exceptions import LogprepException
-from logprep.ng.abc.event import Event
-from logprep.ng.abc.output import FatalOutputError, Output
+from logprep.ng.abc.output import CriticalOutputError, Event, Output
 
 logger = logging.getLogger("OpenSearchOutput")
 
@@ -211,6 +211,13 @@ class OpensearchOutput(Output):
             return (self.config.user, self.config.secret)
         return None
 
+    @cached_property
+    def _default_action_config(self) -> dict[str, str]:
+        return {
+            "_index": self.config.default_index,
+            "_op_type": self.config.default_op_type,
+        }
+
     def describe(self) -> str:
         """Get name of Opensearch endpoint with the host."""
         base_description = Output.describe(self)
@@ -238,65 +245,68 @@ class OpensearchOutput(Output):
         )
         return await super().setup()
 
-    async def _store_batch(
-        self, events: Sequence[Event], target: str | None = None
-    ) -> Sequence[Event]:
-        logger.debug("Flushing %d documents to opensearch with target '%s'", len(events), target)
-        target = target if target else self.config.default_index
+    async def _store(self, events: Sequence[Event]) -> None:
+        logger.debug("Flushing %d documents to opensearch", len(events))
 
-        for event in events:
-            document = event.data
-            document["_index"] = document.get("_index", target)
-            document["_op_type"] = document.get("_op_type", self.config.default_op_type)
-
-        await self._bulk(self._search_context, events)
-        self._metrics.number_of_processed_events += len(events)
-        return events
-
-    async def _bulk(self, client: AsyncOpenSearch, events: Sequence[Event]) -> None:
-        """
-        Bulk index documents into Opensearch.
-        Uses the async_streaming_bulk function from the opensearchpy library.
-        """
-
-        actions = (event.data for event in events)
+        actions = (
+            {
+                **self._default_action_config,
+                **({"_index": event.output_target} if event.output_target is not None else {}),
+                **event.data,
+            }
+            for event in events
+        )
 
         index = 0
-        async with contextlib.aclosing(
-            helpers.async_streaming_bulk(
-                client,
-                actions,
-                max_retries=0,  # retries break order
-                max_chunk_bytes=self.config.max_chunk_bytes,
-                chunk_size=self.config.chunk_size,
-                raise_on_error=False,
-                raise_on_exception=False,
-            )
-        ) as send_results:
-            async for success, action_item in send_results:
-                # TODO improve item to event mapping to allow for automatic retries
-                event = events[index]
-                index += 1
-
-                if success:
-                    continue
-
-                logger.debug("event failed to send: %s", action_item)
-
-                assert isinstance(action_item, dict) and len(action_item) == 1
-                # structure of action_item is always `{ $op_type: { ... } }`
-                op_type, item = typing.cast(tuple[str, dict[str, Any]], action_item.popitem())
-
-                event.errors.append(
-                    BulkError(
-                        message=item.get("error", f"Failed to `${op_type}` document"),
-                        exception=item.get("exception"),
-                        status=item.get("status"),
-                    )
+        bulk_error: Exception | None = None
+        try:
+            async with contextlib.aclosing(
+                helpers.async_streaming_bulk(
+                    client=self._search_context,
+                    actions=actions,
+                    max_retries=0,  # retries break order
+                    max_chunk_bytes=self.config.max_chunk_bytes,
+                    chunk_size=self.config.chunk_size,
+                    raise_on_error=False,
+                    raise_on_exception=False,
                 )
+            ) as send_results:
+                async for success, action_item in send_results:
+                    # TODO improve item to event mapping to allow for automatic retries
+                    event = events[index]
+                    index += 1
+
+                    if success:
+                        event.stored = True
+                        continue
+
+                    logger.debug("event failed to send: %s", action_item)
+
+                    assert isinstance(action_item, dict) and len(action_item) == 1
+                    # structure of action_item is always `{ $op_type: { ... } }`
+                    op_type, item = typing.cast(tuple[str, dict[str, Any]], action_item.popitem())
+
+                    event.mark_failed(
+                        BulkError(
+                            message=item.get("error", f"Failed to `${op_type}` document"),
+                            exception=item.get("exception"),
+                            status=item.get("status"),
+                        )
+                    )
+        except Exception as ex:
+            logger.error("failure during sending to opensearch")
+            bulk_error = ex
+
         if index < len(events):
-            # TODO improve
-            raise FatalOutputError(self, "iteration ended abruptly")
+            error = (
+                bulk_error
+                if bulk_error is not None
+                else CriticalOutputError.from_message(self, "iteration ended abruptly")
+            )
+
+            for i, event in enumerate(events):
+                if not event.stored or event.is_failed():
+                    event.mark_failed(error)
 
     async def health(self) -> bool:  # type: ignore[override]
         """Check the health of the component."""

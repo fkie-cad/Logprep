@@ -15,20 +15,30 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException
+from confluent_kafka import (
+    OFFSET_INVALID,
+    KafkaError,
+    KafkaException,
+    TopicPartition,
+)
 from confluent_kafka.aio import AIOConsumer
 
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
+from logprep.ng.abc.event import ErrorEvent, LogEvent
 from logprep.ng.abc.input import (
-    CriticalInputParsingError,
+    CriticalInputError,
     FatalInputError,
-    InputWarning,
 )
-from logprep.ng.connector.confluent_kafka.input import ConfluentKafkaInput, logger
+from logprep.ng.connector.confluent_kafka.input import (
+    ConfluentKafkaInput,
+)
+from logprep.ng.connector.confluent_kafka.input import logger as kafka_input_logger
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
-from logprep.ng.event.error_event import ErrorEvent
-from logprep.util.helper import get_dotted_field_value
+from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
+    TopicOffsetCommitTracker,
+)
+from logprep.util.helper import FieldValue, get_dotted_field_value
 from tests.unit.ng.connector.base import BaseInputTestCase
 
 KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
@@ -89,6 +99,22 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     def autouse_central_fixtures(self, mock_consumer, mock_executor):
         yield mock_consumer, mock_executor  # return technically not required
 
+    @pytest.fixture
+    def mock_tracker(self):
+        with mock.patch(
+            "logprep.ng.connector.confluent_kafka.input.TopicOffsetCommitTracker",
+            spec=TopicOffsetCommitTracker,
+        ) as tracker:
+            tracker.return_value = tracker
+            yield tracker
+
+    def _create_log_event(self, data: dict[str, FieldValue], original: bytes | None = None):
+        return LogEvent(
+            data,
+            original=original,
+            metadata=ConfluentKafkaMetadata(partition=0, offset=0),
+        )
+
     async def test_client_id_is_set_to_hostname(self):
         await self.object.setup()
         assert self.object._kafka_config.get("client.id") == socket.getfqdn()
@@ -137,7 +163,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_get_next_returns_none_if_no_records(self, mock_consumer):
         await self.object.setup()
 
-        mock_consumer.poll.return_value = None
+        mock_consumer.consume.return_value = []
 
         event = await self.object.get_next(1)
         assert event is None
@@ -159,11 +185,10 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         await self.object.setup()
 
-        mock_consumer.poll.return_value = mock_kafka_message
+        mock_consumer.consume.return_value = [mock_kafka_message]
 
-        error_event = await self.object.get_next(1)
-        assert isinstance(error_event, ErrorEvent)
-        assert "A confluent-kafka record contains an error code" in error_event.data["reason"]
+        with pytest.raises(CriticalInputError):
+            await self.object.get_next(1)
 
         await self.object.shut_down()
 
@@ -227,11 +252,11 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.offset.return_value = 42
         mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         error_event = await self.object.get_next(1)
         assert isinstance(error_event, ErrorEvent)
-        assert "not a dict" in error_event.data["reason"]
+        assert "not a valid json string representing an object" in error_event.reason
 
         await self.object.shut_down()
 
@@ -241,17 +266,19 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record = mock.MagicMock()
 
         mock_record.error.return_value = None
+        mock_record.partition.return_value = 1
+        mock_record.offset.return_value = 42
         mock_record.value.return_value = "I'm not valid json".encode("utf8")
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         error_event = await self.object.get_next(1)
         assert isinstance(error_event, ErrorEvent)
-        assert "not a valid json string" in error_event.data["reason"]
+        assert "not a valid json string" in error_event.reason
 
         await self.object.shut_down()
 
-    async def test_get_event_returns_event_and_raw_event(self, mock_consumer):
+    async def test_get_event_returns_event(self, mock_consumer):
         await self.object.setup()
 
         mock_record = mock.MagicMock()
@@ -261,19 +288,21 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.partition.return_value = 1
         mock_record.offset.return_value = 42
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
-        event, raw_event, metadata = await self.object._get_event(0.001)
-        assert event == {"element": "in list"}
-        assert raw_event == '{"element":"in list"}'.encode("utf8")
-        assert metadata == ConfluentKafkaMetadata(partition=1, offset=42)
+        event = await self.object._get_event(0.001)
+        assert event.data == {"element": "in list"}
+        assert event.original == '{"element":"in list"}'.encode("utf8")
+        assert event.metadata == ConfluentKafkaMetadata(partition=1, offset=42)
 
     async def test_get_raw_event_is_callable(self, mock_consumer):
         mock_record = mock.MagicMock()
         mock_record.error.return_value = None
         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
+        mock_record.partition.return_value = 1
+        mock_record.offset.return_value = 42
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         await self.object.setup()
 
@@ -285,40 +314,31 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record = mock.MagicMock()
         mock_record.error.return_value = None
         mock_record.value.return_value = '{"invalid_json"}'.encode("utf8")
+        mock_record.partition.return_value = 1
+        mock_record.offset.return_value = 42
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         await self.object.setup()
 
-        with pytest.raises(
-            CriticalInputParsingError,
-            match=(
-                r"Input record value is not a valid json string ->"
-                r" event was written to error output if configured"
-            ),
-        ) as error:
-            await self.object._get_event(0.001)
-        assert error.value.raw_input == b'{"invalid_json"}'
+        error_event = await self.object._get_event(0.001)
+        assert isinstance(error_event, ErrorEvent)
+        assert "is not a valid json string" in error_event.reason
 
-    async def test_get_event_raises_exception_if_input_not_utf(self, mock_consumer):
+    async def test_get_event_returns_error_if_not_utf8(self, mock_consumer):
         mock_record = mock.MagicMock()
         mock_record.error.return_value = None
-
         mock_record.value.return_value = '{"not_utf-8": \xfc}'.encode("cp1252")
+        mock_record.partition.return_value = 1
+        mock_record.offset.return_value = 42
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         await self.object.setup()
 
-        with pytest.raises(
-            CriticalInputParsingError,
-            match=(
-                r"Input record value is not \'utf-8\' encoded ->"
-                r" event was written to error output if configured"
-            ),
-        ) as error:
-            await self.object._get_event(0.001)
-        assert error.value.raw_input == "b'{\"not_utf-8\": \\xfc}'"
+        error_event = await self.object._get_event(0.001)
+        assert isinstance(error_event, ErrorEvent)
+        assert "is not 'utf-8' encoded" in error_event.reason
 
     # async def test_setup_raises_fatal_input_error_on_invalid_config(self):
     #     self.object = self._create_test_instance(
@@ -336,38 +356,49 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_get_next_raises_critical_input_parsing_error(self):
         await self.object.setup()
 
-        mock_message = mock.MagicMock()
-        mock_message.value.return_value = b'{"invalid": "json'
-
-        self.object._get_raw_event = mock.AsyncMock(return_value=mock_message)
+        self.object._get_raw_event = mock.AsyncMock(
+            return_value=(b'{"invalid": "json', ConfluentKafkaMetadata(partition=0, offset=42))
+        )
 
         error_event = await self.object.get_next(1)
         assert isinstance(error_event, ErrorEvent)
         assert "Input record value is not a valid json string" in error_event.data["reason"]
 
-    async def test_commit_callback_raises_warning_error_and_counts_failures(self):
-        with pytest.raises(InputWarning, match="Could not commit offsets"):
-            await self.object._commit_callback(Exception, ["topic_partition"])
-            assert self.object._commit_failures == 1
+    # TODO tests for manual commits
+    # async def test_commit_callback_raises_warning_error_and_counts_failures(self):
+    #     with pytest.raises(InputWarning, match="Could not commit offsets"):
+    #         await self.object._commit_callback(Exception, ["topic_partition"])
+    #         assert self.object._commit_failures == 1
 
-    async def test_commit_callback_counts_commit_success(self):
-        self.object.metrics.commit_success = 0
-        await self.object._commit_callback(None, [mock.MagicMock()])
-        assert self.object.metrics.commit_success == 1
+    # async def test_commit_callback_counts_commit_success(self):
+    #     self.object.metrics.commit_success = 0
+    #     await self.object._commit_callback(None, [mock.MagicMock()])
+    #     assert self.object.metrics.commit_success == 1
 
-    async def test_commit_callback_sets_committed_offsets(self):
-        self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
-        topic_partition = mock.MagicMock()
-        topic_partition.partition = 99
-        topic_partition.offset = 666
-        await self.object._commit_callback(None, [topic_partition])
-        call_args = 666, {"description": "topic: test_input_raw - partition: 99"}
-        self.object.metrics.committed_offsets.add_with_labels.assert_called_with(*call_args)
+    # async def test_commit_callback_sets_committed_offsets(self):
+    #     self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
+    #     topic_partition = mock.MagicMock()
+    #     topic_partition.partition = 99
+    #     topic_partition.offset = 666
+    #     await self.object._commit_callback(None, [topic_partition])
+    #     call_args = 666, {"description": "topic: test_input_raw - partition: 99"}
+    #     self.object.metrics.committed_offsets.add_with_labels.assert_called_with(*call_args)
+
+    # async def test_commit_callback_sets_offset_to_0_for_special_offsets(self):
+    #     self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
+    #     mock_partitions = [mock.MagicMock()]
+    #     mock_partitions[0].offset = OFFSET_BEGINNING
+    #     await self.object._commit_callback(None, mock_partitions)
+    #     expected_labels = {
+    #         "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
+    #     }
+    #     self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
 
     async def test_default_config_is_injected(self, mock_consumer, mock_executor):
         injected_config = {
             "enable.auto.offset.store": "false",
-            "enable.auto.commit": "true",
+            "enable.auto.commit": "false",
+            "enable.partition.eof": "false",
             "client.id": socket.getfqdn(),
             "auto.offset.reset": "earliest",
             "session.timeout.ms": "6000",
@@ -375,8 +406,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             "bootstrap.servers": "testserver:9092",
             "group.id": "testgroup",
             "group.instance.id": f"{socket.getfqdn().strip('.')}-PipelineNone-pid{os.getpid()}",
-            "logger": logger,
-            "on_commit": self.object._commit_callback,
+            "logger": kafka_input_logger,
             "stats_cb": self.object._stats_callback,
             "error_cb": self.object._error_callback,
         }
@@ -389,7 +419,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             config_patch={
                 "kafka_config": {
                     "enable.auto.offset.store": "true",
-                    "enable.auto.commit": "false",
+                    "enable.auto.commit": "true",
                     "bootstrap.servers": "testserver:9092",
                     "group.id": "testgroup",
                 }
@@ -402,7 +432,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         actual_kafka_config = mock_consumer.call_args[0][0]
         assert actual_kafka_config.get("enable.auto.offset.store") == "false"
-        assert actual_kafka_config.get("enable.auto.commit") == "true"
+        assert actual_kafka_config.get("enable.auto.commit") == "false"
 
         await self.object.shut_down()
 
@@ -443,7 +473,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         await self.object.shut_down()
 
     async def test_raises_fatal_input_error_if_poll_raises_runtime_error(self, mock_consumer):
-        mock_consumer.poll.side_effect = RuntimeError("test error")
+        mock_consumer.consume.side_effect = RuntimeError("test error")
 
         await self.object.setup()
 
@@ -479,37 +509,38 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         self.object.metrics.number_of_warnings = 0
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
-            await self.object._lost_callback(mock_consumer, mock_partitions)
+            with mock.patch.object(self.object, "_commit_tracker") as tracker:
+                await self.object._lost_callback(mock_consumer, mock_partitions)
+                tracker.unregister_partition.assert_called()
         mock_warning.assert_called()
         assert self.object.metrics.number_of_warnings == 1
 
-    async def test_commit_callback_sets_offset_to_0_for_special_offsets(self):
-        self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
-        mock_partitions = [mock.MagicMock()]
-        mock_partitions[0].offset = OFFSET_BEGINNING
-        await self.object._commit_callback(None, mock_partitions)
-        expected_labels = {
-            "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
-        }
-        self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
-
-    async def test_assign_callback_sets_offsets_and_logs_info(self):
+    async def test_assign_callback_sets_offsets_and_logs_info(self, mock_consumer, mock_tracker):
         await self.object.setup()
 
         self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
         self.object.metrics.current_offsets.add_with_labels = mock.MagicMock()
-        mock_partitions = [mock.MagicMock()]
-        mock_partitions[0].offset = OFFSET_BEGINNING
+
+        mock_partitions = [TopicPartition("test_input_raw", partition=3, offset=OFFSET_INVALID)]
+
+        mock_consumer.committed.return_value = [
+            TopicPartition("test_input_raw", partition=3, offset=42)
+        ]
+
         with mock.patch("logging.Logger.info") as mock_info:
             await self.object._assign_callback(None, mock_partitions)
+
         expected_labels = {
             "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
         }
         mock_info.assert_called()
-        self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
-        self.object.metrics.current_offsets.add_with_labels.assert_called_with(0, expected_labels)
+        self.object.metrics.committed_offsets.add_with_labels.assert_called_with(
+            42, expected_labels
+        )
+        self.object.metrics.current_offsets.add_with_labels.assert_called_with(42, expected_labels)
+        mock_tracker.register_partition.assert_called_with(3, 42)
 
-    async def test_revoke_callback_logs_warning_and_counts(self):
+    async def test_revoke_callback_logs_warning_and_counts(self, mock_tracker):
         await self.object.setup()
 
         self.object.metrics.number_of_warnings = 0
@@ -517,24 +548,20 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
             await self.object._revoke_callback(None, mock_partitions)
+
         mock_warning.assert_called()
+        mock_tracker.unregister_partition.assert_called()
         assert self.object.metrics.number_of_warnings == 1
 
-    async def test_revoke_callback_calls_batch_finished_callback(self):
-        await self.object.setup()
-
-        self.object.output_connector = mock.AsyncMock()
-        self.object.batch_finished_callback = mock.AsyncMock()
-        mock_partitions = [mock.MagicMock()]
-        await self.object._revoke_callback(None, mock_partitions)
-        self.object.batch_finished_callback.assert_called()
-
-    async def test_revoke_callback_logs_error_if_consumer_closed(self, mock_consumer, caplog):
+    async def test_revoke_callback_logs_error_if_consumer_closed(
+        self, mock_consumer, mock_tracker, caplog
+    ):
         mock_consumer._consumer.memberid.side_effect = RuntimeError("Consumer is closed")
 
         await self.object.setup()
         await self.object._revoke_callback(None, topic_partitions=[mock.MagicMock()])
         assert re.search(r"ERROR.*Consumer is closed", caplog.text)
+        mock_tracker.unregister_partition.assert_called()
 
     async def test_health_returns_true_if_no_error(self, mock_consumer):
         mock_consumer.list_topics.return_value.topics = ["test-topic"]

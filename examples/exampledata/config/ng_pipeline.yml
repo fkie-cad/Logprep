@@ -21,6 +21,7 @@ logger:
     "Worker": {"level": "ERROR"}
     "PipelineManager": {"level": "ERROR"}
     "async_helpers": {"level": "ERROR"}
+    "KafkaOffsetTracker": {"level": "ERROR"}
 metrics:
   enabled: true
   port: 8001

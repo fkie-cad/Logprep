@@ -4,30 +4,35 @@ Common
 
 Configuration properties shared between input types.
 
-.. autoclass:: logprep.util.input_common.PreprocessingConfig
+.. autoclass:: logprep.util.preprocessor.PreprocessingConfig
    :no-index-entry:
    :members:
    :undoc-members:
    :inherited-members:
 
-.. autoclass:: logprep.util.input_common.FullEventConfig
+.. autoclass:: logprep.util.preprocessor.FullEventConfig
    :no-index-entry:
    :members:
    :undoc-members:
    :inherited-members:
 
-.. autoclass:: logprep.util.input_common.TimeDeltaConfig
+.. autoclass:: logprep.util.preprocessor.TimeDeltaConfig
    :no-index-entry:
    :members:
    :undoc-members:
    :inherited-members:
 
-.. autoclass:: logprep.util.input_common.HmacConfig
+.. autoclass:: logprep.util.preprocessor.HmacConfig
    :no-index-entry:
    :members:
    :undoc-members:
    :inherited-members:
 """
+
+from attrs import define, field, validators
+
+from logprep.util.converters import convert_from_dict
+
 
 from attrs import define, field, validators
 

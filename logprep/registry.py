@@ -283,7 +283,8 @@ class Registry:
         if not isinstance(processor_type, str):
             raise ValueError("Unknown rule type")
         processor_class = cls.get_class(processor_type)
-        if not issubclass(processor_class, Processor):
+        if not issubclass(processor_class, (Processor, NgProcessor)):
+            # TODO remove after ng integration
             raise ValueError(f"Unknown processor type: {processor_type}")
         rule_class = processor_class.rule_class
         if rule_class is None:

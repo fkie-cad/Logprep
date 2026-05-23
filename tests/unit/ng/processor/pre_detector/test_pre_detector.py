@@ -7,8 +7,8 @@ from copy import deepcopy
 import pytest
 from deepdiff import DeepDiff
 
-from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.sre_event import SreEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.processor.pre_detector.sre_event import SreEvent
 from logprep.ng.processor.pre_detector.processor import PreDetector
 from logprep.util.helper import get_dotted_field_value
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -55,7 +55,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
             },
         ]
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         assert event.extra_data
         assert len(event.extra_data) == 1, "one extra data item expected"
@@ -65,7 +65,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
     async def test_perform_pre_detection_that_fails_if_filter_children_were_slots(self):
         document = {"A": "foo X bar Y"}
         expected = deepcopy(document)
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected_detection_results = [
             {
                 "case_condition": "directly",
@@ -82,7 +82,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
         document = {"A": "foo X bar Y baz"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         assert event.extra_data == []
 
@@ -104,7 +104,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
             },
         ]
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -124,7 +124,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         ]
 
         document["pre_detection_id"] = "11fdfc1f-8e00-476e-b88f-753d92af989c"
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -145,7 +145,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 '(message:"test1*xyz" OR message:"test2*xyz"))',
             },
         ]
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -166,7 +166,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 '(message:"test1*xyz" OR message:"test2?xyz"))',
             },
         ]
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -193,81 +193,81 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 "title": "RULE_TWO",
             },
         ]
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
     async def test_correct_star_wildcard_behavior(self):
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyzA"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyzA"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2*xyzA"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2*xyzA"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2xyz"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data != expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2Axyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2Axyz"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data != expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2AAxyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2AAxyz"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data != expected
 
     async def test_correct_questionmark_wildcard_behavior(self):
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data != expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data != expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
@@ -285,7 +285,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
             },
         ]
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -303,7 +303,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
             },
         ]
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -353,7 +353,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         await self._load_rule(rule)
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         sre_event = event.extra_data[0]
         assert sre_event.data.get("@timestamp") == "2024-08-12T12:13:04Z"
@@ -419,7 +419,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             "@timestamp": timestamp,
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         sre_event = event.extra_data[0]
         assert sre_event.data.get("@timestamp") == expected, testcase
@@ -445,7 +445,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             "@timestamp": "19960531153655",
         }
         await self._load_rule(rule)
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         sre_event = event.extra_data[0]
         assert sre_event.data.get("custom_timestamp") == "2024-08-11T02:11:45Z"
@@ -467,7 +467,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             "@timestamp": "this is not a timestamp",
         }
         await self._load_rule(rule)
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         assert event.warnings
         assert len(event.warnings) == 1
@@ -492,7 +492,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         }
         await self._load_rule(rule)
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         assert (
             "rule_filter" not in self.object.rules[0].detection_data
@@ -647,7 +647,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 **expected_extra_fields_in_output,
             },
         ]
-        event = LogEvent(event_data, original=b"")
+        event = LogEvent(event_data, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         self._assert_equality_of_results(event, event_data, expected_detection_results)
 
@@ -667,7 +667,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 "description": "Test rule one",
             }
         )
-        event = LogEvent(event_data, original=b"")
+        event = LogEvent(event_data, original=b"", metadata=EventMetadata())
         event = await self.object.process(event)
         detection_event = event.extra_data[0].data
         detection_event_keys = set(detection_event.keys())
@@ -710,11 +710,15 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         }
         await self._load_rule(rule)
 
-        event = LogEvent({"match": "something", "host": {"name": "host_name"}}, original=b"")
+        event = LogEvent(
+            {"match": "something", "host": {"name": "host_name"}},
+            original=b"",
+            metadata=EventMetadata(),
+        )
         detection_results = await self.object.process(event)
         assert get_dotted_field_value(detection_results.data, "host.name") == "host_name"
 
-        event = LogEvent({"match": "something"}, original=b"")
+        event = LogEvent({"match": "something"}, original=b"", metadata=EventMetadata())
         detection_results = await self.object.process(event)
         assert get_dotted_field_value(detection_results.data, "host.name") is None
 
@@ -738,12 +742,13 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         event = LogEvent(
             {"match": "something", "host": {"name": "host_name"}, "custom": "custom_value"},
             original=b"",
+            metadata=EventMetadata(),
         )
         detection_results = await self.object.process(event)
         assert get_dotted_field_value(detection_results.data, "host.name") == "host_name"
         assert get_dotted_field_value(detection_results.data, "custom") == "custom_value"
 
-        event = LogEvent({"match": "something"}, original=b"")
+        event = LogEvent({"match": "something"}, original=b"", metadata=EventMetadata())
         detection_results = await self.object.process(event)
         assert get_dotted_field_value(detection_results.data, "host.name") is None
         assert get_dotted_field_value(detection_results.data, "custom") is None

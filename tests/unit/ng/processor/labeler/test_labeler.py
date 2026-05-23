@@ -10,7 +10,7 @@ import pytest
 from pytest import raises
 
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.labeler.processor import Labeler
 from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
@@ -75,7 +75,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
     async def test_process_adds_labels_to_event(self):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
         document = {"applyrule": "yes"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
 
         await self._load_rule(rule)
@@ -91,7 +91,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         }
 
         document = {"äpplyrüle": "nö"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {"äpplyrüle": "nö", "label": {"räpörter": ["windöws"]}}
 
         await self._load_rule(rule)
@@ -105,7 +105,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
 
         document = {"applyrule": "yes"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {"applyrule": "yes", "label": {"reporter": ["parentlabel", "windows"]}}
 
         await self._load_rule(rule, reporter_schema_expanded)
@@ -119,7 +119,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
             "labeler": {"label": {"reporter": ["client", "windows"], "object": ["file"]}},
         }
         document = {"key": "value"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {
             "key": "value",
             "label": {"reporter": ["client", "windows"], "object": ["file"]},
@@ -133,7 +133,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
     async def test_process_does_not_overwrite_existing_values(self):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
         document = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
 
         await self._load_rule(rule)
@@ -143,7 +143,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
 
     async def test_process_returns_labels_in_alphabetical_order(self, reporter_schema_expanded):
         event = {"applyrule": "yes"}
-        log_event = LogEvent(event, original=b"")
+        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
 
         await self._load_rule(rule, reporter_schema_expanded)
@@ -153,7 +153,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
 
     async def test_process_matches_event_with_array_with_one_element(self):
         document = {"field_with_array": ["im_inside_an_array"]}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {
             "field_with_array": ["im_inside_an_array"],
             "label": {"some_new_label": ["some_new_value"]},
@@ -172,7 +172,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
 
     async def test_process_matches_event_with_array_if_at_least_one_element_matches(self):
         document = {"field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"]}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {
             "field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"],
             "label": {"some_new_label": ["some_new_value"]},
@@ -191,7 +191,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
 
     async def test_process_matches_event_with_array_with_one_element_with_regex(self):
         document = {"field_with_array": ["im_inside_an_array"]}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {
             "field_with_array": ["im_inside_an_array"],
             "label": {"some_new_label": ["some_new_value"]},
@@ -211,7 +211,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
 
     async def test_process_matches_event_with_array_with_one_element_with_regex_one_without(self):
         document = {"field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"]}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {
             "field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"],
             "label": {"some_new_label": ["some_new_value"]},
@@ -262,7 +262,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
     async def test_extend_list_of_existing_labels(self):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows", "foo"]}}}
         document = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {"applyrule": "yes", "label": {"reporter": ["foo", "windows"]}}
         await self._load_rule(rule)
         await self.object.process(log_event)

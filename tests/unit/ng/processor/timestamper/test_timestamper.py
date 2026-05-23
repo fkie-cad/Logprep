@@ -8,7 +8,7 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.ng.processor.timestamper.processor import Timestamper
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -36,14 +36,14 @@ class TestTimestamper(BaseProcessorTestCase[Timestamper]):
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     async def test_testcases(self, testcase, rule, event, expected):
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
     async def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(rf".*{error_message}", str(result.warnings[0]))

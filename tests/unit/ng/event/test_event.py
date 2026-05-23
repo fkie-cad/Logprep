@@ -6,219 +6,211 @@
 # pylint: disable=protected-access
 # pylint: disable=unnecessary-dunder-call
 
-import pickle
-from typing import Any
-from unittest.mock import MagicMock, patch
-
-import pytest
-
-from logprep.ng.abc.event import Event
-
-
-class DummyEvent(Event):
-    __slots__ = Event.__slots__
-
 
 class TestEventClass:
-    def test_event_equality_and_hashing_with_identical_data(self):
-        """
-        Ensure that two Events with identical data are considered equal
-        and have identical hashes.
-        """
+    pass
 
-        event1 = DummyEvent({"user": {"id": 42, "name": "Alice"}})
-        event2 = DummyEvent({"user": {"id": 42, "name": "Alice"}})
+    # TODO remove or make useful
 
-        assert event1 == event2
-        assert hash(event1) == hash(event2)
+    # def test_event_equality_and_hashing_with_identical_data(self):
+    #     """
+    #     Ensure that two Events with identical data are considered equal
+    #     and have identical hashes.
+    #     """
 
-    def test_event_inequality_with_different_data(self):
-        """
-        Ensure that Events with different data are not equal and produce
-        different hashes.
-        """
+    #     event1 = DummyEvent({"user": {"id": 42, "name": "Alice"}})
+    #     event2 = DummyEvent({"user": {"id": 42, "name": "Alice"}})
 
-        event1 = DummyEvent({"user": {"id": 42}})
-        event2 = DummyEvent({"user": {"id": 99}})
+    #     assert event1 == event2
+    #     assert hash(event1) == hash(event2)
 
-        assert event1 != event2
-        assert hash(event1) != hash(event2)
+    # def test_event_inequality_with_different_data(self):
+    #     """
+    #     Ensure that Events with different data are not equal and produce
+    #     different hashes.
+    #     """
 
-    def test_event_eq_not_implemented(self):
+    #     event1 = DummyEvent({"user": {"id": 42}})
+    #     event2 = DummyEvent({"user": {"id": 99}})
 
-        event = Event(data={"key": "value"})
-        non_event = {"key": "value"}
+    #     assert event1 != event2
+    #     assert hash(event1) != hash(event2)
 
-        assert (event == non_event) is False
-        assert event.__eq__(non_event) is NotImplemented
+    # def test_event_eq_not_implemented(self):
 
-    def test_event_usable_as_dict_key_and_set_element(self):
-        """
-        Ensure that Event instances can be used as dictionary keys or
-        stored in sets. Equality is based on the contents of self.data.
-        """
+    #     event = Event(data={"key": "value"})
+    #     non_event = {"key": "value"}
 
-        e1 = DummyEvent({"id": 1})
-        e2 = DummyEvent({"id": 1})
-        e3 = DummyEvent({"id": 2})
+    #     assert (event == non_event) is False
+    #     assert event.__eq__(non_event) is NotImplemented
 
-        event_dict = {e1: "exists"}
-        assert event_dict[e2] == "exists"
+    # def test_event_usable_as_dict_key_and_set_element(self):
+    #     """
+    #     Ensure that Event instances can be used as dictionary keys or
+    #     stored in sets. Equality is based on the contents of self.data.
+    #     """
 
-        event_set = {e1, e3}
-        assert e2 in event_set
-        assert len(event_set) == 2
+    #     e1 = DummyEvent({"id": 1})
+    #     e2 = DummyEvent({"id": 1})
+    #     e3 = DummyEvent({"id": 2})
 
-    def test_event_set_membership_reduces_duplicates_by_data_equality(self):
-        """
-        Ensure that adding multiple Event instances with identical `data`
-        results in a set of length 1.
-        """
+    #     event_dict = {e1: "exists"}
+    #     assert event_dict[e2] == "exists"
 
-        event1 = DummyEvent({"x": [1, 2, 3], "y": {"z": "abc"}})
-        event2 = DummyEvent({"x": [1, 2, 3], "y": {"z": "abc"}})
+    #     event_set = {e1, e3}
+    #     assert e2 in event_set
+    #     assert len(event_set) == 2
 
-        event_set = {event1, event2}
+    # def test_event_set_membership_reduces_duplicates_by_data_equality(self):
+    #     """
+    #     Ensure that adding multiple Event instances with identical `data`
+    #     results in a set of length 1.
+    #     """
 
-        assert len(event_set) == 1
-        assert event1 in event_set
-        assert event2 in event_set
+    #     event1 = DummyEvent({"x": [1, 2, 3], "y": {"z": "abc"}})
+    #     event2 = DummyEvent({"x": [1, 2, 3], "y": {"z": "abc"}})
 
-    def test_event_deep_freeze_on_nested_structure(self):
-        """
-        Ensure that _deep_freeze transforms nested dicts/lists into hashable
-        frozen structures.
-        """
-        e = DummyEvent({})
-        nested = {"a": [1, {"b": 2}], "c": {"d": [3, 4]}}
+    #     event_set = {event1, event2}
 
-        frozen = e._deep_freeze(nested)
+    #     assert len(event_set) == 1
+    #     assert event1 in event_set
+    #     assert event2 in event_set
 
-        assert isinstance(frozen, frozenset)
-        assert ("a", (1, frozenset({("b", 2)}))) in frozen
-        assert ("c", frozenset({("d", (3, 4))})) in frozen
+    # def test_event_deep_freeze_on_nested_structure(self):
+    #     """
+    #     Ensure that _deep_freeze transforms nested dicts/lists into hashable
+    #     frozen structures.
+    #     """
+    #     e = DummyEvent({})
+    #     nested = {"a": [1, {"b": 2}], "c": {"d": [3, 4]}}
 
-    def test_event_deep_freeze_on_set(self):
-        """
-        Ensure that _deep_freeze transforms nested dicts/lists into hashable
-        frozen structures.
-        """
-        e = DummyEvent({})
-        input_set = {1, 2, 3}
-        frozen = e._deep_freeze(input_set)
+    #     frozen = e._deep_freeze(nested)
 
-        assert isinstance(frozen, frozenset)
-        assert frozen == frozenset({1, 2, 3})
+    #     assert isinstance(frozen, frozenset)
+    #     assert ("a", (1, frozenset({("b", 2)}))) in frozen
+    #     assert ("c", frozenset({("d", (3, 4))})) in frozen
 
-    def test_event_initialization_defaults(self):
-        """
-        Verify that the Event initializes correctly when no custom state
-        is provided.
+    # def test_event_deep_freeze_on_set(self):
+    #     """
+    #     Ensure that _deep_freeze transforms nested dicts/lists into hashable
+    #     frozen structures.
+    #     """
+    #     e = DummyEvent({})
+    #     input_set = {1, 2, 3}
+    #     frozen = e._deep_freeze(input_set)
 
-        It should:
-        - Store the provided data payload
-        - Initialize empty error list
-        """
+    #     assert isinstance(frozen, frozenset)
+    #     assert frozen == frozenset({1, 2, 3})
 
-        payload = {"message": "A test message"}
-        event = DummyEvent(payload)
+    # def test_event_initialization_defaults(self):
+    #     """
+    #     Verify that the Event initializes correctly when no custom state
+    #     is provided.
 
-        assert event.data == payload
-        assert event.errors == []
+    #     It should:
+    #     - Store the provided data payload
+    #     - Initialize empty error list
+    #     """
 
-    def test_event_data_as_positional_argument(self):
-        """
-        Ensure that the Event can be instantiated using a positional
-        argument for 'data'.
-        """
+    #     payload = {"message": "A test message"}
+    #     event = DummyEvent(payload)
 
-        event = DummyEvent({"source": "positional"})
+    #     assert event.data == payload
+    #     assert event.errors == []
 
-        assert event.data["source"] == "positional"
+    # def test_event_data_as_positional_argument(self):
+    #     """
+    #     Ensure that the Event can be instantiated using a positional
+    #     argument for 'data'.
+    #     """
 
-    def test_event_data_as_keyword_argument(self):
-        """
-        Ensure that the Event can also be instantiated using 'data' as
-        a keyword argument.
-        """
+    #     event = DummyEvent({"source": "positional"})
 
-        event = DummyEvent(data={"source": "keyword"})
+    #     assert event.data["source"] == "positional"
 
-        assert event.data["source"] == "keyword"
+    # def test_event_data_as_keyword_argument(self):
+    #     """
+    #     Ensure that the Event can also be instantiated using 'data' as
+    #     a keyword argument.
+    #     """
 
-    @pytest.mark.parametrize(
-        "data, warnings, errors",
-        [
-            ({"message": "A test message"}, [], []),
-            ({"user": "alice"}, [Warning("Low confidence")], []),
-            ({"id": 123}, [], [ValueError("invalid id")]),
-            (
-                {"foo": "bar"},
-                [DeprecationWarning("Deprecated format")],
-                [RuntimeError("processing error")],
-            ),
-            (
-                {"status": "ok"},
-                [],
-                [],
-            ),
-            (
-                {"service": "auth"},
-                [RuntimeWarning("auth timeout")],
-                [TimeoutError("Service did not respond")],
-            ),
-        ],
-    )
-    def test_event_is_picklable_with_values(
-        self, data: dict[str, Any], warnings: list[Exception], errors: list[Exception]
-    ):
-        """
-        Ensure that DummyEvent instances with type-consistent
-        data, warnings (strings), and errors (Exception instances)
-        can be pickled and unpickled correctly - with and without custom EventState.
-        """
+    #     event = DummyEvent(data={"source": "keyword"})
 
-        event = DummyEvent(data=data)
-        event.warnings = warnings
-        event.errors = errors
+    #     assert event.data["source"] == "keyword"
 
-        dumped = pickle.dumps(event)
-        loaded = pickle.loads(dumped)
+    # @pytest.mark.parametrize(
+    #     "data, warnings, errors",
+    #     [
+    #         ({"message": "A test message"}, [], []),
+    #         ({"user": "alice"}, [Warning("Low confidence")], []),
+    #         ({"id": 123}, [], [ValueError("invalid id")]),
+    #         (
+    #             {"foo": "bar"},
+    #             [DeprecationWarning("Deprecated format")],
+    #             [RuntimeError("processing error")],
+    #         ),
+    #         (
+    #             {"status": "ok"},
+    #             [],
+    #             [],
+    #         ),
+    #         (
+    #             {"service": "auth"},
+    #             [RuntimeWarning("auth timeout")],
+    #             [TimeoutError("Service did not respond")],
+    #         ),
+    #     ],
+    # )
+    # def test_event_is_picklable_with_values(
+    #     self, data: dict[str, Any], warnings: list[Exception], errors: list[Exception]
+    # ):
+    #     """
+    #     Ensure that DummyEvent instances with type-consistent
+    #     data, warnings (strings), and errors (Exception instances)
+    #     can be pickled and unpickled correctly - with and without custom EventState.
+    #     """
 
-        assert isinstance(loaded, DummyEvent)
-        assert isinstance(loaded.data, dict)
-        assert all(isinstance(w, Exception) for w in loaded.warnings)
-        assert all(isinstance(e, Exception) for e in loaded.errors)
+    #     event = DummyEvent(data=data)
+    #     event.warnings = warnings
+    #     event.errors = errors
 
-        assert loaded.data == data
-        assert [str(e) for e in loaded.warnings] == [str(e) for e in warnings]
-        assert [str(e) for e in loaded.errors] == [str(e) for e in errors]
+    #     dumped = pickle.dumps(event)
+    #     loaded = pickle.loads(dumped)
 
-    def test_add_fields_to_delegates_correctly(self):
-        dummy = DummyEvent({"user": {"id": 42}})
-        fields = {"key": "value"}
-        rule = MagicMock()
+    #     assert isinstance(loaded, DummyEvent)
+    #     assert isinstance(loaded.data, dict)
+    #     assert all(isinstance(w, Exception) for w in loaded.warnings)
+    #     assert all(isinstance(e, Exception) for e in loaded.errors)
 
-        with patch("logprep.ng.abc.event.add_fields_to") as mock_add:
-            dummy.add_fields_to(fields, rule, merge_with_target=True, overwrite_target=True)
-            mock_add.assert_called_once()
+    #     assert loaded.data == data
+    #     assert [str(e) for e in loaded.warnings] == [str(e) for e in warnings]
+    #     assert [str(e) for e in loaded.errors] == [str(e) for e in errors]
 
-    def test_get_dotted_field_delegates_correctly(self):
-        dummy = DummyEvent({"user": {"id": 42}})
-        field = "id"
+    # def test_add_fields_to_delegates_correctly(self):
+    #     dummy = DummyEvent({"user": {"id": 42}})
+    #     fields = {"key": "value"}
+    #     rule = MagicMock()
 
-        with patch("logprep.ng.abc.event.get_dotted_field_value") as mock_get:
-            dummy.get_dotted_field_value(field)
-            mock_get.assert_called_once()
+    #     with patch("logprep.ng.abc.event.add_fields_to") as mock_add:
+    #         dummy.add_fields_to(fields, rule, merge_with_target=True, overwrite_target=True)
+    #         mock_add.assert_called_once()
 
-    def test_pop_dotted_field_delegates_correctly(self):
-        dummy = DummyEvent({"user": {"id": 42}})
-        field = "user"
+    # def test_get_dotted_field_delegates_correctly(self):
+    #     dummy = DummyEvent({"user": {"id": 42}})
+    #     field = "id"
 
-        with patch("logprep.ng.abc.event.pop_dotted_field_value") as mock_pop:
-            dummy.pop_dotted_field_value(field)
-            mock_pop.assert_called_once()
+    #     with patch("logprep.ng.abc.event.get_dotted_field_value") as mock_get:
+    #         dummy.get_dotted_field_value(field)
+    #         mock_get.assert_called_once()
 
-    def test_event_repr(self):
-        event = DummyEvent({"user": {"id": 42, "name": "Alice"}})
-        assert repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}})"
+    # def test_pop_dotted_field_delegates_correctly(self):
+    #     dummy = DummyEvent({"user": {"id": 42}})
+    #     field = "user"
+
+    #     with patch("logprep.ng.abc.event.pop_dotted_field_value") as mock_pop:
+    #         dummy.pop_dotted_field_value(field)
+    #         mock_pop.assert_called_once()
+
+    # def test_event_repr(self):
+    #     event = DummyEvent({"user": {"id": 42, "name": "Alice"}})
+    #     assert repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}})"

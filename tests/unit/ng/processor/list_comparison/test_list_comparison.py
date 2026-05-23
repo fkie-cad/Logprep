@@ -10,7 +10,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.list_comparison.processor import ListComparison
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
@@ -33,7 +33,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
     async def test_element_in_list(self):
         document = {"user": "Franz"}
         expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -68,7 +68,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
     async def test_element_not_in_list(self):
         # Test if user Charlotte is not in user list
         document = {"user": "Charlotte"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
         assert len(log_event.data.get("user_results", {}).get("not_in_list")) == 1
         assert log_event.data.get("user_results", {}).get("in_list") is None
@@ -76,7 +76,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
     async def test_element_in_two_lists(self):
         # Tests if the system name Franz appears in two lists, username Mark is in no list
         document = {"user": "Mark", "system": "Franz"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert len(log_event.data.get("user_results", {}).get("not_in_list")) == 1
@@ -88,7 +88,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         # Tests if the system Gamma does not appear in two lists,
         # and username Mark is also not in list
         document = {"user": "Mark", "system": "Gamma"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert len(log_event.data.get("user_and_system_results", {}).get("not_in_list")) == 2
@@ -98,7 +98,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
     async def test_two_lists_with_one_matched(self):
         document = {"system": "Alpha", "user": "Charlotte"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert len(log_event.data.get("user_results", {}).get("not_in_list")) != 0
@@ -109,7 +109,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
     async def test_dotted_output_field(self):
         # tests if outputting list_comparison results to dotted fields works
         document = {"dot_channel": "test", "user": "Franz"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
@@ -132,7 +132,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             "user": "Franz",
             "dotted": {"user_results": {"in_list": ["already_present"]}},
         }
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
 
         rule_dict = {
             "filter": "user",
@@ -168,7 +168,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         }
         await self._load_rule(rule_dict)
         await self.object.setup()
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
@@ -199,7 +199,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         await self._load_rule(rule_dict)
         await self.object.setup()
 
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         result = await self.object.process(log_event)
 
         assert len(result.warnings) == 1
@@ -230,7 +230,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         }
         await self._load_rule(rule_dict)
         await self.object.setup()
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         result = await self.object.process(log_event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
@@ -238,7 +238,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
     async def test_check_in_dotted_subfield(self):
         document = {"channel": {"type": "fast"}}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert len(log_event.data.get("channel_results", {}).get("not_in_list")) == 2
@@ -248,7 +248,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         # Tests for a comment inside a list, but as a field inside a document to check
         # if the comment is actually ignored
         document = {"user": "# This is a doc string for testing"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert len(log_event.data.get("user_results", {}).get("not_in_list")) == 1
@@ -256,7 +256,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
     async def test_delete_source_field(self):
         document = {"user": "Franz"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
 
         rule_dict = {
             "filter": "user",
@@ -276,7 +276,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
     async def test_overwrite_target_field(self):
         document = {"user": "Franz"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
 
         expected = {"user": "Franz", "tags": ["_list_comparison_failure"]}
         rule_dict = {
@@ -709,7 +709,7 @@ Heinz
 
     async def test_list_comparison_does_not_add_duplicates_from_list_source(self):
         document = {"users": ["Franz", "Alpha"]}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {
             "users": ["Franz", "Alpha"],
             "user_results": {
@@ -749,7 +749,7 @@ Heinz
     )
     async def test_match_list_field(self, testcase, system, result):
         document = {"system": system}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {"system": system, "system_results": result}
         rule_dict = {
             "filter": "system",

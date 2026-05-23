@@ -10,7 +10,7 @@ from copy import deepcopy
 from unittest import mock
 
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.clusterer.processor import Clusterer
 from logprep.processor.clusterer.rule import ClustererRule
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -88,13 +88,17 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
     @mock.patch("logprep.ng.processor.clusterer.processor.Clusterer._cluster")
     async def test_only_clusterable_logs_are_clustered(self, mock_cluster, mock_is_clusterable):
         mock_is_clusterable.return_value = False
-        event = LogEvent({"message": "test_message"}, original=b"test_message")
+        event = LogEvent(
+            {"message": "test_message"}, original=b"test_message", metadata=EventMetadata()
+        )
         await self.object.process(event)
         mock_is_clusterable.assert_called()
         mock_cluster.assert_not_called()
 
         mock_is_clusterable.return_value = True
-        event = LogEvent({"message": "test_message"}, original=b"test_message")
+        event = LogEvent(
+            {"message": "test_message"}, original=b"test_message", metadata=EventMetadata()
+        )
         await self.object.process(event)
         mock_is_clusterable.assert_called()
         assert mock_cluster.call_count == 2

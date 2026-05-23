@@ -4,17 +4,16 @@
 # pylint: disable=redefined-slots-in-subclass
 
 
-from logprep.ng.abc.event import OutputSpec
-from logprep.ng.event.pseudonym_event import PseudonymEvent
+from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from tests.unit.ng.event.test_event import TestEventClass
 
 
 class TestPseudonymEvents(TestEventClass):
 
-    def test_pseudonym_event_initializes(self) -> None:
-        outputs = (OutputSpec("opensearch", "pseudonym_index"),)
-        data = {"foo": "bar"}
-        pseudonym_event = PseudonymEvent(data=data, outputs=outputs)
+    pseudonym_event = PseudonymEvent(
+        data={"foo": "bar"}, output_name="opensearch", output_target="pseudonym_index"
+    )
 
-        assert pseudonym_event.data == data
-        assert pseudonym_event.outputs == outputs
+    assert pseudonym_event.data == {"foo": "bar"}
+    assert pseudonym_event.output_name == "opensearch"
+    assert pseudonym_event.output_target == "pseudonym_index"

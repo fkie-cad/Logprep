@@ -3,20 +3,23 @@ Runner module
 """
 
 import asyncio
+import itertools
 import logging
-import typing
-from collections import defaultdict
 from collections.abc import Sequence
 
 from logprep.abc.exceptions import LogprepException
-from logprep.ng.abc.event import ExtraDataEvent
+from logprep.ng.abc.event import (
+    ErrorEvent,
+    ExtraDataEvent,
+    AcknowledgableEvent,
+    LogEvent,
+)
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
-from logprep.ng.event.error_event import ErrorEvent
-from logprep.ng.event.log_event import LogEvent
 from logprep.ng.processor import process
 from logprep.ng.util.async_helpers import raise_from_gather
+from logprep.ng.util.errors import ExtraEventDeliveryFailure
 from logprep.ng.util.worker.types import SizeLimitedQueue
 from logprep.ng.util.worker.worker import (
     BatchingWorker,
@@ -28,7 +31,7 @@ from logprep.ng.util.worker.worker import (
 logger = logging.getLogger("PipelineManager")
 
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 5000
 BATCH_INTERVAL_S = 5
 MAX_QUEUE_SIZE = BATCH_SIZE
 
@@ -53,24 +56,23 @@ def create_orchestrator(
     process_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
     send_to_default_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
     send_to_extras_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
-    send_to_error_queue = SizeLimitedQueue[LogEvent | ErrorEvent](maxsize=MAX_QUEUE_SIZE)
-    acknowledge_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
+    send_to_error_queue = SizeLimitedQueue[ErrorEvent](maxsize=MAX_QUEUE_SIZE)
+    acknowledge_queue = SizeLimitedQueue[AcknowledgableEvent](maxsize=MAX_QUEUE_SIZE)
 
-    async def transfer_batch(batch: Sequence[LogEvent | ErrorEvent]) -> None:
-        for event in batch:
-            match event:
-                case LogEvent():
-                    await process_queue.put(event)
-                case ErrorEvent():
-                    await send_to_error_queue.put(event)
+    async def _distribute_input(event: LogEvent | ErrorEvent | None) -> None:
+        match event:
+            case None:
+                return
+            case LogEvent():
+                await process_queue.put(event)
+            case ErrorEvent():
+                await send_to_error_queue.put(event)
 
-    input_worker: Worker[Sequence[LogEvent | ErrorEvent]] = SequentialWorker(
+    input_worker: Worker[LogEvent | ErrorEvent | None] = SequentialWorker(
         name="input_worker",
-        batch_size=500,
-        batch_interval_s=BATCH_INTERVAL_S,
         in_queue=input_source,
         out_queues=[process_queue, send_to_error_queue],
-        handler=transfer_batch,
+        handler=_distribute_input,
     )
 
     async def _processor_handler(batch: Sequence[LogEvent]) -> None:
@@ -83,7 +85,7 @@ def create_orchestrator(
                 else:
                     await send_to_default_queue.put(processed_event)
             else:
-                await send_to_error_queue.put(processed_event)
+                await send_to_error_queue.put(ErrorEvent.from_failed_event(processed_event))
 
         await asyncio.gather(*map(_handle, batch))
 
@@ -97,24 +99,26 @@ def create_orchestrator(
     )
 
     async def _send_extras_handler(batch: Sequence[LogEvent]) -> None:
-        output_buffers: dict[str, dict[str, list[ExtraDataEvent]]] = {
-            output_name: defaultdict(list) for output_name in named_outputs.keys()
+        extra_events = list(itertools.chain.from_iterable(event.extra_data for event in batch))
+
+        output_name_to_extra_events: dict[str, list[ExtraDataEvent]] = {
+            output_name: [] for output_name in named_outputs.keys()
         }
 
-        for event in batch:
-            for extra in typing.cast(Sequence[ExtraDataEvent], event.extra_data):
-                for out in extra.outputs:
-                    try:
-                        output_buffers[out.output_name][out.output_target].append(extra)
-                    except KeyError:
-                        extra.errors.append(InvalidOutput(out.output_name))
+        for extra in extra_events:
+            if extra.output_name is None:
+                output_name_to_extra_events[default_output.name].append(extra)
+            else:
+                try:
+                    output_name_to_extra_events[extra.output_name].append(extra)
+                except KeyError:
+                    extra.mark_failed(InvalidOutput(extra.output_name))
 
         raise_from_gather(
             await asyncio.gather(
                 *(
-                    named_outputs[name].store_batch(events, target)
-                    for name, target_events in output_buffers.items()
-                    for target, events in target_events.items()
+                    named_outputs[name].store(events)
+                    for name, events in output_name_to_extra_events.items()
                 ),
                 return_exceptions=True,
             ),
@@ -123,8 +127,8 @@ def create_orchestrator(
 
         for event in batch:
             if any(extra.errors for extra in event.extra_data):
-                # TODO create higher order exception in event itself?
-                await send_to_error_queue.put(event)
+                event.mark_failed(ExtraEventDeliveryFailure.from_event(event))
+                await send_to_error_queue.put(ErrorEvent.from_failed_event(event))
             else:
                 await send_to_default_queue.put(event)
 
@@ -138,12 +142,12 @@ def create_orchestrator(
     )
 
     async def _send_default_output_handler(batch: Sequence[LogEvent]):
-        await default_output.store_batch(batch)
+        await default_output.store(batch)
 
         for event in batch:
             if event.errors:
-                await send_to_error_queue.put(event)
-            else:
+                await send_to_error_queue.put(ErrorEvent.from_failed_event(event))
+            elif isinstance(event, AcknowledgableEvent):
                 await acknowledge_queue.put(event)
 
     output_worker: Worker[LogEvent] = BatchingWorker(
@@ -155,35 +159,25 @@ def create_orchestrator(
         handler=_send_default_output_handler,
     )
 
-    async def _send_error_output_handler(batch: Sequence[LogEvent | ErrorEvent]) -> None:
-        def _to_error(event: LogEvent | ErrorEvent) -> ErrorEvent:
-            match event:
-                case LogEvent():
-                    return ErrorEvent.from_failed_event(event)
-                case ErrorEvent():
-                    return event
+    async def _send_error_output_handler(batch: Sequence[ErrorEvent]) -> None:
+        to_acknowledge: Sequence[ErrorEvent] = batch
 
-        # TODO split in two handler functions and select right handler only once
         if error_output is not None:
-            error_events = await error_output.store_batch(list(map(_to_error, batch)))
+            await error_output.store(batch)
 
-            for error_event in error_events:
-                if not error_event.errors:
-                    # TODO use generic type parameter for outputs?
-                    parent = typing.cast(
-                        LogEvent | None, typing.cast(ErrorEvent, error_event).parent
-                    )  # FIXME
-                    if parent is not None:
-                        await acknowledge_queue.put(parent)
-                else:
-                    # TODO more sophisticated error handling
-                    raise RuntimeError("error output failed to send event")
-        else:
-            for event in batch:
-                # TODO fix
-                await acknowledge_queue.put(event)  # type: ignore
+            if any(error_event.is_failed() for error_event in batch):
+                to_acknowledge = [error for error in batch if not error.is_failed()]
 
-    error_worker: Worker[LogEvent | ErrorEvent] = BatchingWorker(
+                logger.error(
+                    "failed to store %d error events in the error output",
+                    len(batch) - len(to_acknowledge),
+                )
+
+        for event in to_acknowledge:
+            if isinstance(event, AcknowledgableEvent):
+                await acknowledge_queue.put(event)
+
+    error_worker: Worker[ErrorEvent] = BatchingWorker(
         name="error_worker",
         batch_size=BATCH_SIZE,
         batch_interval_s=BATCH_INTERVAL_S,
@@ -192,7 +186,7 @@ def create_orchestrator(
         handler=_send_error_output_handler,
     )
 
-    acknowledge_worker: Worker[LogEvent] = BatchingWorker(
+    acknowledge_worker: Worker[AcknowledgableEvent] = BatchingWorker(
         name="acknowledge_worker",
         batch_size=BATCH_SIZE,
         batch_interval_s=BATCH_INTERVAL_S,
@@ -201,6 +195,7 @@ def create_orchestrator(
         handler=input_source.acknowledge,
     )
 
+    # TODO register a cleanup task to shutdown queues? is this necessary?
     return WorkerOrchestrator(
         workers=[
             input_worker,

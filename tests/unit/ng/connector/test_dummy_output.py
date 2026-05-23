@@ -7,9 +7,10 @@ from copy import deepcopy
 from logprep.factory import Factory
 from logprep.ng.abc.event import OutputSpec
 from logprep.ng.connector.dummy.output import DummyOutput
-from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.sre_event import SreEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.processor.pre_detector.sre_event import SreEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
+from logprep.ng.abc.event import EventMetadata, LogEvent
 
 
 class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
@@ -19,7 +20,7 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
 
     async def test_store_appends_document_to_variable(self):
         document = {"the": "document"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.store_batch([event])
 
         assert len(self.object.events) == 1
@@ -27,7 +28,7 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
 
     async def test_store_batch_appends_document_to_variable(self):
         document = {"the": "document"}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.store_batch([event], target="whatever")
 
         assert len(self.object.events) == 1
@@ -40,7 +41,7 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
 
     async def test_store_maintains_order_of_documents(self):
         for i in range(0, 3):
-            event = LogEvent({"order": i}, original=b"")
+            event = LogEvent({"order": i}, original=b"", metadata=EventMetadata())
             await self.object.store_batch([event])
         assert len(self.object.events) == 3
         for order in range(0, 3):
@@ -52,7 +53,7 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
         config.update({"exceptions": ["FatalOutputError"]})
         dummy_output = Factory.create({"test connector": config})
 
-        event = LogEvent({"order": 0}, original=b"")
+        event = LogEvent({"order": 0}, original=b"", metadata=EventMetadata())
         await dummy_output.store_batch([event])
         assert len(event.errors) == 1
 
@@ -71,8 +72,8 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
         dummy_output = Factory.create({"test connector": config})
-        event1 = LogEvent({"order": 0}, original=b"")
-        event2 = LogEvent({"order": 0}, original=b"")
+        event1 = LogEvent({"order": 0}, original=b"", metadata=EventMetadata())
+        event2 = LogEvent({"order": 0}, original=b"", metadata=EventMetadata())
         await dummy_output.store_batch([event1])
         await dummy_output.store_batch([event2])
         assert len(event1.errors) == 1, "Expected only one error, but got multiple."
@@ -82,13 +83,13 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": [None, "FatalOutputError", None]})
         dummy_output = Factory.create({"test connector": config})
-        event = LogEvent({"order": 0}, original=b"")
+        event = LogEvent({"order": 0}, original=b"", metadata=EventMetadata())
         await dummy_output.store_batch([event])
         assert len(event.errors) == 0, "Expected no error, but got one."
-        event = LogEvent({"order": 2}, original=b"")
+        event = LogEvent({"order": 2}, original=b"", metadata=EventMetadata())
         await dummy_output.store_batch([event])
         assert len(event.errors) == 1, "Expected one error, but got none."
-        event = LogEvent({"order": 3}, original=b"")
+        event = LogEvent({"order": 3}, original=b"", metadata=EventMetadata())
         await dummy_output.store_batch([event])
         assert len(event.errors) == 0, "Expected no error, but got one."
 
@@ -97,7 +98,7 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
         config.update({"exceptions": ["FatalOutputError"]})
         connector = Factory.create({"Test Instance Name": config})
         connector.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"")
+        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
         await connector.store_batch([event], target="custom_target")
         assert connector.metrics.number_of_errors == 1
         assert len(event.errors) == 1
@@ -107,7 +108,7 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
         config.update({"exceptions": ["FatalOutputError"]})
         connector = Factory.create({"Test Instance Name": config})
         connector.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"")
+        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
         await connector.store_batch([event])
         assert connector.metrics.number_of_errors == 1
         assert len(event.errors) == 1
@@ -117,10 +118,7 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
         config.update({"exceptions": ["FatalOutputError"]})
         connector = Factory.create({"Test Instance Name": config})
         connector.metrics.number_of_errors = 0
-        event = LogEvent(
-            {"message": "test message"},
-            original=b"",
-        )
+        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
         await connector.store_batch([event], target="custom_target")
         assert connector.metrics.number_of_errors == 1
         assert len(event.errors) == 1
@@ -132,7 +130,7 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
         connector.metrics.number_of_errors = 0
         connector.metrics.number_of_warnings = 0
         connector.metrics.number_of_processed_events = 0
-        event = LogEvent({"message": "test message"}, original=b"")
+        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
         await connector.store_batch([event], target="custom_target")
         assert connector.metrics.number_of_errors == 0
         assert connector.metrics.number_of_warnings == 0
