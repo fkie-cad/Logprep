@@ -1,7 +1,7 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.deleter.processor import Deleter
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
@@ -16,16 +16,22 @@ class TestDeleter(BaseProcessorTestCase[Deleter]):
         "event, testcase",
         [
             (
-                LogEvent({"not_needed_message": "i am not needed anymore"}, original=b""),
+                LogEvent(
+                    {"not_needed_message": "i am not needed anymore"},
+                    original=b"",
+                    metadata=EventMetadata(),
+                ),
                 "deletes simple event",
             ),
             (
                 LogEvent(
-                    {"not_needed_message": {"nested_block": {"deeper": "string"}}}, original=b""
+                    {"not_needed_message": {"nested_block": {"deeper": "string"}}},
+                    original=b"",
+                    metadata=EventMetadata(),
                 ),
                 "deletes nested events",
             ),
-            (LogEvent({}, original=b""), "deletes empty event"),
+            (LogEvent({}, original=b"", metadata=EventMetadata()), "deletes empty event"),
         ],
     )
     async def test_process_deletes_event(self, event, testcase):

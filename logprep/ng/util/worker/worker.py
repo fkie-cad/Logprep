@@ -113,20 +113,10 @@ class SequentialWorker(Worker[Input], Generic[Input]):
         handler: AsyncHandler[Input],
         in_queue: WorkerSource[Input],
         out_queues: Sequence[SizeLimitedQueue],
-        batch_size: int,
-        batch_interval_s: float,
     ) -> None:
         super().__init__(name, in_queue, out_queues)
 
         self._handler = handler
-
-        self._batch_interval_s = batch_interval_s
-        self._batch_size = batch_size
-
-        self._batch_buffer: deque[Input] = deque()
-        self._buffer_lock = asyncio.Lock()
-
-        self._flush_timer: asyncio.Task[None] | None = None
 
     async def _handle_next(self, item) -> None:
         await self._handler(item)

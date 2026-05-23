@@ -35,7 +35,7 @@ class PipelineManager:
     async def setup(self) -> None:
         """Setup the pipeline manager."""
 
-        with Factory.record() as recorder:
+        with Factory.recorder() as recorder:
             input_connector = cast(Input, recorder.create(self.configuration.input))
 
             processors = [

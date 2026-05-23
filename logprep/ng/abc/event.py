@@ -2,210 +2,189 @@
 
 """abstract module for event"""
 
-from abc import ABC
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Optional
+import json
+from datetime import datetime, timezone
+from typing import Protocol, runtime_checkable
+import typing
 
 from attrs import define, field, validators
 
-from logprep.util.helper import (
-    FieldValue,
-    Missing,
-    add_fields_to,
-    get_dotted_field_value,
-    pop_dotted_field_value,
-)
-
-if TYPE_CHECKING:  # pragma: no cover
-    from logprep.processor.base.rule import Rule
-
-
-class EventMetadata(ABC):
-    """Abstract EventMetadata Class to define the Interface"""
-
-
-class Event(ABC):
-    """
-    Abstract base class representing an event in the processing pipeline.
-
-    Encapsulates data, warnings and errors.
-    """
-
-    __slots__: tuple[str, ...] = ("data", "errors", "warnings")
-
-    def __init__(self, data: dict[str, Any]) -> None:
-        """
-        Initialize an Event instance.
-
-        Parameters
-        ----------
-        data : dict[str, Any]
-            The raw or processed data associated with the event.
-        """
-        self.data: dict[str, Any] = data
-        self.errors: list[Exception] = []
-        self.warnings: list[Exception] = []
-        super().__init__()
-
-    def __eq__(self, other: object) -> bool:
-        """
-        Determines whether two Event instances are considered equal.
-        Equality is defined by the equality of their `data` content.
-
-        Parameters
-        ----------
-        other : object
-            The object to compare against.
-
-        Returns
-        -------
-        bool
-            True if the other object is an Event and its `data` is equal to this instance's `data`.
-        """
-
-        if not isinstance(other, Event):
-            return NotImplemented
-
-        return self.data == other.data
-
-    def __hash__(self) -> int:
-        """
-        Returns a hash based on the immutable representation of the `data` field.
-        This enables Event instances to be used as keys in dictionaries or as members of sets.
-
-        Returns
-        -------
-        int
-            A hash value derived from the event's `data`.
-        """
-
-        return hash(self._deep_freeze(self.data))
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(data={self.data})"
-
-    def _deep_freeze(self, obj: Any) -> Any:
-        """
-        Recursively converts a data structure into a
-        hashable (immutable) representation. Used internally for generating
-        consistent hash values from nested dictionaries/lists.
-
-        Parameters
-        ----------
-        obj : Any
-            The object (usually dict or list) to be frozen.
-
-        Returns
-        -------
-        Any
-            A hashable, immutable version of the input object.
-        """
-
-        if isinstance(obj, dict):
-            return frozenset((k, self._deep_freeze(v)) for k, v in obj.items())
-
-        if isinstance(obj, list):
-            return tuple(self._deep_freeze(x) for x in obj)
-
-        if isinstance(obj, set):
-            return frozenset(self._deep_freeze(x) for x in obj)
-
-        return obj
-
-    def add_fields_to(
-        self,
-        fields: dict[str, Any],
-        rule: Optional["Rule"] = None,
-        merge_with_target: bool = False,
-        overwrite_target: bool = False,
-    ) -> None:
-        """
-        Add one or more fields to the target dictionary.
-
-        This method wraps the global `add_fields_to` utility function from
-        `logprep.util.helper`, allowing convenient field injection, merging,
-        and optional overwriting.
-
-        Args:
-            fields (dict): A dictionary of fields to add.
-            rule (Rule, optional): The rule context under which fields are added.
-            merge_with_target (bool): Whether to merge dictionaries recursively instead
-                of overwriting.
-            overwrite_target (bool): Whether to overwrite existing values in the target.
-
-        Returns:
-            None
-        """
-        return add_fields_to(self.data, fields, rule, merge_with_target, overwrite_target)
-
-    def get_dotted_field_value(self, dotted_field: str) -> Any:
-        """
-        Shortcut method that delegates to the global `get_dotted_field_value` helper.
-
-        Parameters
-        ----------
-        dotted_field : str
-            The dotted path of the field to retrieve.
-
-        Returns
-        -------
-        Any
-            The value at the specified dotted path, or None if not found.
-        """
-        return get_dotted_field_value(self.data, dotted_field)
-
-    def pop_dotted_field_value(self, dotted_field: str) -> FieldValue | Missing:
-        """
-        Shortcut method that delegates to the global `pop_dotted_field_value` helper.
-
-        Parameters
-        ----------
-        dotted_field : str
-            The dotted path of the field to remove.
-
-        Returns
-        -------
-        Any
-            The removed value, or None if the path did not exist.
-        """
-        return pop_dotted_field_value(self.data, dotted_field)
+from logprep.abc.exceptions import LogprepExceptionGroup
+from logprep.util.helper import FieldValue
 
 
 @define
+class EventMetadata:
+    """EventMetadata Class to define the Interface"""
+
+
+class _FailableEvent(Protocol):
+    def mark_failed(self, error: Exception) -> None:
+        """Register an event-related error and hence mark the event as failed"""
+
+    def is_failed(self) -> bool:
+        """Checks if an error has been registered with this event"""
+
+
+@runtime_checkable
+class AcknowledgableEvent(_FailableEvent, Protocol):
+    """
+    Protocol encapsulating the aspects of an event which has been
+    received from an `Input` and might therefore be acknowledgedable.
+    """
+
+    metadata: EventMetadata
+
+
+@runtime_checkable
+class OutputEvent(_FailableEvent, Protocol):
+    """Protocol encapsulating the aspects of an event which can be
+    handed to an `Output` for sending."""
+
+    data: dict[str, FieldValue]
+
+    output_target: str | None
+    """Indicates to which target inside an output the event should be routed"""
+
+    stored: bool
+
+
+@runtime_checkable
+class ProcessableEvent(_FailableEvent, Protocol):
+    """Protocol encapsulating the aspects of an event which can be
+    handed to an `Output` for sending."""
+
+    data: dict[str, FieldValue]
+    output_target: str | None
+    """Indicates to which target inside an output the event should be routed"""
+
+
+@define
+class _BaseFailableEvent(_FailableEvent):
+    """
+    Base class for events which can fail during processing.
+    """
+
+    # TODO change to single item?
+    _errors: list[Exception] = field(factory=list, init=False)
+
+    warnings: list[Exception] = field(factory=list, init=False, eq=False)
+    """
+    Warnings occurred during processing. Deprecated.
+    """
+
+    def mark_failed(self, error: Exception) -> None:
+        self._errors.append(error)
+
+    def is_failed(self) -> bool:
+        return bool(self._errors) or bool(self.warnings)
+
+    @property
+    def errors(self) -> Sequence[Exception]:
+        """
+        Returns all registered errors, empty list if there are none.
+        Caution: Might be changed to a single-valued attribute in the future.
+        """
+        return self._errors
+
+
+# TODO move somewhere else
+@define
 class OutputSpec:
     """
-    Specifies an output by name and which target (e.g. topic for kafka, index for opensearch) should be addressed.
+    Specifies an output by name and which target (e.g. topic for kafka, index for opensearch)
+    should be addressed.
     """
 
     output_name: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
     output_target: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
 
 
-class ExtraDataEvent(Event):
+@define
+class ExtraDataEvent(_BaseFailableEvent, OutputEvent):
     """
     Abstract base class for events that can contain extra data.
-
-    This class extends the basic Event functionality to include a list of
-    additional Event instances that are related to this event.
     """
 
-    __slots__ = ("outputs",)
+    data: dict[str, FieldValue] = field()
 
-    outputs: Sequence[OutputSpec]
+    output_name: str | None = field(kw_only=True)
+    output_target: str | None = field(kw_only=True)
 
-    def __init__(
-        self,
-        data: dict[str, str],
-        *,
-        outputs: Sequence[OutputSpec],
-    ) -> None:
-        """
-        Parameters
-        ----------
-        data : dict[str, str]
-            The main data payload for the SRE event.
-        outputs : Sequence[OutputSpec]
-            The collection of output connector names associated with the SRE event
-        """
-        self.outputs = outputs
-        super().__init__(data=data)
+    stored: bool = field(kw_only=True, default=False)
+
+
+@define
+class LogEvent(_BaseFailableEvent, OutputEvent, ProcessableEvent):
+    """The primary log event entity"""
+
+    data: dict[str, FieldValue] = field()
+
+    original: bytes | None = field(kw_only=True)
+    metadata: EventMetadata = field(kw_only=True)
+
+    output_name: str | None = field(kw_only=True, default=None)
+    output_target: str | None = field(kw_only=True, default=None)
+
+    extra_data: list[ExtraDataEvent] = field(kw_only=True, factory=list)
+
+    stored: bool = field(kw_only=True, default=False)
+
+
+@define
+class ErrorEvent(_BaseFailableEvent, OutputEvent):
+    """
+    ErrorEvent represents a failed event.
+    """
+
+    data: dict[str, FieldValue] = field()
+
+    metadata: EventMetadata | None = field(kw_only=True, default=None)
+
+    stored: bool = field(kw_only=True, default=False)
+
+    output_target: None = field(kw_only=True, init=False, default=None)
+    """Use the default target of the `Output` component"""
+
+    @property
+    def reason(self) -> str:
+        return typing.cast(str, self.data["reason"])
+
+    @classmethod
+    def from_failed_event(cls, event: LogEvent) -> "ErrorEvent":
+        reason = (
+            LogprepExceptionGroup("Error during processing", event.errors)
+            if event.errors
+            else Exception("Unknown error")
+        )
+        return cls(
+            data={
+                "@timestamp": datetime.now(timezone.utc).isoformat(),
+                "reason": str(reason),
+                # TODO shouldnt we send the raw bytes? at least we should handle decoding failures properly
+                "original": (
+                    event.original.decode("utf-8", errors="ignore")
+                    if event.original is not None
+                    else None
+                ),
+                "event": json.dumps(event.data),
+            },
+            metadata=event.metadata,
+        )
+
+    @classmethod
+    def from_input_failure(
+        cls, cause: str | Exception, original: bytes | None, metadata: EventMetadata | None
+    ) -> "ErrorEvent":
+        return cls(
+            data={
+                "@timestamp": datetime.now(timezone.utc).isoformat(),
+                "reason": str(cause) if isinstance(cause, Exception) else cause,
+                "original": (
+                    original.decode("utf-8", errors="ignore") if original is not None else None
+                ),
+                # "event": json.dumps(event.data),
+            },
+            metadata=metadata,
+        )

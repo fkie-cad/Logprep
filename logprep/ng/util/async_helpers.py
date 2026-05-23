@@ -13,7 +13,7 @@ from collections.abc import (
 from dataclasses import dataclass
 from typing import Any, Awaitable, Generic, Protocol, TypeVar
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import LogEvent
 
 logger = logging.getLogger("async_helpers")
 

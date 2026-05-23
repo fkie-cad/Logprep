@@ -11,7 +11,7 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.timestamp_differ.processor import TimestampDiffer
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.timestamp_differ.test_timestamp_differ import (
@@ -34,14 +34,14 @@ class TestTimestampDiffer(BaseProcessorTestCase[TimestampDiffer]):
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     async def test_testcases(self, rule, event, expected):
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert event.data == expected
 
     @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
     async def test_testcases_failure_handling(self, rule, event, expected, error_message):
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"")
+        event = LogEvent(event, original=b"", metadata=EventMetadata())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(error_message, str(result.warnings[0]))

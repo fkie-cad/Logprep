@@ -11,7 +11,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.amides.processor import Amides
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
@@ -50,7 +50,7 @@ class TestAmides(BaseProcessorTestCase[Amides]):
                 "event_data": {"CommandLine": "cmd.exe /c taskkill.exe /im cmd.exe"},
             },
         }
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
 
         result = document.get("amides")
@@ -77,7 +77,7 @@ class TestAmides(BaseProcessorTestCase[Amides]):
                 "event_data": {"CommandLine": "C:\\Windows\\system32\\svchost.exe -k DcomLaunch"},
             },
         }
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         result = document.get("amides")
         assert result
@@ -103,7 +103,7 @@ class TestAmides(BaseProcessorTestCase[Amides]):
         self.object.metrics.num_cache_entries = 0
         self.object.metrics.cache_load = 0.0
         await self.object.setup()
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
@@ -121,7 +121,7 @@ class TestAmides(BaseProcessorTestCase[Amides]):
             "winlog": {"event_id": 1, "provider_name": "Microsoft-Windows-Sysmon"},
             "some": {"random": "data"},
         }
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
@@ -144,8 +144,8 @@ class TestAmides(BaseProcessorTestCase[Amides]):
             }
         }
         other_document = deepcopy(document)
-        event = LogEvent(document, original=b"")
-        other_event = LogEvent(other_document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        other_event = LogEvent(other_document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         await self.object.process(other_event)
 
@@ -171,7 +171,7 @@ class TestAmides(BaseProcessorTestCase[Amides]):
                 "event_data": {"CommandLine": "cmd.exe /c taskkill.exe /im cmd.exe"},
             }
         }
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", metadata=EventMetadata())
         await self.object.process(event)
         assert document.get("amides")
         result = await self.object.process(event)
@@ -235,6 +235,6 @@ class TestAmides(BaseProcessorTestCase[Amides]):
                         "event_data": {"CommandLine": "cmd.exe /c taskkill.exe /im cmd.exe"},
                     }
                 }
-                event = LogEvent(document, original=b"")
+                event = LogEvent(document, original=b"", metadata=EventMetadata())
                 await self.object.process(event)
                 mock_write_target.assert_not_called()

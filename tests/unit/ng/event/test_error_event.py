@@ -7,27 +7,28 @@
 
 import json
 
-from logprep.ng.abc.event import Event
-from logprep.ng.event.error_event import ErrorEvent
-from logprep.ng.event.log_event import LogEvent
+from attrs import define
+
+from logprep.ng.abc.event import ErrorEvent, EventMetadata, ExtraDataEvent, LogEvent
 from tests.unit.ng.event.test_event import TestEventClass
 
 
-class DummyEvent(Event):
-    __slots__ = Event.__slots__
+@define
+class DummyChildEvent(ExtraDataEvent):
+    pass
 
 
 class TestErrorEvents(TestEventClass):
 
     def setup_method(self):
 
-        self.child1_event = DummyEvent({"c1": 1})
-        self.child2_event = DummyEvent({"c2": 2})
+        self.child1_event = DummyChildEvent({"c1": 1}, output_name="whatever", output_target=None)
+        self.child2_event = DummyChildEvent(
+            {"c2": 2}, output_name="whatever", output_target="custom"
+        )
 
         self.log_event = LogEvent(
-            data={"foo": "bar"},
-            original=b"raw",
-            extra_data=[],
+            data={"foo": "bar"}, original=b"raw", extra_data=[], metadata=EventMetadata()
         )
 
     def test_error_event_initializes(self):

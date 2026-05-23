@@ -18,6 +18,7 @@ logger:
     "OpenSearchOutput": {"level": "ERROR"}
     "KafkaOutput": {"level": "ERROR"}
     "Input": {"level": "ERROR"}
+    "KafkaOffsetTracker": {"level": "ERROR"}
 metrics:
   enabled: true
   port: 8001

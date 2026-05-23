@@ -23,7 +23,7 @@ from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.framework.pipeline_manager import ThrottlingQueue
 from logprep.ng.connector.http.input import HttpInput
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import LogEvent
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from tests.unit.ng.connector.base import BaseInputTestCase
 

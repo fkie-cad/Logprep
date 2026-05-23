@@ -1,13 +1,13 @@
 """kafka input classes and logic"""
 
-import attrs
+from attrs import define, field, validators
 
 from logprep.ng.abc.event import EventMetadata
 
 
-@attrs.define(slots=True, kw_only=True)
+@define(kw_only=True)
 class ConfluentKafkaMetadata(EventMetadata):
     """Concrete EventMetadata holding Kafka input metadata."""
 
-    partition: int = attrs.field(validator=attrs.validators.instance_of(int))
-    offset: int = attrs.field(validator=attrs.validators.instance_of(int))
+    partition: int = field(validator=validators.instance_of(int))
+    offset: int = field(validator=validators.instance_of(int))

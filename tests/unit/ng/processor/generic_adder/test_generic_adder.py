@@ -11,7 +11,7 @@ from copy import deepcopy
 import pytest
 
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.generic_adder.processor import GenericAdder
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -41,7 +41,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     async def test_generic_adder_testcases(self, rule, event, expected):
         await self._load_rule(rule)
-        log_event = LogEvent(event, original=b"")
+        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
         await self.object.process(log_event)
         assert event == expected
 
@@ -50,7 +50,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         self, rule, event, expected, error_message
     ):
         await self._load_rule(rule)
-        log_event = LogEvent(event, original=b"")
+        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
         result = await self.object.process(log_event)
         assert len(result.warnings) == 1
         assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))

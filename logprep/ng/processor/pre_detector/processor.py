@@ -38,7 +38,7 @@ from attrs import define, field, validators
 
 from logprep.ng.abc.event import OutputSpec
 from logprep.ng.abc.processor import Processor
-from logprep.ng.event.sre_event import SreEvent
+from logprep.ng.processor.pre_detector.sre_event import SreEvent
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
@@ -134,8 +134,13 @@ class PreDetector(Processor):
             pre_detection_id = str(uuid4())
             add_fields_to(event, {"pre_detection_id": pre_detection_id}, rule=rule)
         detection_result = self._generate_detection_result(pre_detection_id, event, rule)
-        sre_event = SreEvent(data=detection_result, outputs=self.config.outputs)
-        self._event.extra_data.append(sre_event)
+        for spec in self.config.outputs:
+            sre_event = SreEvent(
+                data=detection_result,
+                output_name=spec.output_name,
+                output_target=spec.output_target,
+            )
+            self._event.extra_data.append(sre_event)
 
     @staticmethod
     def _generate_detection_result(

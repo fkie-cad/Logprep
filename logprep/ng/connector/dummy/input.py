@@ -26,9 +26,9 @@ from copy import deepcopy
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.event import EventMetadata
+from logprep.ng.abc.event import ErrorEvent, EventMetadata
 from logprep.ng.abc.input import Input
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 
 
 class DummyInput(Input):
@@ -60,7 +60,7 @@ class DummyInput(Input):
             self._empty_event.set()
         return await super().setup()
 
-    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
+    async def _get_event(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Retrieve next document from configuration and raise warning if found"""
 
         if not self._documents:
@@ -80,7 +80,7 @@ class DummyInput(Input):
             case type():
                 raise document()
             case dict():
-                return (deepcopy(document), b"", EventMetadata())
+                return LogEvent(deepcopy(document), original=b"", metadata=EventMetadata())
             case None:
                 return None
             case _:

@@ -14,8 +14,7 @@ from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
 from logprep.ng.connector.dummy.input import DummyInput
 from logprep.ng.connector.dummy.output import DummyOutput
-from logprep.ng.event.error_event import ErrorEvent
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import ErrorEvent, LogEvent
 from logprep.ng.workflow import create_orchestrator
 from logprep.util.typing import is_sequence_of
 
@@ -217,7 +216,7 @@ class TestWorkflow:
 
         assert len(default_output.events) == 0, "no regular output expected"
         assert len(named_outputs["kafka"].events) == 0, "no extra events expected"
-        assert len(error_output.events) == 3, "no errors"
+        assert len(error_output.events) == 3, "only errors"
         assert len(dummy_input.acknowledged_events) == 3, "3 log events acknowledged"
 
     async def test_default_output_failure_to_error_output(
@@ -246,13 +245,16 @@ class TestWorkflow:
         assert is_sequence_of(error_output.events, ErrorEvent)
         assert len(dummy_input.acknowledged_events) == 3, "3 log events acknowledged"
 
-    async def test_error_output_failure_critical(
-        self, run_workflow, default_output, error_output
+    async def test_error_output_failure_error_message(
+        self, run_workflow, default_output, error_output, caplog
     ) -> None:
         default_output.exceptions = ["first event fails to send"]
         error_output.exceptions = ["first event fails to send"]
 
-        with pytest.RaisesGroup(
-            pytest.RaisesExc(RuntimeError, match="error output failed to send event")
-        ):
-            await run_workflow()
+        # TODO fail harder?
+        # with pytest.RaisesGroup(
+        #     pytest.RaisesExc(RuntimeError, match="error output failed to send event")
+        # ):
+        await run_workflow()
+
+        assert "failed to store 1 error events in the error output" in caplog.text

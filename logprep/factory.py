@@ -42,7 +42,7 @@ class Factory:
     """Create components for logprep."""
 
     @staticmethod
-    def record() -> TrackedCreator:
+    def recorder() -> TrackedCreator:
         """Get an object for tracking created components"""
         return TrackedCreator()
 

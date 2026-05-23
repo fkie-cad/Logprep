@@ -3,7 +3,7 @@
 
 
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.domain_label_extractor.processor import DomainLabelExtractor
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -26,7 +26,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
                 "subdomain": "url.full",
             }
         }
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -41,7 +41,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
                 "subdomain": "www.test",
             }
         }
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -60,7 +60,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
                 }
             },
         }
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -75,7 +75,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
                 "subdomain": "",
             }
         }
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -87,7 +87,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "tags": ["invalid_domain_in_url_domain"],
         }
 
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
         assert log_event.data == expected_output
 
@@ -98,7 +98,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "tags": ["source", "invalid_domain_in_url_domain"],
         }
 
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
         assert log_event.data == expected_output
 
@@ -118,7 +118,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "invalid_domain_in_source_domain",
         ]
 
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
         tags = log_event.data.pop("tags")
 
@@ -142,7 +142,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "tags": ["source", "invalid_domain_in_source_domain"],
         }
 
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
         assert log_event.data == expected_output
 
@@ -157,7 +157,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "source": {"domain": "123.123.123.123"},
         }
         expected_tags = ["source", "invalid_domain_in_url_domain", "ip_in_source_domain"]
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
         tags = log_event.data.pop("tags")
 
@@ -181,7 +181,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "special_tags": ["invalid_domain_in_url_domain"],
         }
 
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await domain_label_extractor.process(log_event)
         assert log_event.data == expected_output
 
@@ -202,7 +202,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "special_tags": ["source", "invalid_domain_in_url_domain"],
         }
 
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await domain_label_extractor.process(log_event)
         assert log_event.data == expected_output
 
@@ -216,7 +216,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
                 "subdomain": "",
             }
         }
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -225,7 +225,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         document = {"url": {"domain": "123.123.123.123"}}
         expected_output = {"url": {"domain": "123.123.123.123"}, "tags": ["ip_in_url_domain"]}
 
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
         assert log_event.data == expected_output
 
@@ -235,13 +235,13 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "url": {"domain": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
             "tags": ["ip_in_url_domain"],
         }
-        event = LogEvent(document, original=b"test_message")
+        event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(event)
         assert document == expected_output
 
     async def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-        event = LogEvent(document, original=b"test_message")
+        event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
@@ -266,7 +266,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "description": "",
         }
         await self._load_rule(rule_dict)
-        event = LogEvent(document, original=b"test_message")
+        event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(event)
         assert document == expected
 
@@ -290,7 +290,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "description": "",
         }
         await self._load_rule(rule_dict)
-        event = LogEvent(document, original=b"test_message")
+        event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(event)
         assert document == expected
 
@@ -311,7 +311,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "description": "",
         }
         await self._load_rule(rule_dict)
-        event = LogEvent(document, original=b"test_message")
+        event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(event)
         assert document == expected
 
@@ -336,7 +336,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "description": "",
         }
         await self._load_rule(rule_dict)
-        event = LogEvent(document, original=b"test_message")
+        event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
@@ -365,7 +365,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         }
         await self._load_rule(rule_dict)
 
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
         tags = log_event.data.pop("tags")
 
@@ -395,7 +395,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         }
         await self._load_rule(rule_dict)
 
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
         await self.object.process(log_event)
         tags = log_event.data.pop("tags")
 

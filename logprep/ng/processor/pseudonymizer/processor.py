@@ -57,7 +57,7 @@ from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.event import OutputSpec
-from logprep.ng.event.pseudonym_event import PseudonymEvent
+from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
@@ -283,9 +283,12 @@ class Pseudonymizer(FieldManager):
         if self.pseudonymized_pattern.match(value):
             return value
         pseudonym_dict = self._get_pseudonym_dict_cached(value)
-        pseudonym_event = PseudonymEvent(pseudonym_dict, outputs=self.config.outputs)
-        if pseudonym_event not in self._event.extra_data:
-            self._event.extra_data.append(pseudonym_event)
+        for spec in self.config.outputs:
+            pseudonym_event = PseudonymEvent(
+                pseudonym_dict, output_name=spec.output_name, output_target=spec.output_target
+            )
+            if pseudonym_event not in self._event.extra_data:
+                self._event.extra_data.append(pseudonym_event)
         return self._wrap_hash(pseudonym_dict["pseudonym"])
 
     def _pseudonymize(self, value: str) -> dict[str, str]:

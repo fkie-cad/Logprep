@@ -12,7 +12,7 @@ from attrs import define, field, validators
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.helper import (
     FieldValue,
@@ -20,6 +20,7 @@ from logprep.util.helper import (
     add_fields_to,
     get_dotted_field_value,
     has_dotted_field,
+    pop_dotted_field_value,
 )
 from logprep.util.rule_loader import RuleLoader
 
@@ -179,16 +180,16 @@ class Processor(Component):
         except ProcessingCriticalError as error:
             if self._event is None:
                 raise error
-            self._event.errors.append(error)  # is needed to prevent wrapping it in itself
+            self._event.mark_failed(error)  # is needed to prevent wrapping it in itself
         except Exception as error:  # pylint: disable=broad-except
             if self._event is None:
                 raise error
-            self._event.errors.append(ProcessingCriticalError(str(error), rule))
+            self._event.mark_failed(ProcessingCriticalError(str(error), rule))
         if not hasattr(rule, "delete_source_fields"):
             return
         if getattr(rule, "delete_source_fields", False):
             for dotted_field in getattr(rule, "source_fields", []):
-                self._event.pop_dotted_field_value(dotted_field)
+                pop_dotted_field_value(self._event.data, dotted_field)
 
     @abstractmethod
     def _apply_rules(self, event: dict, rule: "Rule"): ...  # pragma: no cover
