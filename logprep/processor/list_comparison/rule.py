@@ -105,7 +105,7 @@ class ListComparisonRule(FieldManagerRule):
     def mark_failed(self, error: Exception) -> None:
         self._fail = error
         logger.warning(
-            "Rule failed for processor %s: %s",
+            "%s failed: %s",
             self.__class__.__name__,
             error,
         )
