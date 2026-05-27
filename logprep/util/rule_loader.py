@@ -40,7 +40,6 @@ class RuleLoader:
           A list of Rule objects created from the source list of dictionaries or files.
         """
         rules: list[Rule] = []
-
         match self.source:
             case dict():
                 rules.extend(DictRuleLoader(self.source, self.processor_name).rules)
@@ -53,7 +52,6 @@ class RuleLoader:
             case list():
                 for element in self.source:
                     rules.extend(RuleLoader(element, self.processor_name).rules)
-
         return rules
 
     @property
@@ -67,7 +65,6 @@ class RuleLoader:
           A list of rule definitions.
         """
         rule_definitions: list[dict] = []
-
         match self.source:
             case dict():
                 rule_definitions.append(self.source)
@@ -86,7 +83,6 @@ class RuleLoader:
                     rule_definitions.extend(
                         RuleLoader(element, self.processor_name).rule_definitions
                     )
-
         return rule_definitions
 
     @staticmethod
