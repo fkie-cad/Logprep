@@ -556,7 +556,7 @@ Heinz
         assert 500 in retries.status_forcelist
 
         assert "Caused by ResponseError('too many 500 error responses'))" in caplog.text
-        assert "processor ListComparison" in caplog.text
+        assert "ListComparisonRule failed" in caplog.text
 
         processor.process(document)
 
