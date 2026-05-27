@@ -555,10 +555,8 @@ Heinz
         assert retries.total == 3
         assert 500 in retries.status_forcelist
 
-        assert (
-            "Caused by ResponseError('too many 500 error responses')) (processor: ListComparison)"
-            in caplog.text
-        )
+        assert "Caused by ResponseError('too many 500 error responses'))" in caplog.text
+        assert "processor ListComparison" in caplog.text
 
         processor.process(document)
 
@@ -644,6 +642,7 @@ Heinz
         assert "No such file or directory" in str(result.warnings[0])
 
         assert (
-            "No such file or directory: 'tests/testdata/../lists/_not_existing_list.txt' (processor: ListComparison)"
+            "No such file or directory: 'tests/testdata/../lists/_not_existing_list.txt'"
             in caplog.text
         )
+        assert "processor ListComparison" in caplog.text
