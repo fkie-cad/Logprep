@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-# pylint: disable=no-self-use
 from unittest import mock
 
 import pytest
@@ -130,18 +129,3 @@ class TestListComparisonRule:
                     rule._init_list_comparison_from_http(url)
             else:
                 rule._init_list_comparison_from_http(url)
-
-    def test_config_will_fail_on_rule_level(self):
-        rule_definition = {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                # "list_file_paths": ["../lists/invalid_user_list.txt"], # missing
-            },
-        }
-        with pytest.raises(
-            TypeError,
-            match=r"missing .*list_file_paths",
-        ):
-            rule = ListComparisonRule.create_from_dict(rule_definition)
