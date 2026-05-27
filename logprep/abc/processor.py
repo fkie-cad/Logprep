@@ -208,6 +208,18 @@ class Processor(Component):
             if rule.matches(event):
                 _process_rule(rule, event)
 
+    def _collect_warning_error(
+        self,
+        rule: "Rule",
+        ex: Exception,
+    ):
+        self._failed_init_rules[rule] = ex
+        logger.warning(
+            "Failed to initialize rule: %s (processor: %s)",
+            ex,
+            self.__class__.__name__,
+        )
+
     def _process_rule_tree(self, event: dict, tree: RuleTree):
         applied_rules = set()
 
@@ -242,11 +254,6 @@ class Processor(Component):
             else:
                 error = self._failed_init_rules[rule]
                 self._handle_warning_error(event, rule, error)
-
-                # TODO: need to handle as error?
-                # self.result.errors.append(ProcessingCriticalError(str(error), rule))
-                # event.clear()
-
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:

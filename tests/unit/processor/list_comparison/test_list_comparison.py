@@ -489,7 +489,7 @@ Heinz
         assert rule.compare_sets[list_name] == expected_result
 
     @responses.activate
-    def test_list_comparison_setup_logs_warning_if_http_list_initialization_fails(
+    def test_list_comparison_setup_logs_warning_and_marks_rule_failed_if_http_list_initialization_fails(
         self,
         caplog,
     ):
@@ -555,7 +555,7 @@ Heinz
         assert retries.total == 3
         assert 500 in retries.status_forcelist
 
-        assert "Failed to initialize list comparison rule" in caplog.text
+        assert "Failed to initialize rule" in caplog.text
         assert "too many 500 error responses" in caplog.text
 
         processor.process(document)
@@ -565,7 +565,7 @@ Heinz
         assert responses.calls[0].request.url == url
         assert rule.compare_sets == {}
 
-    def test_list_comparison_adds_failure_tag_on_error(
+    def test_list_comparison_process_adds_failure_tag_and_warning_if_target_field_update_fails(
         self,
     ):
         document = {
@@ -605,3 +605,37 @@ Heinz
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert document == expected
+
+    def test_list_comparison_process_adds_failure_tag_and_warning_if_list_file_is_missing(
+        self,
+    ):
+        document = {"user": "Foo"}
+
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": "tests/testdata",
+        }
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["../lists/_not_existing_list.txt"],
+            },
+        }
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        result = processor.process(document)
+
+        assert document == {
+            "tags": ["_list_comparison_failure"],
+            "user": "Foo",
+        }
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert "No such file or directory" in str(result.warnings[0])

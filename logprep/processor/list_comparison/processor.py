@@ -63,8 +63,7 @@ class ListComparison(Processor):
             try:
                 rule.init_list_comparison(self._config.list_search_base_path)
             except Exception as ex:
-                self._failed_init_rules[rule] = ex
-                logger.warning("Failed to initialize list comparison rule: %s", ex)
+                self._collect_warning_error(rule=rule, ex=ex)
 
     def _apply_rules(self, event, rule):
         """
