@@ -489,7 +489,7 @@ Heinz
         assert rule.compare_sets[list_name] == expected_result
 
     @responses.activate
-    def test_list_comparison_setup_logs_warning_and_marks_rule_failed_if_http_list_initialization_fails(
+    def test_list_comparison_process_adds_failure_tag_if_http_list_returns_500(
         self,
         caplog,
     ):
