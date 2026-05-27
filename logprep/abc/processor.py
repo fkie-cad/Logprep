@@ -110,7 +110,7 @@ class Processor(Component):
         "_rule_tree",
         "_result",
         "_bypass_rule_tree",
-        "_failed_init_rules",
+        "_failed_rules",
     ]
 
     rule_class: ClassVar[Type["Rule"] | None] = None
@@ -119,14 +119,14 @@ class Processor(Component):
     _strategy = None
     _bypass_rule_tree: bool
     _result: ProcessorResult | None
-    _failed_init_rules: dict["Rule", Exception]
+    _failed_rules: dict["Rule", Exception]
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
         self._rule_tree = RuleTree(config=self.config.tree_config)
         self.load_rules(rules_targets=self.config.rules)
         self._result = None
-        self._failed_init_rules = {}
+        self._failed_rules = {}
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
@@ -208,16 +208,16 @@ class Processor(Component):
             if rule.matches(event):
                 _process_rule(rule, event)
 
-    def _collect_warning_error(
+    def _collect_rule_error(
         self,
         rule: "Rule",
         ex: Exception,
     ):
-        self._failed_init_rules[rule] = ex
+        self._failed_rules[rule] = ex
         logger.warning(
-            "Failed to initialize rule: %s (processor: %s)",
-            ex,
+            "Rule failed for processor %s: %s",
             self.__class__.__name__,
+            ex,
         )
 
     def _process_rule_tree(self, event: dict, tree: RuleTree):
@@ -249,10 +249,10 @@ class Processor(Component):
 
     def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
         try:
-            if rule not in self._failed_init_rules:
+            if rule not in self._failed_rules:
                 self._apply_rules(event, rule)
             else:
-                error = self._failed_init_rules[rule]
+                error = self._failed_rules[rule]
                 self._handle_warning_error(event, rule, error)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)

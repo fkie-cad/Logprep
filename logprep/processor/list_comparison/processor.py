@@ -63,7 +63,7 @@ class ListComparison(Processor):
             try:
                 rule.init_list_comparison(self._config.list_search_base_path)
             except Exception as ex:
-                self._collect_warning_error(rule=rule, ex=ex)
+                self._collect_rule_error(rule=rule, ex=ex)
 
     def _apply_rules(self, event, rule):
         """

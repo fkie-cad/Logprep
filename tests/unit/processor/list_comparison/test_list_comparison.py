@@ -555,8 +555,10 @@ Heinz
         assert retries.total == 3
         assert 500 in retries.status_forcelist
 
-        assert "Failed to initialize rule" in caplog.text
-        assert "too many 500 error responses" in caplog.text
+        assert (
+            "Caused by ResponseError('too many 500 error responses')) (processor: ListComparison)"
+            in caplog.text
+        )
 
         processor.process(document)
 
@@ -608,6 +610,7 @@ Heinz
 
     def test_list_comparison_process_adds_failure_tag_and_warning_if_list_file_is_missing(
         self,
+        caplog,
     ):
         document = {"user": "Foo"}
 
@@ -639,3 +642,8 @@ Heinz
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert "No such file or directory" in str(result.warnings[0])
+
+        assert (
+            "No such file or directory: 'tests/testdata/../lists/_not_existing_list.txt' (processor: ListComparison)"
+            in caplog.text
+        )
