@@ -485,7 +485,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
         processor.setup()
 
-        assert "Failed to initialize list comparison rule" in caplog.text
+        assert "Rule failed for processor NetworkComparison" in caplog.text
         assert "too many 500 error responses" in caplog.text
 
         processor.process(document)
