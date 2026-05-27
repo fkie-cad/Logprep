@@ -41,7 +41,6 @@ target field :code:`List_comparison.example`.
    :noindex:
 """
 
-import logging
 import os.path
 from string import Template
 from typing import List, Optional
@@ -51,8 +50,6 @@ from attrs import define, field, validators
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory, HttpGetter
-
-logger = logging.getLogger("ListComparisonRule")
 
 
 class ListComparisonRule(FieldManagerRule):
@@ -100,22 +97,6 @@ class ListComparisonRule(FieldManagerRule):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._compare_sets = {}
-        self._fail: Exception | None = None
-
-    def mark_failed(self, error: Exception) -> None:
-        self._fail = error
-        logger.warning(
-            "%s failed: %s",
-            self.__class__.__name__,
-            error,
-        )
-
-    def clear_failed(self) -> None:
-        self._fail = None
-
-    @property
-    def fail(self):
-        return self._fail
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if list_search_base_path is None:
@@ -148,11 +129,12 @@ class ListComparisonRule(FieldManagerRule):
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
         try:
             content = http_getter.get_list()
-            file_elem_tuples = (elem for elem in content if not elem.startswith("#"))
-            self._compare_sets.update({list_path: set(file_elem_tuples)})
-            self.clear_failed()
+            file_elements = (elem for elem in content if not elem.startswith("#"))
+            self._compare_sets.update({list_path: set(file_elements)})
         except Exception as ex:
             self.mark_failed(error=ex)
+        else:
+            self.clear_failed()
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
         absolute_list_paths = [
@@ -177,6 +159,6 @@ class ListComparisonRule(FieldManagerRule):
         return self._compare_sets
 
     @property
-    def failure_tags(self):
+    def failure_tags(self) -> list[str]:
         """Returns the failure tags"""
         return self._config.tag_on_failure

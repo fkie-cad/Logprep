@@ -127,6 +127,7 @@ This slicing is based on the native
 """
 
 import hashlib
+import logging
 from functools import cached_property
 from typing import Dict, List, Optional, Set
 
@@ -141,6 +142,8 @@ from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.helper import camel_to_snake
 
 yaml = YAML(typ="safe", pure=True)
+
+logger = logging.getLogger("Rule")
 
 
 class Rule:
@@ -285,6 +288,7 @@ class Rule:
         self._special_fields = None
         self.file_name = None
         self._config = config
+        self._data_error: Exception | None = None
         if self._config.id is None:
             self._config.id = self.sha256
 
@@ -305,6 +309,22 @@ class Rule:
         if hasattr(self, "_config"):
             return f"filename={self.file_name}, filter='{self.filter}', {self._config}"
         return super().__repr__()
+
+    def mark_failed(self, error: Exception) -> None:
+        self._data_error = error
+        logger.warning(
+            "%s failed: %s",
+            self.__class__.__name__,
+            error,
+        )
+
+    def clear_failed(self) -> None:
+        self._data_error = None
+
+    @property
+    def is_failed(self) -> tuple[bool, Exception | None]:
+        is_failed = True if self._data_error is None else False
+        return is_failed, self._data_error
 
     # pylint: disable=C0111
     @property

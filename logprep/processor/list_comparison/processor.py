@@ -74,8 +74,9 @@ class ListComparison(Processor):
 
         """
 
-        if rule.fail:
-            self._handle_warning_error(event=event, rule=rule, error=rule.fail)
+        failed, data_error = rule.is_failed()
+        if failed:
+            self._handle_warning_error(event=event, rule=rule, error=data_error)
             return
 
         comparison_result, comparison_key = self._list_comparison(rule, event)
