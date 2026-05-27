@@ -1,6 +1,7 @@
 ## Upcoming Changes
 ### Breaking
 * chart: change default deployment strategy to RollingUpdate
+* handle list_comparison and network_comparison errors as warnings
 
 ### Features
 
