@@ -41,6 +41,7 @@ target field :code:`List_comparison.example`.
    :noindex:
 """
 
+import logging
 import os.path
 from string import Template
 from typing import List, Optional
@@ -50,6 +51,8 @@ from attrs import define, field, validators
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory, HttpGetter
+
+logger = logging.getLogger("ListComparisonRule")
 
 
 class ListComparisonRule(FieldManagerRule):
@@ -97,6 +100,22 @@ class ListComparisonRule(FieldManagerRule):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._compare_sets = {}
+        self._fail: Exception | None = None
+
+    def mark_failed(self, error: Exception) -> None:
+        self._fail = error
+        logger.warning(
+            "Rule failed for processor %s: %s",
+            self.__class__.__name__,
+            error,
+        )
+
+    def clear_failed(self) -> None:
+        self._fail = None
+
+    @property
+    def fail(self):
+        return self._fail
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if list_search_base_path is None:
@@ -107,7 +126,6 @@ class ListComparisonRule(FieldManagerRule):
 
     def init_list_comparison(self, list_search_base_path: Optional[str] = None):
         """init method for list_comparison lists"""
-
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         if list_search_base_path.startswith("http"):
             self._init_list_comparison_from_http(list_search_base_path)
@@ -120,15 +138,21 @@ class ListComparisonRule(FieldManagerRule):
                 {**os.environ, **{"LOGPREP_LIST": list_path}}
             )
             http_getter = GetterFactory.from_string(list_search_base_path_resolved)
+
             if not isinstance(http_getter, HttpGetter):
                 raise TypeError(f"The target {list_search_base_path_resolved} must be a url")
-            self._update_compare_sets_via_http(http_getter, list_path)
+
             http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
+            self._update_compare_sets_via_http(http_getter, list_path)
 
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
-        content = http_getter.get_list()
-        file_elem_tuples = (elem for elem in content if not elem.startswith("#"))
-        self._compare_sets.update({list_path: set(file_elem_tuples)})
+        try:
+            content = http_getter.get_list()
+            file_elem_tuples = (elem for elem in content if not elem.startswith("#"))
+            self._compare_sets.update({list_path: set(file_elem_tuples)})
+            self.clear_failed()
+        except Exception as ex:
+            self.mark_failed(error=ex)
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
         absolute_list_paths = [

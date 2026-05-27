@@ -110,7 +110,6 @@ class Processor(Component):
         "_rule_tree",
         "_result",
         "_bypass_rule_tree",
-        "_failed_rules",
     ]
 
     rule_class: ClassVar[Type["Rule"] | None] = None
@@ -119,14 +118,12 @@ class Processor(Component):
     _strategy = None
     _bypass_rule_tree: bool
     _result: ProcessorResult | None
-    _failed_rules: dict["Rule", Exception]
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
         self._rule_tree = RuleTree(config=self.config.tree_config)
         self.load_rules(rules_targets=self.config.rules)
         self._result = None
-        self._failed_rules = {}
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
@@ -208,18 +205,6 @@ class Processor(Component):
             if rule.matches(event):
                 _process_rule(rule, event)
 
-    def _collect_rule_error(
-        self,
-        rule: "Rule",
-        ex: Exception,
-    ):
-        self._failed_rules[rule] = ex
-        logger.warning(
-            "Rule failed for processor %s: %s",
-            self.__class__.__name__,
-            ex,
-        )
-
     def _process_rule_tree(self, event: dict, tree: RuleTree):
         applied_rules = set()
 
@@ -249,11 +234,7 @@ class Processor(Component):
 
     def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
         try:
-            if rule not in self._failed_rules:
-                self._apply_rules(event, rule)
-            else:
-                error = self._failed_rules[rule]
-                self._handle_warning_error(event, rule, error)
+            self._apply_rules(event, rule)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:

@@ -11,8 +11,6 @@ from logprep.util.getter import GetterFactory
 
 logger = getLogger("RuleLoader")
 
-ACCEPT_FAILING_PROCESSOR_CONFIGS = ("list_comparison", "network_comparison")
-
 
 class RuleLoader:
     """A class to load rules from various sources such as dictionaries,
@@ -43,32 +41,20 @@ class RuleLoader:
         """
         rules: list[Rule] = []
 
-        try:
-            match self.source:
-                case dict():
-                    rules.extend(DictRuleLoader(self.source, self.processor_name).rules)
-                case str():
-                    path = Path(self.source)
-                    if path.is_dir():
-                        rules.extend(DirectoryRuleLoader(self.source, self.processor_name).rules)
-                    if path.is_file():
-                        rules.extend(FileRuleLoader(self.source, self.processor_name).rules)
-                case list():
-                    for element in self.source:
-                        rules.extend(RuleLoader(element, self.processor_name).rules)
-        except Exception as ex:
-            self._handle_error(error=ex)
+        match self.source:
+            case dict():
+                rules.extend(DictRuleLoader(self.source, self.processor_name).rules)
+            case str():
+                path = Path(self.source)
+                if path.is_dir():
+                    rules.extend(DirectoryRuleLoader(self.source, self.processor_name).rules)
+                if path.is_file():
+                    rules.extend(FileRuleLoader(self.source, self.processor_name).rules)
+            case list():
+                for element in self.source:
+                    rules.extend(RuleLoader(element, self.processor_name).rules)
 
         return rules
-
-    def _handle_error(self, error: Exception):
-        if self.processor_name in ACCEPT_FAILING_PROCESSOR_CONFIGS:
-            logger.warning(
-                "Accept failing rule config for %s (reason: whitelisted processor shall not fail)",
-                self.processor_name,
-            )
-        else:
-            raise error
 
     @property
     def rule_definitions(self) -> list[dict]:
@@ -82,27 +68,24 @@ class RuleLoader:
         """
         rule_definitions: list[dict] = []
 
-        try:
-            match self.source:
-                case dict():
-                    rule_definitions.append(self.source)
-                case str():
-                    path = Path(self.source)
-                    if path.is_dir():
-                        rule_definitions.extend(
-                            DirectoryRuleLoader(self.source, self.processor_name).rule_definitions
-                        )
-                    else:
-                        rule_definitions.extend(
-                            FileRuleLoader(self.source, self.processor_name).rule_definitions
-                        )
-                case list():
-                    for element in self.source:
-                        rule_definitions.extend(
-                            RuleLoader(element, self.processor_name).rule_definitions
-                        )
-        except Exception as ex:
-            self._handle_error(error=ex)
+        match self.source:
+            case dict():
+                rule_definitions.append(self.source)
+            case str():
+                path = Path(self.source)
+                if path.is_dir():
+                    rule_definitions.extend(
+                        DirectoryRuleLoader(self.source, self.processor_name).rule_definitions
+                    )
+                else:
+                    rule_definitions.extend(
+                        FileRuleLoader(self.source, self.processor_name).rule_definitions
+                    )
+            case list():
+                for element in self.source:
+                    rule_definitions.extend(
+                        RuleLoader(element, self.processor_name).rule_definitions
+                    )
 
         return rule_definitions
 

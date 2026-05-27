@@ -26,19 +26,15 @@ Processor Configuration
 .. automodule:: logprep.processor.list_comparison.rule
 """
 
-import logging
-
 from attrs import define, field, validators
 
-from logprep.abc.processor import Processor, ProcessorResult
+from logprep.abc.processor import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import (
     add_fields_to,
     get_dotted_field_value,
     join_dotted_fields,
 )
-
-logger = logging.getLogger("ListComparison")
 
 
 class ListComparison(Processor):
@@ -60,10 +56,7 @@ class ListComparison(Processor):
     def setup(self):
         super().setup()
         for rule in self.rules:
-            try:
-                rule.init_list_comparison(self._config.list_search_base_path)
-            except Exception as ex:
-                self._collect_rule_error(rule=rule, ex=ex)
+            rule.init_list_comparison(self._config.list_search_base_path)
 
     def _apply_rules(self, event, rule):
         """
@@ -80,6 +73,11 @@ class ListComparison(Processor):
             Currently applied list comparison rule.
 
         """
+
+        if rule.fail:
+            self._handle_warning_error(event=event, rule=rule, error=rule.fail)
+            return
+
         comparison_result, comparison_key = self._list_comparison(rule, event)
         if comparison_result is not None:
             fields = {join_dotted_fields((rule.target_field, comparison_key)): comparison_result}
