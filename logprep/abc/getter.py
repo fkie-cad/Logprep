@@ -161,10 +161,15 @@ class Getter(ABC):
         """Helper which tries to convert content to list"""
         return content.splitlines()
 
-    def get_list(self) -> list:
+    def get_list(self, content_field: str | None = None) -> list:
         """Gets list and fails otherwise"""
 
         content = self._resolve_content_by_content_type()
+
+        if isinstance(content, dict) and content_field is not None:
+            content = content[content_field]
+        elif content_field is not None:
+            raise ValueError("Expected mapping type, like json for content.")
 
         if isinstance(content, str):
             content = self._parse_newline_separated_list(content)

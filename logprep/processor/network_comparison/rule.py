@@ -44,7 +44,7 @@ target field :code:`network_comparison.example`.
 """
 
 from ipaddress import ip_network
-from typing import Optional, List
+from typing import List, Optional
 
 from attrs import define, field, validators
 
@@ -88,6 +88,12 @@ class NetworkComparisonRule(ListComparisonRule):
         will be filled by this processor. """
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+        content_field: str | None = field(
+            validator=validators.optional(validators.instance_of(str)),
+            converter=lambda value: None if value == "" else value,
+            default=None,
+        )
+        """Content field will be used to access the subkey."""
 
     def init_list_comparison(self, list_search_base_path: Optional[str] = None) -> None:
         """init method for list_comparison lists"""

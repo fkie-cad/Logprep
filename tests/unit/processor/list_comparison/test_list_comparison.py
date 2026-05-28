@@ -294,12 +294,20 @@ Hans
         processor.setup()
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
+    @pytest.mark.parametrize(
+        ("json_content", "content_field"),
+        [
+            pytest.param(["Franz", "Heinz", "Hans"], ""),
+            pytest.param({"content": ["Franz", "Heinz", "Hans"]}, "content"),
+            pytest.param({"_": ["Franz", "Heinz", "Hans"]}, "_"),
+        ],
+    )
     @responses.activate
-    def test_list_comparison_loads_json_list(self):
+    def test_list_comparison_loads_json_list(self, json_content, content_field):
         responses.add(
             responses.GET,
             "http://localhost:8080/v2/valuestore/test_4",
-            json.dumps(["Franz", "Heinz", "Hans"]),
+            json.dumps(json_content),
             content_type="application/json",
         )
         rule_dict = {
@@ -308,6 +316,7 @@ Hans
                 "source_fields": ["user"],
                 "target_field": "user_results",
                 "list_file_paths": ["bad_users.list"],
+                "content_field": content_field,
             },
             "description": "",
         }
@@ -324,6 +333,46 @@ Hans
         processor._rule_tree.add_rule(rule)
         processor.setup()
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+
+    @pytest.mark.parametrize(
+        ("json_content", "content_field"),
+        [
+            pytest.param({None: ["Franz", "Heinz", "Hans"]}, ""),
+            pytest.param({"": ["Franz", "Heinz", "Hans"]}, ""),
+        ],
+    )
+    @responses.activate
+    def test_list_comparison_fail_on_json_list_load(self, json_content, content_field):
+        responses.add(
+            responses.GET,
+            "http://localhost:8080/v2/valuestore/test_4",
+            json.dumps(json_content),
+            content_type="application/json",
+        )
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+                "content_field": content_field,
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost:8080/v2/valuestore/test_4",
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        with pytest.raises(ValueError, match="Content is not a list"):
+            processor.setup()
 
     @responses.activate
     def test_list_comparison_loads_rule_using_http_and_updates_with_callback(self, tmp_path):

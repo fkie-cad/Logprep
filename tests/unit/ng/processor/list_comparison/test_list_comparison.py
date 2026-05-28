@@ -13,12 +13,7 @@ from logprep.factory import Factory
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import (
-    GetterFactory,
-    HttpGetter,
-    RefreshableGetterError,
-    refresh_getters,
-)
+from logprep.util.getter import HttpGetter, RefreshableGetterError, refresh_getters
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
@@ -416,6 +411,86 @@ Heinz
         processor.setup()
         processor.process(log_event)
         assert document == expected, testcase
+
+    @pytest.mark.parametrize(
+        ("json_content", "content_field"),
+        [
+            pytest.param(["Franz", "Heinz", "Hans"], ""),
+            pytest.param({"content": ["Franz", "Heinz", "Hans"]}, "content"),
+            pytest.param({"_": ["Franz", "Heinz", "Hans"]}, "_"),
+        ],
+    )
+    @responses.activate
+    def test_list_comparison_loads_json_list(self, json_content, content_field):
+        responses.add(
+            responses.GET,
+            "http://localhost:8080/v2/valuestore/test_4",
+            json.dumps(json_content),
+            content_type="application/json",
+        )
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+                "content_field": content_field,
+            },
+            "description": "",
+        }
+        config = {
+            "type": "ng_list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost:8080/v2/valuestore/test_4",
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+        assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+
+    @pytest.mark.parametrize(
+        ("json_content", "content_field"),
+        [
+            pytest.param({None: ["Franz", "Heinz", "Hans"]}, ""),
+            pytest.param({"": ["Franz", "Heinz", "Hans"]}, ""),
+        ],
+    )
+    @responses.activate
+    def test_list_comparison_fail_on_json_list_load(self, json_content, content_field):
+        responses.add(
+            responses.GET,
+            "http://localhost:8080/v2/valuestore/test_4",
+            json.dumps(json_content),
+            content_type="application/json",
+        )
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+                "content_field": content_field,
+            },
+            "description": "",
+        }
+        config = {
+            "type": "ng_list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost:8080/v2/valuestore/test_4",
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        with pytest.raises(ValueError, match="Content is not a list"):
+            processor.setup()
 
     @responses.activate
     def test_list_comparison_process_adds_failure_tag_if_http_list_returns_500(

@@ -87,6 +87,12 @@ class ListComparisonRule(FieldManagerRule):
         will be filled by this processor. """
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+        content_field: str | None = field(
+            validator=validators.optional(validators.instance_of(str)),
+            converter=lambda value: None if value == "" else value,
+            default=None,
+        )
+        """Content field will be used to access the subkey."""
 
     def __init__(
         self,
@@ -119,18 +125,17 @@ class ListComparisonRule(FieldManagerRule):
                 {**os.environ, **{"LOGPREP_LIST": list_path}}
             )
             http_getter = GetterFactory.from_string(list_search_base_path_resolved)
-
             if not isinstance(http_getter, HttpGetter):
                 raise TypeError(f"The target {list_search_base_path_resolved} must be a url")
-
-            http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
             self._update_compare_sets_via_http(http_getter, list_path)
+            http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
 
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
         try:
-            content = http_getter.get_list()
-            file_elements = (elem for elem in content if not elem.startswith("#"))
-            self._compare_sets.update({list_path: set(file_elements)})
+            content_field = self._config.content_field
+            content = http_getter.get_list(content_field=content_field)
+            file_elem_tuples = (elem for elem in content if not elem.startswith("#"))
+            self._compare_sets.update({list_path: set(file_elem_tuples)})
         except Exception as ex:
             self.mark_failed(error=ex)
         else:
