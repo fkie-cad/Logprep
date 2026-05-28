@@ -233,7 +233,7 @@ class Processor(Component):
         else:
             _process_rule_tree_once(tree, event)
 
-    def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
+    def _apply_rules_wrapper(self, event: dict[str, FieldValue], rule: "Rule") -> None:
         try:
             data_error = rule.data_error
             if data_error is not None:

@@ -15,6 +15,7 @@ from logprep.metrics.metrics import Metric
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.helper import (
+    FieldValue,
     add_and_overwrite,
     add_fields_to,
     get_dotted_field_value,
@@ -164,7 +165,7 @@ class Processor(Component):
         else:
             _process_rule_tree_once(tree, event)
 
-    def _apply_rules_wrapper(self, event: dict, rule: "Rule") -> None:
+    def _apply_rules_wrapper(self, event: dict[str, FieldValue], rule: "Rule") -> None:
         try:
             data_error = rule.data_error
             if data_error is not None:
@@ -218,7 +219,11 @@ class Processor(Component):
         return has_dotted_field(event, dotted_field)
 
     def _handle_warning_error(
-        self, event: dict, rule: "Rule", error: Exception, failure_tags: list | None = None
+        self,
+        event: dict[str, FieldValue],
+        rule: "Rule",
+        error: Exception,
+        failure_tags: list[str] | None = None,
     ) -> None:
         tags = get_dotted_field_value(event, "tags")
         if failure_tags is None:
