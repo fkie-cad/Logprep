@@ -462,8 +462,7 @@ Heinz
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        data_error = rule.data_error
-        assert data_error is None
+        assert rule.data_error is None
 
         with mock.patch.object(
             HttpGetter,
