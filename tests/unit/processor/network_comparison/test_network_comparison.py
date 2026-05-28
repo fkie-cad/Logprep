@@ -445,8 +445,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
     @responses.activate
     def test_network_comparison_process_adds_failure_tag_if_http_list_request_returns_500(
-        self,
-        caplog,
+        self, caplog
     ):
         document = {"ip": "1.2.3.4"}
         expected = {
@@ -549,8 +548,19 @@ class TestNetworkComparison(BaseProcessorTestCase):
     def test_network_comparison_recovers_after_failed_http_getter_setup(
         self,
     ):
-        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
+        document = {"ip": "1.2.3.4"}
+        expected_failed_document = {
+            "ip": "1.2.3.4",
+            "tags": ["_network_comparison_failure"],
+        }
         list_name = "bad_ips.list"
+        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=500,
+        )
 
         rule_dict = {
             "filter": "ip",
@@ -568,34 +578,23 @@ class TestNetworkComparison(BaseProcessorTestCase):
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
 
-        responses.add(
-            responses.GET,
-            url=url,
-            status=500,
-        )
-
         HttpGetter._shared.clear()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
-
-        failed_document = {"ip": "1.2.3.4"}
-        expected_failed_document = {
-            "ip": "1.2.3.4",
-            "tags": ["_network_comparison_failure"],
-        }
-
         processor.setup()
-        processor.process(failed_document)
+        processor.process(document)
 
         is_failed, data_error = rule.is_failed()
         assert is_failed
         assert isinstance(data_error, RefreshableGetterError)
-        assert failed_document == expected_failed_document
+        assert document == expected_failed_document
         assert rule.compare_sets == {}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500
+
+        # recovered case:
 
         responses.replace(
             responses.GET,
@@ -604,25 +603,25 @@ class TestNetworkComparison(BaseProcessorTestCase):
             status=200,
         )
 
+        document = {"ip": "1.2.3.4"}
+        expected_recovered_document = {
+            "ip": "1.2.3.4",
+            "ip_results": {"in_list": [list_name]},
+        }
+
         HttpGetter._shared.clear()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        recovered_document = {"ip": "1.2.3.4"}
-        expected_recovered_document = {
-            "ip": "1.2.3.4",
-            "ip_results": {"in_list": [list_name]},
-        }
-
         processor.setup()
-        processor.process(recovered_document)
+        processor.process(document)
 
         is_failed, data_error = rule.is_failed()
         assert not is_failed
         assert data_error is None
-        assert recovered_document == expected_recovered_document
+        assert document == expected_recovered_document
         assert rule.compare_sets == {list_name: {IPv4Network("1.2.3.4/32")}}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200

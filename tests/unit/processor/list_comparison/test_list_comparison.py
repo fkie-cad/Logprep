@@ -578,9 +578,20 @@ Heinz
     def test_list_comparison_recovers_after_failed_http_getter_setup(
         self,
     ):
+        document = {"user": "Foo"}
+        expected_failed_document = {
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
         url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         list_name = "bad_users.list"
         url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=500,
+        )
 
         rule_dict = {
             "filter": "user",
@@ -598,35 +609,24 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        responses.add(
-            responses.GET,
-            url=url,
-            status=500,
-        )
-
         HttpGetter._shared.clear()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        failed_document = {"user": "Foo"}
-        expected_failed_document = {
-            "user": "Foo",
-            "tags": ["_list_comparison_failure"],
-        }
-
         processor.setup()
-        processor.process(failed_document)
+        processor.process(document)
 
         is_failed, data_error = rule.is_failed()
         assert is_failed
         assert isinstance(data_error, RefreshableGetterError)
-        assert failed_document == expected_failed_document
+        assert document == expected_failed_document
         assert rule.compare_sets == {}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500
 
+        # recovered case:
         responses.replace(
             responses.GET,
             url=url,
@@ -634,25 +634,25 @@ Heinz
             status=200,
         )
 
+        document = {"user": "Foo"}
+        expected_recovered_document = {
+            "user": "Foo",
+            "user_results": {"in_list": [list_name]},
+        }
+
         HttpGetter._shared.clear()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        recovered_document = {"user": "Foo"}
-        expected_recovered_document = {
-            "user": "Foo",
-            "user_results": {"in_list": [list_name]},
-        }
-
         processor.setup()
-        processor.process(recovered_document)
+        processor.process(document)
 
         is_failed, data_error = rule.is_failed()
         assert not is_failed
         assert data_error is None
-        assert recovered_document == expected_recovered_document
+        assert document == expected_recovered_document
         assert rule.compare_sets == {list_name: {"Foo"}}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200
