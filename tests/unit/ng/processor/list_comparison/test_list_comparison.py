@@ -538,8 +538,7 @@ Heinz
         processor.setup()
         processor.process(log_event)
 
-        data_error = rule.data_error
-        assert isinstance(data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, RefreshableGetterError)
         assert document == expected_failed_document
         assert rule.compare_sets == {}
         assert responses.calls[-1].request.url == url
