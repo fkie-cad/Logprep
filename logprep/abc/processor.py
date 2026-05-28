@@ -235,6 +235,11 @@ class Processor(Component):
 
     def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
         try:
+            data_error = rule.data_error
+            if data_error is not None:
+                self._handle_warning_error(event=event, rule=rule, error=data_error)
+                return
+
             self._apply_rules(event, rule)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)

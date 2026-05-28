@@ -74,12 +74,6 @@ class ListComparison(Processor):
             Currently applied list comparison rule.
 
         """
-
-        data_error = rule.data_error
-        if data_error is not None:
-            self._handle_warning_error(event=event, rule=rule, error=data_error)
-            return
-
         comparison_result, comparison_key = self._list_comparison(rule, event)
         if comparison_result is not None:
             fields = {join_dotted_fields((rule.target_field, comparison_key)): comparison_result}

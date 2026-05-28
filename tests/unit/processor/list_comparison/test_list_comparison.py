@@ -10,7 +10,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter, RefreshableGetterError
 from tests.unit.processor.base import BaseProcessorTestCase
