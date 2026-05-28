@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import json
+from ipaddress import IPv4Network
 from pathlib import Path
 from string import Template
 from unittest import mock
@@ -573,66 +574,13 @@ Heinz
         assert responses.calls[0].request.url == url
         assert rule.compare_sets == {}
 
-    @pytest.mark.parametrize(
-        (
-            "http_status",
-            "http_body",
-            "expected_is_failed",
-            "expected_error_type",
-            "document",
-            "expected_document",
-            "expected_compare_sets",
-        ),
-        [
-            pytest.param(
-                500,
-                None,
-                True,
-                RefreshableGetterError,
-                {"user": "Foo"},
-                {
-                    "user": "Foo",
-                    "tags": ["_list_comparison_failure"],
-                },
-                {},
-                id="http-500-marks-rule-as-failed",
-            ),
-            pytest.param(
-                200,
-                "Foo\n",
-                False,
-                None,
-                {"user": "Foo"},
-                {
-                    "user": "Foo",
-                    "user_results": {"in_list": ["bad_users.list"]},
-                },
-                {"bad_users.list": {"Foo"}},
-                id="http-200-keeps-rule-successful",
-            ),
-        ],
-    )
     @responses.activate
-    def test_list_comparison_http_getter_updates_failure_state_from_get_result(
+    def test_list_comparison_recovers_after_failed_http_getter_setup(
         self,
-        http_status,
-        http_body,
-        expected_is_failed,
-        expected_error_type,
-        document,
-        expected_document,
-        expected_compare_sets,
     ):
         url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         list_name = "bad_users.list"
         url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
-
-        responses.add(
-            responses.GET,
-            url=url,
-            status=http_status,
-            body=http_body,
-        )
 
         rule_dict = {
             "filter": "user",
@@ -650,23 +598,61 @@ Heinz
             "list_search_base_path": url_template,
         }
 
+        responses.add(
+            responses.GET,
+            url=url,
+            status=500,
+        )
+
         HttpGetter._shared.clear()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
+        failed_document = {"user": "Foo"}
+        expected_failed_document = {
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
+
         processor.setup()
-        processor.process(document)
+        processor.process(failed_document)
 
         is_failed, data_error = rule.is_failed()
-        assert is_failed is expected_is_failed
+        assert is_failed
+        assert isinstance(data_error, RefreshableGetterError)
+        assert failed_document == expected_failed_document
+        assert rule.compare_sets == {}
+        assert responses.calls[-1].request.url == url
+        assert responses.calls[-1].response.status_code == 500
 
-        if expected_error_type is None:
-            assert data_error is None
-        else:
-            assert isinstance(data_error, expected_error_type)
+        responses.replace(
+            responses.GET,
+            url=url,
+            body="Foo\n",
+            status=200,
+        )
 
-        assert rule.compare_sets == expected_compare_sets
-        assert document == expected_document
-        assert responses.calls[0].request.url == url
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        recovered_document = {"user": "Foo"}
+        expected_recovered_document = {
+            "user": "Foo",
+            "user_results": {"in_list": [list_name]},
+        }
+
+        processor.setup()
+        processor.process(recovered_document)
+
+        is_failed, data_error = rule.is_failed()
+        assert not is_failed
+        assert data_error is None
+        assert recovered_document == expected_recovered_document
+        assert rule.compare_sets == {list_name: {"Foo"}}
+        assert responses.calls[-1].request.url == url
+        assert responses.calls[-1].response.status_code == 200
