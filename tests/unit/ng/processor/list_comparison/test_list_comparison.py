@@ -472,8 +472,7 @@ Heinz
         ):
             processor.setup()
 
-        data_error = rule.data_error
-        assert isinstance(data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, RefreshableGetterError)
 
         assert captured_sessions
 
