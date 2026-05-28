@@ -482,8 +482,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        data_error = rule.data_error
-        assert data_error is None
+        assert rule.data_error is None
 
         processor.setup()
 
@@ -615,8 +614,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         processor.setup()
         processor.process(document)
 
-        data_error = rule.data_error
-        assert data_error is None
+        assert rule.data_error is None
         assert document == expected_recovered_document
         assert rule.compare_sets == {list_name: {IPv4Network("1.2.3.4/32")}}
         assert responses.calls[-1].request.url == url
