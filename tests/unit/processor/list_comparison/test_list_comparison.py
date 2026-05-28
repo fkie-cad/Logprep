@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import json
+import time
 from ipaddress import IPv4Network
 from pathlib import Path
 from string import Template
@@ -12,7 +13,12 @@ import responses
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetterError
+from logprep.util.getter import (
+    GetterFactory,
+    HttpGetter,
+    RefreshableGetterError,
+    refresh_getters,
+)
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -656,6 +662,7 @@ Heinz
     @responses.activate
     def test_list_comparison_recovers_after_failed_http_getter_while_processing(
         self,
+        tmp_path,
     ):
         document = {"user": "Foo"}
         expected_failed_document = {
@@ -690,32 +697,36 @@ Heinz
 
         HttpGetter._shared.clear()
 
-        processor = Factory.create({"custom_lister": config})
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
+        getter_file_content = {url.removeprefix("http://"): {"refresh_interval": 1}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            processor = Factory.create({"custom_lister": config})
+            rule = processor.rule_class.create_from_dict(rule_dict)
+            processor._rule_tree.add_rule(rule)
 
-        processor.setup()
-        processor.process(document)
+            processor.setup()
+            processor.process(document)
 
-        data_error = rule.data_error
-        assert isinstance(data_error, RefreshableGetterError)
-        assert document == expected_failed_document
-        assert rule.compare_sets == {}
-        assert responses.calls[-1].request.url == url
-        assert responses.calls[-1].response.status_code == 500
+            data_error = rule.data_error
+            assert isinstance(data_error, RefreshableGetterError)
+            assert document == expected_failed_document
+            assert rule.compare_sets == {}
+            assert responses.calls[-1].request.url == url
+            assert responses.calls[-1].response.status_code == 500
 
-        # recovered case:
-        responses.replace(
-            responses.GET,
-            url=url,
-            body="Foo\n",
-            status=200,
-        )
+            # recovered case:
+            responses.replace(
+                responses.GET,
+                url=url,
+                body="Foo\n",
+                status=200,
+            )
 
-        HttpGetter._shared.clear()
-        http_getter = GetterFactory.from_string(url)
-        rule._update_compare_sets_via_http(http_getter, url.removeprefix("http://"))
+            time.sleep(2)
+            refresh_getters()
 
-        assert rule.data_error is None
-        assert responses.calls[-1].request.url == url
-        assert responses.calls[-1].response.status_code == 200
+            assert rule.data_error is None
+            assert responses.calls[-1].request.url == url
+            assert responses.calls[-1].response.status_code == 200

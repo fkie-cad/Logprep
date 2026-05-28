@@ -60,7 +60,7 @@ class ListComparison(Processor):
     @property
     def config(self) -> Config:
         """Provides the properly typed configuration object"""
-        return typing.cast("ListComparison.Config", self._config)
+        return typing.cast(ListComparison.Config, self._config)
 
     def setup(self) -> None:
         super().setup()
