@@ -26,11 +26,19 @@ Processor Configuration
 .. automodule:: logprep.processor.list_comparison.rule
 """
 
+import typing
+
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
+from logprep.processor.base.rule import Rule
 from logprep.processor.list_comparison.rule import ListComparisonRule
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    FieldValue,
+    add_fields_to,
+    get_dotted_field_value,
+    join_dotted_fields,
+)
 
 
 class ListComparison(Processor):
@@ -49,14 +57,19 @@ class ListComparison(Processor):
 
     rule_class = ListComparisonRule
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast("ListComparison.Config", self._config)
+
     def setup(self) -> None:
         super().setup()
-        for rule in self.rules:
-            rule.init_list_comparison(self._config.list_search_base_path)
+        for rule in typing.cast(list[ListComparisonRule], self.rules):
+            rule.init_list_comparison(self.config.list_search_base_path)
 
-    def _apply_rules(self, event, rule):
-        """Apply matching rule to given log event.
-
+    def _apply_rules(self, event: dict[str, FieldValue], rule: "Rule"):
+        """
+        Apply matching rule to given log event.
         In the process of doing so, add the result of comparing
         the log with a given list to the specified subfield. This subfield will contain
         a list of list comparison results that might be based on multiple rules.
@@ -69,9 +82,16 @@ class ListComparison(Processor):
             Currently applied list comparison rule.
 
         """
+
+        rule = typing.cast(ListComparisonRule, rule)
+        data_error = rule.data_error
+        if data_error is not None:
+            self._handle_warning_error(event=event, rule=rule, error=data_error)
+            return
+
         comparison_result, comparison_key = self._list_comparison(rule, event)
         if comparison_result is not None:
-            fields = {f"{rule.target_field}.{comparison_key}": comparison_result}
+            fields = {join_dotted_fields((rule.target_field, comparison_key)): comparison_result}
             add_fields_to(event, fields, rule=rule, merge_with_target=True)
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict) -> tuple[list[str], str]:

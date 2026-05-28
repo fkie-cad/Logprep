@@ -321,9 +321,9 @@ class Rule:
     def clear_failed(self) -> None:
         self._data_error = None
 
-    def is_failed(self) -> tuple[bool, Exception | None]:
-        failed = self._data_error is not None
-        return failed, self._data_error
+    @property
+    def data_error(self) -> Exception | None:
+        return self._data_error
 
     # pylint: disable=C0111
     @property
