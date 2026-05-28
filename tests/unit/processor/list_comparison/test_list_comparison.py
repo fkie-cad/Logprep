@@ -12,7 +12,7 @@ import responses
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter, RefreshableGetterError
+from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetterError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -650,5 +650,72 @@ Heinz
         assert data_error is None
         assert document == expected_recovered_document
         assert rule.compare_sets == {list_name: {"Foo"}}
+        assert responses.calls[-1].request.url == url
+        assert responses.calls[-1].response.status_code == 200
+
+    @responses.activate
+    def test_list_comparison_recovers_after_failed_http_getter_while_processing(
+        self,
+    ):
+        document = {"user": "Foo"}
+        expected_failed_document = {
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
+        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+        list_name = "bad_users.list"
+        url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=500,
+        )
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        processor.process(document)
+
+        data_error = rule.data_error
+        assert isinstance(data_error, RefreshableGetterError)
+        assert document == expected_failed_document
+        assert rule.compare_sets == {}
+        assert responses.calls[-1].request.url == url
+        assert responses.calls[-1].response.status_code == 500
+
+        # recovered case:
+        responses.replace(
+            responses.GET,
+            url=url,
+            body="Foo\n",
+            status=200,
+        )
+
+        HttpGetter._shared.clear()
+        http_getter = GetterFactory.from_string(url)
+        rule._update_compare_sets_via_http(http_getter, url.removeprefix("http://"))
+
+        assert rule.data_error is None
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200
