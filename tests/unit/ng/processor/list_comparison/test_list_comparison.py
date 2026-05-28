@@ -568,8 +568,7 @@ Heinz
         processor.setup()
         processor.process(log_event)
 
-        data_error = rule.data_error
-        assert data_error is None
+        assert rule.data_error is None
         assert document == expected_recovered_document
         assert rule.compare_sets == {list_name: {"Foo"}}
         assert responses.calls[-1].request.url == url
