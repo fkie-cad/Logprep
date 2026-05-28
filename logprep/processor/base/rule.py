@@ -322,7 +322,7 @@ class Rule:
         self._data_error = None
 
     def is_failed(self) -> tuple[bool, Exception | None]:
-        failed = True if self._data_error is not None else False
+        failed = self._data_error is not None
         return failed, self._data_error
 
     # pylint: disable=C0111
