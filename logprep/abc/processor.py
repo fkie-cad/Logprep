@@ -18,6 +18,7 @@ from logprep.processor.base.exceptions import (
     ProcessingWarning,
 )
 from logprep.util.helper import (
+    FieldValue,
     add_and_overwrite,
     add_fields_to,
     get_dotted_field_value,
@@ -283,7 +284,11 @@ class Processor(Component):
         return has_dotted_field(event, dotted_field)
 
     def _handle_warning_error(
-        self, event: dict, rule: "Rule", error: Exception, failure_tags: list | None = None
+        self,
+        event: dict[str, FieldValue],
+        rule: "Rule",
+        error: Exception,
+        failure_tags: list[str] | None = None,
     ):
         tags = get_dotted_field_value(event, "tags")
         if failure_tags is None:
