@@ -67,7 +67,7 @@ class ListComparison(Processor):
         for rule in typing.cast(list[ListComparisonRule], self.rules):
             rule.init_list_comparison(self.config.list_search_base_path)
 
-    def _apply_rules(self, event: dict[str, FieldValue], rule: "Rule"):
+    def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
         """
         Apply matching rule to given log event.
         In the process of doing so, add the result of comparing
