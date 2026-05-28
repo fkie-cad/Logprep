@@ -462,8 +462,7 @@ Heinz
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        is_failed, data_error = rule.is_failed()
-        assert not is_failed
+        data_error = rule.data_error
         assert data_error is None
 
         with mock.patch.object(
@@ -474,8 +473,7 @@ Heinz
         ):
             processor.setup()
 
-        is_failed, data_error = rule.is_failed()
-        assert is_failed
+        data_error = rule.data_error
         assert isinstance(data_error, RefreshableGetterError)
 
         assert captured_sessions
@@ -542,8 +540,7 @@ Heinz
         processor.setup()
         processor.process(log_event)
 
-        is_failed, data_error = rule.is_failed()
-        assert is_failed
+        data_error = rule.data_error
         assert isinstance(data_error, RefreshableGetterError)
         assert document == expected_failed_document
         assert rule.compare_sets == {}
@@ -574,8 +571,7 @@ Heinz
         processor.setup()
         processor.process(log_event)
 
-        is_failed, data_error = rule.is_failed()
-        assert not is_failed
+        data_error = rule.data_error
         assert data_error is None
         assert document == expected_recovered_document
         assert rule.compare_sets == {list_name: {"Foo"}}

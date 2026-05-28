@@ -501,8 +501,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        is_failed, data_error = rule.is_failed()
-        assert not is_failed
+        data_error = rule.data_error
         assert data_error is None
 
         processor.setup()
@@ -512,8 +511,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
         processor.process(document)
 
-        is_failed, data_error = rule.is_failed()
-        assert is_failed
+        data_error = rule.data_error
         assert isinstance(data_error, RefreshableGetterError)
 
         assert document == expected
@@ -606,8 +604,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         processor.setup()
         processor.process(log_event)
 
-        is_failed, data_error = rule.is_failed()
-        assert is_failed
+        data_error = rule.data_error
         assert isinstance(data_error, RefreshableGetterError)
         assert document == expected_failed_document
         assert rule.compare_sets == {}
@@ -639,8 +636,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         processor.setup()
         processor.process(log_event)
 
-        is_failed, data_error = rule.is_failed()
-        assert not is_failed
+        data_error = rule.data_error
         assert data_error is None
         assert document == expected_recovered_document
         assert rule.compare_sets == {list_name: {IPv4Network("1.2.3.4/32")}}
