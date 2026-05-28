@@ -11,7 +11,7 @@ import responses
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter
+from logprep.util.getter import HttpGetter, RefreshableGetterError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -538,6 +538,10 @@ Heinz
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
+        is_failed, data_error = rule.is_failed()
+        assert not is_failed
+        assert data_error is None
+
         with mock.patch.object(
             HttpGetter,
             "_get_requests_session",
@@ -545,6 +549,10 @@ Heinz
             side_effect=capture_session,
         ):
             processor.setup()
+
+        is_failed, data_error = rule.is_failed()
+        assert is_failed
+        assert isinstance(data_error, RefreshableGetterError)
 
         assert captured_sessions
 
@@ -564,3 +572,101 @@ Heinz
         assert len(responses.calls) == retries.total + 1
         assert responses.calls[0].request.url == url
         assert rule.compare_sets == {}
+
+    @pytest.mark.parametrize(
+        (
+            "http_status",
+            "http_body",
+            "expected_is_failed",
+            "expected_error_type",
+            "document",
+            "expected_document",
+            "expected_compare_sets",
+        ),
+        [
+            pytest.param(
+                500,
+                None,
+                True,
+                RefreshableGetterError,
+                {"user": "Foo"},
+                {
+                    "user": "Foo",
+                    "tags": ["_list_comparison_failure"],
+                },
+                {},
+                id="http-500-marks-rule-as-failed",
+            ),
+            pytest.param(
+                200,
+                "Foo\n",
+                False,
+                None,
+                {"user": "Foo"},
+                {
+                    "user": "Foo",
+                    "user_results": {"in_list": ["bad_users.list"]},
+                },
+                {"bad_users.list": {"Foo"}},
+                id="http-200-keeps-rule-successful",
+            ),
+        ],
+    )
+    @responses.activate
+    def test_list_comparison_http_getter_updates_failure_state_from_get_result(
+        self,
+        http_status,
+        http_body,
+        expected_is_failed,
+        expected_error_type,
+        document,
+        expected_document,
+        expected_compare_sets,
+    ):
+        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+        list_name = "bad_users.list"
+        url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=http_status,
+            body=http_body,
+        )
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        processor.process(document)
+
+        is_failed, data_error = rule.is_failed()
+        assert is_failed is expected_is_failed
+
+        if expected_error_type is None:
+            assert data_error is None
+        else:
+            assert isinstance(data_error, expected_error_type)
+
+        assert rule.compare_sets == expected_compare_sets
+        assert document == expected_document
+        assert responses.calls[0].request.url == url

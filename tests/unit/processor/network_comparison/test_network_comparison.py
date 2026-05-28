@@ -11,7 +11,7 @@ import responses
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter
+from logprep.util.getter import HttpGetter, RefreshableGetterError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -483,12 +483,20 @@ class TestNetworkComparison(BaseProcessorTestCase):
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
+        is_failed, data_error = rule.is_failed()
+        assert not is_failed
+        assert data_error is None
+
         processor.setup()
 
         assert "NetworkComparison" in caplog.text
         assert "too many 500 error responses" in caplog.text
 
         processor.process(document)
+
+        is_failed, data_error = rule.is_failed()
+        assert is_failed
+        assert isinstance(data_error, RefreshableGetterError)
 
         assert document == expected
         assert len(responses.calls) == 4
@@ -536,3 +544,99 @@ class TestNetworkComparison(BaseProcessorTestCase):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
+
+    @pytest.mark.parametrize(
+        (
+            "http_status",
+            "http_body",
+            "expected_is_failed",
+            "expected_error_type",
+            "document",
+            "expected_document",
+            "expected_compare_sets",
+        ),
+        [
+            pytest.param(
+                500,
+                None,
+                True,
+                RefreshableGetterError,
+                {"ip": "1.2.3.4"},
+                {
+                    "ip": "1.2.3.4",
+                    "tags": ["_network_comparison_failure"],
+                },
+                {},
+                id="http-500-marks-rule-as-failed",
+            ),
+            pytest.param(
+                200,
+                "1.2.3.4\n",
+                False,
+                None,
+                {"ip": "1.2.3.4"},
+                {
+                    "ip": "1.2.3.4",
+                    "ip_results": {"in_list": ["bad_ips.list"]},
+                },
+                {"bad_ips.list": {IPv4Network("1.2.3.4/32")}},
+                id="http-200-clears-rule-failure",
+            ),
+        ],
+    )
+    @responses.activate
+    def test_network_comparison_http_getter_updates_failure_state_from_get_result(
+        self,
+        http_status,
+        http_body,
+        expected_is_failed,
+        expected_error_type,
+        document,
+        expected_document,
+        expected_compare_sets,
+    ):
+        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=http_status,
+            body=http_body,
+        )
+
+        rule_dict = {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["bad_ips.list"],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "network_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        processor.process(document)
+
+        is_failed, data_error = rule.is_failed()
+        assert is_failed is expected_is_failed
+
+        if expected_error_type is None:
+            assert data_error is None
+        else:
+            assert isinstance(data_error, expected_error_type)
+
+        assert rule.compare_sets == expected_compare_sets
+        assert document == expected_document
+        assert responses.calls[0].request.url == url
