@@ -4,6 +4,7 @@
 * list_comparison, network_comparison: continue processing with failure tags after HTTP list get or refresh errors
 
 ### Features
+* allows extracting a JSON subtree from HTTPGetter content via a configurable content_field for list and network comparisons.
 
 ### Improvements
 * remove pre-releases
