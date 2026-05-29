@@ -100,7 +100,7 @@ class Getter(ABC):
             case "text/plain" | None:
                 return content
             case _:
-                logger.warning("Unexpected content type.")
+                logger.info("Unexpected content type: %s", content_type)
                 return content
 
     @staticmethod
@@ -169,7 +169,10 @@ class Getter(ABC):
         if isinstance(content, dict) and content_field is not None:
             content = content[content_field]
         elif content_field is not None:
-            raise ValueError("Expected mapping type, like json for content.")
+            raise ValueError(
+                "Expected mapping type, like json object when content_field is set, got %s.",
+                type(content),
+            )
 
         if isinstance(content, str):
             content = self._parse_newline_separated_list(content)

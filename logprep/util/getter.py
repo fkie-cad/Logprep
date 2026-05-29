@@ -15,7 +15,6 @@ from typing import ClassVar
 from urllib.parse import urlparse
 
 import requests
-from aiohttp.web_fileresponse import content_type
 from attrs import define, field, validators
 from requests import Response
 from schedule import Scheduler
@@ -364,7 +363,7 @@ class FileGetter(Getter):
             case ".json":
                 return raw_content, "application/json"
             case ".yml":
-                return raw_content, "text/yaml"
+                return raw_content, "application/yaml"
             case _:
                 return raw_content, None
 

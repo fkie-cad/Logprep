@@ -222,9 +222,7 @@ class TestFileGetter:
         [
             (
                 "get_list",
-                b"""list_element_1
-list_element_2
-""",
+                b"list_element_1\nlist_element_2",
                 ["list_element_1", "list_element_2"],
             ),
             (

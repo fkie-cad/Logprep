@@ -43,7 +43,6 @@ target field :code:`List_comparison.example`.
 
 import os.path
 from string import Template
-from typing import List, Optional
 
 from attrs import define, field, validators
 
@@ -61,7 +60,7 @@ class ListComparisonRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for ListComparisonRule"""
 
-        list_file_paths: List[str] = field(
+        list_file_paths: list[str] = field(
             validator=validators.deep_iterable(member_validator=validators.instance_of(str))
         )
         """List of files. For string format see :ref:`getters`.
@@ -143,7 +142,7 @@ class ListComparisonRule(FieldManagerRule):
             return self._config.list_search_base_path
         return list_search_base_path
 
-    def init_list_comparison(self, list_search_base_path: Optional[str] = None):
+    def init_list_comparison(self, list_search_base_path: str | None = None):
         """init method for list_comparison lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         if list_search_base_path.startswith("http"):

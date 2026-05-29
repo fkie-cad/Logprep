@@ -44,7 +44,6 @@ target field :code:`network_comparison.example`.
 """
 
 from ipaddress import ip_network
-from typing import List, Optional
 
 from attrs import define, field, validators
 
@@ -62,7 +61,7 @@ class NetworkComparisonRule(ListComparisonRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for NetworkComparisonRule"""
 
-        list_file_paths: List[str] = field(
+        list_file_paths: list[str] = field(
             validator=validators.deep_iterable(member_validator=validators.instance_of(str))
         )
         """List of files. For string format see :ref:`getters`.
@@ -127,7 +126,7 @@ class NetworkComparisonRule(ListComparisonRule):
                     Reads the list from the ``"content"`` key of the JSON object.
         """
 
-    def init_list_comparison(self, list_search_base_path: Optional[str] = None) -> None:
+    def init_list_comparison(self, list_search_base_path: str | None = None) -> None:
         """init method for list_comparison lists"""
         super().init_list_comparison(list_search_base_path)
         self._convert_compare_sets_to_networks()
