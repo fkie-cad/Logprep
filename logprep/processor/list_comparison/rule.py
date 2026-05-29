@@ -92,7 +92,6 @@ class ListComparisonRule(FieldManagerRule):
             converter=lambda value: None if value == "" else value,
             default=None,
         )
-        """Content field will be used to access the subkey."""
 
     def __init__(
         self,

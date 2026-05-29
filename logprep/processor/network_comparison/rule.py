@@ -93,7 +93,7 @@ class NetworkComparisonRule(ListComparisonRule):
             converter=lambda value: None if value == "" else value,
             default=None,
         )
-        """Content field will be used to access the subkey."""
+        """Optional key used to extract the list from json HTTP content."""
 
     def init_list_comparison(self, list_search_base_path: Optional[str] = None) -> None:
         """init method for list_comparison lists"""
