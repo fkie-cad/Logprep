@@ -389,11 +389,11 @@ Hans
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
         [
-            # pytest.param(["Franz", "Heinz", "Hans"], ""),
-            # pytest.param(["Franz", "Heinz", "Hans"], None),
-            # pytest.param(
-            #    ["Franz", "Heinz", "Hans"], NOT_SET, id="no_content_field_entry_in_config"
-            # ),
+            pytest.param(["Franz", "Heinz", "Hans"], ""),
+            pytest.param(["Franz", "Heinz", "Hans"], None),
+            pytest.param(
+                ["Franz", "Heinz", "Hans"], NOT_SET, id="no_content_field_entry_in_config"
+            ),
             pytest.param({"content": ["Franz", "Heinz", "Hans"]}, "content"),
             pytest.param({"_": ["Franz", "Heinz", "Hans"]}, "_"),
         ],
