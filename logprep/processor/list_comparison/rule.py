@@ -92,6 +92,39 @@ class ListComparisonRule(FieldManagerRule):
             converter=lambda value: None if value == "" else value,
             default=None,
         )
+        """
+        Optional JSON key used to extract the list values from loaded content.
+
+        Example:
+            Given the following JSON content:
+
+            .. code-block:: json
+
+               {
+                   "content": ["Jane", "Julia"]
+               }
+
+            Set ``content_field`` to ``"content"`` to use the value of this key
+            as the comparison list.
+
+        Note:
+            Setting ``content_field`` requires mapping-like JSON content. Non-JSON
+            content, or JSON content that does not resolve to a mapping, fails with an
+            error.
+
+            An empty ``content_field`` is treated as unset, so the list is expected at
+            the root of the JSON content.
+
+            Examples:
+                ``content_field: ""``
+                    Is converted to ``None`` and reads the list from the JSON root.
+
+                ``content_field: null``
+                    Is treated as ``None`` and reads the list from the JSON root.
+
+                ``content_field: "content"``
+                    Reads the list from the ``"content"`` key of the JSON object.
+        """
 
     def __init__(
         self,
