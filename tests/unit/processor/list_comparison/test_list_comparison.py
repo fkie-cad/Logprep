@@ -21,6 +21,9 @@ from logprep.util.getter import (
 )
 from tests.unit.processor.base import BaseProcessorTestCase
 
+NOT_SET = object()
+"""A sentinel object to indicate that a value has not been provided."""
+
 
 class TestListComparison(BaseProcessorTestCase):
     CONFIG = {
@@ -298,6 +301,10 @@ Hans
         ("json_content", "content_field"),
         [
             pytest.param(["Franz", "Heinz", "Hans"], ""),
+            pytest.param(["Franz", "Heinz", "Hans"], None),
+            pytest.param(
+                ["Franz", "Heinz", "Hans"], NOT_SET, id="no_content_field_entry_in_config"
+            ),
             pytest.param({"content": ["Franz", "Heinz", "Hans"]}, "content"),
             pytest.param({"_": ["Franz", "Heinz", "Hans"]}, "_"),
         ],
@@ -316,10 +323,13 @@ Hans
                 "source_fields": ["user"],
                 "target_field": "user_results",
                 "list_file_paths": ["bad_users.list"],
-                "content_field": content_field,
             },
             "description": "",
         }
+
+        if content_field is not NOT_SET:
+            rule_dict["list_comparison"] |= {"content_field": content_field}
+
         config = {
             "type": "list_comparison",
             "rules": [],
@@ -338,7 +348,9 @@ Hans
         ("json_content", "content_field"),
         [
             pytest.param({None: ["Franz", "Heinz", "Hans"]}, ""),
+            pytest.param({None: ["Franz", "Heinz", "Hans"]}, None),
             pytest.param({"": ["Franz", "Heinz", "Hans"]}, ""),
+            pytest.param({"": ["Franz", "Heinz", "Hans"]}, None),
         ],
     )
     @responses.activate
