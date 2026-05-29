@@ -415,72 +415,37 @@ Heinz
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
         [
-            pytest.param(["Franz", "Heinz", "Hans"], ""),
-            pytest.param({"content": ["Franz", "Heinz", "Hans"]}, "content"),
-            pytest.param({"_": ["Franz", "Heinz", "Hans"]}, "_"),
-        ],
-    )
-    @responses.activate
-    def test_list_comparison_loads_json_list(self, json_content, content_field):
-        responses.add(
-            responses.GET,
-            "http://localhost:8080/v2/valuestore/test_4",
-            json.dumps(json_content),
-            content_type="application/json",
-        )
-        rule_dict = {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["bad_users.list"],
-                "content_field": content_field,
-            },
-            "description": "",
-        }
-        config = {
-            "type": "ng_list_comparison",
-            "rules": [],
-            "list_search_base_path": "http://localhost:8080/v2/valuestore/test_4",
-        }
-
-        HttpGetter._shared.clear()
-
-        processor = Factory.create({"custom_lister": config})
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-        processor.setup()
-        assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
-
-    @pytest.mark.parametrize(
-        ("json_content", "content_field"),
-        [
             pytest.param({None: ["Franz", "Heinz", "Hans"]}, ""),
+            pytest.param({None: ["Franz", "Heinz", "Hans"]}, None),
             pytest.param({"": ["Franz", "Heinz", "Hans"]}, ""),
+            pytest.param({"": ["Franz", "Heinz", "Hans"]}, None),
         ],
     )
-    @responses.activate
-    def test_list_comparison_fail_on_json_list_load(self, json_content, content_field):
-        responses.add(
-            responses.GET,
-            "http://localhost:8080/v2/valuestore/test_4",
-            json.dumps(json_content),
-            content_type="application/json",
-        )
+    def test_list_comparison_fail_on_json_list_load_from_file(
+        self, json_content, content_field, tmp_path
+    ):
+        file_content = json.dumps(json_content)
+        file_name = "file.json"
+        file_root_path = tmp_path
+        file_path = file_root_path / file_name
+
+        with open(file_path, "w") as f:
+            f.write(file_content)
+
         rule_dict = {
             "filter": "user",
             "list_comparison": {
                 "source_fields": ["user"],
                 "target_field": "user_results",
-                "list_file_paths": ["bad_users.list"],
+                "list_file_paths": [file_name],
                 "content_field": content_field,
             },
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
-            "list_search_base_path": "http://localhost:8080/v2/valuestore/test_4",
+            "list_search_base_path": str(file_root_path),
         }
 
         HttpGetter._shared.clear()
