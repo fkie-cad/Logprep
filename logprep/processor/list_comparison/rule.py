@@ -141,6 +141,7 @@ class ListComparisonRule(FieldManagerRule):
             self.clear_failed()
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
+        content_field = self._config.content_field
         absolute_list_paths = [
             list_path for list_path in self._config.list_file_paths if list_path.startswith("/")
         ]
@@ -153,7 +154,9 @@ class ListComparisonRule(FieldManagerRule):
         ]
         list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
         for list_path in list_paths:
-            compare_elements = GetterFactory.from_string(list_path).get_list()
+            compare_elements = GetterFactory.from_string(list_path).get_list(
+                content_field=content_field
+            )
             file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)
             self._compare_sets.update({filename: set(file_elem_tuples)})

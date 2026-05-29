@@ -9,12 +9,14 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import cached_property
 from importlib.metadata import version
+from lib2to3.btm_utils import reduce_tree
 from pathlib import Path
 from string import Template
 from typing import ClassVar
 from urllib.parse import urlparse
 
 import requests
+from aiohttp.web_fileresponse import content_type
 from attrs import define, field, validators
 from requests import Response
 from schedule import Scheduler
@@ -354,7 +356,18 @@ class FileGetter(Getter):
         content type, which defaults currently to None."""
 
         path = Path(self.target)
-        return path.read_bytes(), None
+
+        content_bytes = path.read_bytes()
+
+        match path.suffix:
+            case ".txt":
+                return content_bytes, "text/plain"
+            case ".json":
+                return content_bytes, "application/json"
+            case ".yml":
+                return content_bytes, "text/yaml"
+            case _:
+                raise ValueError(f"FileGetter: Not supported file type '{path.suffix}'")
 
 
 @define(kw_only=True)

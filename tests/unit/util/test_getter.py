@@ -218,8 +218,15 @@ class TestFileGetter:
             assert content == b"my content"
 
     @pytest.mark.parametrize(
-        "method_name, input_content, expected_output",
+        ("method_name", "input_content", "expected_output"),
         [
+            (
+                "get_list",
+                b"""list_element_1
+list_element_2
+""",
+                ["list_element_1", "list_element_2"],
+            ),
             (
                 "get_yaml",
                 b"""---
