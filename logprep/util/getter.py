@@ -356,17 +356,17 @@ class FileGetter(Getter):
 
         path = Path(self.target)
 
-        content_bytes = path.read_bytes()
+        raw_content = path.read_bytes()
 
         match path.suffix:
             case ".txt":
-                return content_bytes, "text/plain"
+                return raw_content, "text/plain"
             case ".json":
-                return content_bytes, "application/json"
+                return raw_content, "application/json"
             case ".yml":
-                return content_bytes, "text/yaml"
+                return raw_content, "text/yaml"
             case _:
-                return content_bytes, None
+                return raw_content, None
 
 
 @define(kw_only=True)
