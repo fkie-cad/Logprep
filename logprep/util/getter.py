@@ -367,7 +367,7 @@ class FileGetter(Getter):
             case ".yml":
                 return content_bytes, "text/yaml"
             case _:
-                raise ValueError(f"FileGetter: Not supported file type '{path.suffix}'")
+                return content_bytes, None
 
 
 @define(kw_only=True)
