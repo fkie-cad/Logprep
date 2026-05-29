@@ -1,6 +1,7 @@
 ## Upcoming Changes
 ### Breaking
 * chart: change default deployment strategy to RollingUpdate
+* list_comparison, network_comparison: continue processing with failure tags after HTTP list get or refresh errors
 
 ### Features
 

@@ -119,15 +119,22 @@ class ListComparisonRule(FieldManagerRule):
                 {**os.environ, **{"LOGPREP_LIST": list_path}}
             )
             http_getter = GetterFactory.from_string(list_search_base_path_resolved)
+
             if not isinstance(http_getter, HttpGetter):
                 raise TypeError(f"The target {list_search_base_path_resolved} must be a url")
-            self._update_compare_sets_via_http(http_getter, list_path)
+
             http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
+            self._update_compare_sets_via_http(http_getter, list_path)
 
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
-        content = http_getter.get_list()
-        file_elem_tuples = (elem for elem in content if not elem.startswith("#"))
-        self._compare_sets.update({list_path: set(file_elem_tuples)})
+        try:
+            content = http_getter.get_list()
+            file_elements = (elem for elem in content if not elem.startswith("#"))
+            self._compare_sets.update({list_path: set(file_elements)})
+        except Exception as ex:
+            self.mark_failed(error=ex)
+        else:
+            self.clear_failed()
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
         absolute_list_paths = [
@@ -150,3 +157,8 @@ class ListComparisonRule(FieldManagerRule):
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
         return self._compare_sets
+
+    @property
+    def failure_tags(self) -> list[str]:
+        """Returns the failure tags"""
+        return self._config.tag_on_failure

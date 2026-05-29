@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import json
+import time
+from ipaddress import IPv4Network
 from pathlib import Path
 from string import Template
 from unittest import mock
@@ -11,7 +13,12 @@ import responses
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter
+from logprep.util.getter import (
+    GetterFactory,
+    HttpGetter,
+    RefreshableGetterError,
+    refresh_getters,
+)
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -487,3 +494,237 @@ Heinz
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
         assert rule.compare_sets[list_name] == expected_result
+
+    @responses.activate
+    def test_list_comparison_process_adds_failure_tag_if_http_list_returns_500(
+        self,
+        caplog,
+    ):
+        document = {"user": "Foo"}
+        expected = {
+            "tags": ["_list_comparison_failure"],
+            "user": "Foo",
+        }
+        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+        list_name = "bad_users.list"
+        url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=500,
+        )
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        captured_sessions = []
+        original_get_requests_session = HttpGetter._get_requests_session
+
+        def capture_session(self):
+            session = original_get_requests_session(self)
+            captured_sessions.append(session)
+            return session
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        assert rule.data_error is None
+
+        with mock.patch.object(
+            HttpGetter,
+            "_get_requests_session",
+            autospec=True,
+            side_effect=capture_session,
+        ):
+            processor.setup()
+
+        data_error = rule.data_error
+        assert isinstance(data_error, RefreshableGetterError)
+
+        assert captured_sessions
+
+        session = captured_sessions[0]
+        adapter = session.get_adapter(url)
+        retries = adapter.max_retries
+
+        assert retries.total == 3
+        assert 500 in retries.status_forcelist
+
+        assert "Caused by ResponseError('too many 500 error responses'))" in caplog.text
+        assert "ListComparisonRule failed" in caplog.text
+
+        processor.process(document)
+
+        assert document == expected
+        assert len(responses.calls) == retries.total + 1
+        assert responses.calls[0].request.url == url
+        assert rule.compare_sets == {}
+
+    @responses.activate
+    def test_list_comparison_recovers_after_failed_http_getter_setup(
+        self,
+    ):
+        document = {"user": "Foo"}
+        expected_failed_document = {
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
+        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+        list_name = "bad_users.list"
+        url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=500,
+        )
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        processor.process(document)
+
+        data_error = rule.data_error
+        assert isinstance(data_error, RefreshableGetterError)
+        assert document == expected_failed_document
+        assert rule.compare_sets == {}
+        assert responses.calls[-1].request.url == url
+        assert responses.calls[-1].response.status_code == 500
+
+        # recovered case:
+        responses.replace(
+            responses.GET,
+            url=url,
+            body="Foo\n",
+            status=200,
+        )
+
+        document = {"user": "Foo"}
+        expected_recovered_document = {
+            "user": "Foo",
+            "user_results": {"in_list": [list_name]},
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        processor.process(document)
+
+        assert rule.data_error is None
+        assert document == expected_recovered_document
+        assert rule.compare_sets == {list_name: {"Foo"}}
+        assert responses.calls[-1].request.url == url
+        assert responses.calls[-1].response.status_code == 200
+
+    @responses.activate
+    def test_list_comparison_recovers_after_failed_http_getter_while_processing(
+        self,
+        tmp_path,
+    ):
+        document = {"user": "Foo"}
+        expected_failed_document = {
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
+        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+        list_name = "bad_users.list"
+        url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=500,
+        )
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        getter_file_content = {url.removeprefix("http://"): {"refresh_interval": 1}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            processor = Factory.create({"custom_lister": config})
+            rule = processor.rule_class.create_from_dict(rule_dict)
+            processor._rule_tree.add_rule(rule)
+
+            processor.setup()
+            processor.process(document)
+
+            data_error = rule.data_error
+            assert isinstance(data_error, RefreshableGetterError)
+            assert document == expected_failed_document
+            assert rule.compare_sets == {}
+            assert responses.calls[-1].request.url == url
+            assert responses.calls[-1].response.status_code == 500
+
+            # recovered case:
+            responses.replace(
+                responses.GET,
+                url=url,
+                body="Foo\n",
+                status=200,
+            )
+
+            time.sleep(2)
+            refresh_getters()
+
+            assert rule.data_error is None
+            assert responses.calls[-1].request.url == url
+            assert responses.calls[-1].response.status_code == 200

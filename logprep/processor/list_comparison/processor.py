@@ -31,6 +31,7 @@ from attrs import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import (
+    FieldValue,
     add_fields_to,
     get_dotted_field_value,
     join_dotted_fields,
@@ -58,7 +59,7 @@ class ListComparison(Processor):
         for rule in self.rules:
             rule.init_list_comparison(self._config.list_search_base_path)
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict[str, FieldValue], rule: ListComparisonRule) -> None:
         """
         Apply matching rule to given log event.
         In the process of doing so, add the result of comparing

@@ -150,7 +150,7 @@ class RuleTree:
         except Exception as error:  # pylint: disable=broad-except
             logger.warning(
                 'Error parsing rule "%s.yml": %s: %s. Ignore and continue with next rule.',
-                rule.file_name,
+                rule.file_name if rule is not None else None,
                 type(error).__name__,
                 error,
             )

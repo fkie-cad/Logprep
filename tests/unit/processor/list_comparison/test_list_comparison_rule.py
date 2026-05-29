@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-# pylint: disable=no-self-use
 from unittest import mock
 
 import pytest
@@ -103,11 +102,14 @@ class TestListComparisonRule:
         assert isinstance(rule.compare_sets, dict)
         assert len(rule.compare_sets.keys()) > 0
 
-    @mock.patch(
-        "logprep.processor.list_comparison.rule.GetterFactory.from_string",
-        return_value=mock.MagicMock(),
+    @pytest.mark.parametrize(
+        ("url", "will_fail"),
+        [
+            pytest.param("something", True),
+            pytest.param("https://something", False),
+        ],
     )
-    def test_expects_refreshable_getter(self, _):
+    def test_expects_refreshable_getter(self, url, will_fail):
         rule_definition = {
             "filter": "user",
             "list_comparison": {
@@ -117,6 +119,13 @@ class TestListComparisonRule:
             },
         }
         rule = ListComparisonRule.create_from_dict(rule_definition)
-        url = "http://something"
-        with pytest.raises(TypeError, match=f"The target {url} must be a url"):
-            rule._init_list_comparison_from_http(url)
+
+        with mock.patch(
+            "logprep.processor.list_comparison.rule.ListComparisonRule._update_compare_sets_via_http",
+            return_value=mock.MagicMock(),
+        ):
+            if will_fail:
+                with pytest.raises(TypeError, match=f"The target {url} must be a url"):
+                    rule._init_list_comparison_from_http(url)
+            else:
+                rule._init_list_comparison_from_http(url)
