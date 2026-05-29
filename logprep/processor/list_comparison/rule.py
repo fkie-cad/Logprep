@@ -163,8 +163,7 @@ class ListComparisonRule(FieldManagerRule):
 
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
         try:
-            content_field = self._config.content_field
-            content = http_getter.get_list(content_field=content_field)
+            content = http_getter.get_list(content_field=self._config.content_field)
             file_elements = (elem for elem in content if not elem.startswith("#"))
             self._compare_sets.update({list_path: set(file_elements)})
         except Exception as ex:
