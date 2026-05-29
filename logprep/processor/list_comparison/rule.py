@@ -166,8 +166,8 @@ class ListComparisonRule(FieldManagerRule):
         try:
             content_field = self._config.content_field
             content = http_getter.get_list(content_field=content_field)
-            file_elem_tuples = (elem for elem in content if not elem.startswith("#"))
-            self._compare_sets.update({list_path: set(file_elem_tuples)})
+            file_elements = (elem for elem in content if not elem.startswith("#"))
+            self._compare_sets.update({list_path: set(file_elements)})
         except Exception as ex:
             self.mark_failed(error=ex)
         else:
@@ -190,9 +190,9 @@ class ListComparisonRule(FieldManagerRule):
             compare_elements = GetterFactory.from_string(list_path).get_list(
                 content_field=content_field
             )
-            file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
+            file_elements = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)
-            self._compare_sets.update({filename: set(file_elem_tuples)})
+            self._compare_sets.update({filename: set(file_elements)})
 
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
