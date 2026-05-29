@@ -43,7 +43,6 @@ target field :code:`List_comparison.example`.
 
 import os.path
 from string import Template
-from typing import List, Optional
 
 from attrs import define, field, validators
 
@@ -61,7 +60,7 @@ class ListComparisonRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for ListComparisonRule"""
 
-        list_file_paths: List[str] = field(
+        list_file_paths: list[str] = field(
             validator=validators.deep_iterable(member_validator=validators.instance_of(str))
         )
         """List of files. For string format see :ref:`getters`.
@@ -87,6 +86,44 @@ class ListComparisonRule(FieldManagerRule):
         will be filled by this processor. """
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+        content_field: str | None = field(
+            validator=validators.optional(validators.instance_of(str)),
+            converter=lambda value: None if value == "" else value,
+            default=None,
+        )
+        """
+        Optional JSON key used to extract the list values from loaded content.
+
+        Example:
+            Given the following JSON content:
+
+            .. code-block:: json
+
+               {
+                   "content": ["Jane", "Julia"]
+               }
+
+            Set ``content_field`` to ``"content"`` to use the value of this key
+            as the comparison list.
+
+        Note:
+            Setting ``content_field`` requires mapping-like JSON content. Non-JSON
+            content, or JSON content that does not resolve to a mapping, fails with an
+            error.
+
+            An empty ``content_field`` is treated as unset, so the list is expected at
+            the root of the JSON content.
+
+            Examples:
+                ``content_field: ""``
+                    Is converted to ``None`` and reads the list from the JSON root.
+
+                ``content_field: null``
+                    Is treated as ``None`` and reads the list from the JSON root.
+
+                ``content_field: "content"``
+                    Reads the list from the ``"content"`` key of the JSON object.
+        """
 
     def __init__(
         self,
@@ -105,7 +142,7 @@ class ListComparisonRule(FieldManagerRule):
             return self._config.list_search_base_path
         return list_search_base_path
 
-    def init_list_comparison(self, list_search_base_path: Optional[str] = None):
+    def init_list_comparison(self, list_search_base_path: str | None = None):
         """init method for list_comparison lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         if list_search_base_path.startswith("http"):
@@ -119,16 +156,14 @@ class ListComparisonRule(FieldManagerRule):
                 {**os.environ, **{"LOGPREP_LIST": list_path}}
             )
             http_getter = GetterFactory.from_string(list_search_base_path_resolved)
-
             if not isinstance(http_getter, HttpGetter):
                 raise TypeError(f"The target {list_search_base_path_resolved} must be a url")
-
-            http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
             self._update_compare_sets_via_http(http_getter, list_path)
+            http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
 
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
         try:
-            content = http_getter.get_list()
+            content = http_getter.get_list(content_field=self._config.content_field)
             file_elements = (elem for elem in content if not elem.startswith("#"))
             self._compare_sets.update({list_path: set(file_elements)})
         except Exception as ex:
@@ -137,6 +172,7 @@ class ListComparisonRule(FieldManagerRule):
             self.clear_failed()
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
+        content_field = self._config.content_field
         absolute_list_paths = [
             list_path for list_path in self._config.list_file_paths if list_path.startswith("/")
         ]
@@ -149,10 +185,12 @@ class ListComparisonRule(FieldManagerRule):
         ]
         list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
         for list_path in list_paths:
-            compare_elements = GetterFactory.from_string(list_path).get_list()
-            file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
+            compare_elements = GetterFactory.from_string(list_path).get_list(
+                content_field=content_field
+            )
+            file_elements = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)
-            self._compare_sets.update({filename: set(file_elem_tuples)})
+            self._compare_sets.update({filename: set(file_elements)})
 
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring

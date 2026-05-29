@@ -44,7 +44,6 @@ target field :code:`network_comparison.example`.
 """
 
 from ipaddress import ip_network
-from typing import Optional, List
 
 from attrs import define, field, validators
 
@@ -62,7 +61,7 @@ class NetworkComparisonRule(ListComparisonRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for NetworkComparisonRule"""
 
-        list_file_paths: List[str] = field(
+        list_file_paths: list[str] = field(
             validator=validators.deep_iterable(member_validator=validators.instance_of(str))
         )
         """List of files. For string format see :ref:`getters`.
@@ -88,8 +87,46 @@ class NetworkComparisonRule(ListComparisonRule):
         will be filled by this processor. """
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+        content_field: str | None = field(
+            validator=validators.optional(validators.instance_of(str)),
+            converter=lambda value: None if value == "" else value,
+            default=None,
+        )
+        """
+        Optional JSON key used to extract the list values from loaded content.
 
-    def init_list_comparison(self, list_search_base_path: Optional[str] = None) -> None:
+        Example:
+            Given the following JSON content:
+
+            .. code-block:: json
+
+               {
+                   "content": ["Jane", "Julia"]
+               }
+
+            Set ``content_field`` to ``"content"`` to use the value of this key
+            as the comparison list.
+
+        Note:
+            Setting ``content_field`` requires mapping-like JSON content. Non-JSON
+            content, or JSON content that does not resolve to a mapping, fails with an
+            error.
+
+            An empty ``content_field`` is treated as unset, so the list is expected at
+            the root of the JSON content.
+
+            Examples:
+                ``content_field: ""``
+                    Is converted to ``None`` and reads the list from the JSON root.
+
+                ``content_field: null``
+                    Is treated as ``None`` and reads the list from the JSON root.
+
+                ``content_field: "content"``
+                    Reads the list from the ``"content"`` key of the JSON object.
+        """
+
+    def init_list_comparison(self, list_search_base_path: str | None = None) -> None:
         """init method for list_comparison lists"""
         super().init_list_comparison(list_search_base_path)
         self._convert_compare_sets_to_networks()

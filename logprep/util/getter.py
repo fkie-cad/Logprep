@@ -354,7 +354,18 @@ class FileGetter(Getter):
         content type, which defaults currently to None."""
 
         path = Path(self.target)
-        return path.read_bytes(), None
+
+        raw_content = path.read_bytes()
+
+        match path.suffix:
+            case ".txt":
+                return raw_content, "text/plain"
+            case ".json":
+                return raw_content, "application/json"
+            case ".yml":
+                return raw_content, "application/yaml"
+            case _:
+                return raw_content, None
 
 
 @define(kw_only=True)

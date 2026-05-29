@@ -4,6 +4,8 @@
 * list_comparison, network_comparison: continue processing with failure tags after HTTP list get or refresh errors
 
 ### Features
+* allow list and network comparisons to extract list values from configurable JSON fields via `content_field`
+* add basic `FileGetter` content type support for `.txt`, `.json`, and `.yml` files
 
 ### Improvements
 * remove pre-releases
