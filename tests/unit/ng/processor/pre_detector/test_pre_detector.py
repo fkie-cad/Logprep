@@ -8,8 +8,8 @@ import pytest
 from deepdiff import DeepDiff
 
 from logprep.ng.abc.event import EventMetadata, LogEvent
-from logprep.ng.processor.pre_detector.sre_event import SreEvent
 from logprep.ng.processor.pre_detector.processor import PreDetector
+from logprep.ng.processor.pre_detector.sre_event import SreEvent
 from logprep.util.helper import get_dotted_field_value
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
@@ -315,6 +315,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             assert detection_result.pop("creation_timestamp")
 
         pre_detection_id = event.data.pop("pre_detection_id", None)
+        assert isinstance(pre_detection_id, str)
 
         assert pre_detection_id is not None
         assert self.uuid_pattern.search(pre_detection_id)
