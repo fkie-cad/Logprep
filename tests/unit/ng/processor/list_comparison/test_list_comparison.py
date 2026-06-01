@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 import json
 import time
+import typing
 from pathlib import Path
 from string import Template
 from unittest import mock
@@ -11,6 +12,7 @@ import responses
 
 from logprep.factory import Factory
 from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.processor import Processor
 from logprep.ng.processor.list_comparison.processor import ListComparison
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
@@ -321,7 +323,7 @@ Hans
             "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         await processor.setup()
@@ -368,7 +370,7 @@ Heinz
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
         with mock.patch.dict("os.environ", mock_env):
-            processor = Factory.create({"custom_lister": config})
+            processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)
 
@@ -765,7 +767,7 @@ Heinz
             "rules": [],
             "list_search_base_path": self.CONFIG["list_search_base_path"],
         }
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         await processor.setup()
@@ -781,7 +783,7 @@ Heinz
             pytest.param({"": ["Franz", "Heinz", "Hans"]}, None),
         ],
     )
-    def test_list_comparison_fail_on_json_list_load_from_file(
+    async def test_list_comparison_fail_on_json_list_load_from_file(
         self, json_content, content_field, tmp_path
     ):
         file_content = json.dumps(json_content)
@@ -803,27 +805,27 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "list_comparison",
+            "type": "ng_list_comparison",
             "rules": [],
             "list_search_base_path": str(file_root_path),
         }
 
         HttpGetter._shared.clear()
 
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
         with pytest.raises(ValueError, match="Content is not a list"):
-            processor.setup()
+            await processor.setup()
 
     @responses.activate
-    def test_list_comparison_process_adds_failure_tag_if_http_list_returns_500(
+    async def test_list_comparison_process_adds_failure_tag_if_http_list_returns_500(
         self,
         caplog,
     ):
         document = {"user": "Foo"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {
             "tags": ["_list_comparison_failure"],
             "user": "Foo",
@@ -864,7 +866,7 @@ Heinz
             captured_sessions.append(session)
             return session
 
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
@@ -876,7 +878,7 @@ Heinz
             autospec=True,
             side_effect=capture_session,
         ):
-            processor.setup()
+            await processor.setup()
 
         assert isinstance(rule.data_error, RefreshableGetterError)
 
@@ -892,7 +894,7 @@ Heinz
         assert "Caused by ResponseError('too many 500 error responses'))" in caplog.text
         assert "ListComparisonRule failed" in caplog.text
 
-        processor.process(log_event)
+        await processor.process(log_event)
 
         assert document == expected
         assert len(responses.calls) == retries.total + 1
@@ -900,11 +902,11 @@ Heinz
         assert rule.compare_sets == {}
 
     @responses.activate
-    def test_list_comparison_recovers_after_failed_http_getter_setup(
+    async def test_list_comparison_recovers_after_failed_http_getter_setup(
         self,
     ):
         document = {"user": "Foo"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected_failed_document = {
             "user": "Foo",
             "tags": ["_list_comparison_failure"],
@@ -937,12 +939,12 @@ Heinz
 
         HttpGetter._shared.clear()
 
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        processor.setup()
-        processor.process(log_event)
+        await processor.setup()
+        await processor.process(log_event)
 
         assert isinstance(rule.data_error, RefreshableGetterError)
         assert document == expected_failed_document
@@ -959,7 +961,7 @@ Heinz
         )
 
         document = {"user": "Foo"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected_recovered_document = {
             "user": "Foo",
             "user_results": {"in_list": [url]},
@@ -967,12 +969,12 @@ Heinz
 
         HttpGetter._shared.clear()
 
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        processor.setup()
-        processor.process(log_event)
+        await processor.setup()
+        await processor.process(log_event)
 
         assert rule.data_error is None
         assert document == expected_recovered_document
@@ -981,12 +983,12 @@ Heinz
         assert responses.calls[-1].response.status_code == 200
 
     @responses.activate
-    def test_list_comparison_recovers_after_failed_http_getter_while_processing(
+    async def test_list_comparison_recovers_after_failed_http_getter_while_processing(
         self,
         tmp_path,
     ):
         document = {"user": "Foo"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected_failed_document = {
             "user": "Foo",
             "tags": ["_list_comparison_failure"],
@@ -1024,12 +1026,12 @@ Heinz
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
         with mock.patch.dict("os.environ", mock_env):
-            processor = Factory.create({"custom_lister": config})
+            processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)
 
-            processor.setup()
-            processor.process(log_event)
+            await processor.setup()
+            await processor.process(log_event)
 
             data_error = rule.data_error
             assert isinstance(data_error, RefreshableGetterError)

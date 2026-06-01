@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import json
+import typing
 from ipaddress import IPv4Network
 from pathlib import Path
 from unittest import mock
@@ -324,7 +325,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         await processor.setup()
@@ -351,7 +352,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "rules": [],
             "list_search_base_path": self.CONFIG["list_search_base_path"],
         }
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         await processor.setup()
@@ -402,7 +403,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
         with mock.patch.dict("os.environ", mock_env):
-            processor = Factory.create({"custom_lister": config})
+            processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)
             await processor.setup()
@@ -487,7 +488,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "rules": [],
             "list_search_base_path": self.CONFIG["list_search_base_path"],
         }
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         await processor.setup()
@@ -495,7 +496,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert document == expected, testcase
 
     @responses.activate
-    def test_network_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
+    async def test_network_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
         failed_document = {"tenant": "acme", "ip": "1.2.3.4"}
         successful_document = {"tenant": "beta", "ip": "1.2.3.4"}
         failed_log_event = LogEvent(failed_document, original=b"")
@@ -537,9 +538,9 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
-        processor.setup()
+        await processor.setup()
 
-        result = processor.process(failed_log_event)
+        result = await processor.process(failed_log_event)
 
         assert failed_document == expected_failed_document
         assert len(result.warnings) == 1
@@ -549,17 +550,18 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert len(HttpGetter._shared[failed_url].callbacks) == 0
         assert len(HttpGetter._shared[failed_url].cleanup_callbacks) == 0
 
-        processor.process(successful_log_event)
+        await processor.process(successful_log_event)
 
         assert successful_document == expected_successful_document
         assert rule.data_error is None
         assert rule.compare_sets == {successful_url: {IPv4Network("1.2.3.4/32")}}
 
     @responses.activate
-    def test_network_comparison_process_adds_failure_tag_if_http_list_request_returns_500(
+    async def test_network_comparison_process_adds_failure_tag_if_http_list_request_returns_500(
         self, caplog
     ):
         document = {"ip": "1.2.3.4"}
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {
             "ip": "1.2.3.4",
             "tags": ["_network_comparison_failure"],
@@ -583,25 +585,25 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         }
 
         config = {
-            "type": "network_comparison",
+            "type": "ng_network_comparison",
             "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
 
         HttpGetter._shared.clear()
 
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
         assert rule.data_error is None
 
-        processor.setup()
+        await processor.setup()
 
         assert "NetworkComparison" in caplog.text
         assert "too many 500 error responses" in caplog.text
 
-        processor.process(document)
+        await processor.process(log_event)
 
         data_error = rule.data_error
         assert isinstance(data_error, RefreshableGetterError)
@@ -611,7 +613,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert responses.calls[0].request.url == url
         assert rule.compare_sets == {}
 
-    def test_network_comparison_logs_warning_on_field_exists_warning(
+    async def test_network_comparison_logs_warning_on_field_exists_warning(
         self,
     ):
         document = {
@@ -619,6 +621,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "ip1": "127.0.0.1",
             "dotted": {"ip_results": ["do_not_look_here"]},
         }
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected = {
             "tags": ["_network_comparison_failure"],
             "dot_ip": "127.0.0.2",
@@ -637,28 +640,28 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         }
 
         config = {
-            "type": "network_comparison",
+            "type": "ng_network_comparison",
             "rules": [],
             "list_search_base_path": self.CONFIG["list_search_base_path"],
         }
 
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
-        processor.setup()
+        await processor.setup()
 
-        result = processor.process(document)
+        result = await processor.process(log_event)
 
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
     @responses.activate
-    def test_network_comparison_recovers_after_failed_http_getter_setup(
+    async def test_network_comparison_recovers_after_failed_http_getter_setup(
         self,
     ):
         document = {"ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected_failed_document = {
             "ip": "1.2.3.4",
             "tags": ["_network_comparison_failure"],
@@ -690,11 +693,11 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
         HttpGetter._shared.clear()
 
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
-        processor.setup()
-        processor.process(log_event)
+        await processor.setup()
+        await processor.process(log_event)
 
         data_error = rule.data_error
         assert isinstance(data_error, RefreshableGetterError)
@@ -713,7 +716,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         )
 
         document = {"ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
         expected_recovered_document = {
             "ip": "1.2.3.4",
             "ip_results": {"in_list": [url]},
@@ -721,12 +724,12 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
         HttpGetter._shared.clear()
 
-        processor = Factory.create({"custom_lister": config})
+        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        processor.setup()
-        processor.process(log_event)
+        await processor.setup()
+        await processor.process(log_event)
 
         assert rule.data_error is None
         assert document == expected_recovered_document
