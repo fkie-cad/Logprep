@@ -22,8 +22,9 @@ from requests.auth import _basic_auth_str
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.framework.pipeline_manager import ThrottlingQueue
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.connector.http.input import HttpInput
-from logprep.ng.abc.event import LogEvent
+from logprep.util import http
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from tests.unit.ng.connector.base import BaseInputTestCase
 
@@ -55,9 +56,8 @@ input:
     return str(credential_file_path)
 
 
-@pytest.mark.skip("fix")
-@mock.patch("logprep.ng.connector.http.input.http.ThreadingHTTPServer", new=mock.MagicMock())
-class TestHttpConnector(BaseInputTestCase):
+@mock.patch("logprep.ng.connector.http.input.http.AsyncHTTPServer", spec=http.AsyncHTTPServer)
+class TestHttpConnector(BaseInputTestCase[HttpInput]):
 
     CONFIG: dict = {
         "type": "ng_http_input",
@@ -86,7 +86,7 @@ class TestHttpConnector(BaseInputTestCase):
     ]
 
     async def async_setup(self):
-        super().async_setup()
+        await super().async_setup()
 
         self.object.pipeline_index = 1
 
@@ -97,7 +97,7 @@ class TestHttpConnector(BaseInputTestCase):
         with mock.patch(
             "logprep.ng.connector.http.input.http.ThreadingHTTPServer", new=mock.MagicMock()
         ):
-            self.object.setup()
+            await self.object.setup()
 
         self.target = self.object.target
         self.client = testing.TestClient(self.object.app)
@@ -105,7 +105,7 @@ class TestHttpConnector(BaseInputTestCase):
     async def async_teardown(self):
         while not self.object.messages.empty():
             self.object.messages.get(timeout=0.001)
-        self.object.shut_down()
+        await self.object.shut_down()
 
     async def test_create_connector(self):
         assert isinstance(self.object, HttpInput)
@@ -209,7 +209,7 @@ class TestHttpConnector(BaseInputTestCase):
     async def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
         self.client.post("/json", json=data)
-        assert self.object.get_next(0.001).data == data
+        assert await self.object.get_next(0.001).data == data
 
     async def test_get_next_returns_first_in_first_out(self):
         data = [
@@ -219,9 +219,9 @@ class TestHttpConnector(BaseInputTestCase):
         ]
         for message in data:
             self.client.post("/json", json=message)
-        assert self.object.get_next(0.001).data == data[0]
-        assert self.object.get_next(0.001).data == data[1]
-        assert self.object.get_next(0.001).data == data[2]
+        assert await self.object.get_next(0.001).data == data[0]
+        assert await self.object.get_next(0.001).data == data[1]
+        assert await self.object.get_next(0.001).data == data[2]
 
     async def test_get_next_returns_first_in_first_out_for_mixed_endpoints(self):
         data = [
@@ -235,12 +235,12 @@ class TestHttpConnector(BaseInputTestCase):
                 self.client.post("/json", json=post_data)
             if endpoint == "plaintext":
                 self.client.post("/plaintext", body=post_data)
-        assert self.object.get_next(0.001).data == data[0].get("data")
-        assert self.object.get_next(0.001).data == {"message": data[1].get("data")}
-        assert self.object.get_next(0.001).data == data[2].get("data")
+        assert await self.object.get_next(0.001).data == data[0].get("data")
+        assert await self.object.get_next(0.001).data == {"message": data[1].get("data")}
+        assert await self.object.get_next(0.001).data == data[2].get("data")
 
     async def test_get_next_returns_none_for_empty_queue(self):
-        assert self.object.get_next(0.001) is None
+        assert await self.object.get_next(0.001) is None
 
     async def test_server_starts_threaded_server(self):
         message = {"message": "my message"}
@@ -256,7 +256,7 @@ class TestHttpConnector(BaseInputTestCase):
         connector_config["metafield_name"] = "custom"
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
-        connector.setup()
+        await connector.setup()
         client = testing.TestClient(connector.app)
         resp = client.post("/json", json=message)
         assert resp.status_code == 200
@@ -274,7 +274,7 @@ class TestHttpConnector(BaseInputTestCase):
         connector_config.update(updated_config)
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
-        connector.setup()
+        await connector.setup()
         client = testing.TestClient(connector.app)
         resp = client.post("/json", json=message)
         assert resp.status_code == 200
@@ -308,7 +308,7 @@ class TestHttpConnector(BaseInputTestCase):
         connector_config.update(updated_config)
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
-        connector.setup()
+        await connector.setup()
         client = testing.TestClient(connector.app)
         resp = client.post("/json", json=message)
         assert resp.status_code == 200
@@ -322,14 +322,14 @@ class TestHttpConnector(BaseInputTestCase):
         connector_config["uvicorn_config"]["port"] = 9001
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
-        connector.setup()
+        await connector.setup()
         client = testing.TestClient(connector.app)
         resp = client.post("/json", json=message)
         assert resp.status_code == 200
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
-        connector.setup()
+        await connector.setup()
         resp = client.post("/json", json=message)
         assert resp.status_code == 200
 
@@ -348,7 +348,7 @@ class TestHttpConnector(BaseInputTestCase):
         )
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
-        connector.setup()
+        await connector.setup()
         test_event = "the content"
         self.client.post("/plaintext", body=test_event)
 
@@ -361,8 +361,9 @@ class TestHttpConnector(BaseInputTestCase):
                 },
             },
             original=b"",
+            metadata=EventMetadata(),
         )
-        connector_next_msg = connector.get_next(1)
+        connector_next_msg = await connector.get_next(1)
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
 
     async def test_endpoint_returns_401_if_authorization_not_provided(self, credentials_file_path):
@@ -371,7 +372,7 @@ class TestHttpConnector(BaseInputTestCase):
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
-            new_connector.setup()
+            await new_connector.setup()
             client = testing.TestClient(new_connector.app)
             resp = client.post("/auth-json-file", body=json.dumps(data))
             assert resp.status_code == 401
@@ -382,7 +383,7 @@ class TestHttpConnector(BaseInputTestCase):
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
-            new_connector.setup()
+            await new_connector.setup()
             headers = {"Authorization": _basic_auth_str("wrong", "credentials")}
             client = testing.TestClient(new_connector.app, headers=headers)
             resp = client.post("/auth-json-file", body=json.dumps(data))
@@ -396,7 +397,7 @@ class TestHttpConnector(BaseInputTestCase):
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
-            new_connector.setup()
+            await new_connector.setup()
             headers = {"Authorization": _basic_auth_str("user", "file_password")}
             client = testing.TestClient(new_connector.app, headers=headers)
             resp = client.post("/auth-json-file", body=json.dumps(data))
@@ -411,7 +412,7 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector = Factory.create({"test connector": self.CONFIG})
             assert isinstance(new_connector, HttpInput)
             new_connector.pipeline_index = 1
-            new_connector.setup()
+            await new_connector.setup()
             assert new_connector.app
             headers = {"Authorization": _basic_auth_str("user2", "secret_password")}
             client = testing.TestClient(new_connector.app, headers=headers)
@@ -432,7 +433,7 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector = Factory.create({"test connector": self.CONFIG})
             assert isinstance(new_connector, HttpInput)
             new_connector.pipeline_index = 1
-            new_connector.setup()
+            await new_connector.setup()
             assert new_connector.app
             headers = {"Authorization": _basic_auth_str("wrong", "credentials")}
             client = testing.TestClient(new_connector.app, headers=headers)
@@ -447,7 +448,7 @@ class TestHttpConnector(BaseInputTestCase):
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
-            new_connector.setup()
+            await new_connector.setup()
             headers = {"Authorization": _basic_auth_str("user", "secret_password")}
             client = testing.TestClient(new_connector.app, headers=headers)
             resp = client.post("/auth-json-secret", body=json.dumps(data))
@@ -461,7 +462,7 @@ class TestHttpConnector(BaseInputTestCase):
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
-            new_connector.setup()
+            await new_connector.setup()
             headers = {"Authorization": _basic_auth_str("user", "password")}
             client = testing.TestClient(new_connector.app, headers=headers)
             resp = client.post("/auth-json-secret/AB/json", body=json.dumps(data))
@@ -505,7 +506,7 @@ class TestHttpConnector(BaseInputTestCase):
         random_number = random.randint(1, 100)
         for number in range(random_number):
             self.object.messages.put({"message": f"my message{number}"})
-        self.object.get_next(0.001)
+        await self.object.get_next(0.001)
         assert self.object.metrics.message_backlog_size == random_number
 
     async def test_enpoints_count_requests(self):

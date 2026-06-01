@@ -300,7 +300,7 @@ Hans
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
     @responses.activate
-    async def test_list_comparison_loads_rule_using_http_and_updates_with_callback(self):
+    async def test_list_comparison_loads_rule_using_http_and_updates_with_callback(self, tmp_path):
         target = "localhost/tests/testdata/bad_users.list?ref=bla"
         url = f"http://{target}"
         responses.add(
@@ -431,7 +431,7 @@ Heinz
         file_root_path = tmp_path
         file_path = file_root_path / file_name
 
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(file_content)
 
         rule_dict = {
