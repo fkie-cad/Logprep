@@ -106,7 +106,7 @@ from attrs import define, field, validators
 
 from logprep.ng.abc.event import OutputSpec
 from logprep.processor.base.rule import InvalidRuleDefinitionError
-from logprep.ng.processor.field_manager.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_ordered_tuples_with_factory
 from logprep.util.getter import GetterFactory
 

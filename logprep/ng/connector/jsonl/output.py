@@ -24,6 +24,7 @@ from collections.abc import Sequence
 
 from attrs import define, field, validators
 
+from logprep.ng.abc.event import OutputEvent
 from logprep.ng.abc.output import Event, Output
 
 
@@ -90,9 +91,8 @@ class JsonlOutput(Output):
 
         self.events.append(document)
         JsonlOutput._write_json(events_file, document)
-        self.metrics.number_of_processed_events += 1
+        event.stored = True
 
-    async def store(self, events: Sequence[Event]) -> Sequence[Event]:
+    async def store(self, events: Sequence[OutputEvent]) -> None:
         for event in events:
             self._store_single(event)
-        return events

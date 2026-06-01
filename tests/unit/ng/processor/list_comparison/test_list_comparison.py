@@ -3,7 +3,6 @@
 import json
 import time
 import typing
-from pathlib import Path
 from string import Template
 from unittest import mock
 
@@ -301,7 +300,7 @@ Hans
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
     @responses.activate
-    async def test_list_comparison_loads_rule_using_http_and_updates_with_callback(self, tmp_path):
+    async def test_list_comparison_loads_rule_using_http_and_updates_with_callback(self):
         target = "localhost/tests/testdata/bad_users.list?ref=bla"
         url = f"http://{target}"
         responses.add(
@@ -337,7 +336,7 @@ Heinz
         HttpGetter._shared.clear()
 
         getter_file_content = {target: {"refresh_interval": 10}}
-        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
         with mock.patch.dict("os.environ", mock_env):
@@ -663,7 +662,7 @@ Heinz
         HttpGetter._shared.clear()
 
         getter_file_content = {url.removeprefix("http://"): {"refresh_interval": 1}}
-        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
         with mock.patch.dict("os.environ", mock_env):

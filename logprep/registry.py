@@ -8,6 +8,12 @@ from typing import Callable
 
 from logprep.abc.connector import Connector
 from logprep.abc.processor import Processor
+
+<<<<<<< HEAD
+=======
+from logprep.ng.abc.connector import Connector as NgConnector
+
+>>>>>>> 25dbe2b1 (fix mypy issues)
 from logprep.ng.abc.processor import Processor as NgProcessor
 from logprep.processor.base.rule import Rule
 
@@ -24,7 +30,7 @@ def _import_class(
 class Registry:
     """Lazy component registry that imports components only when requested."""
 
-    mapping: dict[str, Callable[[], type[Processor | Connector | NgProcessor]]] = {
+    mapping: dict[str, Callable[[], type[Processor | Connector | NgProcessor | NgConnector]]] = {
         # Processors
         "amides": lambda: _import_class("Amides", "logprep.processor.amides.processor"),
         "calculator": lambda: _import_class("Calculator", "logprep.processor.calculator.processor"),
@@ -232,7 +238,7 @@ class Registry:
     _resolved_classes: dict[str, type[Processor | Connector | NgProcessor]] = {}
 
     @classmethod
-    def get_class(cls, component_type: str) -> type[Processor | Connector | NgProcessor]:
+    def get_class(cls, component_type: str) -> type[Processor | Connector | NgProcessor | NgConnector]:
         """return the processor class for a given type
 
         Parameters

@@ -35,6 +35,7 @@ from logprep.connector.file.input import (
     runtime_file_exceptions,
     threadsafe_wrapper,
 )
+from logprep.ng.abc.event import ErrorEvent, EventMetadata, LogEvent
 from logprep.ng.abc.input import Input
 from logprep.util.validators import file_validator
 
@@ -161,14 +162,14 @@ class FileInput(Input):
             return {"message": input_line}
         return {}
 
-    async def _get_event(self, timeout: float) -> tuple:
+    async def _get_event(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Returns the first message from the threadsafe queue"""
         try:
             message: dict = self._messages.get(timeout=timeout)
             raw_message: bytes = str(message).encode("utf8")
-            return message, raw_message, None
+            return LogEvent(message, original=raw_message, metadata=EventMetadata())
         except queue.Empty:
-            return None, None, None
+            return None
 
     async def setup(self) -> None:
         """Creates and starts the Thread that continuously monitors the given logfile.

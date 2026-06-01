@@ -5,7 +5,6 @@
 import json
 from collections import OrderedDict
 from copy import deepcopy
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -693,7 +692,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         HttpGetter._shared.clear()
 
         getter_file_content = {target: {"refresh_interval": 10}}
-        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
         with patch.dict("os.environ", mock_env):
