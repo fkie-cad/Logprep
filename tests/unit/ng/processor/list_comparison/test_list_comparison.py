@@ -790,7 +790,7 @@ Heinz
         file_root_path = tmp_path
         file_path = file_root_path / file_name
 
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(file_content)
 
         rule_dict = {

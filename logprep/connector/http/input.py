@@ -139,8 +139,8 @@ def basic_auth(func: Callable):
     """Decorator to check basic authentication.
     Will raise 401 on wrong credentials or missing Authorization-Header"""
 
-    @functools.wraps
-    async def func_wrapper(endpoint: HttpEndpoint, req: Request, *args, **kwargs):
+    @functools.wraps(func)
+    async def func_wrapper(endpoint: "HttpEndpoint", req: Request, *args, **kwargs):
         if endpoint.credentials:
             if not req.auth or not isinstance(req.auth, str):
                 raise HTTPUnauthorized
@@ -166,8 +166,8 @@ def basic_auth(func: Callable):
 def raise_request_exceptions(func: Callable):
     """Decorator to wrap http calls and raise exceptions"""
 
-    @functools.wraps
-    async def func_wrapper(endpoint: HttpEndpoint, req: Request, resp: Response, *args, **kwargs):
+    @functools.wraps(func)
+    async def func_wrapper(endpoint: "HttpEndpoint", req: Request, resp: Response, *args, **kwargs):
         try:
             if req.method == "POST":
                 func_wrapper = await func(endpoint, req, resp, *args, **kwargs)
@@ -210,8 +210,8 @@ def add_metadata(func: Callable):
     Uses attribute metafield_name to define key name for metadata
     """
 
-    @functools.wraps
-    async def func_wrapper(endpoint: HttpEndpoint, req: Request, resp: Response, *args, **kwargs):
+    @functools.wraps(func)
+    async def func_wrapper(endpoint: "HttpEndpoint", req: Request, resp: Response, *args, **kwargs):
 
         if not endpoint.collect_meta or len(endpoint.copy_headers_to_logs) == 0:
             kwargs["metadata"] = {}
