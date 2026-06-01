@@ -92,6 +92,7 @@ Behaviour of HTTP Requests
     * Responds with 405
 """
 
+import functools
 import hmac
 import logging
 import multiprocessing as mp
@@ -117,6 +118,7 @@ from falcon import (  # pylint: disable=no-name-in-module
     HTTPTooManyRequests,
     HTTPUnauthorized,
     Request,
+    Response,
 )
 
 from logprep.abc.input import FatalInputError, Input
@@ -137,9 +139,8 @@ def basic_auth(func: Callable):
     """Decorator to check basic authentication.
     Will raise 401 on wrong credentials or missing Authorization-Header"""
 
-    async def func_wrapper(*args, **kwargs):
-        endpoint: HttpEndpoint = args[0]
-        req: Request = args[1]
+    @functools.wraps
+    async def func_wrapper(endpoint: HttpEndpoint, req: Request, *args, **kwargs):
         if endpoint.credentials:
             if not req.auth or not isinstance(req.auth, str):
                 raise HTTPUnauthorized
@@ -156,7 +157,7 @@ def basic_auth(func: Callable):
             else:
                 raise HTTPUnauthorized
 
-        func_wrapper = await func(*args, **kwargs)
+        func_wrapper = await func(endpoint, req, *args, **kwargs)
         return func_wrapper
 
     return func_wrapper
@@ -165,13 +166,12 @@ def basic_auth(func: Callable):
 def raise_request_exceptions(func: Callable):
     """Decorator to wrap http calls and raise exceptions"""
 
-    async def func_wrapper(*args, **kwargs):
+    @functools.wraps
+    async def func_wrapper(endpoint: HttpEndpoint, req: Request, resp: Response, *args, **kwargs):
         try:
-            if args[1].method == "POST":
-                func_wrapper = await func(*args, **kwargs)
-            elif args[1].method == "GET":
-                endpoint = args[0]
-                resp = args[2]
+            if req.method == "POST":
+                func_wrapper = await func(endpoint, req, resp, *args, **kwargs)
+            elif req.method == "GET":
                 resp.status = HTTP_200
                 if endpoint.messages.full():
                     raise queue.Full()
@@ -210,14 +210,13 @@ def add_metadata(func: Callable):
     Uses attribute metafield_name to define key name for metadata
     """
 
-    async def func_wrapper(*args, **kwargs):
-        req: falcon.asgi.Request = args[1]
-        endpoint: HttpEndpoint = args[0]
+    @functools.wraps
+    async def func_wrapper(endpoint: HttpEndpoint, req: Request, resp: Response, *args, **kwargs):
 
         if not endpoint.collect_meta or len(endpoint.copy_headers_to_logs) == 0:
             kwargs["metadata"] = {}
         else:
-            metadata = {}
+            metadata: dict[str, str | None] = {}
             for header in endpoint.copy_headers_to_logs:
                 # remote_addr and url are special cases, because those are not copied 1 to 1 from headers
                 match header:
@@ -231,7 +230,7 @@ def add_metadata(func: Callable):
 
             kwargs["metadata"] = {endpoint.metafield_name: metadata}
 
-        func_wrapper = await func(*args, **kwargs)
+        func_wrapper = await func(endpoint, req, resp, *args, **kwargs)
         return func_wrapper
 
     return func_wrapper

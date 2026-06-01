@@ -97,7 +97,7 @@ import typing
 import zlib
 from abc import ABC
 from base64 import b64encode
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from functools import cached_property
 
 import aiohttp
@@ -116,9 +116,13 @@ from logprep.connector.http.input import (
 )
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.ng.abc.event import EventMetadata
+from logprep.ng.abc.event import (
+    AcknowledgableEvent,
+    ErrorEvent,
+    EventMetadata,
+    LogEvent,
+)
 from logprep.ng.abc.input import Input
-from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.util.async_helpers import StoppableTask
 from logprep.ng.util.worker.types import SizeLimitedQueue
 from logprep.util import http, rstr
@@ -514,7 +518,7 @@ class HttpInput(Input):
             app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
         return app
 
-    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
+    async def _get_event(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Returns the first message from the queue"""
         self.metrics.message_backlog_size += self.messages.qsize()
         try:
@@ -522,7 +526,7 @@ class HttpInput(Input):
                 message = await self.messages.get()
             # TODO why not use self._encoder.encode?
             raw_message = str(message).encode("utf8")
-            return message, raw_message, EventMetadata()
+            return LogEvent(message, original=raw_message, metadata=EventMetadata())
         except TimeoutError:
             return None
 
@@ -577,5 +581,5 @@ class HttpInput(Input):
 
         return await super().health()
 
-    async def acknowledge(self, events: list[LogEvent]):
+    async def acknowledge(self, events: Sequence[AcknowledgableEvent]):
         logger.info("acknowledge called but not implemented")

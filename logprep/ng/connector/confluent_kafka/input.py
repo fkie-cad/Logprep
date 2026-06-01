@@ -52,7 +52,7 @@ from confluent_kafka import (
 from confluent_kafka.aio import AIOConsumer
 
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.ng.abc.event import ErrorEvent, AcknowledgableEvent, LogEvent
+from logprep.ng.abc.event import AcknowledgableEvent, ErrorEvent, LogEvent
 from logprep.ng.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
@@ -61,7 +61,9 @@ from logprep.ng.abc.input import (
     InputWarning,
 )
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
-from logprep.ng.connector.confluent_kafka.offset_commit_tracker import TopicOffsetCommitTracker
+from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
+    TopicOffsetCommitTracker,
+)
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -426,6 +428,7 @@ class ConfluentKafkaInput(Input):
 
         if message_value is None or partition is None or offset is None:
             logger.warning("Unexpected empty input message or empty metadata. Skipping")
+            return None
 
         self.metrics.current_offsets.add_with_labels(
             offset + 1, ConfluentKafkaInput._message_labels(self.config.topic, partition)
@@ -605,7 +608,7 @@ class ConfluentKafkaInput(Input):
         if self._consumer is not None:
             await self._consumer.unsubscribe()
             await self._consumer.close()
-            self._consumer = None
+            self._consumer = None  # type: ignore
         if self._executor is not None:
             self._executor.shutdown()
 
