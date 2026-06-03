@@ -55,9 +55,9 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
         return instance
 
     @pytest.fixture(autouse=True)
-    async def automatic_setup_and_teardown(self):
+    async def instance(self):
         await self.async_setup()
-        yield
+        yield self.object
         await self.async_teardown()
 
     async def async_setup(self) -> None:
