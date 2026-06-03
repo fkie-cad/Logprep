@@ -1,10 +1,18 @@
 ## Upcoming Changes
 ### Breaking
-* chart: change default deployment strategy to RollingUpdate
-* list_comparison, network_comparison: continue processing with failure tags after HTTP list get or refresh errors
 
 ### Features
-* allow list and network comparisons to extract list values from configurable JSON fields via `content_field`
+
+### Improvements
+
+### Bugfix
+
+## 19.2.0
+### Breaking
+* chart: change default deployment strategy to RollingUpdate
+
+### Features
+* allow `list_comparison` and `network_comparison` to extract list values from configurable JSON fields via `content_field`
 * add basic `FileGetter` content type support for `.txt`, `.json`, and `.yml` files
 
 ### Improvements
@@ -13,6 +21,7 @@
 * fix #904 by upgrading opensearch-py to 3.2.0
 * fix urllib vulnerabilities CVE-2026-44431 & CVE-2026-44432
 * make deployment strategy configurable
+* allow `list_comparison` and `network_comparison` to continue processing with failure tags after getter errors
 
 ### Bugfix
 * fix `decoder` to support special characters in logfmt keys
