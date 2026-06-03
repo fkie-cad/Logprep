@@ -10,7 +10,6 @@
 ## 20.0.0
 ### Breaking
 * chart: change default deployment strategy to RollingUpdate
-* `list_comparison`, `network_comparison`: continue processing with failure tags after HTTP list get or refresh errors
 
 ### Features
 * allow `list_comparison` and `network_comparison` to extract list values from configurable JSON fields via `content_field`
