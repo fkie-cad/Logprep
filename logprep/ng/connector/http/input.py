@@ -501,14 +501,21 @@ class HttpInput(Input):
 
         self.app = self._get_asgi_app(endpoints_config)
 
-        self.http_server = http.AsyncHTTPServer(self.config.uvicorn_config, self.app)
-        self._http_server_task = StoppableTask.from_stop(
-            asyncio.create_task(self.http_server.run()), self.http_server.stop
+        self.http_server, self._http_server_task = await self._create_and_run_server(
+            self.config.uvicorn_config, self.app
         )
         # give the http server a chance to start before health checks begin
         await asyncio.sleep(0)
 
         await super().setup()
+
+    @staticmethod
+    async def _create_and_run_server(
+        uvicorn_config: dict[str, str | int], app: falcon.asgi.App
+    ) -> tuple[http.AsyncHTTPServer, StoppableTask]:
+        server = http.AsyncHTTPServer(uvicorn_config, app)
+        server_task = StoppableTask.from_stop(asyncio.create_task(server.run()), server.stop)
+        return server, server_task
 
     @staticmethod
     def _get_asgi_app(endpoints_config: dict) -> falcon.asgi.App:
@@ -557,12 +564,12 @@ class HttpInput(Input):
             :code:`True` if all endpoints can be called without error
         """
         async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(self.config.health_timeout)
+            base_url=self.target, timeout=aiohttp.ClientTimeout(self.config.health_timeout)
         ) as session:
 
             async def check_endpoint_status(endpoint: str) -> None:
                 try:
-                    async with session.get(f"{self.target}{endpoint}") as response:
+                    async with session.get(endpoint) as response:
                         response.raise_for_status()
                 except (aiohttp.ClientError, TimeoutError) as error:
                     logger.error(
