@@ -22,7 +22,7 @@ from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 
 logger = logging.getLogger("Runner")
 
-
+# TODO make configurable via config
 GRACEFUL_SHUTDOWN_TIMEOUT = 10
 HARD_SHUTDOWN_TIMEOUT = 15
 

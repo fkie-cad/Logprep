@@ -17,7 +17,7 @@ from logprep.ng.workflow import create_orchestrator
 
 logger = logging.getLogger("PipelineManager")
 
-
+# TODO make configurable via config
 BATCH_SIZE = 1000
 BATCH_INTERVAL_S = 5
 MAX_QUEUE_SIZE = BATCH_SIZE

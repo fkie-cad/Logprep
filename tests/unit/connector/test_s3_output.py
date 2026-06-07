@@ -285,7 +285,7 @@ class TestS3Output(BaseOutputTestCase):
         self.object.setup()
         mock_getmembers.assert_called_with(self.object)
 
-    @pytest.mark.skip(reason="Not implemented yet")
+    @pytest.mark.skip(reason="not implemented yet")
     def test_setup_calls_wait_for_health(self):
         pass
 

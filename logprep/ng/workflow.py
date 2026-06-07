@@ -9,9 +9,9 @@ from collections.abc import Sequence
 
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.event import (
+    AcknowledgableEvent,
     ErrorEvent,
     ExtraDataEvent,
-    AcknowledgableEvent,
     LogEvent,
 )
 from logprep.ng.abc.input import Input
@@ -30,7 +30,7 @@ from logprep.ng.util.worker.worker import (
 
 logger = logging.getLogger("PipelineManager")
 
-
+# TODO make configurable via config
 BATCH_SIZE = 5000
 BATCH_INTERVAL_S = 5
 MAX_QUEUE_SIZE = BATCH_SIZE
@@ -176,6 +176,8 @@ def create_orchestrator(
         for event in to_acknowledge:
             if isinstance(event, AcknowledgableEvent):
                 await acknowledge_queue.put(event)
+            else:
+                logger.debug("not acknowleding event")
 
     error_worker: Worker[ErrorEvent] = BatchingWorker(
         name="error_worker",
