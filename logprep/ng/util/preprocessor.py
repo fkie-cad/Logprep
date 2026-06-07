@@ -29,20 +29,17 @@ Configuration properties shared between input types.
    :inherited-members:
 """
 
-from functools import cached_property
-from typing import Any, Protocol
-from zoneinfo import ZoneInfo
-
-
 import base64
 import hashlib
 import json
 import os
 import zlib
+from functools import cached_property
 from hmac import HMAC
+from typing import Any, Protocol
+from zoneinfo import ZoneInfo
 
 from msgspec import DecodeError
-
 
 from logprep.ng.abc.event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -280,7 +277,7 @@ class Preprocessor:
         if isinstance(received_orig_message, str):
             received_orig_message = received_orig_message.encode("utf-8")
         hmac = HMAC(
-            key=hmac_options.key.encode(),
+            key=hmac_options.encoded_key,
             msg=received_orig_message,
             digestmod=hashlib.sha256,
         ).hexdigest()

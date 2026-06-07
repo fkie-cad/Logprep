@@ -29,12 +29,7 @@ Configuration properties shared between input types.
    :inherited-members:
 """
 
-from attrs import define, field, validators
-
-from logprep.util.converters import convert_from_dict
-
-
-from attrs import define, field, validators
+from attrs import Factory, define, field, validators
 
 from logprep.util.converters import convert_from_dict
 
@@ -59,6 +54,10 @@ class HmacConfig:
     containing the calculated hmac, and :code:`compressed_base64`, containing the original message
     that was used to calculate the hmac in compressed and base64 encoded. In case the output
     field exists already in the original message an error is raised."""
+
+    encoded_key: bytes = field(
+        init=False, default=Factory(lambda self: self.key.encode(), takes_self=True)
+    )
 
     def all_set(self) -> bool:
         """
