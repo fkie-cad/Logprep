@@ -3,9 +3,7 @@ Runner module
 """
 
 import asyncio
-import json
 import logging
-import os
 import warnings
 
 from attrs import asdict
@@ -102,12 +100,9 @@ class Runner:
     def setup_logging(self) -> None:
         """Setup the logging configuration.
         is called in the :code:`logprep.run_logprep` module.
-        We have to write the configuration to the environment variable :code:`LOGPREP_LOG_CONFIG` to
-        make it available for the uvicorn server in :code:'logprep.util.http'.
         """
 
         warnings.simplefilter("always", DeprecationWarning)
         logging.captureWarnings(True)
         log_config = DEFAULT_LOG_CONFIG | asdict(self.config.logger)
-        os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
         logging.config.dictConfig(log_config)

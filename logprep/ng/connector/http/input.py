@@ -123,9 +123,10 @@ from logprep.ng.abc.event import (
     LogEvent,
 )
 from logprep.ng.abc.input import Input
+from logprep.ng.util import http
 from logprep.ng.util.async_helpers import StoppableTask
 from logprep.ng.util.worker.types import SizeLimitedQueue
-from logprep.util import http, rstr
+from logprep.util import rstr
 from logprep.util.credentials import (
     BasicAuthCredentials,
     Credentials,
@@ -504,8 +505,6 @@ class HttpInput(Input):
         self.http_server, self._http_server_task = await self._create_and_run_server(
             self.config.uvicorn_config, self.app
         )
-        # give the http server a chance to start before health checks begin
-        await asyncio.sleep(0)
 
         await super().setup()
 
@@ -515,6 +514,7 @@ class HttpInput(Input):
     ) -> tuple[http.AsyncHTTPServer, StoppableTask]:
         server = http.AsyncHTTPServer(uvicorn_config, app)
         server_task = StoppableTask.from_stop(asyncio.create_task(server.run()), server.stop)
+        await server.wait_until_started()
         return server, server_task
 
     @staticmethod
