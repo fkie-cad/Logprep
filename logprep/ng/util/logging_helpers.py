@@ -4,7 +4,6 @@ import asyncio
 import threading
 
 from logprep.util.logging import LogprepFormatter as NonNgLogprepFormatter
-from logprep.util.logging import LogprepMPQueueListener as NonNgLogprepMPQueueListener
 
 
 class LogprepFormatter(NonNgLogprepFormatter):
@@ -39,7 +38,3 @@ class LogprepFormatter(NonNgLogprepFormatter):
         except Exception:  # pylint: disable=W0718
             record.taskName = threading.current_thread().name
         return super().format(record)
-
-
-class LogprepMPQueueListener(NonNgLogprepMPQueueListener):
-    """Logprep specific QueueListener that uses a multiprocessing instead of threading"""

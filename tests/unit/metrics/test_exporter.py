@@ -19,6 +19,10 @@ from logprep.util.configuration import MetricsConfig
     "logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing",
     new=lambda *args, **kwargs: None,
 )
+# logprep.util.http.ThreadingHTTPServer uses uvicorn.Config which applies a global logging config
+@mock.patch("logging.config.dictConfig", new=lambda *args, **kwargs: None)
+# logprep.util.http.ThreadingHTTPServer modifies logger names
+@mock.patch("logging.getLogger", new=lambda _: mock.MagicMock())
 class TestPrometheusExporter:
     def setup_method(self):
         self.metrics_config = MetricsConfig(enabled=True, port=8000)
