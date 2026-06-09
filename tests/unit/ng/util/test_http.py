@@ -5,6 +5,7 @@ import logging
 from contextlib import asynccontextmanager
 
 import aiohttp
+import pytest
 from asgiref.typing import (
     ASGIReceiveCallable,
     ASGISendCallable,
@@ -76,6 +77,7 @@ async def run_server(
 
 class TestAsyncHTTPServer:
 
+    @pytest.mark.timeout(1)
     async def test_basic_server_run(self, unused_tcp_port):
         url = f"http://127.0.0.1:{unused_tcp_port}"
         server = AsyncHTTPServer({"port": unused_tcp_port}, app=simple_echo_asgi_app)
@@ -90,6 +92,7 @@ class TestAsyncHTTPServer:
                     response.raise_for_status()
                     assert await response.text() == "test"
 
+    @pytest.mark.timeout(1)
     async def test_basic_server_run_repeatedly(self, unused_tcp_port):
         url = f"http://127.0.0.1:{unused_tcp_port}"
 
@@ -112,6 +115,7 @@ class TestAsyncHTTPServer:
                     response.raise_for_status()
                     assert response.status == 200
 
+    @pytest.mark.timeout(1)
     async def test_uvicorn_logs_are_propagated(self, unused_tcp_port, caplog):
         url = f"http://127.0.0.1:{unused_tcp_port}"
         with caplog.at_level(logging.DEBUG, logger="root"):
