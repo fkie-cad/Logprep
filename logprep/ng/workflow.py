@@ -142,6 +142,7 @@ def create_orchestrator(
     )
 
     async def _send_default_output_handler(batch: Sequence[LogEvent]):
+        # TODO ensure to retry forever for retryable errors
         await default_output.store(batch)
 
         for event in batch:
@@ -163,11 +164,13 @@ def create_orchestrator(
         to_acknowledge: Sequence[ErrorEvent] = batch
 
         if error_output is not None:
+            # TODO ensure to retry forever for retryable errors
             await error_output.store(batch)
 
             if any(error_event.is_failed() for error_event in batch):
                 to_acknowledge = [error for error in batch if not error.is_failed()]
 
+                # TODO log offsets for messages or fail hard; configurable?
                 logger.error(
                     "failed to store %d error events in the error output",
                     len(batch) - len(to_acknowledge),
