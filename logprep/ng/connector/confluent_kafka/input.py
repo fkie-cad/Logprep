@@ -241,6 +241,7 @@ class ConfluentKafkaInput(Input):
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of(str),
                 ),
+                # TODO double check that other configuration options are possible
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
             ),
             converter=MappingProxyType,
@@ -408,6 +409,7 @@ class ConfluentKafkaInput(Input):
 
         if message is None:
             try:
+                # TODO check what happens if there are no commits for too long
                 self._current_batch_iter = iter(await self._consumer.consume(timeout=timeout))
             except RuntimeError as error:
                 raise FatalInputError.from_error(self, error) from error
@@ -574,6 +576,8 @@ class ConfluentKafkaInput(Input):
                 offsets=commit_offsets, asynchronous=False
             )
         except KafkaException as error:
+            self.metrics.commit_failures += 1
+            # TODO rather only log a warning
             raise InputWarning.from_message(
                 self,
                 "failed to commit offsets: "
@@ -593,6 +597,8 @@ class ConfluentKafkaInput(Input):
                 )
 
         if errors:
+            self.metrics.commit_failures += 1
+            # TODO rather only log a warning
             raise InputWarning.from_message(
                 self,
                 "failed to commit offsets: "
