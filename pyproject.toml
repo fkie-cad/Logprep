@@ -80,6 +80,7 @@ dev = [
   "pytest",
   "pytest-cov",
   "pytest-aiohttp",
+  "pytest-timeout",
   "aioresponses",
   "responses",
   "jinja2",
