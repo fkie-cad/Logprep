@@ -18,8 +18,8 @@ from unittest import mock
 import pytest
 
 from logprep.factory import Factory
-from logprep.ng.abc.input import CriticalInputError
 from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.input import CriticalInputError
 from logprep.util.time import TimeParser
 from tests.unit.ng.connector.base import BaseInputTestCase
 
@@ -28,7 +28,7 @@ from tests.unit.ng.connector.base import BaseInputTestCase
 class TestJsonInput(BaseInputTestCase):
     timeout = 0.1
 
-    CONFIG = {"type": "ng_json_input", "documents_path": "/does/not/matter"}
+    CONFIG = {"type": "json_input", "documents_path": "/does/not/matter"}
 
     @pytest.fixture
     def mock_parse(self):

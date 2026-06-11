@@ -88,8 +88,8 @@ class Worker(Generic[Input], ABC):
             logger.debug("Start continuous processing")
             await self._process_items()
 
-        except StopAsyncIteration:
-            logger.debug("Worker stopped due to exhausted input")
+        except StopAsyncIteration as error:
+            logger.info("Worker stopped due to exhausted input: %s", str(error))
 
     async def stop(self) -> None:
         """Issues the worker to stop. The stopping worker has to be awaited separately."""
@@ -98,6 +98,7 @@ class Worker(Generic[Input], ABC):
                 await self.in_queue.put(STOP_SENTINEL)  # type: ignore
             case AsyncIterator():
                 self._stop_event.set()
+                print("done :)")
             case _:
                 raise TypeError(f"Unexpected in_queue type {type(self.in_queue)}")
 
@@ -363,6 +364,7 @@ class WorkerOrchestrator:
         self._loop: AbstractEventLoop = loop if loop is not None else asyncio.get_event_loop()
         self._workers: list[Worker] = workers
 
+        self._internal_stop = asyncio.Event()
         self._worker_tasks: dict[Worker, Task] = {}
 
         self._exceptions: list[BaseException] = []
@@ -384,19 +386,24 @@ class WorkerOrchestrator:
         self._worker_tasks[worker] = task
 
         def _done(t: asyncio.Task[Any]) -> None:
-            assert self._worker_tasks[worker] == task
-            # del self._worker_tasks[worker]
+            try:
+                assert self._worker_tasks[worker] == task
+                # del self._worker_tasks[worker]
 
-            logger.debug("Worker task %s is finished", worker.name)
+                logger.debug("Worker task %s is finished", worker.name)
 
-            if t.cancelled():
-                return
+                if t.cancelled():
+                    return
 
-            exc = t.exception()
-            if exc is not None:
-                logger.error("Worker task %s failed due to an exception", worker.name, exc_info=exc)
-                self._exceptions.append(exc)
-                raise exc
+                exc = t.exception()
+                if exc is not None:
+                    logger.error(
+                        "Worker task %s failed due to an exception", worker.name, exc_info=exc
+                    )
+                    self._exceptions.append(exc)
+                    raise exc
+            finally:
+                self._internal_stop.set()
 
         task.add_done_callback(_done)
         return task
@@ -415,25 +422,18 @@ class WorkerOrchestrator:
 
         self._create_worker_tasks()
 
-        await stop_event.wait()
+        done, pending = await asyncio.wait(
+            map(asyncio.create_task, [stop_event.wait(), self._internal_stop.wait()]),
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        # TODO make beautiful
+        next(iter(pending)).cancel()
 
         logger.debug("Stopping workers gracefully: %s", self._get_current_state())
 
         await self._shut_down(graceful_shutdown_timeout_s)
 
         logger.debug("Workers stopped: %s", self._get_current_state())
-
-        # try:
-        #     raise_from_gather(
-        #         await asyncio.gather(
-        #             *(self._create_worker_task(worker) for worker in self._workers),
-        #             return_exceptions=True,
-        #         ),
-        #         "worker tasks exited with errors",
-        #     )
-        # except CancelledError:
-        #     logger.exception("Orchestrator has been cancelled externally; shutting down hard")
-        #     raise
 
     async def _shut_down(self, timeout_s: float) -> None:
         """

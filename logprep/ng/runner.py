@@ -5,91 +5,93 @@ Runner module
 import asyncio
 import logging
 import warnings
+from functools import partial
 
 from attrs import asdict
 
 from logprep.ng.manager import PipelineManager
-from logprep.ng.util.async_helpers import (
-    StoppableTask,
-    restart_stoppable_task_on_iter,
-    restart_task_on_iter,
-)
-from logprep.ng.util.config_refresh import config_refresh_gen
+from logprep.ng.util.async_helpers import StoppableTask
+from logprep.ng.util.config_refresh import wait_for_refreshed_config
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.util.getter import RefreshableGetter
 
 logger = logging.getLogger("Runner")
 
 # TODO make configurable via config
 GRACEFUL_SHUTDOWN_TIMEOUT = 10
 HARD_SHUTDOWN_TIMEOUT = 15
+REFRESHABLE_GETTER_BASE_INTERVAL = 1
 
 
 class Runner:
-    """Class, a singleton runner, responsible for running the log processing pipeline."""
+    """Class responsible for running the log processing pipeline."""
 
-    instance: "Runner | None" = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls.instance is None:
-            cls.instance = super().__new__(cls)
-
-        return cls.instance
-
-    def __init__(self, configuration: Configuration) -> None:
-        """Initialize the runner from the given `configuration`.
-
-        Component wiring is deferred to `setup()` to preserve the required init order.
-        """
-
-        self.config = configuration
+    def __init__(self, config: Configuration) -> None:
+        self._config = config
         self._stop_event = asyncio.Event()
+
+    async def _run_pipeline_manager(self, stop_event: asyncio.Event, config: Configuration) -> None:
+        pipeline_manager = PipelineManager(config)
+        await pipeline_manager.setup()
+        await pipeline_manager.run(stop_event, GRACEFUL_SHUTDOWN_TIMEOUT)
+
+    async def _refresh_getters(self):
+        while not self._stop_event.is_set():
+            # TODO make getters async
+            RefreshableGetter.refresh()
+            await asyncio.sleep(REFRESHABLE_GETTER_BASE_INTERVAL)
+
+    async def _refresh_config(self, config: Configuration) -> Configuration | None:
+        return await wait_for_refreshed_config(config, self._stop_event)
 
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
 
-        # TODO refresh refreshable getter
-
         async with asyncio.TaskGroup() as tg:
+            config = self._config
 
-            async def run_pipeline_manager(config: Configuration) -> StoppableTask:
-                pipeline_manager = PipelineManager(
-                    config, shutdown_timeout_s=GRACEFUL_SHUTDOWN_TIMEOUT
-                )
-                # TODO move setup into task runner
-                await pipeline_manager.setup()
+            wait_for_stop = tg.create_task(self._stop_event.wait(), name="wait_for_stop")
+            refresh_getters_loop = tg.create_task(self._refresh_getters(), name="refresh_getters")
+            refresh_config = tg.create_task(self._refresh_config(config), name="refresh_config")
 
-                return StoppableTask.from_runner(
-                    pipeline_manager,
-                    lambda pipeline_run: tg.create_task(pipeline_run, name="pipeline_manager"),
-                )
+            while not self._stop_event.is_set():
 
-            try:
-                pipeline_gen = restart_stoppable_task_on_iter(
-                    source=config_refresh_gen(self.config, self._stop_event),
-                    task_factory=run_pipeline_manager,
-                    cancel_timeout_s=HARD_SHUTDOWN_TIMEOUT,
+                logger.debug("Starting PipelineManager with current config")
+
+                pipeline_manager = StoppableTask.from_callable(
+                    partial(self._run_pipeline_manager, config=config),
+                    partial(tg.create_task, name="pipeline_manager"),
                 )
 
-                async def run_task_stopper_on_stop_event(task: StoppableTask) -> asyncio.Task:
-                    return tg.create_task(
-                        task.stop_on_event(self._stop_event),
-                        name=f"{task.get_name()}-stopper",
-                    )
+                logger.info("Startup complete")
+                logger.debug("Waiting for long-running tasks to complete or fail")
+                done, _ = await asyncio.wait(
+                    [wait_for_stop, pipeline_manager.task, refresh_config, refresh_getters_loop],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
 
-                async for _ in restart_task_on_iter(
-                    source=pipeline_gen,
-                    task_factory=run_task_stopper_on_stop_event,
-                ):
+                if refresh_config in done:
+                    logger.debug("Config refresh done; collect config and schedule new refresh")
+                    new_config = await refresh_config
+                    if new_config:
+                        config = new_config
+                        refresh_config = tg.create_task(
+                            self._refresh_config(config), name="config_refresh"
+                        )
+
+                logger.debug("Stopping PipelineManager for restart")
+                await pipeline_manager.stop_and_cancel(HARD_SHUTDOWN_TIMEOUT)
+
+                if pipeline_manager.task in done:
                     logger.debug(
-                        "A new pipeline task has been spawned based on the latest configuration"
+                        "PipelineManager did stop by itself (error or input exhaustion). Exiting..."
                     )
-            except TimeoutError:
-                logger.error(
-                    "Could not gracefully shut down pipeline manager within timeframe",
-                    exc_info=True,
-                )
-                raise
+                    self._stop_event.set()
+
+                if refresh_getters_loop in done:
+                    logger.warning("Getter refresh loop stopped unexpectedly. Exiting...")
+                    self._stop_event.set()
 
     def stop(self) -> None:
         """Stop the runner and signal the underlying processing pipeline to exit."""
@@ -102,7 +104,8 @@ class Runner:
         is called in the :code:`logprep.run_logprep` module.
         """
 
+        # TODO ensure asyncio exceptions are logged as json (e.g. ExceptionGroup)
         warnings.simplefilter("always", DeprecationWarning)
         logging.captureWarnings(True)
-        log_config = DEFAULT_LOG_CONFIG | asdict(self.config.logger)
+        log_config = DEFAULT_LOG_CONFIG | asdict(self._config.logger)
         logging.config.dictConfig(log_config)

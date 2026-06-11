@@ -29,7 +29,7 @@ failure_test_cases = deepcopy(non_ng_failure_testcases)
 
 class TestCalculator(BaseProcessorTestCase[Calculator]):
     CONFIG: dict = {
-        "type": "ng_calculator",
+        "type": "calculator",
         "rules": ["tests/testdata/unit/calculator/rules"],
     }
 

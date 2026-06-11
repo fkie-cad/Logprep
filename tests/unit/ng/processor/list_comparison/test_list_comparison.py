@@ -21,7 +21,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 class TestListComparison(BaseProcessorTestCase[ListComparison]):
     CONFIG = {
-        "type": "ng_list_comparison",
+        "type": "list_comparison",
         "rules": ["tests/testdata/unit/list_comparison/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
         "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
@@ -55,7 +55,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
         }
         processor = Factory.create({"custom_lister": config})
@@ -318,7 +318,7 @@ Hans
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
@@ -357,7 +357,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
@@ -404,7 +404,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": url_template,
         }
@@ -448,7 +448,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": url_template,
         }
@@ -500,7 +500,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": url_template,
         }
@@ -547,7 +547,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": url_template,
         }
@@ -583,7 +583,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": "http://localhost/${tenant}/${LOGPREP_LIST}",
         }
@@ -625,7 +625,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": "http://localhost/${tenant}/${LOGPREP_LIST}",
         }
@@ -680,7 +680,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": url_template,
         }
@@ -762,7 +762,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": self.CONFIG["list_search_base_path"],
         }
@@ -804,7 +804,7 @@ Heinz
             "description": "",
         }
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": str(file_root_path),
         }
@@ -850,7 +850,7 @@ Heinz
         }
 
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": url_template,
         }
@@ -931,7 +931,7 @@ Heinz
         }
 
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": url_template,
         }
@@ -1013,7 +1013,7 @@ Heinz
         }
 
         config = {
-            "type": "ng_list_comparison",
+            "type": "list_comparison",
             "rules": [],
             "list_search_base_path": url_template,
         }

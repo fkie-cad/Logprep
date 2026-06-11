@@ -15,7 +15,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
     CONFIG = {
-        "type": "ng_datetime_extractor",
+        "type": "datetime_extractor",
         "rules": ["tests/testdata/unit/datetime_extractor/rules"],
     }
 

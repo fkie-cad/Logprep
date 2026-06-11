@@ -27,7 +27,7 @@ failure_test_cases = deepcopy(non_ng_failure_test_cases)
 
 class TestTimestampDiffer(BaseProcessorTestCase[TimestampDiffer]):
     CONFIG: dict = {
-        "type": "ng_timestamp_differ",
+        "type": "timestamp_differ",
         "rules": ["tests/testdata/unit/timestamp_differ/rules"],
     }
 

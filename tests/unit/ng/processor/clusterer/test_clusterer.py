@@ -18,7 +18,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 class TestClusterer(BaseProcessorTestCase[Clusterer]):
     CONFIG = {
-        "type": "ng_clusterer",
+        "type": "clusterer",
         "output_field_name": "cluster_signature",
         "rules": ["tests/testdata/unit/clusterer/rules"],
     }

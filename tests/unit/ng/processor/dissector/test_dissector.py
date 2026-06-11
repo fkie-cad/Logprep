@@ -21,7 +21,7 @@ failure_test_cases = deepcopy(non_ng_failure_test_cases)
 
 class TestDissector(BaseProcessorTestCase[Dissector]):
     CONFIG: dict = {
-        "type": "ng_dissector",
+        "type": "dissector",
         "rules": ["tests/testdata/unit/dissector/rules"],
     }
 

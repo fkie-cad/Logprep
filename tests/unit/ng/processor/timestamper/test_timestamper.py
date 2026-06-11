@@ -25,7 +25,7 @@ failure_test_cases = deepcopy(non_ng_failure_test_cases)
 
 class TestTimestamper(BaseProcessorTestCase[Timestamper]):
     CONFIG: dict = {
-        "type": "ng_timestamper",
+        "type": "timestamper",
         "rules": ["tests/testdata/unit/timestamper/rules"],
     }
 

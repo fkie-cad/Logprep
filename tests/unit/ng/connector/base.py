@@ -86,7 +86,7 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
 
     @pytest.mark.usefixtures("default_hmac_config")
     async def test_add_hmac_returns_true_if_hmac_options(self):
-        assert self.object._preprocessor._add_hmac is True
+        assert self.object.preprocessor._add_hmac is True
 
     @pytest.mark.usefixtures("default_hmac_config")
     async def test_get_next_with_hmac_of_raw_message(self):
@@ -279,6 +279,7 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
             data=return_value, original=raw_encoded_test_event
         )
 
+    @mock.patch("logprep.ng.util.preprocessor.version", new=lambda _: "3.3.0")
     async def test_preprocessing_version_info_is_added_if_configured(self):
         self.object = self._create_test_instance(
             config_patch={
@@ -286,9 +287,9 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
                     "version_info_target_field": "version_info",
                     "hmac": {"target": "", "key": "", "output_field": ""},
                 },
-                "version_information": {"logprep": "3.3.0", "configuration": "unset"},
             }
         )
+        self.object.preprocessor.set_config_version_info("unset")
 
         return_value = {"any": "content"}
 
@@ -566,6 +567,7 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
         expected = {"any": {"content": '"{\\"any\\":\\"content\\"}"'}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
 
+    @mock.patch("logprep.ng.util.preprocessor.version", new=lambda _: "3.3.0")
     async def test_add_full_event_to_targetfield_vs_version_info_target(self):
         self.object = self._create_test_instance(
             config_patch={
@@ -578,6 +580,7 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
                 }
             }
         )
+        self.object.preprocessor.set_config_version_info("unset")
 
         self.object._get_event = mock.AsyncMock(
             return_value=self._create_log_event({"any": "content"}, b'{"any":"content"}')
@@ -586,7 +589,7 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
         result = await self.object.get_next(0.01)
         expected = {
             "any": {"content": '"{\\"any\\":\\"content\\"}"'},
-            "version_info": {"logprep": "", "configuration": ""},
+            "version_info": {"logprep": "3.3.0", "configuration": "unset"},
         }
         assert result.data == expected, f"{expected} is not the same as {result.data}"
 

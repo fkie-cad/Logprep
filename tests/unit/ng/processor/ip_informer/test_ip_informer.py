@@ -22,7 +22,7 @@ failure_test_cases = deepcopy(non_ng_failure_test_cases)
 
 class TestIpInformer(BaseProcessorTestCase[IpInformer]):
     CONFIG: dict = {
-        "type": "ng_ip_informer",
+        "type": "ip_informer",
         "rules": ["tests/testdata/unit/ip_informer/rules/"],
     }
 

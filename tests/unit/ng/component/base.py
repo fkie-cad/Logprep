@@ -157,7 +157,7 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
         await self.object.setup()
         mock_getmembers.assert_called_with(self.object)
 
-    @pytest.fixture(scope="function")
+    @pytest.fixture()
     def component_scheduler(self):
         with mock.patch.object(Component, "_scheduler", schedule.Scheduler()) as scheduler:
             yield scheduler

@@ -29,7 +29,7 @@ MODULE = OpensearchOutput.__module__
 
 class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
     CONFIG = {
-        "type": "ng_opensearch_output",
+        "type": "opensearch_output",
         "hosts": ["localhost:9200"],
         "default_index": "default_index",
         "message_backlog_size": 1,

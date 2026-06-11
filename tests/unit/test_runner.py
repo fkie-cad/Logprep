@@ -21,7 +21,7 @@ def mock_keep_iterating(iterations):
         yield True
 
 
-@pytest.fixture(name="config_path", scope="function")
+@pytest.fixture(name="config_path")
 def fixture_config_path(tmp_path: Path) -> Path:
     config_path = tmp_path / uuid.uuid4().hex
     configuration = Configuration.from_sources([path_to_config])

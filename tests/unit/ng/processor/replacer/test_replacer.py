@@ -16,7 +16,7 @@ test_cases = deepcopy(non_ng_test_cases)
 
 class TestReplacer(BaseProcessorTestCase[Replacer]):
     CONFIG: dict = {
-        "type": "ng_replacer",
+        "type": "replacer",
         "rules": ["tests/testdata/unit/replacer/rules_1", "tests/testdata/unit/replacer/rules_2"],
     }
 

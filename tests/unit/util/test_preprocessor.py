@@ -23,7 +23,6 @@ class TestPreprocessor:
     def preprocessor(self, empty_preprocessor_config) -> Preprocessor:
         return Preprocessor(
             empty_preprocessor_config,
-            {},
             msgspec.json.Decoder(type=dict),
             msgspec.json.Encoder(),
         )

@@ -14,6 +14,7 @@ import uvloop
 from logprep.ng.runner import Runner
 from logprep.ng.util.async_helpers import asyncio_exception_handler
 from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
+from logprep.registry import Registry
 from logprep.util.defaults import EXITCODES
 from logprep.util.helper import get_versions_string
 from logprep.util.tag_yaml_loader import init_yaml_loader_tags
@@ -49,6 +50,7 @@ def cli() -> None:
     """
 
     set_start_method("fork", force=True)
+    Registry.set_ng_active(True)
 
 
 @cli.command(short_help="Run logprep ng to process log messages", epilog=EPILOG_STR)
@@ -70,8 +72,8 @@ def run(configs: tuple[str], version=None) -> None:
         if (task := asyncio.current_task()) is not None:
             task.set_name("root")
         configuration = await _get_configuration(configs_)
-        runner_ = Runner(configuration)
-        runner_.setup_logging()
+        runner = Runner(configuration)
+        runner.setup_logging()
         if version_:
             _print_version(configuration)
         for v in get_versions_string(configuration).split("\n"):
@@ -82,10 +84,10 @@ def run(configs: tuple[str], version=None) -> None:
             if "pytest" not in sys.modules:
                 # needed for not blocking tests
                 loop = asyncio.get_running_loop()
-                loop.add_signal_handler(signal.SIGTERM, stop_runner_on_signal)
-                loop.add_signal_handler(signal.SIGINT, stop_runner_on_signal)
+                loop.add_signal_handler(signal.SIGTERM, runner.stop)
+                loop.add_signal_handler(signal.SIGINT, runner.stop)
             logger.debug("Configuration loaded")
-            await runner_.run()
+            await runner.run()
         except SystemExit as error:
             logger.debug(f"Exit received with code {error.code}")
             sys.exit(error.code)
@@ -95,8 +97,8 @@ def run(configs: tuple[str], version=None) -> None:
         except Exception as error:
             logger.exception(f"A critical error occurred: {error}")
 
-            if runner_:
-                runner_.stop()
+            if runner:
+                runner.stop()
             sys.exit(EXITCODES.ERROR)
         # pylint: enable=broad-except
 
@@ -105,13 +107,6 @@ def run(configs: tuple[str], version=None) -> None:
         loop = runner.get_loop()
         loop.set_exception_handler(handler)
         runner.run(_run(configs, version))
-
-
-def stop_runner_on_signal() -> None:
-    """Handle signals for stopping the NG runner."""
-    logger.debug("Received termination signal, shutting down NG runner...")
-    if Runner.instance:
-        Runner.instance.stop()
 
 
 if __name__ == "__main__":

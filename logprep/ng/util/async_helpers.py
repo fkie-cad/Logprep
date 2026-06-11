@@ -3,17 +3,12 @@
 import asyncio
 import logging
 from collections.abc import (
-    AsyncGenerator,
-    AsyncIterable,
-    AsyncIterator,
     Callable,
     Coroutine,
     Sequence,
 )
 from dataclasses import dataclass
 from typing import Any, Awaitable, Generic, Protocol, TypeVar
-
-from logprep.ng.abc.event import LogEvent
 
 logger = logging.getLogger("async_helpers")
 
@@ -28,6 +23,10 @@ class EndlessRunner(Generic[T_co], Protocol):
     async def run(self, stop_event: asyncio.Event) -> T_co: ...
 
 
+class Coro2Task(Generic[T], Protocol):
+    def __call__(self, coro: Coroutine[Any, Any, T]) -> asyncio.Task[T]: ...
+
+
 @dataclass
 class StoppableTask(Generic[T]):
     """
@@ -37,6 +36,10 @@ class StoppableTask(Generic[T]):
     task: asyncio.Task[T]
     stop: Callable[[], Awaitable]
 
+    def get_name(self) -> str:
+        """Calls and returns the result of `get_name` of the underlying task"""
+        return self.task.get_name()
+
     async def stop_on_event(self, event: asyncio.Event) -> None:
         logger.debug("waiting for event to stop task")
         await event.wait()
@@ -44,9 +47,28 @@ class StoppableTask(Generic[T]):
         await self.stop()
         logger.debug("event received. stopped")
 
-    def get_name(self) -> str:
-        """Calls and returns the result of `get_name` of the underlying task"""
-        return self.task.get_name()
+    async def stop_and_cancel(self, cancel_timeout_s: float) -> None:
+        try:
+            async with asyncio.timeout(cancel_timeout_s):
+                await self.stop()
+                await self.task
+        except TimeoutError:
+            logger.debug("task cancelled due to timeout")
+            # task canceled, wait to stop
+            await self.task
+
+    @staticmethod
+    def from_callable(
+        func: Callable[[asyncio.Event], Coroutine[Any, Any, T]],
+        task_factory: Coro2Task[T] | None = None,
+    ) -> "StoppableTask[T]":
+        stop_event = asyncio.Event()
+
+        factory = asyncio.create_task if task_factory is None else task_factory
+
+        task = factory(func(stop_event))
+
+        return StoppableTask.from_event(task, stop_event)
 
     @staticmethod
     def from_runner(
@@ -72,16 +94,6 @@ class StoppableTask(Generic[T]):
     @staticmethod
     def from_event(task: asyncio.Task[T], stop_event: asyncio.Event) -> "StoppableTask[T]":
         return StoppableTask.from_stop(task, stop_event.set)
-
-
-TaskFactory = Callable[[D], Awaitable[asyncio.Task[T]]]
-StoppableTaskFactory = Callable[[D], Awaitable[StoppableTask[T]]]
-
-
-class StoppableAsyncIterator(AsyncIterator):
-
-    def stop(self):
-        pass
 
 
 class TerminateTaskGroup(Exception):
@@ -155,94 +167,6 @@ async def cancel_task_and_wait(task: asyncio.Task[T], timeout_s: float) -> None:
         raise TimeoutError(f"Task {task.get_name()} did not stop in time after cancellation")
 
 
-async def restart_task_on_iter(
-    source: AsyncIterator[D] | AsyncIterable[D],
-    task_factory: TaskFactory[D, T],
-    cancel_timeout_s: float | None = None,
-    initial_task: asyncio.Task[T] | None = None,
-) -> AsyncGenerator[asyncio.Task[T], None]:
-    """Consumes an iterable data source and ensures that there is always one task executing on the latest data.
-
-    Parameters
-    ----------
-    source : AsyncIterator[D] | AsyncIterable[D]
-        The data source producing parameters for the spawned tasks
-    task_factory : Callable[[D], asyncio.Task[T]]
-        The factory to create new tasks from new data items
-    cancel_timeout_s : float
-        The number of seconds after which task cancellation is deemed not successful
-    inital_task : asyncio.Task[T] | None, optional
-        The initial task, by default None
-
-    Returns
-    -------
-    AsyncGenerator[asyncio.Task[T], None]
-        The stream of tasks which result from spawning fresh tasks on new data
-
-    Yields
-    ------
-    Iterator[AsyncGenerator[asyncio.Task[T], None]]
-        The stream of tasks which result from spawning fresh tasks on new data
-    """
-    task = initial_task
-    async for data in source:
-        if task is not None:
-            try:
-                match (task):
-                    case asyncio.Task() if cancel_timeout_s is None:
-                        task.cancel()
-                        await task
-                    case asyncio.Task() if cancel_timeout_s is not None:
-                        await cancel_task_and_wait(task, cancel_timeout_s)
-            except asyncio.CancelledError:
-                logger.debug("Task cancelled successfully")
-        task = await task_factory(data)
-        yield task
-
-
-async def restart_stoppable_task_on_iter(
-    source: AsyncIterator[D] | AsyncIterable[D],
-    task_factory: StoppableTaskFactory[D, T],
-    cancel_timeout_s: float | None = None,
-    initial_task: StoppableTask[T] | None = None,
-) -> AsyncGenerator[StoppableTask[T], None]:
-    """Consumes an iterable data source and ensures that there is always one task executing on the latest data.
-
-    Parameters
-    ----------
-    source : AsyncIterator[D] | AsyncIterable[D]
-        The data source producing parameters for the spawned tasks
-    task_factory : StoppableTaskFactory[D, T]
-        The factory to create new tasks from new data items
-    cancel_timeout_s : float
-        The number of seconds after which task cancellation is deemed not successful
-    inital_task : StoppableTask[T] | None, optional
-        The initial task, by default None
-
-    Returns
-    -------
-    AsyncGenerator[StoppableTask[T], None]
-        The stream of tasks which result from spawning fresh tasks on new data
-
-    Yields
-    ------
-    Iterator[AsyncGenerator[StoppableTask[T], None]]
-        The stream of tasks which result from spawning fresh tasks on new data
-    """
-    task = initial_task
-    async for data in source:
-        if task is not None:
-            try:
-                async with asyncio.timeout(cancel_timeout_s):
-                    await task.stop()
-            except TimeoutError:
-                logger.debug("task cancelled due to timeout")
-                # task canceled, wait to stop
-                await task.task
-        task = await task_factory(data)
-        yield task
-
-
 def asyncio_exception_handler(
     loop: asyncio.AbstractEventLoop,  # pylint: disable=unused-argument
     context: dict,
@@ -276,14 +200,3 @@ def asyncio_exception_handler(
         logger.error(f"Unhandled exception: {exception!r}", exc_info=exception)
     else:
         logger.error(f"Context: {context!r}")
-
-
-async def report_event_state(logger: logging.Logger, batch: list[LogEvent]) -> list[LogEvent]:
-    # events_by_state = partition_by_state(batch)
-    # logger.info(
-    #     "Finished processing %d events: %s",
-    #     len(batch),
-    #     ", ".join(f"#{state}={len(events)}" for state, events in events_by_state.items()),
-    # )
-    logger.debug("#events = %d", len(batch))
-    return batch

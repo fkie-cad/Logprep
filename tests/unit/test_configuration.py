@@ -1,6 +1,6 @@
 # pylint: disable=missing-docstring
-from copy import deepcopy
 from typing import Optional
+from unittest import mock
 
 import pytest
 from attrs import define, field, validators
@@ -23,15 +23,15 @@ class MockProcessor(Processor):
         pass
 
 
-original_registry_mapping = deepcopy(Registry.mapping)
-
-
 class TestConfiguration:
-    def setup_method(self):
-        Registry.mapping = {"mock_processor": lambda: MockProcessor}
-
-    def teardown_method(self):
-        Registry.mapping = original_registry_mapping
+    @pytest.fixture(autouse=True)
+    def mock_registry(self):
+        with mock.patch.object(
+            Registry,
+            "_mapping",
+            new={"mock_processor": "tests.unit.test_configuration.MockProcessor"},
+        ):
+            yield
 
     def test_reads_test_config(self):
         test_config = {

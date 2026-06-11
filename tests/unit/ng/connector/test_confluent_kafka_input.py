@@ -46,7 +46,7 @@ KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     CONFIG = {
-        "type": "ng_confluentkafka_input",
+        "type": "confluentkafka_input",
         "kafka_config": {"bootstrap.servers": "testserver:9092", "group.id": "testgroup"},
         "topic": "test_input_raw",
         "health_timeout": 0.1,
@@ -397,7 +397,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_default_config_is_injected(self, mock_consumer, mock_executor):
         injected_config = {
             "enable.auto.offset.store": "false",
-            "enable.auto.commit": "false",
+            "enable.auto.commit": "true",
             "enable.partition.eof": "false",
             "client.id": socket.getfqdn(),
             "auto.offset.reset": "earliest",
@@ -409,6 +409,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             "logger": kafka_input_logger,
             "stats_cb": self.object._stats_callback,
             "error_cb": self.object._error_callback,
+            "on_commit": self.object._commit_callback,
         }
 
         await self.object.setup()
@@ -432,7 +433,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         actual_kafka_config = mock_consumer.call_args[0][0]
         assert actual_kafka_config.get("enable.auto.offset.store") == "false"
-        assert actual_kafka_config.get("enable.auto.commit") == "false"
+        assert actual_kafka_config.get("enable.auto.commit") == "true"
 
         await self.object.shut_down()
 

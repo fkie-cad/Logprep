@@ -22,7 +22,7 @@ test_cases = deepcopy(non_ng_test_cases)
 
 class TestStringSplitter(BaseProcessorTestCase[StringSplitter]):
     CONFIG: dict = {
-        "type": "ng_string_splitter",
+        "type": "string_splitter",
         "rules": ["tests/testdata/unit/string_splitter/rules"],
     }
 

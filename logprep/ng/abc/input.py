@@ -93,19 +93,10 @@ class Input(Connector, AsyncIterator[LogEvent | ErrorEvent | None]):
             validator=(validators.instance_of(float), validators.gt(0)), default=5.0, eq=False
         )
 
-        _version_information: dict = field(
-            validator=validators.instance_of(dict),
-            default={
-                "logprep": "",
-                "configuration": "",
-            },
-        )
-
     def __init__(self, name: str, configuration: "Input.Config") -> None:
         super().__init__(name, configuration)
-        self._preprocessor = Preprocessor(
+        self.preprocessor = Preprocessor(
             configuration.preprocessing,
-            configuration._version_information,
             self._decoder,
             self._encoder,
         )
@@ -167,7 +158,7 @@ class Input(Connector, AsyncIterator[LogEvent | ErrorEvent | None]):
             return event
 
         try:
-            await self._preprocessor.preprocess(event)
+            await self.preprocessor.preprocess(event)
         except PreprocessingError as error:
             logger.exception("Error during preprocessing")
             event.mark_failed(error)

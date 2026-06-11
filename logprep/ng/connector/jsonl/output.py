@@ -93,6 +93,6 @@ class JsonlOutput(Output):
         JsonlOutput._write_json(events_file, document)
         event.stored = True
 
-    async def store(self, events: Sequence[OutputEvent]) -> None:
+    async def _store(self, events: Sequence[OutputEvent]) -> None:
         for event in events:
             self._store_single(event)

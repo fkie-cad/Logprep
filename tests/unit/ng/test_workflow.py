@@ -10,11 +10,11 @@ import pytest
 
 from logprep.abc.component import Component
 from logprep.factory import Factory
+from logprep.ng.abc.event import ErrorEvent, LogEvent
 from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
 from logprep.ng.connector.dummy.input import DummyInput
 from logprep.ng.connector.dummy.output import DummyOutput
-from logprep.ng.abc.event import ErrorEvent, LogEvent
 from logprep.ng.workflow import create_orchestrator
 from logprep.util.typing import is_sequence_of
 
@@ -28,14 +28,14 @@ def get_input_mock():
     ]
 
 
-@pytest.fixture(name="dummy_input", scope="function")
+@pytest.fixture(name="dummy_input")
 def get_dummy_input(input_events) -> DummyInput:
     return typing.cast(
         DummyInput,
         Factory.create(
             {
                 "input": {
-                    "type": "ng_dummy_input",
+                    "type": "dummy_input",
                     "documents": input_events,
                 }
             }
@@ -49,7 +49,7 @@ async def get_processors_mock():
         Factory.create(
             {
                 "processor": {
-                    "type": "ng_generic_adder",
+                    "type": "generic_adder",
                     "rules": [
                         {
                             "filter": "*",
@@ -62,7 +62,7 @@ async def get_processors_mock():
         Factory.create(
             {
                 "pseudo_this": {
-                    "type": "ng_pseudonymizer",
+                    "type": "pseudonymizer",
                     "pubkey_analyst": "examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem",
                     "pubkey_depseudo": "examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem",
                     "regex_mapping": "examples/exampledata/rules/pseudonymizer/regex_mapping.yml",
@@ -92,7 +92,7 @@ def get_opensearch_mock():
     return Factory.create(
         {
             "opensearch": {
-                "type": "ng_dummy_output",
+                "type": "dummy_output",
             }
         }
     )
@@ -103,8 +103,18 @@ def get_kafka_mock():
     return Factory.create(
         {
             "kafka": {
-                "type": "ng_dummy_output",
-                "default": False,
+                "type": "dummy_output",
+            }
+        }
+    )
+
+
+@pytest.fixture(name="another_output")
+def get_another_output():
+    return Factory.create(
+        {
+            "another_output": {
+                "type": "dummy_output",
             }
         }
     )
@@ -127,7 +137,7 @@ def get_error_output_mock() -> DummyOutput:
         Factory.create(
             {
                 "error": {
-                    "type": "ng_dummy_output",
+                    "type": "dummy_output",
                 }
             }
         ),
@@ -158,7 +168,7 @@ class TestWorkflow:
         async def run(
             dummy_input: DummyInput = dummy_input,
             processors: Sequence[Processor] = processors,
-            default_output: Output = default_output,
+            default_outputs: Sequence[Output] = (default_output,),
             named_outputs: dict[str, Output] = named_outputs,
             error_output: Output = error_output,
         ):
@@ -167,7 +177,7 @@ class TestWorkflow:
                 {
                     dummy_input,
                     *processors,
-                    default_output,
+                    *default_outputs,
                     *named_outputs.values(),
                     error_output,
                 }
@@ -176,7 +186,7 @@ class TestWorkflow:
             orchestrator = create_orchestrator(
                 dummy_input,
                 processors,
-                default_output=default_output,
+                default_outputs=default_outputs,
                 error_output=error_output,
                 named_outputs=named_outputs,
             )
@@ -251,10 +261,25 @@ class TestWorkflow:
         default_output.exceptions = ["first event fails to send"]
         error_output.exceptions = ["first event fails to send"]
 
-        # TODO fail harder?
-        # with pytest.RaisesGroup(
-        #     pytest.RaisesExc(RuntimeError, match="error output failed to send event")
-        # ):
         await run_workflow()
 
+        # TODO fail harder than only a log entry?
         assert "failed to store 1 error events in the error output" in caplog.text
+
+    async def test_event_flow_to_multiple_default_outputs(
+        self,
+        run_workflow,
+        opensearch_output,
+        another_output,
+        named_outputs,
+        error_output,
+        dummy_input,
+    ) -> None:
+        await run_workflow(default_outputs=[opensearch_output, another_output])
+
+        assert len(opensearch_output.events) == 3, "3 log events sent"
+        assert len(another_output.events) == 3, "3 log events sent"
+
+        assert len(named_outputs["kafka"].events) == 1, "1 extra data event"
+        assert len(error_output.events) == 0, "no errors"
+        assert len(dummy_input.acknowledged_events) == 3, "3 log events acknowledged"

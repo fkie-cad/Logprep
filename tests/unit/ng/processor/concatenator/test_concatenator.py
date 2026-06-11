@@ -15,7 +15,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 class TestConcatenator(BaseProcessorTestCase[Concatenator]):
     CONFIG = {
-        "type": "ng_concatenator",
+        "type": "concatenator",
         "rules": ["tests/testdata/unit/concatenator/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }

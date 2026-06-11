@@ -29,7 +29,7 @@ failure_test_cases = deepcopy(non_ng_failure_test_cases)
 
 class TestGrokker(BaseProcessorTestCase[Grokker]):
     CONFIG: dict = {
-        "type": "ng_grokker",
+        "type": "grokker",
         "rules": ["tests/testdata/unit/grokker/rules"],
     }
 

@@ -61,7 +61,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
     timeout = 0.01
 
     CONFIG = {
-        "type": "ng_labeler",
+        "type": "labeler",
         "schema": "tests/testdata/unit/labeler/schemas/schema.json",
         "rules": ["tests/testdata/unit/labeler/rules"],
     }

@@ -46,7 +46,7 @@ class InvalidOutput(LogprepException):
 def create_orchestrator(
     input_source: Input,
     processors: Sequence[Processor],
-    default_output: Output,
+    default_outputs: Sequence[Output],
     named_outputs: dict[str, Output],
     error_output: Output | None,
 ) -> WorkerOrchestrator:  # pylint: disable=too-many-locals
@@ -87,6 +87,7 @@ def create_orchestrator(
             else:
                 await send_to_error_queue.put(ErrorEvent.from_failed_event(processed_event))
 
+        # TODO is it fine to only raise a subset of errors here?
         await asyncio.gather(*map(_handle, batch))
 
     processing_worker: Worker[LogEvent] = BatchingWorker(
@@ -107,7 +108,8 @@ def create_orchestrator(
 
         for extra in extra_events:
             if extra.output_name is None:
-                output_name_to_extra_events[default_output.name].append(extra)
+                for output in default_outputs:
+                    output_name_to_extra_events[output.name].append(extra)
             else:
                 try:
                     output_name_to_extra_events[extra.output_name].append(extra)
@@ -143,7 +145,10 @@ def create_orchestrator(
 
     async def _send_default_output_handler(batch: Sequence[LogEvent]):
         # TODO ensure to retry forever for retryable errors
-        await default_output.store(batch)
+        await asyncio.gather(*(output.store(batch) for output in default_outputs))
+
+        # TODO all outputs attempt to set event.stored to True, if any succeeds it is set
+        # this is in line with the docs: https://logprep.readthedocs.io/en/latest/configuration/output.html#output
 
         for event in batch:
             if event.errors:

@@ -12,7 +12,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-import time
 from contextlib import contextmanager
 from copy import deepcopy
 from importlib import import_module
@@ -258,12 +257,13 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
     return Configuration(**config_yml)
 
 
-def _start_logprep(config_path: str, env: dict | None = None) -> subprocess.Popen[bytes]:
+def _start_logprep(config_path: str | Path, env: dict | None = None) -> subprocess.Popen[bytes]:
     if env is None:
         env = {}
     env.update({"PYTHONPATH": "."})
+
     return subprocess.Popen(
-        f"{sys.executable} logprep/run_logprep.py run {config_path}",
+        f"{sys.executable} logprep/run_logprep.py run {str(config_path)}",
         shell=True,
         env=env,
         stdin=subprocess.PIPE,
@@ -311,7 +311,7 @@ def _stop_logprep(proc: subprocess.Popen) -> None:
 
 @contextmanager
 def run_logprep(
-    config_path: str, env: dict | None = None
+    config_path: str | Path, env: dict | None = None
 ) -> Generator[subprocess.Popen, None, None]:
     process = _start_logprep(config_path, env)
     try:
@@ -326,6 +326,7 @@ def wait_for_output(
     test_timeout: int = 10,
     forbidden_outputs: tuple[str, ...] = ("Invalid", "Exception", "Critical", "Error", "ERROR"),
 ) -> re.Match[str]:
+
     @timeout(test_timeout)
     def wait_for_output_inner() -> re.Match[str]:
         assert proc.stdout
@@ -345,8 +346,8 @@ def wait_for_output(
 def get_full_pipeline(exclude=None):
     processors = [
         processor_name
-        for processor_name, class_factory in Registry.mapping.items()
-        if issubclass(class_factory(), Processor)
+        for processor_name, class_type in Registry.get_classes().items()
+        if issubclass(class_type, Processor)
     ]
     if exclude:
         processors = filter(lambda x: x not in exclude, processors)

@@ -56,8 +56,7 @@ class Configuration:
         """
         if "type" not in config_:
             raise NoTypeSpecifiedError(name)
-        components = Registry.mapping
         component_type = config_.get("type")
-        if component_type not in components:
+        if component_type not in Registry._mapping:
             raise UnknownComponentTypeError(name, component_type)
         return Registry.get_class(component_type)

@@ -19,7 +19,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
     CONFIG = {
-        "type": "ng_network_comparison",
+        "type": "network_comparison",
         "rules": ["tests/testdata/unit/network_comparison/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
         "list_search_base_path": "tests/testdata/unit/network_comparison/rules",
@@ -52,7 +52,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "description": "",
         }
         config = {
-            "type": "ng_network_comparison",
+            "type": "network_comparison",
             "rules": [],
         }
         processor = Factory.create({"custom_lister": config})
@@ -320,7 +320,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "description": "",
         }
         config = {
-            "type": "ng_network_comparison",
+            "type": "network_comparison",
             "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
@@ -347,7 +347,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "description": "",
         }
         config = {
-            "type": "ng_network_comparison",
+            "type": "network_comparison",
             "rules": [],
             "list_search_base_path": self.CONFIG["list_search_base_path"],
         }
@@ -390,7 +390,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "description": "",
         }
         config = {
-            "type": "ng_network_comparison",
+            "type": "network_comparison",
             "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
@@ -483,7 +483,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "description": "",
         }
         config = {
-            "type": "ng_network_comparison",
+            "type": "network_comparison",
             "rules": [],
             "list_search_base_path": self.CONFIG["list_search_base_path"],
         }
@@ -527,7 +527,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "description": "",
         }
         config = {
-            "type": "ng_network_comparison",
+            "type": "network_comparison",
             "rules": [],
             "list_search_base_path": url_template,
         }
@@ -584,7 +584,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         }
 
         config = {
-            "type": "ng_network_comparison",
+            "type": "network_comparison",
             "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
@@ -639,7 +639,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         }
 
         config = {
-            "type": "ng_network_comparison",
+            "type": "network_comparison",
             "rules": [],
             "list_search_base_path": self.CONFIG["list_search_base_path"],
         }
@@ -685,7 +685,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         }
 
         config = {
-            "type": "ng_network_comparison",
+            "type": "network_comparison",
             "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }

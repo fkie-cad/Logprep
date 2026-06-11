@@ -15,7 +15,7 @@ class DummyError(Exception):
 class TestDummyInput(BaseInputTestCase[DummyInput]):
     timeout = 0.01
 
-    CONFIG = {"type": "ng_dummy_input", "documents": []}
+    CONFIG = {"type": "dummy_input", "documents": []}
 
     async def test_fails_with_disconnected_error_if_input_was_empty(self):
         await self.object.setup()
