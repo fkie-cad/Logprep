@@ -19,7 +19,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 @pytest.mark.filterwarnings("ignore:Trying to unpickle.*")
 class TestAmides(BaseProcessorTestCase[Amides]):
     CONFIG = {
-        "type": "ng_amides",
+        "type": "amides",
         "rules": ["tests/testdata/unit/amides/rules"],
         "models_path": "tests/testdata/unit/amides/model.zip",
         "max_cache_entries": 5,

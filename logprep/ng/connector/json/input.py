@@ -20,33 +20,29 @@ Example
         repeat_documents: true
 """
 
-import copy
 import typing
-from functools import cached_property
 
-from attrs import define, field, validators
+from attrs import define
 
-from logprep.ng.abc.input import Input
-from logprep.ng.connector.dummy.input import DummyInput
+from logprep.ng.connector.dummy.input import BaseDummyInput
 from logprep.util.json_handling import parse_json
 
 
-class JsonInput(DummyInput):
+class JsonInput(BaseDummyInput):
     """JsonInput Connector"""
 
     @define(kw_only=True)
-    class Config(Input.Config):
+    class Config(BaseDummyInput.Config):
         """JsonInput connector specific configuration"""
 
         documents_path: str
-        """A path to a file in json format, with can also include multiple jsons
+        """A path to a file in json format, which can also include multiple jsons
         dicts wrapped in a list."""
-        repeat_documents: bool = field(validator=validators.instance_of(bool), default=False)
-        """If set to :code:`true`, then the given input documents will be repeated after the last
-        one is reached. Default: :code:`False`"""
 
-    @cached_property
-    def _documents(self) -> list:
-        # we can not use the config property here, as our config does not inherit the parent config
-        config = typing.cast("JsonInput.Config", self._config)
-        return copy.copy(parse_json(config.documents_path))
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast("JsonInput.Config", self._config)
+
+    async def _produce_documents(self):
+        return parse_json(self.config.documents_path)

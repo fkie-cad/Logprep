@@ -16,7 +16,7 @@ def get_logprep_config():
         "pipeline": [
             {
                 "processor_0": {
-                    "type": "ng_generic_adder",
+                    "type": "generic_adder",
                     "rules": [
                         {
                             "filter": "*",
@@ -27,7 +27,7 @@ def get_logprep_config():
             },
             {
                 "processor_1": {
-                    "type": "ng_pseudonymizer",
+                    "type": "pseudonymizer",
                     "pubkey_analyst": "examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem",
                     "pubkey_depseudo": "examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem",
                     "regex_mapping": "examples/exampledata/rules/pseudonymizer/regex_mapping.yml",
@@ -46,19 +46,19 @@ def get_logprep_config():
                 }
             },
         ],
-        "input": {"file": {"type": "ng_dummy_input", "documents": []}},
+        "input": {"file": {"type": "dummy_input", "documents": []}},
         "output": {
             "kafka": {
-                "type": "ng_dummy_output",
+                "type": "dummy_output",
                 "default": False,
             },
             "opensearch": {
-                "type": "ng_dummy_output",
+                "type": "dummy_output",
             },
         },
         "error_output": {
             "error": {
-                "type": "ng_dummy_output",
+                "type": "dummy_output",
             }
         },
         "logger": {

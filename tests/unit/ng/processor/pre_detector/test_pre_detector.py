@@ -32,7 +32,7 @@ DETECTION_EVENT_FIELDS = frozenset(
 
 class TestPreDetector(BaseProcessorTestCase[PreDetector]):
     CONFIG = {
-        "type": "ng_pre_detector",
+        "type": "pre_detector",
         "rules": ["tests/testdata/unit/pre_detector/rules"],
         "outputs": [{"kafka": "pre_detector_alerts"}],
         "alert_ip_list_path": "tests/testdata/unit/pre_detector/alert_ips.yml",

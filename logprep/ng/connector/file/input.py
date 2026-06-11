@@ -20,6 +20,7 @@ Example
         watch_file: True
 """
 
+import asyncio
 import queue
 import threading
 import typing
@@ -28,7 +29,6 @@ from typing import TextIO
 
 from attrs import define, field, validators
 
-from logprep.abc.input import FatalInputError
 from logprep.connector.file.input import (
     FileWatcherUtil,
     RepeatedTimerThread,
@@ -164,33 +164,31 @@ class FileInput(Input):
 
     async def _get_event(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Returns the first message from the threadsafe queue"""
+        await asyncio.sleep(0.0)
         try:
-            message: dict = self._messages.get(timeout=timeout)
+            message: dict = self._messages.get(block=False)
             raw_message: bytes = str(message).encode("utf8")
             return LogEvent(message, original=raw_message, metadata=EventMetadata())
         except queue.Empty:
             return None
 
+    async def acknowledge(self, events) -> None:
+        # not implemented
+        pass
+
     async def setup(self) -> None:
         """Creates and starts the Thread that continuously monitors the given logfile.
-        Right now this input connector is only started in the first process.
-        It needs the class attribute pipeline_index before running setup in Pipeline
-        Initiation"""
+        Right now this input connector is only started in the first process."""
         await super().setup()
-        if not hasattr(self, "pipeline_index"):
-            raise FatalInputError(
-                self, "Necessary instance attribute `pipeline_index` could not be found."  # type: ignore
-            )
-        if self.pipeline_index == 1:
-            initial_file_pointer: int = self._get_initial_file_offset(self.config.logfile_path)
-            self._fileinfo_util.add_offset(self.config.logfile_path, initial_file_pointer)
-            self.rthread = RepeatedTimerThread(
-                self.config.interval,
-                self._file_input_handler,
-                self.stop_flag,
-                self.config.watch_file,
-                file_name=self.config.logfile_path,
-            )
+        initial_file_pointer: int = self._get_initial_file_offset(self.config.logfile_path)
+        self._fileinfo_util.add_offset(self.config.logfile_path, initial_file_pointer)
+        self.rthread = RepeatedTimerThread(
+            self.config.interval,
+            self._file_input_handler,
+            self.stop_flag,
+            self.config.watch_file,
+            file_name=self.config.logfile_path,
+        )
 
     async def shut_down(self) -> None:
         """Raises the Stop Event Flag that will stop the thread that monitors the logfile"""

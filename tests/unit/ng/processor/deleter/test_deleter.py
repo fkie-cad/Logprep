@@ -8,7 +8,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 class TestDeleter(BaseProcessorTestCase[Deleter]):
     CONFIG = {
-        "type": "ng_deleter",
+        "type": "deleter",
         "rules": ["tests/testdata/unit/deleter/rules"],
     }
 

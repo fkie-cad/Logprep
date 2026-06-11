@@ -5,17 +5,15 @@
 from copy import deepcopy
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import OutputSpec
+from logprep.ng.abc.event import EventMetadata, LogEvent, OutputSpec
 from logprep.ng.connector.dummy.output import DummyOutput
-from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.pre_detector.sre_event import SreEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
-from logprep.ng.abc.event import EventMetadata, LogEvent
 
 
 class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
     CONFIG = {
-        "type": "ng_dummy_output",
+        "type": "dummy_output",
     }
 
     async def test_store_appends_document_to_variable(self):

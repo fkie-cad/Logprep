@@ -11,50 +11,24 @@ from logprep.ng.util.configuration import Configuration
 logger = logging.getLogger("config_refresh")
 
 
-async def config_refresh_gen(
-    initial_config: Configuration,
-    stop_event: asyncio.Event,
-    *,
-    yield_initial: bool = True,
-) -> AsyncGenerator[Configuration, None]:
-    """
-    Produce a `Configuration` every time a new configuration version has been detected.
-    The generator runs endlessly, if not stopped through the `stop_event` or a disabled
-    configuration refresh (`refresh_interval` set to `None`).
+async def wait_for_refreshed_config(
+    current_config: Configuration, stop_event: asyncio.Event
+) -> Configuration | None:
 
-    Parameters
-    ----------
-    initial_config : Configuration
-        The starting configuration
-    stop_event : asyncio.Event
-        Event to signal that the generator shall stop
-    yield_initial : bool, optional
-        Whether to also yield the initial configuration once; defaults to `True`
-
-    Returns
-    -------
-    AsyncGenerator[Configuration, None]
-        A `Configuration` every time a new configuration version has been detected
-
-    Yields
-    ------
-    Iterator[Configuration]
-        A `Configuration` every time a new configuration version has been detected
-    """
-    config = initial_config
+    config = current_config
 
     current_config_version = config.version
     refresh_interval = config.config_refresh_interval
 
     if refresh_interval is None:
         logger.debug("Config refresh has been disabled.")
-        return
+        await stop_event.wait()
+        return None
+    else:
+        logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
 
     loop = asyncio.get_running_loop()
     next_run = loop.time() + refresh_interval
-
-    if yield_initial:
-        yield config
 
     while not stop_event.is_set():
         sleep_time = next_run - loop.time()
@@ -88,7 +62,7 @@ async def config_refresh_gen(
         if config.version != current_config_version:
             logger.info("Detected new config version: %s", config.version)
             current_config_version = config.version
-            yield config
+            return config
 
         refresh_interval = config.config_refresh_interval
         if refresh_interval is None:
@@ -96,3 +70,48 @@ async def config_refresh_gen(
             break
 
         next_run += refresh_interval
+
+    await stop_event.wait()
+    return None
+
+
+async def config_refresh_gen(
+    initial_config: Configuration,
+    stop_event: asyncio.Event,
+    *,
+    yield_initial: bool = True,
+) -> AsyncGenerator[Configuration, None]:
+    """
+    Produce a `Configuration` every time a new configuration version has been detected.
+    The generator runs endlessly, if not stopped through the `stop_event` or a disabled
+    configuration refresh (`refresh_interval` set to `None`).
+
+    Parameters
+    ----------
+    initial_config : Configuration
+        The starting configuration
+    stop_event : asyncio.Event
+        Event to signal that the generator shall stop
+    yield_initial : bool, optional
+        Whether to also yield the initial configuration once; defaults to `True`
+
+    Returns
+    -------
+    AsyncGenerator[Configuration, None]
+        A `Configuration` every time a new configuration version has been detected
+
+    Yields
+    ------
+    Iterator[Configuration]
+        A `Configuration` every time a new configuration version has been detected
+    """
+    config = initial_config
+
+    if yield_initial:
+        yield config
+
+    while not stop_event.is_set():
+        new_config = await wait_for_refreshed_config(config, stop_event)
+        if new_config is None:
+            break
+        config = new_config

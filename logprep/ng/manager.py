@@ -26,17 +26,18 @@ MAX_QUEUE_SIZE = BATCH_SIZE
 class PipelineManager:
     """Orchestrator class managing pipeline inputs, processors and outputs"""
 
-    def __init__(self, configuration: Configuration, shutdown_timeout_s: float) -> None:
+    def __init__(self, configuration: Configuration) -> None:
         """Initialize the component from the given `configuration`."""
 
         self.configuration = configuration
-        self._shutdown_timeout_s = shutdown_timeout_s
 
     async def setup(self) -> None:
         """Setup the pipeline manager."""
 
         with Factory.recorder() as recorder:
             input_connector = cast(Input, recorder.create(self.configuration.input))
+            # TODO find a better way to inject global config version info in nested component
+            input_connector.preprocessor.set_config_version_info(self.configuration.version)
 
             processors = [
                 cast(Processor, recorder.create(processor_config))
@@ -48,11 +49,6 @@ class PipelineManager:
                 for output_name, output in self.configuration.output.items()
             }
 
-            processors = [
-                cast(Processor, recorder.create(processor_config))
-                for processor_config in self.configuration.pipeline
-            ]
-
             error_output = (
                 cast(Output, Factory.create(self.configuration.error_output))
                 if self.configuration.error_output
@@ -61,22 +57,27 @@ class PipelineManager:
 
             self._components = recorder.components
 
-        default_output = [output for output in named_outputs.values() if output.default][0]
+        default_outputs = [output for output in named_outputs.values() if output.default]
+
+        if not default_outputs:
+            logger.warning("No default output configured")
 
         if error_output is None:
-            logger.warning("No error output configured.")
+            logger.warning("No error output configured")
 
         await asyncio.gather(*(component.setup() for component in self._components))
 
         self._orchestrator = create_orchestrator(
-            input_connector, processors, default_output, named_outputs, error_output
+            input_connector, processors, default_outputs, named_outputs, error_output
         )
 
-    async def run(self, stop_event: asyncio.Event) -> None:
+    async def run(self, stop_event: asyncio.Event, shutdown_timeout_s: float) -> None:
         """Run the runner and continuously process events until stopped."""
 
         try:
-            await self._orchestrator.run(stop_event, self._shutdown_timeout_s)
+            await self._orchestrator.run(stop_event, shutdown_timeout_s)
+            if not stop_event.is_set():
+                logger.info("Worker orchestration stopped internally; shutting down...")
         except (CancelledError, Exception):
             logger.error("PipelineManager.run cancelled or failed; shutting down...", exc_info=True)
             await self._shut_down()

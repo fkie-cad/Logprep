@@ -23,7 +23,7 @@ failure_test_cases = deepcopy(non_ng_failure_test_cases)
 class TestDecoder(BaseProcessorTestCase[Decoder]):
 
     CONFIG: dict = {
-        "type": "ng_decoder",
+        "type": "decoder",
         "rules": ["tests/testdata/unit/decoder/rules"],
     }
 

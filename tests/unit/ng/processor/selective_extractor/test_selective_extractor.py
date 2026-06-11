@@ -3,16 +3,15 @@
 import uuid
 from unittest import mock
 
-from logprep.ng.abc.event import EventMetadata
+from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
-from logprep.ng.abc.event import LogEvent
 from logprep.ng.processor.selective_extractor.processor import SelectiveExtractor
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
     CONFIG = {
-        "type": "ng_selective_extractor",
+        "type": "selective_extractor",
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
 

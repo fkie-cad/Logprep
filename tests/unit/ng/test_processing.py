@@ -9,8 +9,8 @@ import pytest
 
 from logprep.factory import Factory
 from logprep.ng.abc.event import EventMetadata, LogEvent
-from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from logprep.ng.processor import process
+from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from logprep.util.helper import get_dotted_field_value
 
 
@@ -25,13 +25,13 @@ def get_input_mock():
     )
 
 
-@pytest.fixture(name="processors", scope="session")
+@pytest.fixture(name="processors")
 async def get_processors_mock():
     processors = [
         Factory.create(
             {
                 "processor": {
-                    "type": "ng_generic_adder",
+                    "type": "generic_adder",
                     "rules": [
                         {
                             "filter": "*",
@@ -44,7 +44,7 @@ async def get_processors_mock():
         Factory.create(
             {
                 "pseudo_this": {
-                    "type": "ng_pseudonymizer",
+                    "type": "pseudonymizer",
                     "pubkey_analyst": "examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem",
                     "pubkey_depseudo": "examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem",
                     "regex_mapping": "examples/exampledata/rules/pseudonymizer/regex_mapping.yml",

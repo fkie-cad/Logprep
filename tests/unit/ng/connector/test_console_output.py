@@ -19,7 +19,7 @@ from tests.unit.ng.connector.base import BaseOutputTestCase
 @pytest.mark.skip
 class TestConsoleOutput(BaseOutputTestCase):
     CONFIG = {
-        "type": "ng_console_output",
+        "type": "console_output",
     }
 
     def test_describe_returns_console_output(self):

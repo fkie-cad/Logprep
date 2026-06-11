@@ -24,7 +24,7 @@ def get_processors_mock():
         Factory.create(
             {
                 "processor": {
-                    "type": "ng_generic_adder",
+                    "type": "generic_adder",
                     "rules": [
                         {
                             "filter": "*",
@@ -37,7 +37,7 @@ def get_processors_mock():
         Factory.create(
             {
                 "pseudo_this": {
-                    "type": "ng_pseudonymizer",
+                    "type": "pseudonymizer",
                     "pubkey_analyst": "examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem",
                     "pubkey_depseudo": "examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem",
                     "regex_mapping": "examples/exampledata/rules/pseudonymizer/regex_mapping.yml",
@@ -67,7 +67,7 @@ def get_opensearch_mock():
     return Factory.create(
         {
             "opensearch": {
-                "type": "ng_dummy_output",
+                "type": "dummy_output",
             }
         }
     )
@@ -78,7 +78,7 @@ def get_kafka_mock():
     return Factory.create(
         {
             "kafka": {
-                "type": "ng_dummy_output",
+                "type": "dummy_output",
                 "default": False,
             }
         }
@@ -90,7 +90,7 @@ def get_error_output_mock():
     return Factory.create(
         {
             "error": {
-                "type": "ng_dummy_output",
+                "type": "dummy_output",
             }
         }
     )

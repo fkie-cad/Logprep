@@ -11,7 +11,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
     CONFIG = {
-        "type": "ng_domain_label_extractor",
+        "type": "domain_label_extractor",
         "rules": ["tests/testdata/unit/domain_label_extractor/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
@@ -167,7 +167,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
     async def test_new_non_default_tagging_field(self):
         config = {
             "Test DomainLabelExtractor Name": {
-                "type": "ng_domain_label_extractor",
+                "type": "domain_label_extractor",
                 "rules": ["tests/testdata/unit/domain_label_extractor/rules"],
                 "tagging_field_name": "special_tags",
                 "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
@@ -188,7 +188,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
     async def test_append_to_non_default_tagging_field(self):
         config = {
             "Test DomainLabelExtractor Name": {
-                "type": "ng_domain_label_extractor",
+                "type": "domain_label_extractor",
                 "rules": ["tests/testdata/unit/domain_label_extractor/rules"],
                 "tagging_field_name": "special_tags",
                 "tree_config": "tests/testdata/unit/shared_data/tree_config.json",

@@ -95,7 +95,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
     mocks = {"geoip2.database.Reader": {"new": ReaderMock()}}
 
     CONFIG = {
-        "type": "ng_geoip_enricher",
+        "type": "geoip_enricher",
         "rules": ["tests/testdata/unit/geoip_enricher/rules"],
         "db_path": "tests/testdata/mock_external/MockGeoLite2-City.mmdb",
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",

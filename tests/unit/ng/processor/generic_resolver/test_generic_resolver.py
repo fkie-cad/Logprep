@@ -88,7 +88,7 @@ resolve_value_variants = [
 
 class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
     CONFIG = {
-        "type": "ng_generic_resolver",
+        "type": "generic_resolver",
         "rules": ["tests/testdata/unit/generic_resolver/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }

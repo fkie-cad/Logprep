@@ -9,7 +9,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 class TestDropper(BaseProcessorTestCase[Dropper]):
     CONFIG = {
-        "type": "ng_dropper",
+        "type": "dropper",
         "rules": ["tests/testdata/unit/dropper/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }

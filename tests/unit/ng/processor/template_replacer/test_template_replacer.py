@@ -15,7 +15,7 @@ from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
     CONFIG = {
-        "type": "ng_template_replacer",
+        "type": "template_replacer",
         "rules": ["tests/testdata/unit/template_replacer/rules"],
         "template": "tests/testdata/unit/template_replacer/replacer_template.yml",
         "pattern": {

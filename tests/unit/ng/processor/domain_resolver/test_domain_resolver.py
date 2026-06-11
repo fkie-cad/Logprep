@@ -17,7 +17,7 @@ TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 
 class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
     CONFIG = {
-        "type": "ng_domain_resolver",
+        "type": "domain_resolver",
         "rules": ["tests/testdata/unit/domain_resolver/rules"],
         "timeout": 0.25,
         "max_cached_domains": 1000000,

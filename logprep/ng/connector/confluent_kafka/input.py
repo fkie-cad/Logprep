@@ -23,7 +23,7 @@ Example
         kafka_config:
             bootstrap.servers: "127.0.0.1:9092,127.0.0.1:9093"
             group.id: "cgroup"
-            enable.auto.commit: "false"
+            enable.auto.commit: "true"
             session.timeout.ms: "6000"
             auto.offset.reset: "earliest"
 """
@@ -58,7 +58,6 @@ from logprep.ng.abc.input import (
     CriticalInputParsingError,
     FatalInputError,
     Input,
-    InputWarning,
 )
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
 from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
@@ -68,7 +67,7 @@ from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
     "enable.auto.offset.store": "false",
-    "enable.auto.commit": "false",
+    "enable.auto.commit": "true",
     "client.id": "<<hostname>>",
     "auto.offset.reset": "earliest",
     "session.timeout.ms": "6000",
@@ -308,7 +307,8 @@ class ConfluentKafkaInput(Input):
         injected_config = {
             "logger": logger,
             "enable.auto.offset.store": "false",
-            "enable.auto.commit": "false",
+            "enable.auto.commit": "true",
+            "on_commit": self._commit_callback,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
@@ -532,6 +532,31 @@ class ConfluentKafkaInput(Input):
             )
             self._commit_tracker.unregister_partition(tp.partition)
 
+    def _commit_callback(
+        self, error: KafkaException | None, topic_partitions: list[TopicPartition]
+    ) -> None:
+        """Callback used to indicate success or failure of asynchronous and
+        automatic commit requests. This callback is served upon calling consumer.poll()/consume()
+
+        Parameters
+        ----------
+        error : KafkaException | None
+            the commit error, or None on success
+        topic_partitions : list[TopicPartition]
+            partitions with their committed offsets or per-partition errors
+        """
+
+        if error is not None:
+            self.metrics.commit_failures += 1
+            # TODO add a log warning
+        self.metrics.commit_success += 1
+        for tp in topic_partitions:
+            offset = tp.offset
+            if offset in SPECIAL_OFFSETS:
+                offset = 0
+            labels = ConfluentKafkaInput._message_labels(self.config.topic, tp.partition)
+            self.metrics.committed_offsets.add_with_labels(offset, labels)
+
     async def _get_memberid(self) -> str | None:
         try:
             if self._consumer is not None:
@@ -571,42 +596,7 @@ class ConfluentKafkaInput(Input):
             logger.debug("events were acknowledged, no committable offset identified")
             return
 
-        try:
-            commit_results: list[TopicPartition] = await self._consumer.commit(
-                offsets=commit_offsets, asynchronous=False
-            )
-        except KafkaException as error:
-            self.metrics.commit_failures += 1
-            # TODO rather only log a warning
-            raise InputWarning.from_message(
-                self,
-                "failed to commit offsets: "
-                + ", ".join(f"[partition={p.partition}, offset={p.offset}]" for p in commit_offsets)
-                + f"due to {str(error)}",
-            ) from error
-
-        successes = [result for result in commit_results if result.error is None]
-        errors = [result for result in commit_results if result.error is not None]
-
-        if successes:
-            self.metrics.commit_success += 1
-            for tp in successes:
-                self.metrics.committed_offsets.add_with_labels(
-                    tp.offset,
-                    ConfluentKafkaInput._message_labels(self.config.topic, tp.partition),
-                )
-
-        if errors:
-            self.metrics.commit_failures += 1
-            # TODO rather only log a warning
-            raise InputWarning.from_message(
-                self,
-                "failed to commit offsets: "
-                + ", ".join(
-                    f"[partition={p.partition}, offset={p.offset}, reason={p.error}]"
-                    for p in errors
-                ),
-            )
+        await self._consumer.store_offsets(offsets=commit_offsets)
 
     async def shut_down(self) -> None:
         """Shut down the confluent kafka input connector and cleanup resources."""

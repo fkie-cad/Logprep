@@ -32,7 +32,7 @@ KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     CONFIG = {
-        "type": "ng_confluentkafka_output",
+        "type": "confluentkafka_output",
         "topic": "test_input_raw",
         "flush_timeout": 0.1,
         "kafka_config": {

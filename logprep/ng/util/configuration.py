@@ -1066,13 +1066,12 @@ class Configuration:
             self._verify_outputs(processor, rule)
 
     def _verify_outputs(self, processor: Processor, rule) -> None:
-        for output in rule.outputs:
-            for output_name, _ in output.items():
-                if output_name not in self.output:
-                    raise InvalidRuleDefinitionError(
-                        f"{processor.describe()}: output"
-                        f" '{output_name}' does not exist in logprep outputs"
-                    )
+        for spec in rule.outputs:
+            if spec.output_name not in self.output:
+                raise InvalidRuleDefinitionError(
+                    f"{processor.describe()}: output"
+                    f" '{spec.output_name}' does not exist in logprep outputs"
+                )
 
     def _set_version_info_metric(self) -> None:
         self._metrics.version_info.add_with_labels(

@@ -36,6 +36,7 @@ import os
 import zlib
 from functools import cached_property
 from hmac import HMAC
+from importlib.metadata import version
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
@@ -78,14 +79,17 @@ class Preprocessor:
     def __init__(
         self,
         config: PreprocessingConfig,
-        version_info: dict[str, FieldValue],
         decoder: Decoder,
         encoder: Encoder,
     ) -> None:
         self._config = config
         self._decoder = decoder
         self._encoder = encoder
-        self._version_info = version_info
+        self._version_info = {"logprep": version("logprep"), "configuration": ""}
+
+    def set_config_version_info(self, config_version: str) -> None:
+        """Set the config version for reporting"""
+        self._version_info["configuration"] = config_version
 
     @property
     def _add_hmac(self) -> bool:

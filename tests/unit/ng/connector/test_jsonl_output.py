@@ -19,7 +19,7 @@ from tests.unit.ng.connector.base import BaseOutputTestCase
 @pytest.mark.skip
 class TestJsonlOutputOutput(BaseOutputTestCase):
     CONFIG = {
-        "type": "ng_jsonl_output",
+        "type": "jsonl_output",
         "output_file": f"{tempfile.gettempdir()}/output.jsonl",
         "output_file_custom": f"{tempfile.gettempdir()}/custom_file",
     }

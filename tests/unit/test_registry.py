@@ -20,7 +20,7 @@ class TestRegistry:
             Registry.get_rule_class_by_rule_definition({"filter": "foo", "i do not exist": {}})
 
     def test_get_rule_class_raises_on_wrong_type(self):
-        with mock.patch.object(Registry, "mapping", {123: Calculator}):
+        with mock.patch.object(Registry, "_mapping", {123: Calculator}):
             with pytest.raises(ValueError, match="Unknown rule type"):
                 Registry.get_rule_class_by_rule_definition({"filter": "foo", 123: {}})
 
@@ -38,5 +38,5 @@ class TestRegistry:
         assert Registry.get_class("calculator") == expected_class
 
     def test_get_class_raises(self):
-        with pytest.raises(ValueError, match="Unknown processor type"):
+        with pytest.raises(ValueError, match="Unknown component type"):
             Registry.get_class("i do not exist")

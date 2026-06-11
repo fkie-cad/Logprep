@@ -17,8 +17,8 @@ import pytest
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import EventMetadata, LogEvent
-from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from logprep.ng.processor.pseudonymizer.processor import Pseudonymizer
+from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
@@ -33,7 +33,7 @@ test_cases = deepcopy(non_ng_test_cases)
 
 class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
     CONFIG = {
-        "type": "ng_pseudonymizer",
+        "type": "pseudonymizer",
         "outputs": [{"kafka": "topic"}],
         "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
         "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",

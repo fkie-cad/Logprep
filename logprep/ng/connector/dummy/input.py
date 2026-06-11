@@ -21,41 +21,59 @@ Example
 
 import asyncio
 import typing
+from abc import abstractmethod
 from collections.abc import Sequence
 from copy import deepcopy
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.event import ErrorEvent, EventMetadata
+from logprep.ng.abc.event import ErrorEvent, EventMetadata, LogEvent
 from logprep.ng.abc.input import Input
-from logprep.ng.abc.event import EventMetadata, LogEvent
 
 
-class DummyInput(Input):
+class BaseDummyInput(Input):
     """DummyInput Connector"""
 
     @define(kw_only=True)
     class Config(Input.Config):
         """DummyInput specific configuration"""
 
-        documents: Sequence[dict | BaseException | type | None]
-        """A list of documents that should be returned."""
         repeat_documents: bool = field(validator=validators.instance_of(bool), default=False)
         """If set to :code:`true`, then the given input documents will be repeated after the last
         one is reached. Default: :code:`False`"""
 
+        exhaustable: bool = field(validator=validators.instance_of(bool), default=True)
+        """Controls whether the input should stay open (and return `None` internally)
+        after consuming all configured documents"""
+
     @property
     def config(self) -> Config:
         """Provides the properly typed configuration object"""
-        return typing.cast("DummyInput.Config", self._config)
+        return typing.cast("BaseDummyInput.Config", self._config)
 
     def __init__(self, name, configuration) -> None:
         super().__init__(name, configuration)
-        self._documents = list(map(deepcopy, self.config.documents))
         self._acked_events: list[LogEvent] = []
         self._empty_event = asyncio.Event()
 
+    @abstractmethod
+    async def _produce_documents(
+        self,
+    ) -> list[
+        dict
+        | BaseException
+        | type
+        | typing.Literal["Exception"]
+        | typing.Literal["ErrorEvent"]
+        | None
+    ]:
+        """
+        Template method for producing the actual documents acting as input data.
+        Must always return fresh references.
+        """
+
     async def setup(self):
+        self._documents = await self._produce_documents()
         if not self._documents:
             self._empty_event.set()
         return await super().setup()
@@ -64,23 +82,31 @@ class DummyInput(Input):
         """Retrieve next document from configuration and raise warning if found"""
 
         if not self._documents:
-            raise StopAsyncIteration("no documents left")
+            if self.config.exhaustable:
+                raise StopAsyncIteration("no documents left")
+            else:
+                await asyncio.sleep(0)
+                return None
 
         document = self._documents.pop(0)
 
         if not self._documents:
             if self.config.repeat_documents:
-                self._documents = list(map(deepcopy, self.config.documents))
+                self._documents = await self._produce_documents()
             else:
                 self._empty_event.set()
 
         match document:
             case BaseException():
-                raise deepcopy(document)
+                raise document
             case type():
                 raise document()
+            case str() if document == "Exception":
+                raise Exception("something went wrong")
+            case str() if document == "ErrorEvent":
+                return ErrorEvent({})
             case dict():
-                return LogEvent(deepcopy(document), original=b"", metadata=EventMetadata())
+                return LogEvent(document, original=b"", metadata=EventMetadata())
             case None:
                 return None
             case _:
@@ -98,3 +124,28 @@ class DummyInput(Input):
     def acknowledged_events(self) -> Sequence[LogEvent]:
         """Return events which have been presented through the `acknowledge` method"""
         return self._acked_events
+
+
+class DummyInput(BaseDummyInput):
+    """DummyInput Connector"""
+
+    @define(kw_only=True)
+    class Config(BaseDummyInput.Config):
+        """DummyInput specific configuration"""
+
+        documents: Sequence[dict | BaseException | type | None]
+        """A list of documents that should be returned."""
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast("DummyInput.Config", self._config)
+
+    def __init__(self, name, configuration) -> None:
+        super().__init__(name, configuration)
+        self._documents = list(map(deepcopy, self.config.documents))
+        self._acked_events: list[LogEvent] = []
+        self._empty_event = asyncio.Event()
+
+    async def _produce_documents(self):
+        return list(map(deepcopy, self.config.documents))

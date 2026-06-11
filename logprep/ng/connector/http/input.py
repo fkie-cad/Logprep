@@ -564,12 +564,14 @@ class HttpInput(Input):
             :code:`True` if all endpoints can be called without error
         """
         async with aiohttp.ClientSession(
-            base_url=self.target, timeout=aiohttp.ClientTimeout(self.config.health_timeout)
+            base_url=self.target,
+            timeout=aiohttp.ClientTimeout(self.config.health_timeout),
         ) as session:
 
             async def check_endpoint_status(endpoint: str) -> None:
                 try:
-                    async with session.get(endpoint) as response:
+                    # TODO is it correct to disable SSL for self-checks?
+                    async with session.get(endpoint, ssl=False) as response:
                         response.raise_for_status()
                 except (aiohttp.ClientError, TimeoutError) as error:
                     logger.error(

@@ -34,7 +34,7 @@ failure_test_cases = deepcopy(non_ng_failure_test_cases)
 class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
 
     CONFIG = {
-        "type": "ng_generic_adder",
+        "type": "generic_adder",
         "rules": ["tests/testdata/unit/generic_adder/rules"],
     }
 

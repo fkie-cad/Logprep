@@ -50,7 +50,7 @@ def append_file(file_name: str, source_data: list):
 @pytest.mark.skip
 class TestFileInput(BaseInputTestCase[FileInput]):
     CONFIG: dict = {
-        "type": "ng_file_input",
+        "type": "file_input",
         "logfile_path": "",
         "start": "begin",
         "watch_file": True,

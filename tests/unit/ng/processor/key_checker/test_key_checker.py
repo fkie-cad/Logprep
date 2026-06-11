@@ -26,7 +26,7 @@ test_cases = deepcopy(non_ng_test_cases)
 
 class TestKeyChecker(BaseProcessorTestCase[KeyChecker]):
     CONFIG = {
-        "type": "ng_key_checker",
+        "type": "key_checker",
         "rules": ["tests/testdata/unit/key_checker/rules"],
     }
 
