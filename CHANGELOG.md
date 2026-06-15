@@ -4,6 +4,7 @@
 ### Features
 
 ### Improvements
+* add test cases for `decoder` and `timestamper` behavior when handling empty messages
 
 ### Bugfix
 
