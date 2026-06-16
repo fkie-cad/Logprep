@@ -62,7 +62,6 @@ dependencies = [
   "scikit-learn>=1.2.0,<2",
   "scipy>=1.9.2,<2",
   "joblib<2",
-  "pyyaml<7",
   "requests>=2.33.0,<3", # [>=2.33.0]: CVE-2026-25645
   "ruamel.yaml<1",
   "schedule<2",
