@@ -87,7 +87,6 @@ dev = [
   "pytest-cov",
   "responses",
   "jinja2",
-  "maturin",
   "cibuildwheel",
   "asgiref",
   "pytest-asyncio",
