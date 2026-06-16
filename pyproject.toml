@@ -71,7 +71,6 @@ dependencies = [
   "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
   "msgspec<1",
   "boto3<2",
-  "pydantic<3",
   "click<9",
   "pandas<3",
   "tabulate<1",
