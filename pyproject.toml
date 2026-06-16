@@ -81,7 +81,6 @@ dependencies = [
 
 dev = [
   "black>=26.0.0",
-  "httpx",
   "isort",
   "pylint",
   "pytest",
