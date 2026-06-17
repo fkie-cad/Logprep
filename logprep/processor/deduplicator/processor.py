@@ -23,7 +23,10 @@ Processor Configuration
 .. automodule:: logprep.processor.deduplicator.rule
 """
 
+import typing
+
 from logprep.abc.processor import Processor
+from logprep.processor.base.rule import Rule
 from logprep.processor.deduplicator.rule import DeduplicatorRule
 from logprep.util.helper import get_dotted_field_value, add_fields_to
 
@@ -33,7 +36,8 @@ class Deduplicator(Processor):
 
     rule_class = DeduplicatorRule  # type: ignore
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: Rule):
+        rule = typing.cast(DeduplicatorRule, rule)
         for field in rule.fields:
             value_list = get_dotted_field_value(event, field)
             if not isinstance(value_list, list):
