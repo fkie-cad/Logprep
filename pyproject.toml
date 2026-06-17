@@ -62,7 +62,6 @@ dependencies = [
   "schedule<2",
   "urllib3>=2.7.0,<3", # [>=2.7.0]: CVE-2026-44431, CVE-2026-44432
   "uvicorn<1",
-  "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
   "msgspec<1",
   "boto3<2",
   "click<9",
@@ -92,6 +91,7 @@ dev = [
   "types-requests",
   "types-psutil",
   "types-PyYaml",
+  "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
 ]
 
 doc = [
