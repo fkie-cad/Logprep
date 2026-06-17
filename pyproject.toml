@@ -45,7 +45,6 @@ keywords = [
 ]
 dependencies = [
   "attrs<26",
-  "certifi>=2023.7.22, <2026", # CVE-2023-37920
   "confluent-kafka>2,<3",
   "filelock<4",
   "geoip2>=5.2.0,<6", # Setuptools has been replaced with 5.2.0 (CVE)

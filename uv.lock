@@ -1357,7 +1357,6 @@ source = { editable = "." }
 dependencies = [
     { name = "attrs" },
     { name = "boto3" },
-    { name = "certifi" },
     { name = "click" },
     { name = "confluent-kafka" },
     { name = "deepdiff" },
@@ -1424,7 +1423,6 @@ requires-dist = [
     { name = "attrs", specifier = "<26" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=26.0.0" },
     { name = "boto3", specifier = "<2" },
-    { name = "certifi", specifier = ">=2023.7.22,<2026" },
     { name = "cibuildwheel", marker = "extra == 'dev'" },
     { name = "click", specifier = "<9" },
     { name = "confluent-kafka", specifier = ">2,<3" },
