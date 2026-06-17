@@ -50,7 +50,6 @@ dependencies = [
   "geoip2>=5.2.0,<6", # Setuptools has been replaced with 5.2.0 (CVE)
   "jsonref<2",
   "luqum<2",
-  "more-itertools==8.10.0",
   "numpy>=1.26.0,<3",
   "opensearch-py>=3.2,<4", # [>=3.2]: #904
   "prometheus_client<1",
@@ -94,6 +93,7 @@ dev = [
   "types-requests",
   "types-psutil",
   "types-PyYaml",
+  "more-itertools>=11.1.0",
 ]
 
 doc = [
@@ -118,7 +118,6 @@ Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
 [project.scripts]
 logprep = "logprep.run_logprep:cli"
 logprep-ng = "logprep.run_ng:cli"
-
 
 [tool.black]
 line-length = 100

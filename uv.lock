@@ -1367,7 +1367,6 @@ dependencies = [
     { name = "joblib" },
     { name = "jsonref" },
     { name = "luqum" },
-    { name = "more-itertools" },
     { name = "msgspec" },
     { name = "numpy" },
     { name = "opensearch-py" },
@@ -1417,6 +1416,11 @@ doc = [
     { name = "sphinxcontrib-mermaid" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "more-itertools" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "asgiref", marker = "extra == 'dev'" },
@@ -1437,7 +1441,6 @@ requires-dist = [
     { name = "joblib", specifier = "<2" },
     { name = "jsonref", specifier = "<2" },
     { name = "luqum", specifier = "<2" },
-    { name = "more-itertools", specifier = "==8.10.0" },
     { name = "msgspec", specifier = "<1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.18.2" },
     { name = "nbsphinx", marker = "extra == 'doc'", specifier = ">=0.9" },
@@ -1475,6 +1478,9 @@ requires-dist = [
     { name = "uvloop", specifier = "<1" },
 ]
 provides-extras = ["dev", "doc"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "more-itertools", specifier = ">=11.1.0" }]
 
 [[package]]
 name = "luqum"
@@ -1665,11 +1671,11 @@ wheels = [
 
 [[package]]
 name = "more-itertools"
-version = "8.10.0"
+version = "11.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8a/f7/93cf3c81629c95f6f40e509f7cd63985a6ddd829181a66c1c8ef101e55f2/more-itertools-8.10.0.tar.gz", hash = "sha256:1debcabeb1df793814859d64a81ad7cb10504c24349368ccf214c664c474f41f", size = 102929, upload-time = "2021-09-17T13:03:19.418Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/1d/f4da6f02cdffe04d6362210b807146a26044c88d839208aec273bb0d9184/more_itertools-11.1.0.tar.gz", hash = "sha256:48e8f4d9e7e5878571ecf6f2b4e57634f93cd474cc8cfbd2376f2d11b396e30d", size = 145772, upload-time = "2026-05-22T14:14:29.909Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/1f/9cd11889680dc55a3612a277c8310def3f2bfc7159f12fcb647e32350380/more_itertools-8.10.0-py3-none-any.whl", hash = "sha256:56ddac45541718ba332db05f464bebfb0768110111affd27f66e0051f276fa43", size = 51491, upload-time = "2021-09-17T13:03:17.646Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/3d/1087453384dbde46a8c7f9356eead2c58be8a7bf156bca40243377c85715/more_itertools-11.1.0-py3-none-any.whl", hash = "sha256:4b65538ae22f6fed0ce4874efd317463a7489796a0939fa66824dd542125a192", size = 72226, upload-time = "2026-05-22T14:14:28.824Z" },
 ]
 
 [[package]]
