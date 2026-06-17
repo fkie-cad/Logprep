@@ -2,6 +2,9 @@ r"""
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^
 
+A list of fields that contain lists can be specified under `fields`.
+Duplicates are then removed from those fields.
+
 A speaking example:
 
 ..  code-block:: yaml
@@ -31,12 +34,6 @@ A speaking example:
    :undoc-members:
    :inherited-members:
    :noindex:
-
-Examples for deduplication:
-------------------------------------------------
-
-.. datatemplate:import-module:: tests.unit.processor.deduplicator.test_deduplicator
-   :template: testcase-renderer.tmpl
 
 """
 

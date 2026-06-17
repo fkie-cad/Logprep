@@ -11,6 +11,7 @@ Processors
 .. automodule:: logprep.processor.datetime_extractor.processor
 .. automodule:: logprep.processor.deleter.processor
 .. automodule:: logprep.processor.decoder.processor
+.. automodule:: logprep.processor.deduplicator.processor
 .. automodule:: logprep.processor.dissector.processor
 .. automodule:: logprep.processor.domain_label_extractor.processor
 .. automodule:: logprep.processor.domain_resolver.processor
