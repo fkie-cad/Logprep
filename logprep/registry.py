@@ -49,6 +49,7 @@ from logprep.ng.processor.datetime_extractor.processor import (
 from logprep.ng.processor.decoder.processor import Decoder as NgDecoder
 from logprep.ng.processor.deleter.processor import Deleter as NgDeleter
 from logprep.ng.processor.dissector.processor import Dissector as NgDissector
+from logprep.ng.processor.deduplicator.processor import Deduplicator as NgDeduplicator
 from logprep.ng.processor.domain_label_extractor.processor import (
     DomainLabelExtractor as NgDomainLabelExtractor,
 )
@@ -102,6 +103,7 @@ from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from logprep.processor.decoder.processor import Decoder
 from logprep.processor.deleter.processor import Deleter
 from logprep.processor.dissector.processor import Dissector
+from logprep.processor.deduplicator.processor import Deduplicator
 from logprep.processor.domain_label_extractor.processor import DomainLabelExtractor
 from logprep.processor.domain_resolver.processor import DomainResolver
 from logprep.processor.dropper.processor import Dropper
@@ -139,6 +141,7 @@ class Registry:
         "decoder": Decoder,
         "deleter": Deleter,
         "dissector": Dissector,
+        "deduplicator": Deduplicator,
         "domain_label_extractor": DomainLabelExtractor,
         "domain_resolver": DomainResolver,
         "dropper": Dropper,
@@ -160,6 +163,7 @@ class Registry:
         "ng_decoder": NgDecoder,
         "ng_datetime_extractor": NgDatetimeExtractor,
         "ng_dissector": NgDissector,
+        "ng_deduplicator": NgDeduplicator,
         "ng_domain_label_extractor": NgDomainLabelExtractor,
         "ng_domain_resolver": NgDomainResolver,
         "ng_dropper": NgDropper,
