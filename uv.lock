@@ -1355,7 +1355,6 @@ name = "logprep"
 version = "19.2.0"
 source = { editable = "." }
 dependencies = [
-    { name = "aiohttp" },
     { name = "attrs" },
     { name = "boto3" },
     { name = "certifi" },
@@ -1421,7 +1420,6 @@ doc = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp", specifier = ">=3.13.3,<4" },
     { name = "asgiref", marker = "extra == 'dev'" },
     { name = "attrs", specifier = "<26" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=26.0.0" },
