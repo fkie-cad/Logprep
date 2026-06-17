@@ -23,12 +23,12 @@ Processor Configuration
 .. automodule:: logprep.processor.deduplicator.rule
 """
 
+from logprep.abc.processor import Processor
 from logprep.processor.deduplicator.rule import DeduplicatorRule
-from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, add_fields_to
 
 
-class Deduplicator(FieldManager):
+class Deduplicator(Processor):
     """A processor that removes duplicates from lists"""
 
     rule_class = DeduplicatorRule  # type: ignore
@@ -43,6 +43,4 @@ class Deduplicator(FieldManager):
             for value in value_list:
                 if value not in unique:
                     unique.append(value)
-            self._write_to_single_target(
-                (event, field, [unique]), merge_with_target=False, overwrite_target=True, rule=rule
-            )
+            add_fields_to(event, {field: unique}, rule, False, True)

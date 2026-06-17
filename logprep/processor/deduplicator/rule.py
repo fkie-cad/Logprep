@@ -41,14 +41,14 @@ from typing import cast
 
 from attrs import define, field
 
-from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.processor.base.rule import Rule
 
 
-class DeduplicatorRule(FieldManagerRule):
+class DeduplicatorRule(Rule):
     """Deduplicator rule"""
 
     @define(kw_only=True)
-    class Config(FieldManagerRule.Config):
+    class Config(Rule.Config):
         """Config for Deduplicator"""
 
         fields: list = field(factory=list, repr=False, eq=False)
