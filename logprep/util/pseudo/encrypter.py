@@ -1,6 +1,5 @@
 """Module for encryption of strings into Base64-encoded ciphertexts."""
 
-import base64
 from abc import ABC, abstractmethod
 
 from Crypto.Cipher import AES, PKCS1_OAEP

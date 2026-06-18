@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 import tempfile
-from os import kill
 
 import psutil
 import pytest

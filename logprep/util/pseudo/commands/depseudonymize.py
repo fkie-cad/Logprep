@@ -1,6 +1,5 @@
 """Command line tool to depseudonymize a string using the given keys."""
 
-import logging
 import sys
 
 import click
