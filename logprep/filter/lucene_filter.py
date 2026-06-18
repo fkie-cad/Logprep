@@ -58,6 +58,38 @@ This example is not complete, since rules are specific to processors and require
 
     { "filter": "event_id: 1 AND NOT ip_address: 192.168.0.1" }
 
+Range-Filter
+------------
+
+It is possible to use inclusive range expressions to match numeric values.
+The lower and upper boundaries are included and must be specified using square
+brackets. Both integer and floating-point boundaries are supported.
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'age:[18 TO 65]'
+
+
+The example matches log messages in which the value of :code:`age` is greater
+than or equal to :code:`18` and less than or equal to :code:`65`.
+
+Range expressions can also be used within field groups:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'temperature:([18.5 TO 25.0])'
+
+
+Only closed numeric ranges using square brackets are currently supported.
+Exclusive ranges using curly brackets, open boundaries using :code:`*`, and
+non-numeric boundaries are not supported.
+
 RegEx-Filter
 ------------
 
