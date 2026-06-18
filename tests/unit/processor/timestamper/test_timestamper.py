@@ -273,6 +273,26 @@ test_cases = [  # testcase, rule, event, expected
 
 failure_test_cases = [
     (
+        "parsing timestamp fails on empty message",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "",
+        },
+        {
+            "message": "",
+            "tags": ["_timestamper_failure"],
+        },
+        r"Could not parse timestamp.*event=\{'message': ''\}",
+    ),
+    (
         "normalization from timestamp with non matching patterns",
         {
             "filter": "winlog.event_id: 123456789",
