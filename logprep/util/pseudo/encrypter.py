@@ -1,5 +1,6 @@
 """Module for encryption of strings into Base64-encoded ciphertexts."""
 
+import typing
 from abc import ABC, abstractmethod
 
 from Crypto.Cipher import AES, PKCS1_OAEP
@@ -86,9 +87,9 @@ class DualPKCS1HybridGCMEncrypter(Encrypter):
         return str(
             GCMPseudonym(
                 session_key_enc_enc,
-                aes_key_depseudo.nonce,
+                typing.cast(bytes, aes_key_depseudo.nonce),
                 depseudo_key_enc,
-                aes_key_input_str.nonce,
+                typing.cast(bytes, aes_key_input_str.nonce),
                 input_str_enc,
             )
         )
