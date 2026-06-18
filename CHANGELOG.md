@@ -5,6 +5,7 @@
 
 ### Improvements
 * add test cases for `decoder` and `timestamper` behavior when handling empty messages
+* remove unused dependencies and move development and documentation-only dependencies to their corresponding optional dependency groups.
 
 ### Bugfix
 
