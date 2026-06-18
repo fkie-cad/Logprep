@@ -93,6 +93,7 @@ require additional options.
 """
 
 import logging
+import math
 import re
 from itertools import chain, zip_longest
 from typing import Sequence
@@ -106,16 +107,21 @@ from luqum.tree import (
     Not,
     OrOperation,
     Phrase,
+    Prohibit,
+    Range,
     Regex,
     SearchField,
     Word,
 )
+
 from logprep.abc.exceptions import LogprepException
 from logprep.filter.expression.filter_expression import (
     Always,
     And,
     Exists,
     FilterExpression,
+    FloatRangeFilterExpression,
+    IntegerRangeFilterExpression,
 )
 from logprep.filter.expression.filter_expression import Not as NotExpression
 from logprep.filter.expression.filter_expression import (
@@ -275,6 +281,14 @@ class LuceneTransformer:
             # pylint: enable=no-value-for-parameter
         if isinstance(tree, Group):
             return self._parse_tree(tree.children[0])
+
+        if isinstance(tree, Range):
+            if self._last_search_field is None:
+                raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
+
+            key = get_dotted_field_list(self._last_search_field)
+            return self._parse_range(key, tree)
+
         if isinstance(tree, SearchField):
             if isinstance(tree.expr, FieldGroup):
                 self._last_search_field = tree.name
@@ -287,6 +301,97 @@ class LuceneTransformer:
                 return self._create_field_group_expression(tree, self._last_search_field)
             return self._create_value_expression(tree)
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
+
+    def _parse_range(self, key: Sequence[str], expr: Range) -> FilterExpression:
+        expression = str(expr)
+        lower_token, upper_token = expr.children
+
+        if not expression.startswith("[") or not expression.endswith("]"):
+            raise LuceneFilterError(
+                f'The expression "{expression}" is invalid. '
+                "Only inclusive ranges using square brackets are supported."
+            )
+
+        lower_value = self._get_range_boundary_value(lower_token)
+        upper_value = self._get_range_boundary_value(upper_token)
+
+        try:
+            lower_bound = int(lower_value)
+            upper_bound = int(upper_value)
+        except ValueError:
+            pass
+        else:
+            self._validate_range_boundaries(lower_bound, upper_bound, expr)
+
+            return IntegerRangeFilterExpression(
+                key,
+                lower_bound,
+                upper_bound,
+            )
+
+        try:
+            lower_bound_float = float(lower_value)
+            upper_bound_float = float(upper_value)
+        except ValueError as error:
+            raise LuceneFilterError(f'The expression "{expression}" is invalid!') from error
+
+        if not math.isfinite(lower_bound_float) or not math.isfinite(upper_bound_float):
+            raise LuceneFilterError(
+                f'The expression "{expression}" is invalid. '
+                "Range boundaries must be finite numbers."
+            )
+
+        self._validate_range_boundaries(
+            lower_bound_float,
+            upper_bound_float,
+            expr,
+        )
+
+        return FloatRangeFilterExpression(
+            key,
+            lower_bound_float,
+            upper_bound_float,
+        )
+
+    @staticmethod
+    def _get_range_boundary_value(token: luqum.tree) -> str:
+        """Return a range boundary as a normalized numeric string.
+
+        Luqum parses a negative boundary such as ``-10`` as
+        ``Prohibit(Word("10"))`` instead of ``Word("-10")``. This helper is
+        therefore required to normalize both positive and negative boundary
+        nodes into the string representation expected by the numeric parsers.
+        """
+
+        if isinstance(token, Word):
+            return token.value
+
+        if isinstance(token, Prohibit):
+            child = token.children[0]
+
+            if isinstance(child, Word):
+                return f"-{child.value}"
+
+        raise LuceneFilterError(f'The range boundary "{token}" is invalid!')
+
+    @staticmethod
+    def _validate_range_boundaries(
+        lower_bound: int | float,
+        upper_bound: int | float,
+        expr: Range,
+    ) -> None:
+        """Validate that the range boundaries form an ascending range.
+
+        The range filter expressions expect the lower boundary to be less than
+        or equal to the upper boundary. Without this validation, a reversed range
+        such as ``[10 TO 0]`` would be accepted but could never match any value,
+        which would hide a likely configuration error.
+        """
+
+        if lower_bound > upper_bound:
+            raise LuceneFilterError(
+                "The lower range boundary must not exceed " f'the upper range boundary: "{expr}"'
+            )
 
     def _create_field_group_expression(
         self, tree: luqum.tree, dotted_field: str
@@ -321,22 +426,27 @@ class LuceneTransformer:
         return expressions
 
     def _create_field(self, tree: luqum.tree) -> FilterExpression:
+        key = get_dotted_field_list(tree.name)
+
         if isinstance(tree.expr, (Phrase, Word)):
-            key = get_dotted_field_list(tree.name)
             if tree.expr.value == "null":
                 return Null(key)
 
             value = self._strip_quote_from_string(tree.expr.value)
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression(key, value)
+
         if isinstance(tree.expr, Regex):
-            key = get_dotted_field_list(tree.name)
             if tree.expr.value == "null":
                 return Null(key)
 
             value = self._strip_quote_from_string(tree.expr.value)
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression_regex(key, value)
+
+        if isinstance(tree.expr, Range):
+            return self._parse_range(key, tree.expr)
+
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
 
     @staticmethod
