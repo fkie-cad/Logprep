@@ -2,6 +2,9 @@
 ### Breaking
 
 ### Features
+* add support for inclusive numeric Lucene range filters using square brackets.
+* add support for integer and floating-point ranges in regular fields and field groups.
+* add validation for reversed, non-numeric, non-finite, and unsupported exclusive ranges.
 * add `deduplicator` processor that removes duplicates from lists
 
 ### Improvements
