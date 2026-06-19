@@ -2,6 +2,7 @@
 ### Breaking
 
 ### Features
+* add `deduplicator` processor that removes duplicates from lists
 
 ### Improvements
 * add test cases for `decoder` and `timestamper` behavior when handling empty messages

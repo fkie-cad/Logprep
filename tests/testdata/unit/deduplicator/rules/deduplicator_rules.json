@@ -1,0 +1,16 @@
+[
+    {
+        "filter": "message",
+        "deduplicator": {
+            "fields": []
+        },
+        "description": "do nothing rule for deduplicator"
+    },
+    {
+        "filter": "message",
+        "deduplicator": {
+            "fields": ["remove_duplicates"]
+        },
+        "description": "deduplicate remove_duplicates"
+    }
+]
