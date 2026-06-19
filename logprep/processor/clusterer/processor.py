@@ -44,23 +44,22 @@ Processor Configuration
 """
 
 import typing
-from typing import Tuple
 
 from attrs import define, field, validators
 
-from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
     LogRecord,
     SignatureEngine,
     SignaturePhaseStreaming,
 )
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import (
+    MISSING,
+    FieldValue,
     add_fields_to,
     get_dotted_field_value,
     get_field_value_no_slice,
-    MISSING,
-    FieldValue,
 )
 
 

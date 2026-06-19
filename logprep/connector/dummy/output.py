@@ -19,14 +19,10 @@ Example
 
 import logging
 import typing
-from typing import TYPE_CHECKING
 
 from attrs import define, field, validators
 
 from logprep.abc.output import Output
-
-if TYPE_CHECKING:
-    from logprep.abc.connector import Connector  # pragma: no cover
 
 logger = logging.getLogger("DummyOutput")
 
