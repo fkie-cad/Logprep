@@ -100,16 +100,16 @@ class ListComparison(Processor):
         list_matches = self._get_lists_matching_with_values(rule, value_list, event)
 
         if len(list_matches) == 0:
-            return list(rule.compare_sets.keys()), "not_in_list"
-        return list_matches, "in_list"
+            return list([key.render() for key in rule.compare_sets.keys()]), "not_in_list"
+        return [match.render() for match in list_matches], "in_list"
 
     def _get_lists_matching_with_values(
-        self, rule: ListComparisonRule, value_list: list, _: dict
+        self, rule: ListComparisonRule, value_list: list, event: dict
     ) -> list:
         """Iterate over string lists, check if element is in any."""
         list_matches = []
         for value in value_list:
-            for compare_list in rule.compare_sets:
+            for compare_list in rule.get_dynamic_set(event):
                 if compare_list in list_matches:
                     continue
                 if value in rule.compare_sets[compare_list]:

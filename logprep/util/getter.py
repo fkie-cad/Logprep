@@ -2,9 +2,11 @@
 They are returned by the GetterFactory.
 """
 
+import datetime
 import logging
 import os
 import re
+import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import cached_property
@@ -121,6 +123,8 @@ class DataSharedPerTarget:
 
     hash: str | None = None
     """Hash value of the obtained resource"""
+
+    last_called: float | None = None
 
 
 @define(kw_only=True)
@@ -330,10 +334,24 @@ class RefreshableGetter(Getter, ABC):
             raise ValueError(f"Cache is empty for {type(self).__name__} with URI '{self.uri}'")
         return self.cache, self.content_type
 
+    def signal_called(self):
+        self.shared.last_called = time.monotonic()
+
+    @classmethod
+    def signal_called_for_target(cls, target: str):
+        cls._shared[target].last_called = time.monotonic()
+
     @classmethod
     def refresh(cls):
         """Run all pending getter schedulers"""
-        for shared_target_data in cls._shared.values():
+        for target, shared_target_data in cls._shared.items():
+            if shared_target_data.last_called:
+                elapsed = time.monotonic() - shared_target_data.last_called
+                if elapsed > 5 * 60:
+                    cls._shared.pop(target, None)
+                    # Do more cleanup?
+                    continue
+
             if shared_target_data.scheduler:
                 shared_target_data.scheduler.run_pending()
 
