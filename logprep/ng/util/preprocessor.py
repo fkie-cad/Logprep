@@ -37,9 +37,9 @@ import zlib
 from functools import cached_property
 from hmac import HMAC
 from importlib.metadata import version
-from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
+import msgspec
 from msgspec import DecodeError
 
 from logprep.ng.abc.event import LogEvent
@@ -63,24 +63,19 @@ from logprep.util.time import UTC, TimeParser, TimeParserException
 
 
 class PreprocessingError(Exception):
-    pass
-
-
-class Decoder(Protocol):
-    def decode(self, data: str) -> Any: ...
-
-
-class Encoder(Protocol):
-    def encode(self, obj: Any) -> bytes: ...
+    """Indicates a failure during preprocessing"""
 
 
 class Preprocessor:
+    """
+    Utility class implementing all preprocessing related functionality.
+    """
 
     def __init__(
         self,
         config: PreprocessingConfig,
-        decoder: Decoder,
-        encoder: Encoder,
+        decoder: msgspec.json.Decoder[dict],
+        encoder: msgspec.json.Encoder,
     ) -> None:
         self._config = config
         self._decoder = decoder
@@ -129,6 +124,21 @@ class Preprocessor:
         return bool(self._config.add_full_event_to_target_field)
 
     async def preprocess(self, event: LogEvent) -> None:
+        """
+        Runs all configured preprocessors on the given event.
+
+        Parameters
+        ----------
+        event : LogEvent
+            The event to be preprocessed, which will be modified in-place.
+
+        Raises
+        ------
+        PreprocessingError
+            Raised if any configured preprocessing step fails,
+            capturing the original exception as cause.
+            The event might already be modified at this point.
+        """
         try:
             if self._add_full_event_to_target_field:
                 assert self._config.add_full_event_to_target_field is not None
@@ -179,7 +189,7 @@ class Preprocessor:
             original_target = target
             target_value = get_dotted_field_value(event, target)
             while target_value is None:
-                target, _, _ = target.rpartition(".")
+                target, _, _ = target.rpartition(".")  # TODO escaping!
                 target_value = get_dotted_field_value(event, target)
             add_fields_to(event, {original_target: time}, overwrite_target=True)
             add_fields_to(event, {f"{target}.@original": target_value})
