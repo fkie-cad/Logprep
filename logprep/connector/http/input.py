@@ -335,7 +335,7 @@ class HttpEndpoint(ABC):
 class JSONHttpEndpoint(HttpEndpoint):
     """:code:`json` endpoint to get json from request"""
 
-    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder()
+    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder(type=dict)
 
     @raise_request_exceptions
     @basic_auth
@@ -359,7 +359,7 @@ class JSONHttpEndpoint(HttpEndpoint):
 class JSONLHttpEndpoint(HttpEndpoint):
     """:code:`jsonl` endpoint to get jsonl from request"""
 
-    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder()
+    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder(type=dict)
 
     @raise_request_exceptions
     @basic_auth
