@@ -2,11 +2,11 @@
 
 """abstract module for event"""
 
-from collections.abc import Sequence
 import json
+import typing
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from typing import Protocol, runtime_checkable
-import typing
 
 from attrs import define, field, validators
 
@@ -149,10 +149,12 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
 
     @property
     def reason(self) -> str:
+        """Get the textual representation for the error which caused the `ErrorEvent`"""
         return typing.cast(str, self.data["reason"])
 
     @classmethod
     def from_failed_event(cls, event: LogEvent) -> "ErrorEvent":
+        """Helper function to create an `ErrorEvent` from a failed `LogEvent`"""
         reason = (
             LogprepExceptionGroup("Error during processing", event.errors)
             if event.errors
@@ -162,7 +164,7 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
             data={
                 "@timestamp": datetime.now(timezone.utc).isoformat(),
                 "reason": str(reason),
-                # TODO shouldnt we send the raw bytes? at least we should handle decoding failures properly
+                # TODO shouldnt we send the raw bytes? at least handle decoding failures properly
                 "original": (
                     event.original.decode("utf-8", errors="ignore")
                     if event.original is not None
@@ -177,6 +179,7 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
     def from_input_failure(
         cls, cause: str | Exception, original: bytes | None, metadata: EventMetadata | None
     ) -> "ErrorEvent":
+        """Helper function to create an `ErrorEvent` from an incomplete input event or error"""
         return cls(
             data={
                 "@timestamp": datetime.now(timezone.utc).isoformat(),
@@ -184,7 +187,6 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
                 "original": (
                     original.decode("utf-8", errors="ignore") if original is not None else None
                 ),
-                # "event": json.dumps(event.data),
             },
             metadata=metadata,
         )
