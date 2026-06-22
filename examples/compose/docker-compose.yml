@@ -64,9 +64,9 @@ services:
     command: |
       sh -c
       "((sleep 15 && echo 'kafka up' &&
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_CONSUMER_PARTITIONS:-4} --topic consumer &&
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_ERROR_PARTITIONS:-4} --topic errors &&
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_PRODUCER_PARTITIONS:-4} --topic producer)&) &&
+      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_CONSUMER_PARTITIONS-4} --topic consumer &&
+      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_ERROR_PARTITIONS-4} --topic errors &&
+      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_PRODUCER_PARTITIONS-4} --topic producer)&) &&
       /opt/bitnami/scripts/kafka/run.sh"
     healthcheck:
       test:
