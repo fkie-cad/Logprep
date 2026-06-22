@@ -18,7 +18,7 @@ from opensearchpy import AsyncOpenSearch
 from opensearchpy import OpenSearchException as SearchException
 from opensearchpy import helpers
 
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.connector.opensearch.output import BulkError, OpensearchOutput
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
@@ -111,7 +111,7 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
     async def test_store_sends_to_default_index(
         self, mock_output_delivery_for_events, mock_async_streaming_bulk_get_actions
     ):
-        event = LogEvent({"field": "content"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"field": "content"}, original=b"", input_meta=InputMeta())
 
         await self.object.setup()
         mock_output_delivery_for_events([True])
@@ -127,7 +127,7 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
     ):
         data_payload = {"field": "content"}
         event = LogEvent(
-            data_payload, output_target="custom_index", original=b"", metadata=EventMetadata()
+            data_payload, output_target="custom_index", original=b"", input_meta=InputMeta()
         )
 
         await self.object.setup()
@@ -214,7 +214,7 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
         assert not await self.object.health()
 
     async def test_bulk_creates_bulk_error(self, mock_output_delivery_for_events):
-        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         await self.object.setup()
         mock_output_delivery_for_events(
             [

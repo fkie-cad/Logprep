@@ -16,7 +16,7 @@ from confluent_kafka import (
     TopicPartition,
 )
 
-from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
+from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
 
 logger = logging.getLogger("KafkaOffsetTracker")
 
@@ -68,10 +68,10 @@ class TopicOffsetCommitTracker:
         return tracker.committable_offsets
 
     def advance_offsets(
-        self, new_committable_offsets: Iterable[ConfluentKafkaMetadata]
+        self, new_committable_offsets: Iterable[ConfluentKafkaInputMeta]
     ) -> Sequence[TopicPartition]:
         """
-        Feeds partitions/offsets (`ConfluentKafkaMetadata`) to the tracker
+        Feeds partitions/offsets (`ConfluentKafkaInputMeta`) to the tracker
         which are ready to be committed.
         The tracker incorporates the new data into its state, identifies the
         maximum offset ready for commit per partition (leaving no gaps) and

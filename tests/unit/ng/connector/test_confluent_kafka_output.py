@@ -18,7 +18,7 @@ from confluent_kafka.error import KafkaException  # type: ignore
 
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.abc.output import FatalOutputError
 from logprep.util.helper import get_dotted_field_value
 from tests.unit.ng.connector.base import BaseOutputTestCase
@@ -114,7 +114,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     async def test_store_sends_event_to_expected_topic(self):
         event_data = {"field": "content"}
-        event = LogEvent(event_data, original=b"", metadata=EventMetadata())
+        event = LogEvent(event_data, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             self.object.store(event)
         mock_producer.produce.assert_called()
@@ -123,7 +123,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     async def test_store_custom_sends_event_to_expected_topic(self):
         event_data = {"field": "content"}
-        event = LogEvent(event_data, original=b"", metadata=EventMetadata())
+        event = LogEvent(event_data, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             self.object._store_custom(event, self.CONFIG.get("topic"))
         mock_producer.produce.assert_called()
@@ -134,7 +134,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
     async def test_store_custom_calls_producer_flush_on_buffererror(self, _):
         kafka_producer = self.object._producer
         kafka_producer.produce.side_effect = BufferError
-        event = LogEvent({"message": "does not matter"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "does not matter"}, original=b"", input_meta=InputMeta())
         self.object._store_custom(event, "does_not_care")
         kafka_producer.flush.assert_called()
 
@@ -151,7 +151,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
             None,
             None,
         ]
-        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         self.object.store(event)
         assert len(event.errors) == 1
 
@@ -247,7 +247,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     async def test_store_handles_errors(self):
         self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
             self.object.store(event)
@@ -256,7 +256,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     async def test_store_custom_handles_errors(self):
         self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
             self.object._store_custom(event, "target_topic")
@@ -265,7 +265,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     async def test_store_handles_errors_failed_event(self):
         self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
             self.object.store(event)
@@ -274,7 +274,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     async def test_store_custom_handles_errors_failed_event(self):
         self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
             self.object._store_custom(event, "target_topic")
@@ -294,7 +294,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         kafka_message.topic = mock.MagicMock(return_value="test_topic")
         kafka_message.partition = mock.MagicMock(return_value=0)
         kafka_message.offset = mock.MagicMock(return_value=42)
-        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         self.object.on_delivery(event, None, kafka_message)
         assert len(event.errors) == 0
         assert re.search(
@@ -307,7 +307,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         kafka_message = mock.MagicMock()
         kafka_error = mock.MagicMock()
         kafka_error.__str__ = mock.MagicMock(return_value="Kafka delivery error")
-        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         self.object.metrics.number_of_errors = 0
         self.object.on_delivery(event, kafka_error, kafka_message)
         assert len(event.errors) == 1
@@ -319,7 +319,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
     async def test_produce_sets_on_delivery_callback(self, _):
-        event = LogEvent({"message": "test message"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         event_data = self.object._encoder.encode(event.data)
         self.object._producer.produce = mock.MagicMock()
         self.object.store(event)

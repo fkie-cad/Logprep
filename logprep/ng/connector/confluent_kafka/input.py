@@ -59,7 +59,7 @@ from logprep.ng.abc.input import (
     FatalInputError,
     Input,
 )
-from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
+from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
 from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
     TopicOffsetCommitTracker,
 )
@@ -399,7 +399,7 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
 
-    async def _get_raw_event(self, timeout: float) -> tuple[bytes, ConfluentKafkaMetadata] | None:
+    async def _get_raw_event(self, timeout: float) -> tuple[bytes, ConfluentKafkaInputMeta] | None:
         """Get next raw Message from Kafka"""
 
         try:
@@ -436,7 +436,7 @@ class ConfluentKafkaInput(Input):
             offset + 1, ConfluentKafkaInput._message_labels(self.config.topic, partition)
         )
 
-        return message_value, ConfluentKafkaMetadata(partition=partition, offset=offset)
+        return message_value, ConfluentKafkaInputMeta(partition=partition, offset=offset)
 
     @staticmethod
     @functools.lru_cache(maxsize=64)
@@ -457,10 +457,12 @@ class ConfluentKafkaInput(Input):
             return LogEvent(
                 self._decode_raw_event(raw_event),
                 original=raw_event,
-                metadata=metadata,
+                input_meta=metadata,
             )
         except CriticalInputParsingError as error:
-            return ErrorEvent.from_input_failure(original=raw_event, metadata=metadata, cause=error)
+            return ErrorEvent.from_input_failure(
+                original=raw_event, input_meta=metadata, cause=error
+            )
 
     def _decode_raw_event(self, raw_event: bytes) -> dict:
         """Parse the raw document from Kafka into a json."""
@@ -588,7 +590,7 @@ class ConfluentKafkaInput(Input):
     async def acknowledge(self, events: Sequence[AcknowledgableEvent]):
         commit_offsets = list(
             self._commit_tracker.advance_offsets(
-                typing.cast(ConfluentKafkaMetadata, event.metadata) for event in events
+                typing.cast(ConfluentKafkaInputMeta, event.input_meta) for event in events
             )
         )
 

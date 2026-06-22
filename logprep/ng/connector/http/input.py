@@ -119,7 +119,7 @@ from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.event import (
     AcknowledgableEvent,
     ErrorEvent,
-    EventMetadata,
+    InputMeta,
     LogEvent,
 )
 from logprep.ng.abc.input import Input
@@ -533,7 +533,7 @@ class HttpInput(Input):
                 message = await self.messages.get()
             # TODO why not use self._encoder.encode?
             raw_message = str(message).encode("utf8")
-            return LogEvent(message, original=raw_message, metadata=EventMetadata())
+            return LogEvent(message, original=raw_message, input_meta=InputMeta())
         except TimeoutError:
             return None
 

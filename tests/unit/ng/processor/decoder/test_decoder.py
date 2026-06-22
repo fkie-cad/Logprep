@@ -6,7 +6,7 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.decoder.processor import Decoder
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.typing import is_list_of
@@ -33,7 +33,7 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
     )
     async def test_testcases(self, rule, event, expected):
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"", metadata=EventMetadata())
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert event.data == expected, f"{result.errors}"
 
@@ -43,7 +43,7 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
     )
     async def test_testcases_failure_handling(self, rule, event, expected):
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"", metadata=EventMetadata())
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert len(result.errors) > 0 or len(result.warnings) > 0
         assert is_list_of(
@@ -67,6 +67,6 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
                 await self._load_rule(rule)
                 expected_output = expected_output.lstrip().strip("\n")
                 event = self.object._decoder.decode(log_input)
-                event = LogEvent(event, original=b"", metadata=EventMetadata())
+                event = LogEvent(event, original=b"", input_meta=InputMeta())
                 await self.object.process(event)
                 assert json.dumps(event.data["parsed"]) == expected_output

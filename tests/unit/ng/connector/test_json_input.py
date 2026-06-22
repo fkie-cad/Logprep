@@ -18,7 +18,7 @@ from unittest import mock
 import pytest
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.abc.input import CriticalInputError
 from logprep.util.time import TimeParser
 from tests.unit.ng.connector.base import BaseInputTestCase
@@ -138,7 +138,7 @@ class TestJsonInput(BaseInputTestCase):
                     },
                 },
                 original=b"",
-                metadata=EventMetadata(),
+                input_meta=InputMeta(),
             )
             connector_next_msg = connector.get_next(1)
             assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
@@ -221,7 +221,7 @@ class TestJsonInput(BaseInputTestCase):
                     },
                 },
                 original=b"",
-                metadata=EventMetadata(),
+                input_meta=InputMeta(),
             )
 
             connector_next_msg = connector.get_next(1)
@@ -270,7 +270,7 @@ class TestJsonInput(BaseInputTestCase):
                     },
                 },
                 original=b"",
-                metadata=EventMetadata(),
+                input_meta=InputMeta(),
             )
 
             connector_next_msg = connector.get_next(1)
@@ -342,7 +342,7 @@ class TestJsonInput(BaseInputTestCase):
             )
             connector_next_msg = connector.get_next(1)
             assert connector_next_msg == LogEvent(
-                data=return_value, original=b"", metadata=EventMetadata()
+                data=return_value, original=b"", input_meta=InputMeta()
             )
 
     async def test_preprocessing_version_info_is_added_if_configured(self):

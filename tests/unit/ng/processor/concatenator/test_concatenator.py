@@ -7,7 +7,7 @@
 
 import pytest
 
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.concatenator.processor import Concatenator
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -163,11 +163,11 @@ class TestConcatenator(BaseProcessorTestCase[Concatenator]):
         ],
     )
     async def test_for_expected_output(self, test_case, rule, document, expected_output):
-        log_event = LogEvent(document, original=b"test_message", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
         await self._load_rule(rule)
         await self.object.process(log_event)
         assert log_event == LogEvent(
-            expected_output, original=b"test_message", metadata=EventMetadata()
+            expected_output, original=b"test_message", input_meta=InputMeta()
         ), test_case
 
     async def test_process_handles_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
@@ -187,7 +187,7 @@ class TestConcatenator(BaseProcessorTestCase[Concatenator]):
         document = LogEvent(
             {"field": {"a": "first", "b": "second"}, "target_field": "has already content"},
             original=b"test_message",
-            metadata=EventMetadata(),
+            input_meta=InputMeta(),
         )
         result = await self.object.process(document)
         assert len(result.warnings) == 1

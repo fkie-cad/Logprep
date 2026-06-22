@@ -15,8 +15,8 @@ from logprep.util.helper import FieldValue
 
 
 @define
-class EventMetadata:
-    """EventMetadata Class to define the Interface"""
+class InputMeta:
+    """InputMeta Class to define the Interface"""
 
 
 class _FailableEvent(Protocol):
@@ -34,7 +34,7 @@ class AcknowledgableEvent(_FailableEvent, Protocol):
     received from an `Input` and might therefore be acknowledgedable.
     """
 
-    metadata: EventMetadata
+    input_meta: InputMeta
 
 
 @runtime_checkable
@@ -122,7 +122,7 @@ class LogEvent(_BaseFailableEvent, OutputEvent, ProcessableEvent):
     data: dict[str, FieldValue] = field()
 
     original: bytes | None = field(kw_only=True)
-    metadata: EventMetadata = field(kw_only=True)
+    input_meta: InputMeta = field(kw_only=True)
 
     output_name: str | None = field(kw_only=True, default=None)
     output_target: str | None = field(kw_only=True, default=None)
@@ -140,7 +140,7 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
 
     data: dict[str, FieldValue] = field()
 
-    metadata: EventMetadata | None = field(kw_only=True, default=None)
+    input_meta: InputMeta | None = field(kw_only=True, default=None)
 
     stored: bool = field(kw_only=True, default=False)
 
@@ -172,12 +172,12 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
                 ),
                 "event": json.dumps(event.data),
             },
-            metadata=event.metadata,
+            input_meta=event.input_meta,
         )
 
     @classmethod
     def from_input_failure(
-        cls, cause: str | Exception, original: bytes | None, metadata: EventMetadata | None
+        cls, cause: str | Exception, original: bytes | None, input_meta: InputMeta | None
     ) -> "ErrorEvent":
         """Helper function to create an `ErrorEvent` from an incomplete input event or error"""
         return cls(
@@ -188,5 +188,5 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
                     original.decode("utf-8", errors="ignore") if original is not None else None
                 ),
             },
-            metadata=metadata,
+            input_meta=input_meta,
         )
