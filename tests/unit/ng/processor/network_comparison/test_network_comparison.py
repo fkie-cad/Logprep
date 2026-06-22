@@ -9,7 +9,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.network_comparison.processor import NetworkComparison
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
@@ -31,7 +31,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
     async def test_non_ip_element_has_fail_tag(self):
         document = {"ip1": "Franz"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data.get("tags") == ["_network_comparison_failure"]
 
@@ -66,7 +66,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
     async def test_element_not_in_list(self):
         # Test if ip 1.2.34 is not in ip list
         document = {"ip1": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -76,7 +76,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
     async def test_element_in_two_lists(self):
         # Tests if ip1 127.0.0.1 appears in two lists, ip2 1.1.1.1 is in no list
         document = {"ip1": "1.1.1.1", "ip2": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -89,7 +89,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         # Tests if the ip1 1.1.1.1 does not appear in two lists,
         # and ip2 2.2.2.2 is also not in list
         document = {"ip1": "1.1.1.1", "ip2": "2.2.2.2"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -100,7 +100,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
     async def test_two_lists_with_one_matched(self):
         document = {"ip1": "1.1.1.1", "ip2": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -112,13 +112,13 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
     async def test_dotted_output_field(self):
         # tests if outputting network_comparison results to dotted fields works
         document = {"dot_ip": "127.0.0.2", "ip1": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
         assert log_event.data.get("dotted", {}).get("ip_results", {}).get("not_in_list") is None
         document = {"dot_ip": "127.0.0.2", "ip1": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -137,7 +137,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "ip1": "127.0.0.1",
             "dotted": {"ip_results": {"in_list": ["already_present"]}},
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         rule_dict = {
             "filter": "ip1",
@@ -161,7 +161,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "ip1": "127.0.0.1",
             "dotted": {"preexistent_output_field": {"in_list": ["already_present"]}},
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         rule_dict = {
             "filter": "ip1",
@@ -185,7 +185,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
     async def test_target_field_exists_and_cant_be_extended(self):
         document = {"dot_ip": "127.0.0.2", "ip1": "127.0.0.1", "dotted": "field_exists"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "dot_ip": "127.0.0.2",
             "ip1": "127.0.0.1",
@@ -215,7 +215,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "ip1": "127.0.0.1",
             "dotted": {"ip_results": ["do_not_look_here"]},
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "tags": ["_network_comparison_failure"],
             "dot_ip": "127.0.0.2",
@@ -241,7 +241,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
     async def test_check_in_dotted_subfield(self):
         document = {"ip": {"field": "1.1.1.1"}}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -252,7 +252,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         # Tests for a comment inside a list, but as a field inside a document to check
         # if the comment is actually ignored
         document = {"ip1": "# This is a doc string for testing"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -261,7 +261,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
     async def test_delete_source_field(self):
         document = {"ip1": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "ip1",
             "network_comparison": {
@@ -280,7 +280,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
     async def test_overwrite_target_field(self):
         document = {"ip1": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"ip1": "127.0.0.1", "tags": ["_network_comparison_failure"]}
         rule_dict = {
             "filter": "ip1",
@@ -427,7 +427,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
     async def test_network_comparison_does_not_add_duplicates_from_list_source(self):
         document = {"ip": ["127.0.0.1", "127.0.0.2"]}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "ip": ["127.0.0.1", "127.0.0.2"],
             "network_results": {
@@ -471,7 +471,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
     )
     async def test_match_network_field(self, testcase, ip, result):
         document = {"ip": ip}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"ip": ip, "network_results": result}
         rule_dict = {
             "filter": "ip",
@@ -560,7 +560,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         self, caplog
     ):
         document = {"ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "ip": "1.2.3.4",
             "tags": ["_network_comparison_failure"],
@@ -620,7 +620,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "ip1": "127.0.0.1",
             "dotted": {"ip_results": ["do_not_look_here"]},
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "tags": ["_network_comparison_failure"],
             "dot_ip": "127.0.0.2",
@@ -660,7 +660,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         self,
     ):
         document = {"ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected_failed_document = {
             "ip": "1.2.3.4",
             "tags": ["_network_comparison_failure"],
@@ -715,7 +715,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         )
 
         document = {"ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected_recovered_document = {
             "ip": "1.2.3.4",
             "ip_results": {"in_list": [url]},

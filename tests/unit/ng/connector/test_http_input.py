@@ -21,7 +21,7 @@ from requests.auth import _basic_auth_str
 
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.connector.http.input import HttpInput
 from logprep.ng.util.worker.types import SizeLimitedQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
@@ -111,7 +111,7 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
             yield client
 
     def _create_log_event(self, data, original=None):
-        return LogEvent(data, original=original, metadata=EventMetadata())
+        return LogEvent(data, original=original, input_meta=InputMeta())
 
     async def test_create_connector(self, instance):
         assert isinstance(instance, HttpInput)
@@ -356,7 +356,7 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
                 },
             },
             original=b"{'message': 'the content'}",
-            metadata=EventMetadata(),
+            input_meta=InputMeta(),
         )
         connector_next_msg = await instance.get_next(1)
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"

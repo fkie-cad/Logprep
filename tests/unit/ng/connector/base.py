@@ -21,7 +21,7 @@ from unittest import mock
 import pytest
 
 from logprep.ng.abc.connector import Connector
-from logprep.ng.abc.event import ErrorEvent, EventMetadata, LogEvent, OutputEvent
+from logprep.ng.abc.event import ErrorEvent, InputMeta, LogEvent, OutputEvent
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.util.helper import FieldValue, get_dotted_field_value
@@ -725,7 +725,7 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
 
 
 def _create_log_event(data: dict[str, FieldValue], output_target: str | None = None) -> OutputEvent:
-    return LogEvent(data, output_target=output_target, original=b"", metadata=EventMetadata())
+    return LogEvent(data, output_target=output_target, original=b"", input_meta=InputMeta())
 
 
 class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[OutputTypeT]):
@@ -734,7 +734,7 @@ class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[Outp
     def _create_log_event(
         data: dict[str, FieldValue], output_target: str | None = None
     ) -> OutputEvent:
-        return LogEvent(data, output_target=output_target, original=b"", metadata=EventMetadata())
+        return LogEvent(data, output_target=output_target, original=b"", input_meta=InputMeta())
 
     async def test_is_output_instance(self):
         assert isinstance(self.object, Output)

@@ -4,7 +4,7 @@ from copy import deepcopy
 import pytest
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.template_replacer.processor import (
     TemplateReplacer,
     TemplateReplacerError,
@@ -36,7 +36,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "message": "foo",
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -48,7 +48,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
             "winlog": {"channel": "Dotted.System", "provider_name": ".Test", "event_id": "123."},
             "message": "foo",
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -57,7 +57,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
 
     async def test_replace_non_existing_message_via_template(self):
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -69,7 +69,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
             "winlog": {"channel": "System", "provider_name": "Test-Test", "event_id": 123},
             "message": "foo",
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -81,7 +81,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
             "winlog": {"channel": "System", "provider_name": "Test-Test", "event_id": 923},
             "message": "foo",
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data.get("message") == "foo"
 
@@ -89,7 +89,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
             "winlog": {"channel": "System", "provider_name": "Test-Test-No", "event_id": 123},
             "message": "foo",
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data.get("message") == "foo"
 
@@ -101,7 +101,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"message": "foo"},
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await template_replacer.process(log_event)
 
@@ -114,7 +114,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
         config.get("pattern").update({"target_field": "dotted.message"})
         template_replacer = await self._create_template_replacer(config)
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await template_replacer.process(log_event)
 
@@ -130,7 +130,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"bar": "foo"},
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await template_replacer.process(log_event)
 
@@ -147,7 +147,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"message": {"foo": "bar"}},
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await template_replacer.process(log_event)
 
@@ -163,7 +163,7 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": "foo",
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         result = await template_replacer.process(log_event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)

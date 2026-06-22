@@ -35,7 +35,7 @@ from logprep.connector.file.input import (
     runtime_file_exceptions,
     threadsafe_wrapper,
 )
-from logprep.ng.abc.event import ErrorEvent, EventMetadata, LogEvent
+from logprep.ng.abc.event import ErrorEvent, InputMeta, LogEvent
 from logprep.ng.abc.input import Input
 from logprep.util.validators import file_validator
 
@@ -168,7 +168,7 @@ class FileInput(Input):
         try:
             message: dict = self._messages.get(block=False)
             raw_message: bytes = str(message).encode("utf8")
-            return LogEvent(message, original=raw_message, metadata=EventMetadata())
+            return LogEvent(message, original=raw_message, input_meta=InputMeta())
         except queue.Empty:
             return None
 

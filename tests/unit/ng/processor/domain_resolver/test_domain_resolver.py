@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.domain_resolver.processor import DomainResolver, ResolveStatus
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -45,7 +45,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         await self._load_rule(rule)
         document = {"fqdn": "google.de"}
         expected = {"fqdn": "google.de", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         mock_gethostbyname.assert_called_once()
         assert log_event.data == expected
@@ -59,11 +59,11 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         }
         await self._load_rule(rule)
         document = {"fqdn": "google.de"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         document = {"fqdn": "google.de"}
         expected = {"fqdn": "google.de", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         mock_gethostbyname.assert_called_once()
         assert log_event.data == expected
@@ -78,7 +78,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         await self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {"url": "https://www.google.de/something", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -93,12 +93,12 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         }
         await self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         with mock.patch("socket.gethostbyname", return_value="1.2.3.4"):
             await self.object.process(log_event)
         document = {"url": "https://www.google.de/something_else"}
         expected = {"url": "https://www.google.de/something_else", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         with mock.patch("socket.gethostbyname", return_value="1.2.3.4"):
             await self.object.process(log_event)
         assert log_event.data == expected
@@ -112,7 +112,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         await self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {"url": "https://www.google.de/something"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -133,7 +133,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
             "resolved_ip_debug": {"obtained_from_cache": False, "cache_size": 1},
             "resolved_ip": "1.2.3.4",
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -149,7 +149,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         }
         await self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         document = {"url": "https://www.google.de/something_else"}
         expected = {
@@ -157,7 +157,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
             "resolved_ip_debug": {"obtained_from_cache": True, "cache_size": 1},
             "resolved_ip": "1.2.3.4",
         }
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -174,7 +174,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         await self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {"url": "https://www.google.de/something", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -206,20 +206,20 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
 
     async def test_empty_domain_is_snot_resolved(self):
         document = {"url": " "}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data.get("resolved_ip") is None
 
     async def test_domain_to_ip_not_resolved(self):
         document = {"url": "google.thisisnotavalidtld"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data.get("resolved_ip") is None
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4", side_effect=TimeoutError)
     async def test_domain_to_ip_timed_out(self, _):
         document = {"url": "google.de"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data.get("resolved_ip") is None
 
@@ -227,14 +227,14 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
     async def test_configured_dotted_subfield(self, _):
         document = {"source": "google.de"}
         expected = {"source": "google.de", "resolved": {"ip": "1.2.3.4"}}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     async def test_field_exits_warning(self, _):
         document = {"client": "google.de"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         result = await self.object.process(log_event)
         assert len(result.warnings) == 1
@@ -244,7 +244,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
     async def test_no_duplication_error(self, _):
         document = {"client_2": "google.de"}
         expected = {"client_2": "google.de", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         # Rules have same effect, but are equal and thus one is ignored
         await self.object.process(log_event)
@@ -264,7 +264,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
             "description": "",
         }
         await self._load_rule(rule_dict)
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -283,6 +283,6 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
             "description": "",
         }
         await self._load_rule(rule_dict)
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected

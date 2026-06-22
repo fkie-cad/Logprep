@@ -18,8 +18,8 @@ from ruamel.yaml import YAML
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.abc.processor import Processor
-from logprep.ng.abc.event import EventMetadata, LogEvent
 from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
     ProcessingCriticalError,
@@ -122,7 +122,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
                 "A": "foobarfoo",
             },
             original=b"",
-            metadata=EventMetadata(),
+            input_meta=InputMeta(),
         )  # this is an event that can be used in all processor tests, cause it matches everywhere
 
     async def async_teardown(self) -> None:
@@ -202,7 +202,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
     @mock.patch("logging.Logger.debug")
     async def test_process_writes_debug_messages(self, mock_debug):
-        event = LogEvent({}, original=b"", metadata=EventMetadata())
+        event = LogEvent({}, original=b"", input_meta=InputMeta())
         await self.object.process(event)
         mock_debug.assert_called()
 
@@ -274,7 +274,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
             assert metric1.name != metric2.name, f"{metric1.name} == {metric2.name}"
 
     async def test_process_return_event_object(self):
-        event = LogEvent({"some": "event"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"some": "event"}, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert isinstance(result, LogEvent)
 

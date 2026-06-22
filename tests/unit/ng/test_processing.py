@@ -8,7 +8,7 @@ from unittest import mock
 import pytest
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor import process
 from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from logprep.util.helper import get_dotted_field_value
@@ -18,9 +18,9 @@ from logprep.util.helper import get_dotted_field_value
 def get_input_mock():
     return iter(
         [
-            LogEvent({"message": "Log message 1"}, original=b"", metadata=EventMetadata()),
-            LogEvent({"message": "Log message 2"}, original=b"", metadata=EventMetadata()),
-            LogEvent({"user": {"name": "John Doe"}}, original=b"", metadata=EventMetadata()),
+            LogEvent({"message": "Log message 1"}, original=b"", input_meta=InputMeta()),
+            LogEvent({"message": "Log message 2"}, original=b"", input_meta=InputMeta()),
+            LogEvent({"user": {"name": "John Doe"}}, original=b"", input_meta=InputMeta()),
         ]
     )
 

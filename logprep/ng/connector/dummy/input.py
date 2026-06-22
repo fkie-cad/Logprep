@@ -27,7 +27,7 @@ from copy import deepcopy
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.event import ErrorEvent, EventMetadata, LogEvent
+from logprep.ng.abc.event import ErrorEvent, InputMeta, LogEvent
 from logprep.ng.abc.input import Input
 
 
@@ -106,7 +106,7 @@ class BaseDummyInput(Input):
             case str() if document == "ErrorEvent":
                 return ErrorEvent({})
             case dict():
-                return LogEvent(document, original=b"", metadata=EventMetadata())
+                return LogEvent(document, original=b"", input_meta=InputMeta())
             case None:
                 return None
             case _:

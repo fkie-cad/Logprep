@@ -34,7 +34,7 @@ from logprep.ng.connector.confluent_kafka.input import (
     ConfluentKafkaInput,
 )
 from logprep.ng.connector.confluent_kafka.input import logger as kafka_input_logger
-from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
+from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
 from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
     TopicOffsetCommitTracker,
 )
@@ -112,7 +112,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         return LogEvent(
             data,
             original=original,
-            metadata=ConfluentKafkaMetadata(partition=0, offset=0),
+            input_meta=ConfluentKafkaInputMeta(partition=0, offset=0),
         )
 
     async def test_client_id_is_set_to_hostname(self):
@@ -293,7 +293,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         event = await self.object._get_event(0.001)
         assert event.data == {"element": "in list"}
         assert event.original == '{"element":"in list"}'.encode("utf8")
-        assert event.metadata == ConfluentKafkaMetadata(partition=1, offset=42)
+        assert event.input_meta == ConfluentKafkaInputMeta(partition=1, offset=42)
 
     async def test_get_raw_event_is_callable(self, mock_consumer):
         mock_record = mock.MagicMock()
@@ -357,7 +357,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         await self.object.setup()
 
         self.object._get_raw_event = mock.AsyncMock(
-            return_value=(b'{"invalid": "json', ConfluentKafkaMetadata(partition=0, offset=42))
+            return_value=(b'{"invalid": "json', ConfluentKafkaInputMeta(partition=0, offset=42))
         )
 
         error_event = await self.object.get_next(1)

@@ -11,9 +11,9 @@ from logprep.ng.abc.event import LogEvent
 def get_input_mock():
     return iter(
         [
-            LogEvent({"message": "Log message 1"}, original=b"", metadata=EventMetadata()),
-            LogEvent({"message": "Log message 2"}, original=b"", metadata=EventMetadata()),
-            LogEvent({"user": {"name": "John Doe"}}, original=b"", metadata=EventMetadata()),
+            LogEvent({"message": "Log message 1"}, original=b"", input_meta=InputMeta()),
+            LogEvent({"message": "Log message 2"}, original=b"", input_meta=InputMeta()),
+            LogEvent({"user": {"name": "John Doe"}}, original=b"", input_meta=InputMeta()),
         ]
     )
 
@@ -145,7 +145,7 @@ class TestSender:
 
     # def test_raises_value_error_for_invalid_output(self, pipeline, opensearch_output):
     #     sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
-    #     event = LogEvent({"message": "Test message"}, original=b"", state=EventStateType.RECEIVED, metadata=EventMetadata())
+    #     event = LogEvent({"message": "Test message"}, original=b"", state=EventStateType.RECEIVED, input_meta=InputMeta())
     #     event.extra_data.append(SreEvent({"test": "data"}, outputs=[{"invalid_output": "target"}]))
     #     with pytest.raises(ValueError, match="Output invalid_output not configured."):
     #         sender._send_processed(event)
@@ -154,7 +154,7 @@ class TestSender:
     #     self, opensearch_output, error_output, caplog
     # ):
     #     caplog.set_level("ERROR")
-    #     event = LogEvent({"message": "Test message"}, original=b"", state=EventStateType.FAILED, metadata=EventMetadata())
+    #     event = LogEvent({"message": "Test message"}, original=b"", state=EventStateType.FAILED, input_meta=InputMeta())
     #     sender = Sender(
     #         pipeline=iter([event]),
     #         outputs=[opensearch_output],

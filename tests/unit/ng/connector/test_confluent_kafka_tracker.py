@@ -6,7 +6,9 @@
 import pytest
 from confluent_kafka import TopicPartition
 
-from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata as InputMeta
+from logprep.ng.connector.confluent_kafka.metadata import (
+    ConfluentKafkaInputMeta as InputMeta,
+)
 from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
     TopicOffsetCommitTracker as Tracker,
 )

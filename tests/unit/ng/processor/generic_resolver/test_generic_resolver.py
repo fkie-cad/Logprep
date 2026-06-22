@@ -11,7 +11,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
@@ -120,7 +120,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         document = {"to_resolve": "something HELLO1"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -140,7 +140,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         document = {"to_resolve": "something HELLO1"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -160,7 +160,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to_resolve": "something HELLO1", "resolved": resolve_value}
         document = {"to_resolve": "something HELLO1"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -190,7 +190,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         await self._load_rule(rule)
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -209,13 +209,13 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
         document = {"to_resolve": "something HELLO1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
         expected = {"to_resolve": "something hello1", "resolved": "Greeting"}
         document = {"to_resolve": "something hello1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -233,7 +233,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to_resolve": "something hello1"}
 
         document = {"to_resolve": "something hello1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -255,14 +255,14 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
 
         document = {"to_resolve": "something HELLO1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
         expected = {"to_resolve": "something BYE1", "resolved": "Farewell"}
 
         document = {"to_resolve": "something BYE1"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -280,7 +280,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to_resolve": "something no"}
         document = {"to_resolve": "something no"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -299,7 +299,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         document = {"to": {"resolve": "something HELLO1"}}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -324,7 +324,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         document = {"to_resolve": "ab"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -347,7 +347,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         expected = {"to_resolve": "Ab"}
         document = {"to_resolve": "Ab"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -372,7 +372,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         expected = {"to_resolve": "Ab", "resolved": "ab_server_type"}
         document = {"to_resolve": "Ab"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -397,13 +397,13 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         expected = {"to_resolve": "ab", "resolved": "ab_server_type"}
         document = {"to_resolve": "ab"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
         expected = {"to_resolve": "AB", "resolved": "ab_server_type"}
         document = {"to_resolve": "AB"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -434,7 +434,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         document = {"to_resolve_1": "ab", "to_resolve_2": "fg"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -461,7 +461,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         document = {"to_resolve": "not_in_list"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -486,7 +486,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         document = {"to_resolve": "12ab34"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
     async def test_resolve_dotted_field_to_list_match_from_file_and_list(
@@ -508,7 +508,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to_resolve": "12ab34", "resolved": ["aa_server_type", "ab_server_type"]}
 
         document = {"to_resolve": "12ab34", "resolved": ["aa_server_type"]}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -534,7 +534,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         document = {"to_resolve": "12ab34"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         await self.object.process(log_event)
 
@@ -566,7 +566,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         }
 
         document = {"to_resolve": "12ab34", "other_to_resolve": "00de11"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
         await self.object.process(log_event)
@@ -589,7 +589,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to_resolve": "12ab34", "resolved": {"foo": "bar", "baz": "test"}}
 
         document = {"to_resolve": "12ab34", "resolved": {"foo": "bar"}}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -614,7 +614,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         }
 
         document = {"to_resolve": "12ab34", "resolved": "foo"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -639,7 +639,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         }
 
         document = {"to_resolve": "12ab34", "resolved": "foo"}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -663,7 +663,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         expected = {"foo": {"bar": "12ab34", "foo": "ab"}}
         document = {"foo": {"bar": "12ab34"}}
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(log_event)
 
@@ -702,7 +702,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             expected_1 = {"to_resolve": "12ab34", "resolved": {"new1": "1"}}
             expected_2 = {"to_resolve": "12ab34", "resolved": {"new1": "1", "new2": "2"}}
             document = {"to_resolve": "12ab34"}
-            log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+            log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
             await self.object.process(log_event)
             assert document == expected_1
@@ -728,7 +728,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to": {"resolve": "something no"}}
         document = {"to": {"resolve": "something no"}}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -749,7 +749,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         }
         document = {"to": {"other_field": "something no"}}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -767,7 +767,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to_resolve": "something HELLO1", "re": {"solved": "Greeting"}}
         document = {"to_resolve": "something HELLO1"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -785,7 +785,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to_resolve": "something no"}
         document = {"to_resolve": "something no"}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -805,7 +805,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
         document = {"to": {"resolve": "something HELLO1"}}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -828,7 +828,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
         }
-        result = log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        result = log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
@@ -853,7 +853,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
         document = {"to": {"resolve": "something HELLO1"}}
 
-        log_event = LogEvent(document, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert log_event.data == expected
@@ -880,14 +880,14 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
 
-        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 1
 
-        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 2
@@ -895,7 +895,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         assert self.object.metrics.num_cache_entries == 2
 
         event_bar = {"to_resolve": "bar"}
-        log_event_bar = LogEvent(event_bar, original=b"", metadata=EventMetadata())
+        log_event_bar = LogEvent(event_bar, original=b"", input_meta=InputMeta())
         await self.object.process(log_event_bar)
 
         assert self.object.metrics.new_results == 4
@@ -924,14 +924,14 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
 
-        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 1
 
-        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 2
@@ -939,7 +939,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         assert self.object.metrics.num_cache_entries == 2
 
         event_bar = {"to_resolve": "bar"}
-        log_event_bar = LogEvent(event_bar, original=b"", metadata=EventMetadata())
+        log_event_bar = LogEvent(event_bar, original=b"", input_meta=InputMeta())
         await self.object.process(log_event_bar)
 
         assert self.object.metrics.new_results == 4
@@ -966,14 +966,14 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
 
-        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 0
 
-        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 0
@@ -981,7 +981,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         assert self.object.metrics.num_cache_entries == 0
 
         event_bar = {"to_resolve": "bar"}
-        log_event_bar = LogEvent(event_bar, original=b"", metadata=EventMetadata())
+        log_event_bar = LogEvent(event_bar, original=b"", input_meta=InputMeta())
         await self.object.process(log_event_bar)
 
         assert self.object.metrics.new_results == 0
@@ -1012,28 +1012,28 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
 
-        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 0
 
-        log_event = LogEvent(event, original=b"", metadata=EventMetadata())
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
         assert self.object.metrics.num_cache_entries == 1
 
-        log_event_other = LogEvent(other_event, original=b"", metadata=EventMetadata())
+        log_event_other = LogEvent(other_event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event_other)
 
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
         assert self.object.metrics.num_cache_entries == 1
 
-        log_event_other = LogEvent(other_event, original=b"", metadata=EventMetadata())
+        log_event_other = LogEvent(other_event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event_other)
 
         assert self.object.metrics.new_results == 3
@@ -1046,7 +1046,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             "event": {"code": 4625},
             "event_description": "An account failed to log on.",
         }
-        expected = LogEvent(expected, original=b"", metadata=EventMetadata())
+        expected = LogEvent(expected, original=b"", input_meta=InputMeta())
         rule = {
             "filter": "*",
             "generic_resolver": {
@@ -1059,21 +1059,21 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             },
         }
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"", metadata=EventMetadata())
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert not result.errors
         assert event == expected
 
     async def test_resolve_with_explicit_none_value(self):
         event = {"event": {"code": None}}
-        event = LogEvent(event, original=b"", metadata=EventMetadata())
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
         expected = {
             "event": {"code": None},
             "tags": [
                 "_generic_resolver_missing_field_warning",
             ],
         }
-        expected = LogEvent(expected, original=b"", metadata=EventMetadata())
+        expected = LogEvent(expected, original=b"", input_meta=InputMeta())
         rule = {
             "filter": "*",
             "generic_resolver": {

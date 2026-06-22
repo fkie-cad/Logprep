@@ -11,7 +11,7 @@ from copy import deepcopy
 import pytest
 import responses
 
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.requester.processor import Requester
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.requester.test_requester import (
@@ -36,7 +36,7 @@ class TestRequester(BaseProcessorTestCase[Requester]):
     async def test_testcases(self, rule, event, expected, response_kwargs):
         responses.add(responses.Response(**response_kwargs))
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"", metadata=EventMetadata())
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
         assert event.data == expected
         assert len(responses.calls) == 1
@@ -51,7 +51,7 @@ class TestRequester(BaseProcessorTestCase[Requester]):
         if response_kwargs:
             responses.add(responses.Response(**response_kwargs))
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"", metadata=EventMetadata())
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(error_message, str(result.warnings[0]))

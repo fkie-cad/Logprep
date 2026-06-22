@@ -22,7 +22,7 @@ import responses
 from geoip2.errors import AddressNotFoundError
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.geoip_enricher.processor import GeoipEnricher
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
@@ -103,7 +103,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_geoip_data_added(self):
         document = {"client": {"ip": "1.2.3.4"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(event)
 
@@ -111,7 +111,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_geoip_data_added_not_exists(self):
         document = {"client": {"ip": "127.0.0.1"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(event)
 
@@ -119,13 +119,13 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_no_geoip_data_added_if_source_field_is_none(self):
         document = {"client": {"ip": None}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(event)
         assert document.get("geoip") is None
 
     async def test_source_field_is_none_emits_missing_fields_warning(self):
         document = {"client": {"ip": None}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
         result = await self.object.process(event)
         assert document == expected
@@ -134,14 +134,14 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_nothing_to_enrich(self):
         document = {"something": {"something": "1.2.3.4"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(event)
         assert "geoip" not in document
 
     async def test_geoip_data_added_not_valid(self):
         document = {"client": {"ip": "333.333.333.333"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(event)
 
@@ -149,7 +149,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_enrich_an_event_geoip(self):
         document = {"client": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(event)
 
@@ -168,14 +168,14 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(".*FieldExistsWarning.*geoip.type", str(result.warnings[0]))
 
     async def test_configured_dotted_output_field(self):
         document = {"source": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(event)
         assert document.get("source", {}).get("geo", {}).get("ip") is not None
@@ -184,7 +184,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         document = {
             "client": {"ip": "8.8.8.8", "other_key": "I am here to keep client field alive"}
         }
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -201,7 +201,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_overwrite_target_field(self):
         document = {"client": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -218,7 +218,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_specify_all_target_sub_fields(self):
         document = {"client": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -267,7 +267,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_specify_some_target_sub_fields(self):
         document = {"client": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -326,7 +326,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
 
     async def test_geoip_db_returns_only_limited_data_without_missing_coordinates(self):
         document = {"client": {"ip": "13.21.21.37"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -352,7 +352,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
     )
     async def test_geoip_db_returns_only_limited_data_with_missing_coordinates(self, source_ip):
         document = {"client": {"ip": source_ip}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {

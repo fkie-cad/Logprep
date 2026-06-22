@@ -12,7 +12,7 @@ from unittest import mock
 
 import pytest
 
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
 
@@ -27,14 +27,14 @@ class TestConsoleOutput(BaseOutputTestCase):
 
     @mock.patch("logprep.ng.connector.console.output.pprint")
     def test_store_calls_pprint(self, mock_pprint):
-        event = LogEvent({"message": "mymessage"}, original=b"", metadata=EventMetadata())
+        event = LogEvent({"message": "mymessage"}, original=b"", input_meta=InputMeta())
         self.object.store(event)
         mock_pprint.assert_called()
 
     @mock.patch("logprep.ng.connector.console.output.pprint")
     def test_store_calls_pprint_with_message(self, mock_pprint):
         message = {"message": "mymessage"}
-        event = LogEvent(message, original=b"", metadata=EventMetadata())
+        event = LogEvent(message, original=b"", input_meta=InputMeta())
         self.object.store(event)
         mock_pprint.assert_called_with(message)
 
@@ -44,7 +44,7 @@ class TestConsoleOutput(BaseOutputTestCase):
             {"message": "mymessage"},
             original=b"",
             # state=EventStateType.PROCESSED,
-            metadata=EventMetadata(),
+            input_meta=InputMeta(),
         )
         self.object.store_custom(event, target="stdout")
         mock_pprint.assert_called()
@@ -54,7 +54,7 @@ class TestConsoleOutput(BaseOutputTestCase):
         event = LogEvent(
             {"message": "test message"},
             original=b"",
-            metadata=EventMetadata(),
+            input_meta=InputMeta(),
         )
         with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
             mocked_function.side_effect = Exception("Test exception")
@@ -70,7 +70,7 @@ class TestConsoleOutput(BaseOutputTestCase):
             {"message": "test message"},
             original=b"",
             # state=EventStateType.PROCESSED,
-            metadata=EventMetadata(),
+            input_meta=InputMeta(),
         )
         with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
             mocked_function.side_effect = Exception("Test exception")
@@ -86,7 +86,7 @@ class TestConsoleOutput(BaseOutputTestCase):
             {"message": "test message"},
             original=b"",
             # state=EventStateType.FAILED,
-            metadata=EventMetadata(),
+            input_meta=InputMeta(),
         )
         with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
             mocked_function.side_effect = Exception("Test exception")
@@ -102,7 +102,7 @@ class TestConsoleOutput(BaseOutputTestCase):
             {"message": "test message"},
             original=b"",
             # state=EventStateType.FAILED,
-            metadata=EventMetadata(),
+            input_meta=InputMeta(),
         )
         with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
             mocked_function.side_effect = Exception("Test exception")

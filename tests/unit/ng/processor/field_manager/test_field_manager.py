@@ -12,7 +12,7 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.ng.abc.event import EventMetadata, LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -38,14 +38,14 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
         self, testcase, rule, event, expected
     ):  # pylint: disable=unused-argument
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"", metadata=EventMetadata())
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
         assert event.data == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
     async def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
         await self._load_rule(rule)
-        event = LogEvent(event, original=b"", metadata=EventMetadata())
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(error, str(result.warnings[0]))
@@ -65,7 +65,7 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
         }
         await self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert "target_field" in document
@@ -82,7 +82,7 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
         }
         await self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(
@@ -104,7 +104,7 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
         }
         await self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "field": {"a": "first", "b": "second"},
             "target_field": "first",
@@ -133,7 +133,7 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
         }
         await self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
-        event = LogEvent(document, original=b"", metadata=EventMetadata())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "field": {"a": "first", "b": "second"},
             "target_field": "first",

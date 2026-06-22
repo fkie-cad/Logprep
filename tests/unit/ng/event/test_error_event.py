@@ -9,7 +9,7 @@ import json
 
 from attrs import define
 
-from logprep.ng.abc.event import ErrorEvent, EventMetadata, ExtraDataEvent, LogEvent
+from logprep.ng.abc.event import ErrorEvent, ExtraDataEvent, InputMeta, LogEvent
 from tests.unit.ng.event.test_event import TestEventClass
 
 
@@ -28,7 +28,7 @@ class TestErrorEvents(TestEventClass):
         )
 
         self.log_event = LogEvent(
-            data={"foo": "bar"}, original=b"raw", extra_data=[], metadata=EventMetadata()
+            data={"foo": "bar"}, original=b"raw", extra_data=[], input_meta=InputMeta()
         )
 
     def test_error_event_initializes(self):
