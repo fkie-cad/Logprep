@@ -61,9 +61,13 @@ This example is not complete, since rules are specific to processors and require
 Range-Filter
 ------------
 
-It is possible to use inclusive range expressions to match numeric values.
-The lower and upper boundaries are included and must be specified using square
-brackets. Both integer and floating-point boundaries are supported.
+It is possible to use range expressions to match integer, floating-point, and
+string values. Square brackets include a boundary, while curly brackets exclude
+a boundary. String ranges are compared lexicographically.
+
+The lower and upper boundaries of a range must have the same type. Mixed ranges
+such as integer-to-float, integer-to-string, or float-to-string are not
+supported.
 
 
 ..  code-block:: yaml
@@ -76,6 +80,39 @@ brackets. Both integer and floating-point boundaries are supported.
 The example matches log messages in which the value of :code:`age` is greater
 than or equal to :code:`18` and less than or equal to :code:`65`.
 
+Exclusive boundaries are also supported:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'age:{18 TO 65}'
+
+
+The example matches log messages in which the value of :code:`age` is greater
+than :code:`18` and less than :code:`65`.
+
+Floating-point ranges are supported as well:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'temperature:[18.5 TO 25.0]'
+
+
+String ranges are compared lexicographically:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'status:[alpha TO stable]'
+
+
 Range expressions can also be used within field groups:
 
 
@@ -86,9 +123,8 @@ Range expressions can also be used within field groups:
     filter: 'temperature:([18.5 TO 25.0])'
 
 
-Only closed numeric ranges using square brackets are currently supported.
-Exclusive ranges using curly brackets, open boundaries using :code:`*`, and
-non-numeric boundaries are not supported.
+Open boundaries using :code:`*`, non-finite numeric boundaries, and mixed
+boundary types are not supported.
 
 RegEx-Filter
 ------------
