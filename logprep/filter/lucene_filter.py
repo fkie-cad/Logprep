@@ -1,4 +1,6 @@
 # pylint: disable=anomalous-backslash-in-string
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=too-many-return-statements
 r"""
 Filter
 ======
@@ -141,7 +143,8 @@ To be recognized as a regular expression, the filter field has to start with
     filter: 'ip_address: /192\.168\.0\..*/'
 
 
-[Deprecated, but still functional] The field with the regex pattern must be added to the optional field
+[Deprecated, but still functional] The field with the regex pattern
+must be added to the optional field
 :code:`regex_fields` in the rule definition.
 
 In the following example the field :code:`ip_address` is defined as regex field.
@@ -532,16 +535,19 @@ class LuceneTransformer:
 
     @staticmethod
     def _get_range_boundary_value(token: luqum.tree) -> str:
-        """Return a range boundary as a normalized numeric string.
+        """Return a range boundary as a normalized string.
 
         Luqum parses a negative boundary such as ``-10`` as
-        ``Prohibit(Word("10"))`` instead of ``Word("-10")``. This helper is
-        therefore required to normalize both positive and negative boundary
-        nodes into the string representation expected by the numeric parsers.
+        ``Prohibit(Word("10"))`` instead of ``Word("-10")``. Quoted boundaries are
+        parsed as phrases and are required for values containing Lucene special
+        characters, such as ISO-8601 timestamps with timezone offsets.
         """
 
         if isinstance(token, Word):
             return token.value
+
+        if isinstance(token, Phrase):
+            return token.value.strip('"')
 
         if isinstance(token, Prohibit) and len(token.children) == 1:
             child = token.children[0]

@@ -1,5 +1,9 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
+# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-lines
+# pylint: disable=missing-function-docstring
+
 import re
 
 import pytest
@@ -1381,3 +1385,221 @@ class TestLueceneFilter:
         assert lucene_filter.matches({"key": 2.0})
         assert lucene_filter.matches({"key": 10.5})
         assert not lucene_filter.matches({"key": "2.0"})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z]",
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2024-06-15T12:30:00Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                (
+                    "2023-12-31T23:59:59Z",
+                    "2025-01-01T00:00:00Z",
+                ),
+                id="iso-8601-utc-timestamp-range",
+            ),
+            pytest.param(
+                "[2024-01-01T00:00:00.000Z TO 2024-01-01T00:00:00.999Z]",
+                (
+                    "2024-01-01T00:00:00.000Z",
+                    "2024-01-01T00:00:00.500Z",
+                    "2024-01-01T00:00:00.999Z",
+                ),
+                (
+                    "2023-12-31T23:59:59.999Z",
+                    "2024-01-01T00:00:01.000Z",
+                ),
+                id="iso-8601-millisecond-timestamp-range",
+            ),
+            pytest.param(
+                '["2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"]',
+                (
+                    "2024-01-01T00:00:00+01:00",
+                    "2024-06-15T12:30:00+01:00",
+                    "2024-12-31T23:59:59+01:00",
+                ),
+                (
+                    "2023-12-31T23:59:59+01:00",
+                    "2025-01-01T00:00:00+01:00",
+                ),
+                id="quoted-iso-8601-offset-timestamp-range",
+            ),
+        ),
+    )
+    def test_created_string_range_filter_matches_iso_8601_timestamps_lexicographically(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z]",
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2024-06-15T12:30:00Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                (
+                    "2023-12-31T23:59:59Z",
+                    "2025-01-01T00:00:00Z",
+                ),
+                id="iso-8601-inclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "{2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z}",
+                ("2024-06-15T12:30:00Z",),
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                id="iso-8601-exclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                "{2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z]",
+                (
+                    "2024-06-15T12:30:00Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2025-01-01T00:00:00Z",
+                ),
+                id="iso-8601-exclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "[2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z}",
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2024-06-15T12:30:00Z",
+                ),
+                (
+                    "2023-12-31T23:59:59Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                id="iso-8601-inclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                '["2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"]',
+                (
+                    "2024-01-01T00:00:00+01:00",
+                    "2024-06-15T12:30:00+01:00",
+                    "2024-12-31T23:59:59+01:00",
+                ),
+                (
+                    "2023-12-31T23:59:59+01:00",
+                    "2025-01-01T00:00:00+01:00",
+                ),
+                id="quoted-iso-8601-offset-inclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                '{"2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"}',
+                ("2024-06-15T12:30:00+01:00",),
+                (
+                    "2024-01-01T00:00:00+01:00",
+                    "2024-12-31T23:59:59+01:00",
+                ),
+                id="quoted-iso-8601-offset-exclusive-lower-exclusive-upper",
+            ),
+        ),
+    )
+    def test_created_string_range_filter_respects_iso_8601_timestamp_boundary_inclusiveness(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "[2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z]",
+                id="reversed-inclusive-iso-8601-timestamp-range",
+            ),
+            pytest.param(
+                "{2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z}",
+                id="reversed-exclusive-iso-8601-timestamp-range",
+            ),
+            pytest.param(
+                "{2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z]",
+                id="reversed-exclusive-inclusive-iso-8601-timestamp-range",
+            ),
+            pytest.param(
+                "[2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z}",
+                id="reversed-inclusive-exclusive-iso-8601-timestamp-range",
+            ),
+            pytest.param(
+                '["2024-12-31T23:59:59+01:00" TO "2024-01-01T00:00:00+01:00"]',
+                id="reversed-quoted-iso-8601-offset-timestamp-range",
+            ),
+        ),
+    )
+    def test_create_rejects_reversed_iso_8601_timestamp_range(
+        self,
+        range_query,
+        range_expression,
+    ):
+        with pytest.raises(
+            LuceneFilterError,
+            match=re.escape(
+                "The lower range boundary must not exceed "
+                f'the upper range boundary: "{range_expression}"'
+            ),
+        ):
+            LuceneFilter.create(range_query(range_expression))
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "[2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00]",
+                id="unquoted-iso-8601-offset-inclusive-range",
+            ),
+            pytest.param(
+                "{2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00}",
+                id="unquoted-iso-8601-offset-exclusive-range",
+            ),
+            pytest.param(
+                "{2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00]",
+                id="unquoted-iso-8601-offset-exclusive-inclusive-range",
+            ),
+            pytest.param(
+                "[2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00}",
+                id="unquoted-iso-8601-offset-inclusive-exclusive-range",
+            ),
+        ),
+    )
+    def test_create_rejects_unquoted_iso_8601_offset_timestamp_range(
+        self,
+        range_query,
+        range_expression,
+    ):
+        with pytest.raises(
+            LuceneFilterError,
+            match="expression not escaped correctly",
+        ):
+            LuceneFilter.create(range_query(range_expression))
