@@ -87,7 +87,7 @@ dev = [
   "jinja2",
   "cibuildwheel",
   "asgiref",
-  "pytest-asyncio",
+  "pytest-asyncio>=1.4.0",
   "pre-commit",
   "mypy>=1.18.2",
   "psutil",
@@ -187,6 +187,4 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 # automatically run async test_* methods as test (instead of @pytest.mark.asyncio)
 asyncio_mode = "auto"
-
-# https://pytest-asyncio.readthedocs.io/en/stable/reference/configuration.html#asyncio-default-fixture-loop-scope
-asyncio_default_fixture_loop_scope = "session"
+asyncio_default_fixture_loop_scope = "function"

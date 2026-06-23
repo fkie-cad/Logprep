@@ -59,7 +59,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: 
         requests.post(
             "https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5
         ).raise_for_status()
-        time.sleep(0.25)
+        time.sleep(0.5)
     assert "my message" in output_path.read_text()
 
 

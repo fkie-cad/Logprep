@@ -88,7 +88,7 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
         "logprep_number_of_http_requests",
     ]
 
-    @pytest.fixture(autouse=True, scope="class")
+    @pytest.fixture(autouse=True)
     async def mock_create_and_run_server(self):
         with mock.patch(f"{MODULE}.{HttpInput.__name__}._create_and_run_server") as func:
             task = mock.AsyncMock()

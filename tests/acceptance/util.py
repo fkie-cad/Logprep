@@ -277,36 +277,33 @@ def _stop_logprep(proc: subprocess.Popen) -> None:
     if proc is None or not psutil.pid_exists(proc.pid):
         return
 
-    main_process = psutil.Process(proc.pid)
+    main = psutil.Process(proc.pid)
+    to_terminate = [main, *main.children(recursive=True)]
 
-    to_terminate: list[psutil.Process] = [main_process, *main_process.children(recursive=True)]
-
-    logger.debug("terminating pids [%s]", ", ".join([str(p.pid) for p in to_terminate]))
-
-    for p in to_terminate:
-        try:
-            if p.is_running():
-                p.terminate()
-        except (psutil.NoSuchProcess, psutil.ZombieProcess):
-            pass
-
-    _, still_alive = psutil.wait_procs(to_terminate, timeout=5)
-
-    logger.debug("killing pids [%s]", ", ".join([str(p.pid) for p in still_alive]))
+    main.terminate()
+    _, still_alive = psutil.wait_procs(to_terminate, timeout=2)
 
     for p in still_alive:
-        try:
-            if p.is_running():
-                p.kill()
-        except (psutil.NoSuchProcess, psutil.ZombieProcess):
-            pass
+        with contextlib.suppress(psutil.NoSuchProcess, psutil.ZombieProcess):
+            p.terminate()
 
-    _, still_alive = psutil.wait_procs(to_terminate, timeout=5)
+    _, still_alive = psutil.wait_procs(still_alive, timeout=2)
 
-    if still_alive:
-        logger.warning(
-            "failed to kill processes [%s]", ", ".join([str(p.pid) for p in still_alive])
-        )
+    # catch processes spawned during shutdown
+    with contextlib.suppress(psutil.NoSuchProcess):
+        late_children = main.children(recursive=True)
+        for p in late_children:
+            with contextlib.suppress(psutil.NoSuchProcess, psutil.ZombieProcess):
+                p.terminate()
+        still_alive = list({*still_alive, *late_children})
+
+    _, still_alive = psutil.wait_procs(still_alive, timeout=2)
+
+    for p in still_alive:
+        with contextlib.suppress(psutil.NoSuchProcess, psutil.ZombieProcess):
+            p.kill()
+
+    psutil.wait_procs(still_alive, timeout=2)
 
 
 @contextmanager

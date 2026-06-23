@@ -56,6 +56,7 @@ class ProcessableEvent(_FailableEvent, Protocol):
     handed to an `Output` for sending."""
 
     data: dict[str, FieldValue]
+
     output_target: str | None
     """Indicates to which target inside an output the event should be routed"""
 

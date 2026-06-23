@@ -34,13 +34,15 @@ def fixture_configuration(config_path: Path) -> Configuration:
     return Configuration.from_sources([str(config_path)])
 
 
-@pytest.fixture(name="runner")
-def fixture_runner(configuration: Configuration) -> Runner:
-    runner = Runner(configuration)  # we want to have a fresh runner for each test
-    return runner
-
-
+@mock.patch("atexit.register", new=lambda _: None)
 class TestRunner:
+
+    @pytest.fixture(name="runner")
+    def fixture_runner(self, configuration: Configuration) -> Runner:
+        runner = Runner(configuration)  # we want to have a fresh runner for each test
+        with mock.patch.object(runner, "_manager"):
+            yield runner
+
     def test_runner_sets_configuration(self):
         configuration = Configuration.from_sources([path_to_config])
         runner = Runner.get_runner(configuration)
@@ -80,9 +82,9 @@ class TestRunner:
         assert runner._exit_received
 
     def test_stop_and_exit_calls_manager_stop(self, runner: Runner):
-        runner._exit_received = True
-        runner.start()
         with mock.patch.object(runner, "_manager") as mock_manager:
+            runner._exit_received = True
+            runner.start()
             runner.stop_and_exit()
         mock_manager.stop.assert_called()
         mock_manager.restart_failed_pipeline.assert_not_called()
