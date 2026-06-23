@@ -256,7 +256,7 @@ class TestIntegerRangeFilterExpression(ValueBasedFilterExpressionTest):
         assert not self.filter.matches({"key1": {"key2": 42 + 1}})
 
     def test_does_not_match_when_value_is_in_range_but_as_float(self):
-        assert self.filter.matches({"key1": {"key2": 24.0}})
+        assert not self.filter.matches({"key1": {"key2": 24.0}})
 
     def test_does_match_when_value_is_in_range(self):
         for i in range(23, 43):
