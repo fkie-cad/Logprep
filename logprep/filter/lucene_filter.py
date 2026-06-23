@@ -115,6 +115,32 @@ String ranges are compared lexicographically:
     filter: 'status:[alpha TO stable]'
 
 
+This also allows matching consistently formatted ISO-8601 timestamps as string
+ranges:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'timestamp:[2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z]'
+
+
+The example matches log messages in which the value of :code:`timestamp` is
+lexicographically greater than or equal to :code:`2024-01-01T00:00:00Z` and
+less than or equal to :code:`2024-12-31T23:59:59Z`.
+
+Timestamp values containing Lucene special characters must be quoted. This is
+required, for example, for ISO-8601 timestamps with timezone offsets:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'timestamp:["2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"]'
+
+
 Range expressions can also be used within field groups:
 
 
@@ -125,8 +151,9 @@ Range expressions can also be used within field groups:
     filter: 'temperature:([18.5 TO 25.0])'
 
 
-Open boundaries using :code:`*`, non-finite numeric boundaries, and mixed
-boundary types are not supported.
+Open boundaries using :code:`*`, non-finite numeric boundaries, mixed boundary
+types, and unquoted boundaries containing Lucene special characters are not
+supported.
 
 RegEx-Filter
 ------------
