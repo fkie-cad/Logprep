@@ -130,7 +130,7 @@ The example matches log messages in which the value of :code:`timestamp` is
 lexicographically greater than or equal to :code:`2024-01-01T00:00:00Z` and
 less than or equal to :code:`2024-12-31T23:59:59Z`.
 
-Timestamp values containing Lucene special characters must be quoted. This is
+Range boundaries containing Lucene special characters must be quoted. This is
 required, for example, for ISO-8601 timestamps with timezone offsets:
 
 
