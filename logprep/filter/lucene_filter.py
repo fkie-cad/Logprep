@@ -159,9 +159,11 @@ from logprep.filter.expression.filter_expression import Not as NotExpression
 from logprep.filter.expression.filter_expression import (
     Null,
     Or,
+    RangeBoundary,
     RegExFilterExpression,
     SigmaFilterExpression,
     StringFilterExpression,
+    StringRangeFilterExpression,
 )
 from logprep.util.helper import field_list_to_dotted_field, get_dotted_field_list
 
@@ -338,52 +340,159 @@ class LuceneTransformer:
         expression = str(expr)
         lower_token, upper_token = expr.children
 
-        if not expression.startswith("[") or not expression.endswith("]"):
-            raise LuceneFilterError(
-                f'The expression "{expression}" is invalid. '
-                "Only inclusive ranges using square brackets are supported."
-            )
+        include_lower_bound = expression.startswith("[")
+        include_upper_bound = expression.endswith("]")
+
+        if not expression.startswith(("[", "{")) or not expression.endswith(("]", "}")):
+            raise LuceneFilterError(f'The expression "{expression}" is invalid!')
 
         lower_value = self._get_range_boundary_value(lower_token)
         upper_value = self._get_range_boundary_value(upper_token)
 
+        for range_parser in (
+            self._parse_integer_range,
+            self._parse_float_range,
+            self._parse_string_range,
+        ):
+            range_filter_expression = range_parser(
+                key,
+                lower_value,
+                upper_value,
+                include_lower_bound,
+                include_upper_bound,
+                expr,
+            )
+
+            if range_filter_expression is not None:
+                return range_filter_expression
+
+        raise LuceneFilterError(f'The expression "{expression}" is invalid!')
+
+    @staticmethod
+    def _parse_integer_range(
+        key: Sequence[str],
+        lower_value: str,
+        upper_value: str,
+        include_lower_bound: bool,
+        include_upper_bound: bool,
+        expr: Range,
+    ) -> IntegerRangeFilterExpression | None:
+        """Create an integer range expression if both boundaries are integers."""
         try:
             lower_bound = int(lower_value)
             upper_bound = int(upper_value)
         except ValueError:
-            pass
-        else:
-            self._validate_range_boundaries(lower_bound, upper_bound, expr)
+            return None
 
-            return IntegerRangeFilterExpression(
-                key,
-                lower_bound,
-                upper_bound,
-            )
+        LuceneTransformer._validate_range_boundaries(lower_bound, upper_bound, expr)
+
+        return IntegerRangeFilterExpression(
+            key,
+            lower_bound,
+            upper_bound,
+            include_lower_bound,
+            include_upper_bound,
+        )
+
+    @staticmethod
+    def _parse_float_range(
+        key: Sequence[str],
+        lower_value: str,
+        upper_value: str,
+        include_lower_bound: bool,
+        include_upper_bound: bool,
+        expr: Range,
+    ) -> FloatRangeFilterExpression | None:
+        """Create a float range expression if both boundaries are finite floats."""
+        if LuceneTransformer._is_integer_range_boundary(
+            lower_value
+        ) or LuceneTransformer._is_integer_range_boundary(upper_value):
+            return None
 
         try:
-            lower_bound_float = float(lower_value)
-            upper_bound_float = float(upper_value)
-        except ValueError as error:
-            raise LuceneFilterError(f'The expression "{expression}" is invalid!') from error
+            lower_bound = float(lower_value)
+            upper_bound = float(upper_value)
+        except ValueError:
+            return None
 
-        if not math.isfinite(lower_bound_float) or not math.isfinite(upper_bound_float):
+        expression = str(expr)
+
+        if not math.isfinite(lower_bound) or not math.isfinite(upper_bound):
             raise LuceneFilterError(
                 f'The expression "{expression}" is invalid. '
                 "Range boundaries must be finite numbers."
             )
 
-        self._validate_range_boundaries(
-            lower_bound_float,
-            upper_bound_float,
-            expr,
-        )
+        LuceneTransformer._validate_range_boundaries(lower_bound, upper_bound, expr)
 
         return FloatRangeFilterExpression(
             key,
-            lower_bound_float,
-            upper_bound_float,
+            lower_bound,
+            upper_bound,
+            include_lower_bound,
+            include_upper_bound,
         )
+
+    @staticmethod
+    def _parse_string_range(
+        key: Sequence[str],
+        lower_value: str,
+        upper_value: str,
+        include_lower_bound: bool,
+        include_upper_bound: bool,
+        expr: Range,
+    ) -> StringRangeFilterExpression:
+        """Create a lexicographic string range expression for non-numeric boundaries."""
+        if lower_value == "*" or upper_value == "*":
+            raise LuceneFilterError(f'The expression "{expr}" is invalid!')
+
+        if LuceneTransformer._is_numeric_range_boundary(
+            lower_value
+        ) or LuceneTransformer._is_numeric_range_boundary(upper_value):
+            raise LuceneFilterError(f'The expression "{expr}" is invalid!')
+
+        LuceneTransformer._validate_range_boundaries(lower_value, upper_value, expr)
+
+        return StringRangeFilterExpression(
+            key,
+            lower_value,
+            upper_value,
+            include_lower_bound,
+            include_upper_bound,
+        )
+
+    @staticmethod
+    def _is_numeric_range_boundary(value: str) -> bool:
+        """Return whether a range boundary can be interpreted as a finite number."""
+        try:
+            numeric_value = float(value)
+        except ValueError:
+            return False
+
+        return math.isfinite(numeric_value)
+
+    @staticmethod
+    def _is_integer_range_boundary(value: str) -> bool:
+        """Return whether a range boundary can be interpreted as an integer."""
+        try:
+            int(value)
+        except ValueError:
+            return False
+
+        return True
+
+    @staticmethod
+    def _is_float_range_boundary(value: str) -> bool:
+        """Return whether a range boundary can be interpreted as a finite float."""
+        if LuceneTransformer._is_integer_range_boundary(value):
+            return False
+
+        try:
+            numeric_value = float(value)
+        except ValueError:
+            return False
+
+        return math.isfinite(numeric_value)
 
     @staticmethod
     def _get_range_boundary_value(token: luqum.tree) -> str:
@@ -398,7 +507,7 @@ class LuceneTransformer:
         if isinstance(token, Word):
             return token.value
 
-        if isinstance(token, Prohibit):
+        if isinstance(token, Prohibit) and len(token.children) == 1:
             child = token.children[0]
 
             if isinstance(child, Word):
@@ -408,16 +517,20 @@ class LuceneTransformer:
 
     @staticmethod
     def _validate_range_boundaries(
-        lower_bound: int | float,
-        upper_bound: int | float,
+        lower_bound: RangeBoundary,
+        upper_bound: RangeBoundary,
         expr: Range,
     ) -> None:
         """Validate that the range boundaries form an ascending range.
 
-        The range filter expressions expect the lower boundary to be less than
-        or equal to the upper boundary. Without this validation, a reversed range
-        such as ``[10 TO 0]`` would be accepted but could never match any value,
-        which would hide a likely configuration error.
+        Range filter expressions require the lower boundary to be less than or equal
+        to the upper boundary. This is independent of whether the boundaries are
+        inclusive or exclusive.
+
+        Numeric boundaries are compared numerically. String boundaries are compared
+        lexicographically. Without this validation, a reversed range such as
+        ``[10 TO 0]`` or ``[foo TO bar]`` would be accepted but could never match
+        any value, which would hide a likely configuration error.
         """
 
         if lower_bound > upper_bound:
