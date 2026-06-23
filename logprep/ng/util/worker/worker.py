@@ -14,7 +14,7 @@ import asyncio
 import graphlib
 import logging
 from abc import ABC, abstractmethod
-from asyncio import AbstractEventLoop, Task
+from asyncio import AbstractEventLoop, CancelledError, Task
 from collections import deque
 from collections.abc import AsyncIterator, Generator, Iterable, Sequence
 from typing import Any, Generic, TypeAlias, TypeVar
@@ -422,12 +422,16 @@ class WorkerOrchestrator:
 
         self._create_worker_tasks()
 
-        done, pending = await asyncio.wait(
+        _, pending = await asyncio.wait(
             map(asyncio.create_task, [stop_event.wait(), self._internal_stop.wait()]),
             return_when=asyncio.FIRST_COMPLETED,
         )
-        # TODO make beautiful
-        next(iter(pending)).cancel()
+        for t in pending:
+            t.cancel()
+            try:
+                await t
+            except CancelledError:
+                pass
 
         logger.debug("Stopping workers gracefully: %s", self._get_current_state())
 
