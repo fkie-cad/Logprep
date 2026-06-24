@@ -8,6 +8,7 @@
 ### Improvements
 * add test cases for `decoder` and `timestamper` behavior when handling empty messages
 * remove unused dependencies and move development and documentation-only dependencies to their corresponding optional dependency groups.
+* lazy-load processor registry components to reduce import overhead when loading the registry module
 
 ### Bugfix
 
