@@ -345,8 +345,8 @@ def wait_for_output(
 def get_full_pipeline(exclude=None):
     processors = [
         processor_name
-        for processor_name, value in Registry.mapping.items()
-        if issubclass(value(), Processor)
+        for processor_name, class_factory in Registry.mapping.items()
+        if issubclass(class_factory(), Processor)
     ]
     if exclude:
         processors = filter(lambda x: x not in exclude, processors)

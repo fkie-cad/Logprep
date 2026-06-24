@@ -4,7 +4,7 @@ you have to register new processors here by import them and add to `ProcessorReg
 """
 
 from importlib import import_module
-from typing import Callable, Type
+from typing import Callable
 
 from logprep.abc.connector import Connector
 from logprep.abc.processor import Processor
@@ -24,207 +24,215 @@ def _import_class(
 class Registry:
     """Lazy component registry that imports components only when requested."""
 
-    mapping: dict[str, Callable[[], Type[Processor | Connector | NgProcessor]]] = {
+    mapping: dict[str, Callable[[], type[Processor | Connector | NgProcessor]]] = {
         # Processors
-        "amides": lambda: import_class("Amides", "logprep.processor.amides.processor"),
-        "calculator": lambda: import_class("Calculator", "logprep.processor.calculator.processor"),
-        "clusterer": lambda: import_class("Clusterer", "logprep.processor.clusterer.processor"),
-        "concatenator": lambda: import_class(
+        "amides": lambda: _import_class("Amides", "logprep.processor.amides.processor"),
+        "calculator": lambda: _import_class("Calculator", "logprep.processor.calculator.processor"),
+        "clusterer": lambda: _import_class("Clusterer", "logprep.processor.clusterer.processor"),
+        "concatenator": lambda: _import_class(
             "Concatenator", "logprep.processor.concatenator.processor"
         ),
-        "datetime_extractor": lambda: import_class(
+        "datetime_extractor": lambda: _import_class(
             "DatetimeExtractor", "logprep.processor.datetime_extractor.processor"
         ),
-        "decoder": lambda: import_class("Decoder", "logprep.processor.decoder.processor"),
-        "deleter": lambda: import_class("Deleter", "logprep.processor.deleter.processor"),
-        "dissector": lambda: import_class("Dissector", "logprep.processor.dissector.processor"),
-        "deduplicator": lambda: import_class(
+        "decoder": lambda: _import_class("Decoder", "logprep.processor.decoder.processor"),
+        "deleter": lambda: _import_class("Deleter", "logprep.processor.deleter.processor"),
+        "dissector": lambda: _import_class("Dissector", "logprep.processor.dissector.processor"),
+        "deduplicator": lambda: _import_class(
             "Deduplicator", "logprep.processor.deduplicator.processor"
         ),
-        "domain_label_extractor": lambda: import_class(
+        "domain_label_extractor": lambda: _import_class(
             "DomainLabelExtractor", "logprep.processor.domain_label_extractor.processor"
         ),
-        "domain_resolver": lambda: import_class(
+        "domain_resolver": lambda: _import_class(
             "DomainResolver", "logprep.processor.domain_resolver.processor"
         ),
-        "dropper": lambda: import_class("Dropper", "logprep.processor.dropper.processor"),
-        "field_manager": lambda: import_class(
+        "dropper": lambda: _import_class("Dropper", "logprep.processor.dropper.processor"),
+        "field_manager": lambda: _import_class(
             "FieldManager", "logprep.processor.field_manager.processor"
         ),
-        "generic_adder": lambda: import_class(
+        "generic_adder": lambda: _import_class(
             "GenericAdder", "logprep.processor.generic_adder.processor"
         ),
-        "generic_resolver": lambda: import_class(
+        "generic_resolver": lambda: _import_class(
             "GenericResolver", "logprep.processor.generic_resolver.processor"
         ),
-        "geoip_enricher": lambda: import_class(
+        "geoip_enricher": lambda: _import_class(
             "GeoipEnricher", "logprep.processor.geoip_enricher.processor"
         ),
-        "grokker": lambda: import_class("Grokker", "logprep.processor.grokker.processor"),
-        "ip_informer": lambda: import_class(
+        "grokker": lambda: _import_class("Grokker", "logprep.processor.grokker.processor"),
+        "ip_informer": lambda: _import_class(
             "IpInformer", "logprep.processor.ip_informer.processor"
         ),
-        "key_checker": lambda: import_class(
+        "key_checker": lambda: _import_class(
             "KeyChecker", "logprep.processor.key_checker.processor"
         ),
-        "labeler": lambda: import_class("Labeler", "logprep.processor.labeler.processor"),
-        "list_comparison": lambda: import_class(
+        "labeler": lambda: _import_class("Labeler", "logprep.processor.labeler.processor"),
+        "list_comparison": lambda: _import_class(
             "ListComparison", "logprep.processor.list_comparison.processor"
         ),
-        "network_comparison": lambda: import_class(
+        "network_comparison": lambda: _import_class(
             "NetworkComparison", "logprep.processor.network_comparison.processor"
         ),
-        "ng_amides": lambda: import_class("Amides", "logprep.ng.processor.amides.processor"),
-        "ng_calculator": lambda: import_class(
+        "ng_amides": lambda: _import_class("Amides", "logprep.ng.processor.amides.processor"),
+        "ng_calculator": lambda: _import_class(
             "Calculator", "logprep.ng.processor.calculator.processor"
         ),
-        "ng_clusterer": lambda: import_class(
+        "ng_clusterer": lambda: _import_class(
             "Clusterer", "logprep.ng.processor.clusterer.processor"
         ),
-        "ng_concatenator": lambda: import_class(
+        "ng_concatenator": lambda: _import_class(
             "Concatenator", "logprep.ng.processor.concatenator.processor"
         ),
-        "ng_deleter": lambda: import_class("Deleter", "logprep.ng.processor.deleter.processor"),
-        "ng_decoder": lambda: import_class("Decoder", "logprep.ng.processor.decoder.processor"),
-        "ng_datetime_extractor": lambda: import_class(
+        "ng_deleter": lambda: _import_class("Deleter", "logprep.ng.processor.deleter.processor"),
+        "ng_decoder": lambda: _import_class("Decoder", "logprep.ng.processor.decoder.processor"),
+        "ng_datetime_extractor": lambda: _import_class(
             "DatetimeExtractor", "logprep.ng.processor.datetime_extractor.processor"
         ),
-        "ng_dissector": lambda: import_class(
+        "ng_dissector": lambda: _import_class(
             "Dissector", "logprep.ng.processor.dissector.processor"
         ),
-        "ng_deduplicator": lambda: import_class(
+        "ng_deduplicator": lambda: _import_class(
             "Deduplicator", "logprep.ng.processor.deduplicator.processor"
         ),
-        "ng_domain_label_extractor": lambda: import_class(
+        "ng_domain_label_extractor": lambda: _import_class(
             "DomainLabelExtractor",
             "logprep.ng.processor.domain_label_extractor.processor",
         ),
-        "ng_domain_resolver": lambda: import_class(
+        "ng_domain_resolver": lambda: _import_class(
             "DomainResolver", "logprep.ng.processor.domain_resolver.processor"
         ),
-        "ng_dropper": lambda: import_class("Dropper", "logprep.ng.processor.dropper.processor"),
-        "ng_field_manager": lambda: import_class(
+        "ng_dropper": lambda: _import_class("Dropper", "logprep.ng.processor.dropper.processor"),
+        "ng_field_manager": lambda: _import_class(
             "FieldManager", "logprep.ng.processor.field_manager.processor"
         ),
-        "ng_generic_adder": lambda: import_class(
+        "ng_generic_adder": lambda: _import_class(
             "GenericAdder", "logprep.ng.processor.generic_adder.processor"
         ),
-        "ng_generic_resolver": lambda: import_class(
+        "ng_generic_resolver": lambda: _import_class(
             "GenericResolver", "logprep.ng.processor.generic_resolver.processor"
         ),
-        "ng_geoip_enricher": lambda: import_class(
+        "ng_geoip_enricher": lambda: _import_class(
             "GeoipEnricher", "logprep.ng.processor.geoip_enricher.processor"
         ),
-        "ng_grokker": lambda: import_class("Grokker", "logprep.ng.processor.grokker.processor"),
-        "ng_ip_informer": lambda: import_class(
+        "ng_grokker": lambda: _import_class("Grokker", "logprep.ng.processor.grokker.processor"),
+        "ng_ip_informer": lambda: _import_class(
             "IpInformer", "logprep.ng.processor.ip_informer.processor"
         ),
-        "ng_key_checker": lambda: import_class(
+        "ng_key_checker": lambda: _import_class(
             "KeyChecker", "logprep.ng.processor.key_checker.processor"
         ),
-        "ng_labeler": lambda: import_class("Labeler", "logprep.ng.processor.labeler.processor"),
-        "ng_list_comparison": lambda: import_class(
+        "ng_labeler": lambda: _import_class("Labeler", "logprep.ng.processor.labeler.processor"),
+        "ng_list_comparison": lambda: _import_class(
             "ListComparison", "logprep.ng.processor.list_comparison.processor"
         ),
-        "ng_network_comparison": lambda: import_class(
+        "ng_network_comparison": lambda: _import_class(
             "NetworkComparison", "logprep.ng.processor.network_comparison.processor"
         ),
-        "ng_replacer": lambda: import_class("Replacer", "logprep.ng.processor.replacer.processor"),
-        "ng_requester": lambda: import_class(
+        "ng_replacer": lambda: _import_class("Replacer", "logprep.ng.processor.replacer.processor"),
+        "ng_requester": lambda: _import_class(
             "Requester", "logprep.ng.processor.requester.processor"
         ),
-        "ng_string_splitter": lambda: import_class(
+        "ng_string_splitter": lambda: _import_class(
             "StringSplitter", "logprep.ng.processor.string_splitter.processor"
         ),
-        "ng_template_replacer": lambda: import_class(
+        "ng_template_replacer": lambda: _import_class(
             "TemplateReplacer", "logprep.ng.processor.template_replacer.processor"
         ),
-        "ng_timestamp_differ": lambda: import_class(
+        "ng_timestamp_differ": lambda: _import_class(
             "TimestampDiffer", "logprep.ng.processor.timestamp_differ.processor"
         ),
-        "ng_timestamper": lambda: import_class(
+        "ng_timestamper": lambda: _import_class(
             "Timestamper", "logprep.ng.processor.timestamper.processor"
         ),
-        "ng_pre_detector": lambda: import_class(
+        "ng_pre_detector": lambda: _import_class(
             "PreDetector", "logprep.ng.processor.pre_detector.processor"
         ),
-        "ng_pseudonymizer": lambda: import_class(
+        "ng_pseudonymizer": lambda: _import_class(
             "Pseudonymizer", "logprep.ng.processor.pseudonymizer.processor"
         ),
-        "ng_selective_extractor": lambda: import_class(
+        "ng_selective_extractor": lambda: _import_class(
             "SelectiveExtractor", "logprep.ng.processor.selective_extractor.processor"
         ),
-        "pre_detector": lambda: import_class(
+        "pre_detector": lambda: _import_class(
             "PreDetector", "logprep.processor.pre_detector.processor"
         ),
-        "pseudonymizer": lambda: import_class(
+        "pseudonymizer": lambda: _import_class(
             "Pseudonymizer", "logprep.processor.pseudonymizer.processor"
         ),
-        "requester": lambda: import_class("Requester", "logprep.processor.requester.processor"),
-        "replacer": lambda: import_class("Replacer", "logprep.processor.replacer.processor"),
-        "selective_extractor": lambda: import_class(
+        "requester": lambda: _import_class("Requester", "logprep.processor.requester.processor"),
+        "replacer": lambda: _import_class("Replacer", "logprep.processor.replacer.processor"),
+        "selective_extractor": lambda: _import_class(
             "SelectiveExtractor", "logprep.processor.selective_extractor.processor"
         ),
-        "string_splitter": lambda: import_class(
+        "string_splitter": lambda: _import_class(
             "StringSplitter", "logprep.processor.string_splitter.processor"
         ),
-        "template_replacer": lambda: import_class(
+        "template_replacer": lambda: _import_class(
             "TemplateReplacer", "logprep.processor.template_replacer.processor"
         ),
-        "timestamp_differ": lambda: import_class(
+        "timestamp_differ": lambda: _import_class(
             "TimestampDiffer", "logprep.processor.timestamp_differ.processor"
         ),
-        "timestamper": lambda: import_class(
+        "timestamper": lambda: _import_class(
             "Timestamper", "logprep.processor.timestamper.processor"
         ),
         # Connectors
-        "json_input": lambda: import_class("JsonInput", "logprep.connector.json.input"),
-        "jsonl_input": lambda: import_class("JsonlInput", "logprep.connector.jsonl.input"),
-        "file_input": lambda: import_class("FileInput", "logprep.connector.file.input"),
-        "dummy_input": lambda: import_class("DummyInput", "logprep.connector.dummy.input"),
-        "dummy_output": lambda: import_class("DummyOutput", "logprep.connector.dummy.output"),
-        "confluentkafka_input": lambda: import_class(
+        "json_input": lambda: _import_class("JsonInput", "logprep.connector.json.input"),
+        "jsonl_input": lambda: _import_class("JsonlInput", "logprep.connector.jsonl.input"),
+        "file_input": lambda: _import_class("FileInput", "logprep.connector.file.input"),
+        "dummy_input": lambda: _import_class("DummyInput", "logprep.connector.dummy.input"),
+        "dummy_output": lambda: _import_class("DummyOutput", "logprep.connector.dummy.output"),
+        "confluentkafka_input": lambda: _import_class(
             "ConfluentKafkaInput", "logprep.connector.confluent_kafka.input"
         ),
-        "confluentkafka_output": lambda: import_class(
+        "confluentkafka_output": lambda: _import_class(
             "ConfluentKafkaOutput", "logprep.connector.confluent_kafka.output"
         ),
-        "console_output": lambda: import_class("ConsoleOutput", "logprep.connector.console.output"),
-        "jsonl_output": lambda: import_class("JsonlOutput", "logprep.connector.jsonl.output"),
-        "opensearch_output": lambda: import_class(
+        "console_output": lambda: _import_class(
+            "ConsoleOutput", "logprep.connector.console.output"
+        ),
+        "jsonl_output": lambda: _import_class("JsonlOutput", "logprep.connector.jsonl.output"),
+        "opensearch_output": lambda: _import_class(
             "OpensearchOutput", "logprep.connector.opensearch.output"
         ),
-        "http_input": lambda: import_class("HttpInput", "logprep.connector.http.input"),
-        "http_output": lambda: import_class("HttpOutput", "logprep.connector.http.output"),
-        "http_generator_output": lambda: import_class(
+        "http_input": lambda: _import_class("HttpInput", "logprep.connector.http.input"),
+        "http_output": lambda: _import_class("HttpOutput", "logprep.connector.http.output"),
+        "http_generator_output": lambda: _import_class(
             "HttpGeneratorOutput", "logprep.generator.http.output"
         ),
-        "confluentkafka_generator_output": lambda: import_class(
+        "confluentkafka_generator_output": lambda: _import_class(
             "ConfluentKafkaGeneratorOutput", "logprep.generator.confluent_kafka.output"
         ),
-        "s3_output": lambda: import_class("S3Output", "logprep.connector.s3.output"),
-        "ng_http_input": lambda: import_class("HttpInput", "logprep.ng.connector.http.input"),
-        "ng_confluentkafka_input": lambda: import_class(
+        "s3_output": lambda: _import_class("S3Output", "logprep.connector.s3.output"),
+        "ng_http_input": lambda: _import_class("HttpInput", "logprep.ng.connector.http.input"),
+        "ng_confluentkafka_input": lambda: _import_class(
             "ConfluentKafkaInput", "logprep.ng.connector.confluent_kafka.input"
         ),
-        "ng_dummy_input": lambda: import_class("DummyInput", "logprep.ng.connector.dummy.input"),
-        "ng_json_input": lambda: import_class("JsonInput", "logprep.ng.connector.json.input"),
-        "ng_file_input": lambda: import_class("FileInput", "logprep.ng.connector.file.input"),
-        "ng_dummy_output": lambda: import_class("DummyOutput", "logprep.ng.connector.dummy.output"),
-        "ng_console_output": lambda: import_class(
+        "ng_dummy_input": lambda: _import_class("DummyInput", "logprep.ng.connector.dummy.input"),
+        "ng_json_input": lambda: _import_class("JsonInput", "logprep.ng.connector.json.input"),
+        "ng_file_input": lambda: _import_class("FileInput", "logprep.ng.connector.file.input"),
+        "ng_dummy_output": lambda: _import_class(
+            "DummyOutput", "logprep.ng.connector.dummy.output"
+        ),
+        "ng_console_output": lambda: _import_class(
             "ConsoleOutput", "logprep.ng.connector.console.output"
         ),
-        "ng_jsonl_output": lambda: import_class("JsonlOutput", "logprep.ng.connector.jsonl.output"),
-        "ng_opensearch_output": lambda: import_class(
+        "ng_jsonl_output": lambda: _import_class(
+            "JsonlOutput", "logprep.ng.connector.jsonl.output"
+        ),
+        "ng_opensearch_output": lambda: _import_class(
             "OpensearchOutput", "logprep.ng.connector.opensearch.output"
         ),
-        "ng_confluentkafka_output": lambda: import_class(
+        "ng_confluentkafka_output": lambda: _import_class(
             "ConfluentKafkaOutput", "logprep.ng.connector.confluent_kafka.output"
         ),
     }
 
+    _resolved_classes: dict[str, type[Processor | Connector | NgProcessor]] = {}
+
     @classmethod
-    def get_class(cls, component_type: str) -> Type[Processor | Connector | NgProcessor]:
+    def get_class(cls, component_type: str) -> type[Processor | Connector | NgProcessor]:
         """return the processor class for a given type
 
         Parameters
@@ -237,13 +245,20 @@ class Registry:
         _type_
             _description_
         """
-        processor_class = cls.mapping.get(component_type)
-        if processor_class is None:
+        processor_class = cls._resolved_classes.get(component_type)
+        if processor_class is not None:
+            return processor_class
+
+        processor_class_factory = cls.mapping.get(component_type)
+        if processor_class_factory is None:
             raise ValueError(f"Unknown processor type: {component_type}")
-        return processor_class()
+
+        processor_class = processor_class_factory()
+        cls._resolved_classes[component_type] = processor_class
+        return processor_class
 
     @classmethod
-    def get_rule_class_by_rule_definition(cls, rule_definition: dict) -> Type[Rule]:
+    def get_rule_class_by_rule_definition(cls, rule_definition: dict) -> type[Rule]:
         """return the rule class for a given rule type
 
         Parameters
