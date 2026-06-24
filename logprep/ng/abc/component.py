@@ -18,7 +18,6 @@ class NgComponent(Component):
     _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder(type=dict)
 
     # pylint: disable=invalid-overridden-method, useless-parent-delegation
-    # TODO fork ng-based Component properly
     # We override the setup to be async in the ng component tree.
     # This is unclean from an interface perspective, but works if the worlds don't mix.
 

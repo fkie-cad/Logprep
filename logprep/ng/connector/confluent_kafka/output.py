@@ -351,6 +351,5 @@ class ConfluentKafkaOutput(Output):
     async def shut_down(self) -> None:
         """Shut down the confluent kafka output connector and cleanup resources."""
 
-        await super().shut_down()
-
         await self._producer.close()
+        await super().shut_down()
