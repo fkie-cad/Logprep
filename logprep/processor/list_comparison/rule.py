@@ -47,32 +47,17 @@ from string import Template
 
 from attrs import define, field, validators
 
-from logprep.abc.getter import Getter
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import GetterFactory, HttpGetter
+from logprep.util.getter import GetterConfig, GetterFactory, HttpGetter
 from logprep.util.helper import get_dotted_field_value
-
-
-@define(frozen=True)
-class DynamicCompareKey:
-    base_uri: str
-    values: tuple[str | int | float | bool, ...]
-
-    # def __init__(self, base_uri: str, used_values: tuple[str | int | float | bool, ...]) -> None:
-    #     self.base_uri = base_uri
-    #     self.values = used_values
-    #     pass
-
-    def render(self) -> str:
-        it = iter([str(val) for val in self.values if val is not None])
-        return PATH_RE.sub(lambda _: next(it), self.base_uri)
 
 
 class ListComparisonRule(FieldManagerRule):
     """Check if documents match a filter."""
 
-    _compare_sets: dict[DynamicCompareKey, set]
+    _compare_sets: dict[str, set]
+    _http_getters: dict[str, HttpGetter]
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
@@ -143,6 +128,10 @@ class ListComparisonRule(FieldManagerRule):
                     Reads the list from the ``"content"`` key of the JSON object.
         """
 
+        refresh_interval: int | None = field(
+            validator=validators.instance_of((int | None)), default=None
+        )
+
     def __init__(
         self,
         filter_rule: FilterExpression,
@@ -152,33 +141,46 @@ class ListComparisonRule(FieldManagerRule):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._compare_sets = {}
+        self._http_getters = {}
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if list_search_base_path is None:
             return self._config.list_search_base_path
+        # This seems weirdly wrong? Why do lexicographic check here?
         if self._config.list_search_base_path > list_search_base_path:
             return self._config.list_search_base_path
         return list_search_base_path
 
-    def init_list_comparison(self, list_search_base_path: str | None = None):
+    def init_list_comparison(
+        self, list_search_base_path: str | None = None, refresh_interval: int | None = None
+    ):
         """init method for list_comparison lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
+        self._config.refresh_interval = (
+            refresh_interval if not self._config.refresh_interval else refresh_interval
+        )
         if not list_search_base_path.startswith("http"):
             self._init_list_comparison_from_local_file(list_search_base_path)
+        else:
+            self._config.list_search_base_path = (
+                list_search_base_path
+                if not self._config.list_search_base_path
+                else self._config.list_search_base_path
+            )
 
     def _update_compare_sets_via_http(
-        self, http_getter: HttpGetter, dck: DynamicCompareKey
+        self, http_getter: HttpGetter, fully_resoled_uri: str
     ) -> set[dict] | None:
         try:
             content = http_getter.get_list(content_field=self._config.content_field)
             file_elements = (elem for elem in content if not elem.startswith("#"))
-            self._compare_sets[dck] = set(file_elements)
+            self._compare_sets[fully_resoled_uri] = set(file_elements)
         except Exception as ex:
             self.mark_failed(error=ex)
             return None
         else:
             self.clear_failed()
-            return self._compare_sets[dck]
+            return self._compare_sets[fully_resoled_uri]
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
         content_field = self._config.content_field
@@ -193,61 +195,66 @@ class ListComparisonRule(FieldManagerRule):
             if not list_path.startswith("/")
         ]
         list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
+        getter_config = (
+            GetterConfig(refresh_interval=self._config.refresh_interval)
+            if self._config.refresh_interval
+            else None
+        )
         for list_path in list_paths:
-            compare_elements = GetterFactory.from_string(list_path).get_list(
+            compare_elements = GetterFactory.from_string(list_path, config=getter_config).get_list(
                 content_field=content_field
             )
             file_elements = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)
-            dck = DynamicCompareKey(filename, ())
-            self._compare_sets.update({dck: set(file_elements)})
+            self._compare_sets.update({filename: set(file_elements)})
 
-    def get_dynamic_set(self, event: dict) -> dict[DynamicCompareKey, set]:
-        compare_sets_result: dict[DynamicCompareKey, set] = {}
+    def get_dynamic_set(self, event: dict) -> dict[str, set]:
+        compare_sets_result: dict[str, set] = {}
 
-        # def replace_placeholder_with_dotted_field(match: re.Match) -> str:
-        #     val = get_dotted_field_value(event, match.group(1))
-        #     if not isinstance(val, (str, int, float, bool, type(None))):
-        #         raise ValueError("This is not a valid scalar value")
-        #     return str(val)
+        def replace_placeholder_with_dotted_field(match: re.Match) -> str:
+            val = get_dotted_field_value(event, match.group(1))
+            if not isinstance(val, (str, int, float, bool, type(None))):
+                raise ValueError("This is not a valid scalar value")
+            return str(val)
 
         for list_path in self._config.list_file_paths:
             list_search_base_path_resolved = Template(
                 self._config.list_search_base_path
             ).substitute({**os.environ, **{"LOGPREP_LIST": list_path}})
 
-            used_values = tuple(
-                value
-                for path in PATH_RE.findall(list_search_base_path_resolved)
-                if isinstance(
-                    value := get_dotted_field_value(event, path), (str | float | int | bool)
-                )
+            dynamic_resolved = PATH_RE.sub(
+                replace_placeholder_with_dotted_field, list_search_base_path_resolved
             )
-            dck = DynamicCompareKey(list_search_base_path_resolved, used_values)
 
-            it = iter(dck.values)
-            dynamic_resolved = PATH_RE.sub(lambda m: str(next(it)), dck.base_uri)
-
-            if dck in self._compare_sets:
-                HttpGetter.signal_called_for_target(dynamic_resolved)
-                compare_sets_result[dck] = self._compare_sets[dck]
+            if dynamic_resolved in self._compare_sets:
+                self._http_getters[dynamic_resolved].signal_called()
+                compare_sets_result[dynamic_resolved] = self._compare_sets[dynamic_resolved]
                 continue
 
-            http_getter = GetterFactory.from_string(dynamic_resolved)
+            getter_config = (
+                GetterConfig(refresh_interval=self._config.refresh_interval)
+                if self._config.refresh_interval
+                else None
+            )
+            http_getter = GetterFactory.from_string(dynamic_resolved, config=getter_config)
             if not isinstance(http_getter, HttpGetter):
                 raise TypeError(f"The target {dynamic_resolved} must be a url")
 
             http_getter.signal_called()
 
-            compare_set = self._update_compare_sets_via_http(http_getter, dck)
-            http_getter.add_callback(self._update_compare_sets_via_http, http_getter, dck)
+            compare_set = self._update_compare_sets_via_http(http_getter, dynamic_resolved)
+            http_getter.add_callback(
+                self._update_compare_sets_via_http, http_getter, dynamic_resolved
+            )
+
+            self._http_getters[dynamic_resolved] = http_getter
             if compare_set:
-                compare_sets_result.update({dck: compare_set})
+                compare_sets_result.update({dynamic_resolved: compare_set})
 
         return compare_sets_result
 
     @property
-    def compare_sets(self) -> dict[DynamicCompareKey, set]:  # pylint: disable=missing-docstring
+    def compare_sets(self) -> dict[str, set]:  # pylint: disable=missing-docstring
         return self._compare_sets
 
     @property

@@ -50,11 +50,16 @@ class RefreshableGetterError(LogprepException):
             super().__init__(message)
 
 
+@define
+class GetterConfig:
+    refresh_interval: int
+
+
 class GetterFactory:
     """Provides methods to create getters."""
 
     @classmethod
-    def from_string(cls, getter_string: str) -> "Getter":
+    def from_string(cls, getter_string: str, config: GetterConfig | None = None) -> "Getter":
         """Factory method to return a getter from a string in format :code:`<protocol>://<target>`.
         If no protocol is given, then the file protocol is assumed.
 
@@ -75,10 +80,8 @@ class GetterFactory:
             protocol = "file"
         if protocol == "file":
             return FileGetter(protocol=protocol, target=target)  # type: ignore
-        if protocol == "http":
-            return HttpGetter(protocol=protocol, target=target)  # type: ignore
-        if protocol == "https":
-            return HttpGetter(protocol=protocol, target=target)  # type: ignore
+        if protocol == "http" or protocol == "https":
+            return HttpGetter(protocol=protocol, target=target, config=config)  # type: ignore
         raise GetterNotFoundError(f"No getter for protocol '{protocol}'")
 
     @staticmethod
@@ -132,6 +135,8 @@ class RefreshableGetter(Getter, ABC):
     """Interface for getters that refresh their value periodically"""
 
     _logger = logging.getLogger("RefreshableGetter")
+
+    config: GetterConfig | None = None
 
     _shared: ClassVar[dict[str, DataSharedPerTarget]] = {}
     """Dictionary to store DataSharedPerTarget objects per getter target"""
@@ -248,6 +253,9 @@ class RefreshableGetter(Getter, ABC):
 
     def _get_refresh_interval(self) -> int:
         """Get refresh interval from a configuration file"""
+        if self.config:
+            return self.config.refresh_interval
+
         if ENV_NAME_LOGPREP_GETTER_CONFIG in os.environ:
             getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
             if getter_file_path == self.target and self.protocol == "file":
@@ -337,6 +345,27 @@ class RefreshableGetter(Getter, ABC):
     def signal_called(self):
         self.shared.last_called = time.monotonic()
 
+    def timed_out(self):
+        if self.shared.last_called:
+            elapsed = time.monotonic() - self.shared.last_called
+            # TODO: make this configurable
+            if elapsed > 60:
+                return True
+
+        return False
+
+    @classmethod
+    def timed_out_for_target(cls, target: str):
+        target_shared = cls._shared.get(target)
+        if target_shared:
+            if target_shared.last_called:
+                elapsed = time.monotonic() - target_shared.last_called
+                # TODO: make this configurable
+                if elapsed > 60:
+                    return True
+
+        return False
+
     @classmethod
     def signal_called_for_target(cls, target: str):
         cls._shared[target].last_called = time.monotonic()
@@ -345,12 +374,10 @@ class RefreshableGetter(Getter, ABC):
     def refresh(cls):
         """Run all pending getter schedulers"""
         for target, shared_target_data in cls._shared.items():
-            if shared_target_data.last_called:
-                elapsed = time.monotonic() - shared_target_data.last_called
-                if elapsed > 5 * 60:
-                    cls._shared.pop(target, None)
-                    # Do more cleanup?
-                    continue
+            if cls.timed_out_for_target(target):
+                cls._shared.pop(target, None)
+                # Do more cleanup?
+                continue
 
             if shared_target_data.scheduler:
                 shared_target_data.scheduler.run_pending()
