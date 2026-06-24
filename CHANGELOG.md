@@ -2,6 +2,7 @@
 ### Breaking
 
 ### Features
+* add Lucene range support for integer, floating-point, and lexicographic string values, including quoted ISO-8601 timestamps with timezone offsets.
 * add `deduplicator` processor that removes duplicates from lists
 
 ### Improvements

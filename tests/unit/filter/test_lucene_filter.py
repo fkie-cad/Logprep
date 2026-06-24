@@ -1,5 +1,9 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
+# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-lines
+# pylint: disable=missing-function-docstring
+
 import re
 
 import pytest
@@ -20,6 +24,25 @@ from logprep.filter.lucene_filter import (
     LuceneFilterError,
     LuceneTransformer,
 )
+
+
+@pytest.fixture(
+    params=(
+        pytest.param(
+            "key:{range_expression}",
+            id="search-field-range",
+        ),
+        pytest.param(
+            "key:({range_expression})",
+            id="field-group-range",
+        ),
+    )
+)
+def range_query(request):
+    def create_query(range_expression: str) -> str:
+        return request.param.format(range_expression=range_expression)
+
+    return create_query
 
 
 def esc(count: int) -> str:
@@ -570,10 +593,1000 @@ class TestLueceneFilter:
             RegExFilterExpression(["regex_key_one"], ".*value_two.*"),
         )
 
-    def test_creates_lucene_compliance_filter_parentheses_or_one_regex(self):
-        lucene_filter = LuceneFilter.create('regex_key_one: (/.*value_one.*/ OR "/.*value_two.*/")')
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[0 TO 10]",
+                (0, 5, 10),
+                (-1, 11),
+                id="positive-integer-range-including-boundaries",
+            ),
+            pytest.param(
+                "[-10 TO -1]",
+                (-10, -5, -1),
+                (-11, 0),
+                id="negative-integer-range",
+            ),
+            pytest.param(
+                "[-10 TO 10]",
+                (-10, 0, 10),
+                (-11, 11),
+                id="integer-range-across-zero",
+            ),
+            pytest.param(
+                "[0 TO 0]",
+                (0,),
+                (-1, 1),
+                id="single-integer-value-range",
+            ),
+            pytest.param(
+                "[2147483647 TO 2147483648]",
+                (2147483647, 2147483648),
+                (2147483646, 2147483649),
+                id="integer-values-above-32-bit-boundary",
+            ),
+            pytest.param(
+                "[-9223372036854775809 TO -9223372036854775808]",
+                (-9223372036854775809, -9223372036854775808),
+                (-9223372036854775810, -9223372036854775807),
+                id="integer-values-below-64-bit-boundary",
+            ),
+        ),
+    )
+    def test_created_integer_range_filter_matches_values_inside_inclusive_range(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
 
-        assert lucene_filter == Or(
-            RegExFilterExpression(["regex_key_one"], ".*value_one.*"),
-            StringFilterExpression(["regex_key_one"], "/.*value_two.*/"),
-        )
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[0.1 TO 8.5]",
+                (0.1, 5.0, 8.5),
+                (0.099, 8.501),
+                id="positive-float-range-including-boundaries",
+            ),
+            pytest.param(
+                "[-8.5 TO -0.1]",
+                (-8.5, -4.2, -0.1),
+                (-8.501, 0),
+                id="negative-float-range",
+            ),
+            pytest.param(
+                "[-1.5 TO 1.5]",
+                (-1.5, 0.0, 1.5),
+                (-1.501, 1.501),
+                id="float-range-across-zero",
+            ),
+            pytest.param(
+                "[1.5 TO 1.5]",
+                (1.5,),
+                (1.499, 1.501),
+                id="single-float-value-range",
+            ),
+            pytest.param(
+                "[1e-3 TO 1e3]",
+                (0.001, 1.0, 1000.0),
+                (0.0009, 1000.1),
+                id="scientific-notation",
+            ),
+            pytest.param(
+                "[-1.0e3 TO -1.0e-3]",
+                (-1000.0, -1.0, -0.001),
+                (-1000.1, 0.0),
+                id="negative-scientific-notation",
+            ),
+        ),
+    )
+    def test_created_float_range_filter_matches_values_inside_inclusive_range(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[bar TO foo]",
+                ("bar", "baz", "foo"),
+                ("aaa", "zoo"),
+                id="string-range-including-boundaries",
+            ),
+            pytest.param(
+                "[a TO z]",
+                ("a", "m", "z"),
+                ("A", "zz"),
+                id="single-character-string-range",
+            ),
+            pytest.param(
+                "[apple TO banana]",
+                ("apple", "apricot", "banana"),
+                ("aardvark", "carrot"),
+                id="word-string-range",
+            ),
+            pytest.param(
+                "[abc TO abc]",
+                ("abc",),
+                ("abb", "abd"),
+                id="single-string-value-range",
+            ),
+            pytest.param(
+                "[A TO z]",
+                ("A", "Z", "a", "m", "z"),
+                ("0", "zz"),
+                id="mixed-case-string-range",
+            ),
+        ),
+    )
+    def test_created_string_range_filter_matches_values_inside_lexicographic_range(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[0 TO 10]",
+                (0, 5, 10),
+                (-1, 11),
+                id="integer-inclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "{0 TO 10}",
+                (1, 5, 9),
+                (-1, 0, 10, 11),
+                id="integer-exclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                "{0 TO 10]",
+                (1, 5, 10),
+                (-1, 0, 11),
+                id="integer-exclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "[0 TO 10}",
+                (0, 5, 9),
+                (-1, 10, 11),
+                id="integer-inclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                "{-10 TO -1}",
+                (-9, -5, -2),
+                (-10, -1, 0),
+                id="negative-integer-exclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                "{-10 TO -1]",
+                (-9, -5, -1),
+                (-10, 0),
+                id="negative-integer-exclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "[-10 TO -1}",
+                (-10, -5, -2),
+                (-11, -1, 0),
+                id="negative-integer-inclusive-lower-exclusive-upper",
+            ),
+        ),
+    )
+    def test_created_integer_range_filter_respects_boundary_inclusiveness(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[0.1 TO 8.5]",
+                (0.1, 5.0, 8.5),
+                (0.099, 8.501),
+                id="float-inclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "{0.1 TO 8.5}",
+                (0.101, 5.0, 8.499),
+                (0.1, 8.5),
+                id="float-exclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                "{0.1 TO 8.5]",
+                (0.101, 5.0, 8.5),
+                (0.1, 8.501),
+                id="float-exclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "[0.1 TO 8.5}",
+                (0.1, 5.0, 8.499),
+                (0.099, 8.5),
+                id="float-inclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                "{-8.5 TO -0.1}",
+                (-8.499, -4.2, -0.101),
+                (-8.5, -0.1, 0),
+                id="negative-float-exclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                "{-8.5 TO -0.1]",
+                (-8.499, -4.2, -0.1),
+                (-8.5, 0),
+                id="negative-float-exclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "[-8.5 TO -0.1}",
+                (-8.5, -4.2, -0.101),
+                (-8.501, -0.1, 0),
+                id="negative-float-inclusive-lower-exclusive-upper",
+            ),
+        ),
+    )
+    def test_created_float_range_filter_respects_boundary_inclusiveness(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[bar TO foo]",
+                ("bar", "baz", "foo"),
+                ("aaa", "zoo"),
+                id="string-inclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "{bar TO foo}",
+                ("baz", "faa"),
+                ("bar", "foo", "aaa", "zoo"),
+                id="string-exclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                "{bar TO foo]",
+                ("baz", "foo"),
+                ("bar", "aaa", "zoo"),
+                id="string-exclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "[bar TO foo}",
+                ("bar", "baz"),
+                ("foo", "aaa", "zoo"),
+                id="string-inclusive-lower-exclusive-upper",
+            ),
+        ),
+    )
+    def test_created_string_range_filter_respects_boundary_inclusiveness(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_value", "wrong_values"),
+        (
+            pytest.param(
+                "[0 TO 10]",
+                5,
+                ("5", 5.0, object()),
+                id="integer-range-does-not-match-non-integer-document-values",
+            ),
+            pytest.param(
+                "[0.1 TO 8.5]",
+                5.0,
+                ("5.0", 5, object()),
+                id="float-range-does-not-match-non-float-document-values",
+            ),
+            pytest.param(
+                "[bar TO foo]",
+                "baz",
+                (5, 5.0, object()),
+                id="string-range-does-not-match-non-string-document-values",
+            ),
+        ),
+    )
+    def test_created_range_filter_does_not_match_wrong_value_type(
+        self,
+        range_query,
+        range_expression,
+        matching_value,
+        wrong_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        assert lucene_filter.matches({"key": matching_value})
+
+        for wrong_value in wrong_values:
+            assert not lucene_filter.matches({"key": wrong_value})
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "{0 TO 0}",
+                id="exclusive-integer-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "{0 TO 0]",
+                id="exclusive-lower-integer-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "[0 TO 0}",
+                id="exclusive-upper-integer-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "{1.5 TO 1.5}",
+                id="exclusive-float-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "{1.5 TO 1.5]",
+                id="exclusive-lower-float-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "[1.5 TO 1.5}",
+                id="exclusive-upper-float-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "{abc TO abc}",
+                id="exclusive-string-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "{abc TO abc]",
+                id="exclusive-lower-string-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "[abc TO abc}",
+                id="exclusive-upper-string-range-with-equal-boundaries",
+            ),
+        ),
+    )
+    def test_created_exclusive_range_with_equal_boundaries_matches_no_value(
+        self,
+        range_query,
+        range_expression,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        assert not lucene_filter.matches({"key": 0})
+        assert not lucene_filter.matches({"key": 1.5})
+        assert not lucene_filter.matches({"key": "abc"})
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "[0 TO 10]",
+                id="integer-inclusive-range",
+            ),
+            pytest.param(
+                "{0 TO 10}",
+                id="integer-exclusive-range",
+            ),
+            pytest.param(
+                "{0 TO 10]",
+                id="integer-exclusive-inclusive-range",
+            ),
+            pytest.param(
+                "[0 TO 10}",
+                id="integer-inclusive-exclusive-range",
+            ),
+            pytest.param(
+                "[-1.5 TO 1.5]",
+                id="float-inclusive-range",
+            ),
+            pytest.param(
+                "{-1.5 TO 1.5}",
+                id="float-exclusive-range",
+            ),
+            pytest.param(
+                "{-1.5 TO 1.5]",
+                id="float-exclusive-inclusive-range",
+            ),
+            pytest.param(
+                "[-1.5 TO 1.5}",
+                id="float-inclusive-exclusive-range",
+            ),
+            pytest.param(
+                "[bar TO foo]",
+                id="string-inclusive-range",
+            ),
+            pytest.param(
+                "{bar TO foo}",
+                id="string-exclusive-range",
+            ),
+            pytest.param(
+                "{bar TO foo]",
+                id="string-exclusive-inclusive-range",
+            ),
+            pytest.param(
+                "[bar TO foo}",
+                id="string-inclusive-exclusive-range",
+            ),
+        ),
+    )
+    def test_created_range_filter_does_not_match_missing_field(
+        self,
+        range_query,
+        range_expression,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        assert not lucene_filter.matches({})
+        assert not lucene_filter.matches({"other_key": 5})
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "[10 TO 0]",
+                id="reversed-inclusive-integer-range",
+            ),
+            pytest.param(
+                "{10 TO 0}",
+                id="reversed-exclusive-integer-range",
+            ),
+            pytest.param(
+                "{10 TO 0]",
+                id="reversed-exclusive-inclusive-integer-range",
+            ),
+            pytest.param(
+                "[10 TO 0}",
+                id="reversed-inclusive-exclusive-integer-range",
+            ),
+            pytest.param(
+                "[10.5 TO -1.5]",
+                id="reversed-inclusive-float-range",
+            ),
+            pytest.param(
+                "{10.5 TO -1.5}",
+                id="reversed-exclusive-float-range",
+            ),
+            pytest.param(
+                "{10.5 TO -1.5]",
+                id="reversed-exclusive-inclusive-float-range",
+            ),
+            pytest.param(
+                "[10.5 TO -1.5}",
+                id="reversed-inclusive-exclusive-float-range",
+            ),
+            pytest.param(
+                "[foo TO bar]",
+                id="reversed-inclusive-string-range",
+            ),
+            pytest.param(
+                "{foo TO bar}",
+                id="reversed-exclusive-string-range",
+            ),
+            pytest.param(
+                "{foo TO bar]",
+                id="reversed-exclusive-inclusive-string-range",
+            ),
+            pytest.param(
+                "[foo TO bar}",
+                id="reversed-inclusive-exclusive-string-range",
+            ),
+        ),
+    )
+    def test_create_rejects_range_with_reversed_boundaries(
+        self,
+        range_query,
+        range_expression,
+    ):
+        with pytest.raises(
+            LuceneFilterError,
+            match=re.escape(
+                "The lower range boundary must not exceed "
+                f'the upper range boundary: "{range_expression}"'
+            ),
+        ):
+            LuceneFilter.create(range_query(range_expression))
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[0 TO 10.5]",
+                (0.0, 5.5, 10.5),
+                (-0.1, 10.6),
+                id="integer-lower-float-upper-boundary",
+            ),
+            pytest.param(
+                "[-10.5 TO 10]",
+                (-10.5, 0.0, 10.0),
+                (-10.6, 10.1),
+                id="float-lower-integer-upper-boundary",
+            ),
+        ),
+    )
+    def test_created_float_range_filter_supports_mixed_integer_and_float_boundaries(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "[1 TO bar]",
+                id="integer-lower-and-string-upper-bound",
+            ),
+            pytest.param(
+                "{1 TO bar}",
+                id="exclusive-integer-lower-and-string-upper-bound",
+            ),
+            pytest.param(
+                "{1 TO bar]",
+                id="exclusive-inclusive-integer-lower-and-string-upper-bound",
+            ),
+            pytest.param(
+                "[1 TO bar}",
+                id="inclusive-exclusive-integer-lower-and-string-upper-bound",
+            ),
+            pytest.param(
+                "[foo TO 10]",
+                id="string-lower-and-integer-upper-bound",
+            ),
+            pytest.param(
+                "{foo TO 10}",
+                id="exclusive-string-lower-and-integer-upper-bound",
+            ),
+            pytest.param(
+                "{foo TO 10]",
+                id="exclusive-inclusive-string-lower-and-integer-upper-bound",
+            ),
+            pytest.param(
+                "[foo TO 10}",
+                id="inclusive-exclusive-string-lower-and-integer-upper-bound",
+            ),
+            pytest.param(
+                "[1.5 TO bar]",
+                id="float-lower-and-string-upper-bound",
+            ),
+            pytest.param(
+                "{1.5 TO bar}",
+                id="exclusive-float-lower-and-string-upper-bound",
+            ),
+            pytest.param(
+                "{1.5 TO bar]",
+                id="exclusive-inclusive-float-lower-and-string-upper-bound",
+            ),
+            pytest.param(
+                "[1.5 TO bar}",
+                id="inclusive-exclusive-float-lower-and-string-upper-bound",
+            ),
+            pytest.param(
+                "[foo TO 10.5]",
+                id="string-lower-and-float-upper-bound",
+            ),
+            pytest.param(
+                "{foo TO 10.5}",
+                id="exclusive-string-lower-and-float-upper-bound",
+            ),
+            pytest.param(
+                "{foo TO 10.5]",
+                id="exclusive-inclusive-string-lower-and-float-upper-bound",
+            ),
+            pytest.param(
+                "[foo TO 10.5}",
+                id="inclusive-exclusive-string-lower-and-float-upper-bound",
+            ),
+        ),
+    )
+    def test_create_rejects_mixed_numeric_and_string_range_boundaries(
+        self,
+        range_query,
+        range_expression,
+    ):
+        with pytest.raises(
+            LuceneFilterError,
+            match=re.escape(f'The expression "{range_expression}" is invalid!'),
+        ):
+            LuceneFilter.create(range_query(range_expression))
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "[* TO 10]",
+                id="open-lower-bound",
+            ),
+            pytest.param(
+                "{* TO 10}",
+                id="exclusive-open-lower-bound",
+            ),
+            pytest.param(
+                "[1 TO *]",
+                id="open-upper-bound",
+            ),
+            pytest.param(
+                "{1 TO *}",
+                id="exclusive-open-upper-bound",
+            ),
+            pytest.param(
+                "[* TO *]",
+                id="fully-open-range",
+            ),
+            pytest.param(
+                "{* TO *}",
+                id="exclusive-fully-open-range",
+            ),
+            pytest.param(
+                "[* TO foo]",
+                id="open-lower-string-upper-bound",
+            ),
+            pytest.param(
+                "[foo TO *]",
+                id="string-lower-open-upper-bound",
+            ),
+        ),
+    )
+    def test_create_rejects_open_range(
+        self,
+        range_query,
+        range_expression,
+    ):
+        with pytest.raises(
+            LuceneFilterError,
+            match=re.escape(f'The expression "{range_expression}" is invalid!'),
+        ):
+            LuceneFilter.create(range_query(range_expression))
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "[nan TO 10]",
+                id="nan-lower-bound",
+            ),
+            pytest.param(
+                "{nan TO 10}",
+                id="exclusive-nan-lower-bound",
+            ),
+            pytest.param(
+                "[0 TO nan]",
+                id="nan-upper-bound",
+            ),
+            pytest.param(
+                "{0 TO nan}",
+                id="exclusive-nan-upper-bound",
+            ),
+            pytest.param(
+                "[-inf TO 10]",
+                id="negative-infinity-lower-bound",
+            ),
+            pytest.param(
+                "{-inf TO 10}",
+                id="exclusive-negative-infinity-lower-bound",
+            ),
+            pytest.param(
+                "[0 TO inf]",
+                id="positive-infinity-upper-bound",
+            ),
+            pytest.param(
+                "{0 TO inf}",
+                id="exclusive-positive-infinity-upper-bound",
+            ),
+        ),
+    )
+    def test_create_rejects_non_finite_range_boundaries(
+        self,
+        range_query,
+        range_expression,
+    ):
+        with pytest.raises(
+            LuceneFilterError,
+            match=re.escape(
+                f'The expression "{range_expression}" is invalid. '
+                "Range boundaries must be finite numbers."
+            ),
+        ):
+            LuceneFilter.create(range_query(range_expression))
+
+    def test_created_range_filter_prefers_integer_range_over_string_range(
+        self,
+        range_query,
+    ):
+        lucene_filter = LuceneFilter.create(range_query("[1 TO 10]"))
+
+        assert lucene_filter.matches({"key": 2})
+        assert lucene_filter.matches({"key": 10})
+        assert not lucene_filter.matches({"key": "2"})
+
+    def test_created_range_filter_prefers_float_range_over_string_range(
+        self,
+        range_query,
+    ):
+        lucene_filter = LuceneFilter.create(range_query("[1.5 TO 10.5]"))
+
+        assert lucene_filter.matches({"key": 2.0})
+        assert lucene_filter.matches({"key": 10.5})
+        assert not lucene_filter.matches({"key": "2.0"})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z]",
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2024-06-15T12:30:00Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                (
+                    "2023-12-31T23:59:59Z",
+                    "2025-01-01T00:00:00Z",
+                ),
+                id="iso-8601-utc-timestamp-range",
+            ),
+            pytest.param(
+                "[2024-01-01T00:00:00.000Z TO 2024-01-01T00:00:00.999Z]",
+                (
+                    "2024-01-01T00:00:00.000Z",
+                    "2024-01-01T00:00:00.500Z",
+                    "2024-01-01T00:00:00.999Z",
+                ),
+                (
+                    "2023-12-31T23:59:59.999Z",
+                    "2024-01-01T00:00:01.000Z",
+                ),
+                id="iso-8601-millisecond-timestamp-range",
+            ),
+            pytest.param(
+                '["2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"]',
+                (
+                    "2024-01-01T00:00:00+01:00",
+                    "2024-06-15T12:30:00+01:00",
+                    "2024-12-31T23:59:59+01:00",
+                ),
+                (
+                    "2023-12-31T23:59:59+01:00",
+                    "2025-01-01T00:00:00+01:00",
+                ),
+                id="quoted-iso-8601-offset-timestamp-range",
+            ),
+        ),
+    )
+    def test_created_string_range_filter_matches_iso_8601_timestamps_lexicographically(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        ("range_expression", "matching_values", "non_matching_values"),
+        (
+            pytest.param(
+                "[2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z]",
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2024-06-15T12:30:00Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                (
+                    "2023-12-31T23:59:59Z",
+                    "2025-01-01T00:00:00Z",
+                ),
+                id="iso-8601-inclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "{2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z}",
+                ("2024-06-15T12:30:00Z",),
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                id="iso-8601-exclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                "{2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z]",
+                (
+                    "2024-06-15T12:30:00Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2025-01-01T00:00:00Z",
+                ),
+                id="iso-8601-exclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                "[2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z}",
+                (
+                    "2024-01-01T00:00:00Z",
+                    "2024-06-15T12:30:00Z",
+                ),
+                (
+                    "2023-12-31T23:59:59Z",
+                    "2024-12-31T23:59:59Z",
+                ),
+                id="iso-8601-inclusive-lower-exclusive-upper",
+            ),
+            pytest.param(
+                '["2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"]',
+                (
+                    "2024-01-01T00:00:00+01:00",
+                    "2024-06-15T12:30:00+01:00",
+                    "2024-12-31T23:59:59+01:00",
+                ),
+                (
+                    "2023-12-31T23:59:59+01:00",
+                    "2025-01-01T00:00:00+01:00",
+                ),
+                id="quoted-iso-8601-offset-inclusive-lower-inclusive-upper",
+            ),
+            pytest.param(
+                '{"2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"}',
+                ("2024-06-15T12:30:00+01:00",),
+                (
+                    "2024-01-01T00:00:00+01:00",
+                    "2024-12-31T23:59:59+01:00",
+                ),
+                id="quoted-iso-8601-offset-exclusive-lower-exclusive-upper",
+            ),
+        ),
+    )
+    def test_created_string_range_filter_respects_iso_8601_timestamp_boundary_inclusiveness(
+        self,
+        range_query,
+        range_expression,
+        matching_values,
+        non_matching_values,
+    ):
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "[2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z]",
+                id="reversed-inclusive-iso-8601-timestamp-range",
+            ),
+            pytest.param(
+                "{2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z}",
+                id="reversed-exclusive-iso-8601-timestamp-range",
+            ),
+            pytest.param(
+                "{2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z]",
+                id="reversed-exclusive-inclusive-iso-8601-timestamp-range",
+            ),
+            pytest.param(
+                "[2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z}",
+                id="reversed-inclusive-exclusive-iso-8601-timestamp-range",
+            ),
+            pytest.param(
+                '["2024-12-31T23:59:59+01:00" TO "2024-01-01T00:00:00+01:00"]',
+                id="reversed-quoted-iso-8601-offset-timestamp-range",
+            ),
+        ),
+    )
+    def test_create_rejects_reversed_iso_8601_timestamp_range(
+        self,
+        range_query,
+        range_expression,
+    ):
+        with pytest.raises(
+            LuceneFilterError,
+            match=re.escape(
+                "The lower range boundary must not exceed "
+                f'the upper range boundary: "{range_expression}"'
+            ),
+        ):
+            LuceneFilter.create(range_query(range_expression))
+
+    @pytest.mark.parametrize(
+        "range_expression",
+        (
+            pytest.param(
+                "[2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00]",
+                id="unquoted-iso-8601-offset-inclusive-range",
+            ),
+            pytest.param(
+                "{2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00}",
+                id="unquoted-iso-8601-offset-exclusive-range",
+            ),
+            pytest.param(
+                "{2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00]",
+                id="unquoted-iso-8601-offset-exclusive-inclusive-range",
+            ),
+            pytest.param(
+                "[2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00}",
+                id="unquoted-iso-8601-offset-inclusive-exclusive-range",
+            ),
+        ),
+    )
+    def test_create_rejects_unquoted_iso_8601_offset_timestamp_range(
+        self,
+        range_query,
+        range_expression,
+    ):
+        with pytest.raises(
+            LuceneFilterError,
+            match="expression not escaped correctly",
+        ):
+            LuceneFilter.create(range_query(range_expression))

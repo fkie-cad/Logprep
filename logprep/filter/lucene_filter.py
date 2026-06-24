@@ -1,4 +1,6 @@
 # pylint: disable=anomalous-backslash-in-string
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=too-many-return-statements
 r"""
 Filter
 ======
@@ -58,6 +60,101 @@ This example is not complete, since rules are specific to processors and require
 
     { "filter": "event_id: 1 AND NOT ip_address: 192.168.0.1" }
 
+Range-Filter
+------------
+
+It is possible to use range expressions to match integer, floating-point, and
+string values. Square brackets include a boundary, while curly brackets exclude
+a boundary. String ranges are compared lexicographically.
+
+The lower and upper boundaries of a range must have the same type. Mixed ranges
+such as integer-to-float, integer-to-string, or float-to-string are not
+supported.
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'age:[18 TO 65]'
+
+
+The example matches log messages in which the value of :code:`age` is greater
+than or equal to :code:`18` and less than or equal to :code:`65`.
+
+Exclusive boundaries are also supported:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'age:{18 TO 65}'
+
+
+The example matches log messages in which the value of :code:`age` is greater
+than :code:`18` and less than :code:`65`.
+
+Floating-point ranges are supported as well:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'temperature:[18.5 TO 25.0]'
+
+
+String ranges are compared lexicographically:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'status:[alpha TO stable]'
+
+
+This also allows matching consistently formatted ISO-8601 timestamps as string
+ranges:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'timestamp:[2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z]'
+
+
+The example matches log messages in which the value of :code:`timestamp` is
+lexicographically greater than or equal to :code:`2024-01-01T00:00:00Z` and
+less than or equal to :code:`2024-12-31T23:59:59Z`.
+
+Range boundaries containing Lucene special characters must be quoted. This is
+required, for example, for ISO-8601 timestamps with timezone offsets:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'timestamp:["2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"]'
+
+
+Range expressions can also be used within field groups:
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'temperature:([18.5 TO 25.0])'
+
+
+Open boundaries using :code:`*`, non-finite numeric boundaries, mixed boundary
+types, and unquoted boundaries containing Lucene special characters are not
+supported.
+
 RegEx-Filter
 ------------
 
@@ -73,7 +170,8 @@ To be recognized as a regular expression, the filter field has to start with
     filter: 'ip_address: /192\.168\.0\..*/'
 
 
-[Deprecated, but still functional] The field with the regex pattern must be added to the optional field
+[Deprecated, but still functional] The field with the regex pattern
+must be added to the optional field
 :code:`regex_fields` in the rule definition.
 
 In the following example the field :code:`ip_address` is defined as regex field.
@@ -93,6 +191,7 @@ require additional options.
 """
 
 import logging
+import math
 import re
 from itertools import chain, zip_longest
 from typing import Sequence
@@ -106,24 +205,31 @@ from luqum.tree import (
     Not,
     OrOperation,
     Phrase,
+    Prohibit,
+    Range,
     Regex,
     SearchField,
     Word,
 )
+
 from logprep.abc.exceptions import LogprepException
 from logprep.filter.expression.filter_expression import (
     Always,
     And,
     Exists,
     FilterExpression,
+    FloatRangeFilterExpression,
+    IntegerRangeFilterExpression,
 )
 from logprep.filter.expression.filter_expression import Not as NotExpression
 from logprep.filter.expression.filter_expression import (
     Null,
     Or,
+    RangeBoundary,
     RegExFilterExpression,
     SigmaFilterExpression,
     StringFilterExpression,
+    StringRangeFilterExpression,
 )
 from logprep.util.helper import field_list_to_dotted_field, get_dotted_field_list
 
@@ -275,6 +381,14 @@ class LuceneTransformer:
             # pylint: enable=no-value-for-parameter
         if isinstance(tree, Group):
             return self._parse_tree(tree.children[0])
+
+        if isinstance(tree, Range):
+            if self._last_search_field is None:
+                raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
+
+            key = get_dotted_field_list(self._last_search_field)
+            return self._parse_range(key, tree)
+
         if isinstance(tree, SearchField):
             if isinstance(tree.expr, FieldGroup):
                 self._last_search_field = tree.name
@@ -287,6 +401,171 @@ class LuceneTransformer:
                 return self._create_field_group_expression(tree, self._last_search_field)
             return self._create_value_expression(tree)
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
+
+    def _parse_range(self, key: Sequence[str], expr: Range) -> FilterExpression:
+        lower_value = self._get_range_boundary_value(expr.low)
+        upper_value = self._get_range_boundary_value(expr.high)
+
+        for range_parser in (
+            self._parse_integer_range,
+            self._parse_float_range,
+            self._parse_string_range,
+        ):
+            range_filter_expression = range_parser(
+                key,
+                lower_value,
+                upper_value,
+                expr.include_low,
+                expr.include_high,
+                expr,
+            )
+
+            if range_filter_expression is not None:
+                return range_filter_expression
+
+        raise LuceneFilterError(f'The expression "{expr}" is invalid!')
+
+    @staticmethod
+    def _parse_integer_range(
+        key: Sequence[str],
+        lower_value: str,
+        upper_value: str,
+        include_lower_bound: bool,
+        include_upper_bound: bool,
+        expr: Range,
+    ) -> IntegerRangeFilterExpression | None:
+        """Create an integer range expression if both boundaries are integers."""
+        try:
+            lower_bound = int(lower_value)
+            upper_bound = int(upper_value)
+        except ValueError:
+            return None
+
+        LuceneTransformer._validate_range_boundaries(lower_bound, upper_bound, expr)
+
+        return IntegerRangeFilterExpression(
+            key,
+            lower_bound,
+            upper_bound,
+            include_lower_bound,
+            include_upper_bound,
+        )
+
+    @staticmethod
+    def _parse_float_range(
+        key: Sequence[str],
+        lower_value: str,
+        upper_value: str,
+        include_lower_bound: bool,
+        include_upper_bound: bool,
+        expr: Range,
+    ) -> FloatRangeFilterExpression | None:
+        """Create a float range expression if both boundaries are finite numbers."""
+        try:
+            lower_bound = float(lower_value)
+            upper_bound = float(upper_value)
+        except ValueError:
+            return None
+
+        if not math.isfinite(lower_bound) or not math.isfinite(upper_bound):
+            raise LuceneFilterError(
+                f'The expression "{expr}" is invalid. ' "Range boundaries must be finite numbers."
+            )
+
+        LuceneTransformer._validate_range_boundaries(lower_bound, upper_bound, expr)
+
+        return FloatRangeFilterExpression(
+            key,
+            lower_bound,
+            upper_bound,
+            include_lower_bound,
+            include_upper_bound,
+        )
+
+    @staticmethod
+    def _parse_string_range(
+        key: Sequence[str],
+        lower_value: str,
+        upper_value: str,
+        include_lower_bound: bool,
+        include_upper_bound: bool,
+        expr: Range,
+    ) -> StringRangeFilterExpression | None:
+        """Create a lexicographic string range expression for non-numeric boundaries."""
+        if lower_value == "*" or upper_value == "*":
+            raise LuceneFilterError(f'The expression "{expr}" is invalid!')
+
+        if LuceneTransformer._is_finite_numeric_range_boundary(
+            lower_value
+        ) or LuceneTransformer._is_finite_numeric_range_boundary(upper_value):
+            return None
+
+        LuceneTransformer._validate_range_boundaries(lower_value, upper_value, expr)
+
+        return StringRangeFilterExpression(
+            key,
+            lower_value,
+            upper_value,
+            include_lower_bound,
+            include_upper_bound,
+        )
+
+    @staticmethod
+    def _is_finite_numeric_range_boundary(value: str) -> bool:
+        """Return whether a range boundary can be interpreted as a finite number."""
+        try:
+            numeric_value = float(value)
+        except ValueError:
+            return False
+
+        return math.isfinite(numeric_value)
+
+    @staticmethod
+    def _get_range_boundary_value(token: luqum.tree) -> str:
+        """Return a range boundary as a normalized string.
+
+        Luqum parses a negative boundary such as ``-10`` as
+        ``Prohibit(Word("10"))`` instead of ``Word("-10")``. Quoted boundaries are
+        parsed as phrases and are required for values containing Lucene special
+        characters, such as ISO-8601 timestamps with timezone offsets.
+        """
+
+        if isinstance(token, Word):
+            return token.value
+
+        if isinstance(token, Phrase):
+            return token.value.strip('"')
+
+        if isinstance(token, Prohibit) and len(token.children) == 1:
+            child = token.children[0]
+
+            if isinstance(child, Word):
+                return f"-{child.value}"
+
+        raise LuceneFilterError(f'The range boundary "{token}" is invalid!')
+
+    @staticmethod
+    def _validate_range_boundaries(
+        lower_bound: RangeBoundary,
+        upper_bound: RangeBoundary,
+        expr: Range,
+    ) -> None:
+        """Validate that the range boundaries form an ascending range.
+
+        Range filter expressions require the lower boundary to be less than or equal
+        to the upper boundary. This is independent of whether the boundaries are
+        inclusive or exclusive.
+
+        Numeric boundaries are compared numerically. String boundaries are compared
+        lexicographically. Without this validation, a reversed range such as
+        ``[10 TO 0]`` or ``[foo TO bar]`` would be accepted but could never match
+        any value, which would hide a likely configuration error.
+        """
+
+        if lower_bound > upper_bound:
+            raise LuceneFilterError(
+                "The lower range boundary must not exceed " f'the upper range boundary: "{expr}"'
+            )
 
     def _create_field_group_expression(
         self, tree: luqum.tree, dotted_field: str
@@ -321,22 +600,27 @@ class LuceneTransformer:
         return expressions
 
     def _create_field(self, tree: luqum.tree) -> FilterExpression:
+        key = get_dotted_field_list(tree.name)
+
         if isinstance(tree.expr, (Phrase, Word)):
-            key = get_dotted_field_list(tree.name)
             if tree.expr.value == "null":
                 return Null(key)
 
             value = self._strip_quote_from_string(tree.expr.value)
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression(key, value)
+
         if isinstance(tree.expr, Regex):
-            key = get_dotted_field_list(tree.name)
             if tree.expr.value == "null":
                 return Null(key)
 
             value = self._strip_quote_from_string(tree.expr.value)
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression_regex(key, value)
+
+        if isinstance(tree.expr, Range):
+            return self._parse_range(key, tree.expr)
+
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
 
     @staticmethod
