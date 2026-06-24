@@ -12,7 +12,7 @@ from logprep.ng.abc.processor import Processor as NgProcessor
 from logprep.processor.base.rule import Rule
 
 
-def import_class(
+def _import_class(
     class_name: str,
     module_name: str,
 ) -> type:
