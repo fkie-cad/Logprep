@@ -1143,52 +1143,36 @@ class TestLueceneFilter:
             LuceneFilter.create(range_query(range_expression))
 
     @pytest.mark.parametrize(
-        "range_expression",
+        ("range_expression", "matching_values", "non_matching_values"),
         (
             pytest.param(
                 "[0 TO 10.5]",
-                id="integer-lower-and-float-upper-bound",
-            ),
-            pytest.param(
-                "{0 TO 10.5}",
-                id="exclusive-integer-lower-and-float-upper-bound",
-            ),
-            pytest.param(
-                "{0 TO 10.5]",
-                id="exclusive-inclusive-integer-lower-and-float-upper-bound",
-            ),
-            pytest.param(
-                "[0 TO 10.5}",
-                id="inclusive-exclusive-integer-lower-and-float-upper-bound",
+                (0.0, 5.5, 10.5),
+                (-0.1, 10.6),
+                id="integer-lower-float-upper-boundary",
             ),
             pytest.param(
                 "[-10.5 TO 10]",
-                id="float-lower-and-integer-upper-bound",
-            ),
-            pytest.param(
-                "{-10.5 TO 10}",
-                id="exclusive-float-lower-and-integer-upper-bound",
-            ),
-            pytest.param(
-                "{-10.5 TO 10]",
-                id="exclusive-inclusive-float-lower-and-integer-upper-bound",
-            ),
-            pytest.param(
-                "[-10.5 TO 10}",
-                id="inclusive-exclusive-float-lower-and-integer-upper-bound",
+                (-10.5, 0.0, 10.0),
+                (-10.6, 10.1),
+                id="float-lower-integer-upper-boundary",
             ),
         ),
     )
-    def test_create_rejects_mixed_integer_and_float_range_boundaries(
+    def test_created_float_range_filter_supports_mixed_integer_and_float_boundaries(
         self,
         range_query,
         range_expression,
+        matching_values,
+        non_matching_values,
     ):
-        with pytest.raises(
-            LuceneFilterError,
-            match=re.escape(f'The expression "{range_expression}" is invalid!'),
-        ):
-            LuceneFilter.create(range_query(range_expression))
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
 
     @pytest.mark.parametrize(
         "range_expression",
@@ -1362,7 +1346,10 @@ class TestLueceneFilter:
     ):
         with pytest.raises(
             LuceneFilterError,
-            match=re.escape(f'The expression "{range_expression}" is invalid!'),
+            match=re.escape(
+                f'The expression "{range_expression}" is invalid. '
+                "Range boundaries must be finite numbers."
+            ),
         ):
             LuceneFilter.create(range_query(range_expression))
 

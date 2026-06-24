@@ -403,17 +403,8 @@ class LuceneTransformer:
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
 
     def _parse_range(self, key: Sequence[str], expr: Range) -> FilterExpression:
-        expression = str(expr)
-        lower_token, upper_token = expr.children
-
-        include_lower_bound = expression.startswith("[")
-        include_upper_bound = expression.endswith("]")
-
-        if not expression.startswith(("[", "{")) or not expression.endswith(("]", "}")):
-            raise LuceneFilterError(f'The expression "{expression}" is invalid!')
-
-        lower_value = self._get_range_boundary_value(lower_token)
-        upper_value = self._get_range_boundary_value(upper_token)
+        lower_value = self._get_range_boundary_value(expr.low)
+        upper_value = self._get_range_boundary_value(expr.high)
 
         for range_parser in (
             self._parse_integer_range,
@@ -424,15 +415,15 @@ class LuceneTransformer:
                 key,
                 lower_value,
                 upper_value,
-                include_lower_bound,
-                include_upper_bound,
+                expr.include_low,
+                expr.include_high,
                 expr,
             )
 
             if range_filter_expression is not None:
                 return range_filter_expression
 
-        raise LuceneFilterError(f'The expression "{expression}" is invalid!')
+        raise LuceneFilterError(f'The expression "{expr}" is invalid!')
 
     @staticmethod
     def _parse_integer_range(
@@ -469,24 +460,16 @@ class LuceneTransformer:
         include_upper_bound: bool,
         expr: Range,
     ) -> FloatRangeFilterExpression | None:
-        """Create a float range expression if both boundaries are finite floats."""
-        if LuceneTransformer._is_integer_range_boundary(
-            lower_value
-        ) or LuceneTransformer._is_integer_range_boundary(upper_value):
-            return None
-
+        """Create a float range expression if both boundaries are finite numbers."""
         try:
             lower_bound = float(lower_value)
             upper_bound = float(upper_value)
         except ValueError:
             return None
 
-        expression = str(expr)
-
         if not math.isfinite(lower_bound) or not math.isfinite(upper_bound):
             raise LuceneFilterError(
-                f'The expression "{expression}" is invalid. '
-                "Range boundaries must be finite numbers."
+                f'The expression "{expr}" is invalid. ' "Range boundaries must be finite numbers."
             )
 
         LuceneTransformer._validate_range_boundaries(lower_bound, upper_bound, expr)
@@ -507,15 +490,15 @@ class LuceneTransformer:
         include_lower_bound: bool,
         include_upper_bound: bool,
         expr: Range,
-    ) -> StringRangeFilterExpression:
+    ) -> StringRangeFilterExpression | None:
         """Create a lexicographic string range expression for non-numeric boundaries."""
         if lower_value == "*" or upper_value == "*":
             raise LuceneFilterError(f'The expression "{expr}" is invalid!')
 
-        if LuceneTransformer._is_numeric_range_boundary(
+        if LuceneTransformer._is_finite_numeric_range_boundary(
             lower_value
-        ) or LuceneTransformer._is_numeric_range_boundary(upper_value):
-            raise LuceneFilterError(f'The expression "{expr}" is invalid!')
+        ) or LuceneTransformer._is_finite_numeric_range_boundary(upper_value):
+            return None
 
         LuceneTransformer._validate_range_boundaries(lower_value, upper_value, expr)
 
@@ -528,31 +511,8 @@ class LuceneTransformer:
         )
 
     @staticmethod
-    def _is_numeric_range_boundary(value: str) -> bool:
+    def _is_finite_numeric_range_boundary(value: str) -> bool:
         """Return whether a range boundary can be interpreted as a finite number."""
-        try:
-            numeric_value = float(value)
-        except ValueError:
-            return False
-
-        return math.isfinite(numeric_value)
-
-    @staticmethod
-    def _is_integer_range_boundary(value: str) -> bool:
-        """Return whether a range boundary can be interpreted as an integer."""
-        try:
-            int(value)
-        except ValueError:
-            return False
-
-        return True
-
-    @staticmethod
-    def _is_float_range_boundary(value: str) -> bool:
-        """Return whether a range boundary can be interpreted as a finite float."""
-        if LuceneTransformer._is_integer_range_boundary(value):
-            return False
-
         try:
             numeric_value = float(value)
         except ValueError:
