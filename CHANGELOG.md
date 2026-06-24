@@ -2,8 +2,7 @@
 ### Breaking
 
 ### Features
-* add support for validated integer, floating-point, and lexicographic string Lucene range filters in regular fields and field groups.
-* add support for quoted string range boundaries, allowing values with Lucene special characters such as ISO-8601 timestamps with timezone offsets.
+* add Lucene range support for integer, floating-point, and lexicographic string values, including quoted ISO-8601 timestamps with timezone offsets.
 * add `deduplicator` processor that removes duplicates from lists
 
 ### Improvements
