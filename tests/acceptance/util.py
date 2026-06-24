@@ -346,7 +346,7 @@ def get_full_pipeline(exclude=None):
     processors = [
         processor_name
         for processor_name, value in Registry.mapping.items()
-        if issubclass(value, Processor)
+        if issubclass(value(), Processor)
     ]
     if exclude:
         processors = filter(lambda x: x not in exclude, processors)
