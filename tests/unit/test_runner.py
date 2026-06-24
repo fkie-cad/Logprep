@@ -38,7 +38,7 @@ def fixture_configuration(config_path: Path) -> Configuration:
 class TestRunner:
 
     @pytest.fixture(name="runner")
-    def fixture_runner(self, configuration: Configuration) -> Runner:
+    def fixture_runner(self, configuration: Configuration):
         runner = Runner(configuration)  # we want to have a fresh runner for each test
         with mock.patch.object(runner, "_manager"):
             yield runner
