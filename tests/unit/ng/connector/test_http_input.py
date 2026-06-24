@@ -4,18 +4,19 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-public-methods
 
+import asyncio
 import gzip
 import json
 import queue
 import random
 import re
+from contextlib import asynccontextmanager
 from copy import deepcopy
 from unittest import mock
 
 import aiohttp
 import pytest
-import responses
-from aioresponses import aioresponses
+from aiohttp import web
 from falcon import testing
 from requests.auth import _basic_auth_str
 
@@ -56,6 +57,25 @@ input:
 
 
 MODULE = HttpInput.__module__
+
+
+@pytest.fixture
+def health_server(aiohttp_server):
+    @asynccontextmanager
+    async def make_server(instance, endpoint_responses: dict[str, int | Exception]):
+        async def handler(request: web.Request) -> web.Response:
+            result = endpoint_responses.get(request.path, 200)
+            if isinstance(result, Exception):
+                raise result
+            return web.Response(status=result)
+
+        app = web.Application()
+        app.router.add_get("/{path_info:.*}", handler)
+        server = await aiohttp_server(app)
+        with mock.patch.object(instance, "target", f"http://127.0.0.1:{server.port}"):
+            yield server
+
+    return make_server
 
 
 class TestHttpConnector(BaseInputTestCase[HttpInput]):
@@ -517,11 +537,11 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
             resp = await client.get(endpoint)
             assert resp.status_code == 200, f"could not get {endpoint}"
 
-    async def test_positive_health_check_if_all_endpoints_are_successful(self, instance: HttpInput):
-        with aioresponses() as mock_responses:
-            for endpoint in instance.health_endpoints:
-                mock_responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
-
+    async def test_positive_health_check_if_all_endpoints_are_successful(
+        self, instance: HttpInput, health_server
+    ):
+        responses = {ep: 200 for ep in instance.health_endpoints}
+        async with health_server(instance, responses):
             assert await instance.health()
 
     @pytest.mark.parametrize(
@@ -529,13 +549,13 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
         [pytest.param(i, id=pattern) for i, pattern in enumerate(CONFIG["endpoints"].keys())],
     )
     async def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_429(
-        self, instance: HttpInput, failed_endpoint_index
+        self, instance: HttpInput, failed_endpoint_index, health_server
     ):
-        with aioresponses() as mock_responses:
-            for index, endpoint in enumerate(instance.health_endpoints):
-                status = 429 if failed_endpoint_index == index else 200
-                mock_responses.get(f"http://127.0.0.1:9000{endpoint}", status=status)
-
+        responses = {
+            ep: (429 if failed_endpoint_index == i else 200)
+            for i, ep in enumerate(instance.health_endpoints)
+        }
+        async with health_server(instance, responses):
             assert not await instance.health(), "Health endpoint should not be ready"
 
     @pytest.mark.parametrize(
@@ -543,13 +563,13 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
         [pytest.param(i, id=pattern) for i, pattern in enumerate(CONFIG["endpoints"].keys())],
     )
     async def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_500(
-        self, instance: HttpInput, failed_endpoint_index
+        self, instance: HttpInput, failed_endpoint_index, health_server
     ):
-        with aioresponses() as mock_responses:
-            for index, endpoint in enumerate(instance.health_endpoints):
-                status = 500 if failed_endpoint_index == index else 200
-                mock_responses.get(f"http://127.0.0.1:9000{endpoint}", status=status)
-
+        responses = {
+            ep: (500 if failed_endpoint_index == i else 200)
+            for i, ep in enumerate(instance.health_endpoints)
+        }
+        async with health_server(instance, responses):
             assert not await instance.health(), "Health endpoint should not be ready"
 
     @pytest.mark.parametrize(
@@ -557,18 +577,13 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
         [pytest.param(i, id=pattern) for i, pattern in enumerate(CONFIG["endpoints"].keys())],
     )
     async def test_health_endpoint_is_not_ready_on_connection_error(
-        self, instance: HttpInput, failed_endpoint_index
+        self, instance: HttpInput, failed_endpoint_index, health_server
     ):
-        with aioresponses() as mock_responses:
-            for index, endpoint in enumerate(instance.health_endpoints):
-                if index == failed_endpoint_index:
-                    mock_responses.get(
-                        f"http://127.0.0.1:9000{endpoint}",
-                        exception=aiohttp.ClientError("did not work"),
-                    )
-                else:
-                    mock_responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
-
+        responses = {
+            ep: (aiohttp.ClientError("did not work") if i == failed_endpoint_index else 200)
+            for i, ep in enumerate(instance.health_endpoints)
+        }
+        async with health_server(instance, responses):
             assert not await instance.health(), "Health endpoint should not be ready"
 
     @pytest.mark.parametrize(
@@ -576,41 +591,35 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
         [pytest.param(i, id=pattern) for i, pattern in enumerate(CONFIG["endpoints"].keys())],
     )
     async def test_health_endpoint_is_not_ready_if_one_endpoint_has_read_timeout(
-        self, instance: HttpInput, failed_endpoint_index
+        self, instance: HttpInput, failed_endpoint_index, health_server
     ):
-        with aioresponses() as mock_responses:
-            for index, endpoint in enumerate(instance.health_endpoints):
-                mock_responses.get(
-                    f"http://127.0.0.1:9000{endpoint}",
-                    status=200,
-                    timeout=index == failed_endpoint_index,
-                )
-
+        responses = {
+            ep: (asyncio.TimeoutError() if i == failed_endpoint_index else 200)
+            for i, ep in enumerate(instance.health_endpoints)
+        }
+        async with health_server(instance, responses):
             assert not await instance.health(), "Health endpoint should not be ready"
 
     @pytest.mark.parametrize(
         "failed_endpoint_index",
         [pytest.param(i, id=pattern) for i, pattern in enumerate(CONFIG["endpoints"].keys())],
     )
-    async def test_health_check_logs_error(self, instance, failed_endpoint_index):
-        with aioresponses() as mock_responses:
-            endpoint = instance.health_endpoints[failed_endpoint_index]
-            mock_responses.get(f"http://127.0.0.1:9000{endpoint}", status=200, timeout=True)
-
+    async def test_health_check_logs_error(self, instance, failed_endpoint_index, health_server):
+        endpoint = instance.health_endpoints[failed_endpoint_index]
+        responses = {
+            ep: (asyncio.TimeoutError() if ep == endpoint else 200)
+            for ep in instance.health_endpoints
+        }
+        async with health_server(instance, responses):
             with mock.patch("logging.Logger.error") as mock_logger:
                 assert not await instance.health(), "Health endpoint should not be ready"
                 mock_logger.assert_called()
 
-    @responses.activate
-    async def test_health_counts_errors(self, instance):
+    async def test_health_counts_errors(self, instance, health_server):
         instance.metrics.number_of_errors = 0
-        with aioresponses() as mock_responses:
-
-            endpoint = instance.health_endpoints[0]
-
-            mock_responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)
+        responses = {instance.health_endpoints[0]: 500}
+        async with health_server(instance, responses):
             assert not await instance.health()
-
         assert instance.metrics.number_of_errors == 1
 
     async def test_health_endpoints_are_shortened(self):
