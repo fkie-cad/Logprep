@@ -98,7 +98,6 @@ class Worker(Generic[Input], ABC):
                 await self.in_queue.put(STOP_SENTINEL)  # type: ignore
             case AsyncIterator():
                 self._stop_event.set()
-                print("done :)")
             case _:
                 raise TypeError(f"Unexpected in_queue type {type(self.in_queue)}")
 

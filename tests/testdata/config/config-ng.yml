@@ -3,21 +3,21 @@ process_count: 3
 timeout: 0.1
 pipeline:
   - dissector:
-      type: ng_dissector
+      type: dissector
       rules:
         - tests/testdata/unit/dissector/rules/
   - calculatorname:
-      type: ng_calculator
+      type: calculator
       rules:
         - tests/testdata/unit/calculator/rules
   - labelername:
-      type: ng_labeler
+      type: labeler
       schema: tests/testdata/unit/labeler/schemas/schema3.json
       include_parent_labels: true
       rules:
         - tests/testdata/unit/labeler/rules/
   - pseudonymizer:
-      type: ng_pseudonymizer
+      type: pseudonymizer
       pubkey_analyst: tests/testdata/unit/pseudonymizer/example_analyst_pub.pem
       pubkey_depseudo: tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem
       regex_mapping: tests/testdata/unit/pseudonymizer/regex_mapping.yml
@@ -29,10 +29,10 @@ pipeline:
       max_cached_pseudonyms: 1000000
 input:
   kafka_input:
-    type: ng_dummy_input
+    type: dummy_input
     documents: []
 output:
   kafka_output:
-    type: ng_dummy_output
+    type: dummy_output
   kafka:
-    type: ng_dummy_output
+    type: dummy_output

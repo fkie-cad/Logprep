@@ -6,6 +6,16 @@ from unittest import mock
 
 import pytest
 
+from logprep.registry import Registry
+
+
+def pytest_sessionstart(session):  # pylint: disable=unused-argument
+    """Preload the cache on session start"""
+    Registry.get_classes()  # imports non-ng modules
+    Registry.set_ng_active(True)
+    Registry.get_classes()  # imports non-ng modules
+    Registry.set_ng_active(False)
+
 
 @pytest.fixture(autouse=True, scope="session")
 def configure_multiprocess_start_method():

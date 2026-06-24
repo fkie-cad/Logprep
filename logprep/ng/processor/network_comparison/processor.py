@@ -12,7 +12,7 @@ Processor Configuration
     :linenos:
 
     - networkcomparisonname:
-        type: ng_network_comparison
+        type: network_comparison
         rules:
             - tests/testdata/rules/rules
         list_search_base_path: /path/to/list/dir

@@ -88,7 +88,7 @@ $LOGPREP_OUTPUT
         "LOGPREP_PIPELINE": """
 pipeline:
     - labelername:
-        type: ng_labeler
+        type: labeler
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         rules:
@@ -97,9 +97,9 @@ pipeline:
         "LOGPREP_OUTPUT": """
 output:
     kafka:
-        type: ng_dummy_output
+        type: dummy_output
 """,
-        "LOGPREP_INPUT": "input:\n    kafka:\n        type: ng_dummy_input\n        documents: []\n",
+        "LOGPREP_INPUT": "input:\n    kafka:\n        type: dummy_input\n        documents: []\n",
     }
     with HTTPServerForTesting.run_in_thread(port=unused_tcp_port, directory=tmp_path):
         with run_logprep(config_path, env=env) as proc:
