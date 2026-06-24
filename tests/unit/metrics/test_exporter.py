@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=line-too-long
-import asyncio
 import os.path
 from unittest import mock
 
@@ -141,9 +140,11 @@ class TestHealthEndpoint:
         }
         self.communicator = None
 
-    def teardown_method(self):
+    @pytest.fixture(autouse=True)
+    async def teardown_communicator(self):
+        yield
         if self.communicator:
-            asyncio.get_event_loop().run_until_complete(self.communicator.wait())
+            await self.communicator.wait()
 
     def seed_app(self, app):
         self.communicator = ApplicationCommunicator(app, self.scope)
