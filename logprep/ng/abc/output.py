@@ -43,9 +43,6 @@ class FatalOutputError(OutputError):
     """Must not be caught."""
 
 
-# =====================================================================================================================
-
-
 class Output(Connector):
     """Connect to a output destination."""
 

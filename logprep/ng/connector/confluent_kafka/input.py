@@ -23,9 +23,12 @@ Example
         kafka_config:
             bootstrap.servers: "127.0.0.1:9092,127.0.0.1:9093"
             group.id: "cgroup"
-            enable.auto.commit: "true"
             session.timeout.ms: "6000"
             auto.offset.reset: "earliest"
+            # some entries are disallowed and will be overwritten:
+            # enable.auto.offset.store
+            # enable.auto.commit
+            # enable.partition.eof
 """
 
 import concurrent
@@ -33,7 +36,7 @@ import functools
 import logging
 import os
 import typing
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from functools import partial
 from socket import getfqdn
 from types import MappingProxyType  # pylint: disable=no-name-in-module
@@ -46,7 +49,6 @@ from confluent_kafka import (
     OFFSET_INVALID,
     OFFSET_STORED,
     KafkaException,
-    Message,
     TopicPartition,
 )
 from confluent_kafka.aio import AIOConsumer
@@ -61,18 +63,15 @@ from logprep.ng.abc.input import (
 )
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
 from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
-    TopicOffsetCommitTracker,
+    OffsetCommitTracker,
 )
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
-    "enable.auto.offset.store": "false",
-    "enable.auto.commit": "true",
     "client.id": "<<hostname>>",
     "auto.offset.reset": "earliest",
     "session.timeout.ms": "6000",
     "statistics.interval.ms": "30000",
-    "enable.partition.eof": "false",  # TODO discuss
 }
 
 SPECIAL_OFFSETS = {
@@ -240,7 +239,6 @@ class ConfluentKafkaInput(Input):
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of(str),
                 ),
-                # TODO double check that other configuration options are possible
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
             ),
             converter=MappingProxyType,
@@ -275,16 +273,15 @@ class ConfluentKafkaInput(Input):
 
         max_workers: int = field(
             validator=validators.instance_of(int),
-            default=4,
+            default=2,
         )
         """
         The maximum number of concurrent worker tasks for message processing.
         Should generally not exceed the number of topic partitions.
-        Defaults to 4.
+        Defaults to 2.
         """
 
     __slots__ = [
-        "_current_batch_iter",
         "_commit_tracker",
         "_consumer",
         "_executor",
@@ -308,6 +305,7 @@ class ConfluentKafkaInput(Input):
             "logger": logger,
             "enable.auto.offset.store": "false",
             "enable.auto.commit": "true",
+            "enable.partition.eof": "false",
             "on_commit": self._commit_callback,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
@@ -338,8 +336,7 @@ class ConfluentKafkaInput(Input):
                 on_lost=self._lost_callback,
             )
 
-            self._current_batch_iter: Iterator[Message] = iter([])
-            self._commit_tracker = TopicOffsetCommitTracker(topic=self.config.topic)
+            self._commit_tracker = OffsetCommitTracker(topic=self.config.topic)
         except KafkaException as error:
             raise FatalInputError.from_error(
                 self, error, "could not setup kafka consumer"
@@ -350,7 +347,7 @@ class ConfluentKafkaInput(Input):
     async def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
-        This callback is served upon calling client.poll()/consume()
+        This callback is served upon calling client.poll()
 
         Parameters
         ----------
@@ -361,7 +358,7 @@ class ConfluentKafkaInput(Input):
         logger.error("%s: %s", self.describe(), error)
 
     async def _stats_callback(self, stats_raw: str) -> None:
-        """Callback for statistics data. This callback is triggered by poll()/consume()
+        """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
         Parameters
@@ -403,26 +400,15 @@ class ConfluentKafkaInput(Input):
         """Get next raw Message from Kafka"""
 
         try:
-            message = next(self._current_batch_iter)
-        except StopIteration:
-            message = None
+            message = await self._consumer.poll(timeout=timeout)
+        except RuntimeError as error:
+            raise FatalInputError.from_error(self, error) from error
 
         if message is None:
-            try:
-                # TODO check what happens if there are no commits for too long
-                self._current_batch_iter = iter(await self._consumer.consume(timeout=timeout))
-            except RuntimeError as error:
-                raise FatalInputError.from_error(self, error) from error
-
-            try:
-                message = next(self._current_batch_iter)
-            except StopIteration:
-                return None
+            return None
 
         if message_error := message.error():
-            raise CriticalInputError.from_message(
-                self, f"Error in kafka record: {str(message_error)}"
-            )
+            raise CriticalInputError.from_error(self, message_error, "Error in kafka record")
 
         message_value = message.value()
         partition = message.partition()
@@ -538,7 +524,7 @@ class ConfluentKafkaInput(Input):
         self, error: KafkaException | None, topic_partitions: list[TopicPartition]
     ) -> None:
         """Callback used to indicate success or failure of asynchronous and
-        automatic commit requests. This callback is served upon calling consumer.poll()/consume()
+        automatic commit requests. This callback is served upon calling consumer.poll()
 
         Parameters
         ----------

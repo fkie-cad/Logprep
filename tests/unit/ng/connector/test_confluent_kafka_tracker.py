@@ -10,11 +10,11 @@ from logprep.ng.connector.confluent_kafka.metadata import (
     ConfluentKafkaInputMeta as InputMeta,
 )
 from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
-    TopicOffsetCommitTracker as Tracker,
+    OffsetCommitTracker as Tracker,
 )
 
 
-class TestKafkaInputTopicOffsetCommitTracker:
+class TestKafkaInputOffsetCommitTracker:
 
     @pytest.fixture
     def tracker(self) -> Tracker:
@@ -22,9 +22,9 @@ class TestKafkaInputTopicOffsetCommitTracker:
 
     def test_register_partition(self, tracker: Tracker) -> None:
         tracker.register_partition(partition=0, offset=100)
-        assert 0 in tracker._partition_to_tracker
-        assert tracker._partition_to_tracker[0].last_committed_offset == 100
-        assert tracker._partition_to_tracker[0].committable_offsets == set()
+        assert 0 in tracker._partition_to_offsets
+        assert tracker._partition_to_offsets[0].next_expected_offset == 100
+        assert tracker._partition_to_offsets[0].committable_offsets == set()
 
     def test_single_offset_commit(self, tracker: Tracker) -> None:
         tracker.register_partition(partition=0, offset=100)
@@ -32,8 +32,8 @@ class TestKafkaInputTopicOffsetCommitTracker:
 
         assert len(result) == 1
         assert result[0] == TopicPartition("consumer", partition=0, offset=101)
-        assert tracker._partition_to_tracker[0].last_committed_offset == 101
-        assert tracker._partition_to_tracker[0].committable_offsets == set()
+        assert tracker._partition_to_offsets[0].next_expected_offset == 101
+        assert tracker._partition_to_offsets[0].committable_offsets == set()
 
     def test_contiguous_offsets_commit(self, tracker: Tracker) -> None:
         tracker.register_partition(partition=0, offset=100)
@@ -42,8 +42,8 @@ class TestKafkaInputTopicOffsetCommitTracker:
 
         assert len(result) == 1
         assert result[0] == TopicPartition("consumer", partition=0, offset=103)
-        assert tracker._partition_to_tracker[0].last_committed_offset == 103
-        assert tracker._partition_to_tracker[0].committable_offsets == set()
+        assert tracker._partition_to_offsets[0].next_expected_offset == 103
+        assert tracker._partition_to_offsets[0].committable_offsets == set()
 
     def test_out_of_order_contiguous_offsets(self, tracker: Tracker) -> None:
         tracker.register_partition(partition=0, offset=100)
@@ -52,7 +52,7 @@ class TestKafkaInputTopicOffsetCommitTracker:
 
         assert len(result) == 1
         assert result[0] == TopicPartition("consumer", partition=0, offset=103)
-        assert tracker._partition_to_tracker[0].committable_offsets == set()
+        assert tracker._partition_to_offsets[0].committable_offsets == set()
 
     def test_gap_filled_later(self, tracker) -> None:
         tracker.register_partition(partition=0, offset=100)
@@ -63,12 +63,12 @@ class TestKafkaInputTopicOffsetCommitTracker:
                 InputMeta(partition=0, offset=102),
             ]
         )
-        assert tracker._partition_to_tracker[0].committable_offsets == {102}
+        assert tracker._partition_to_offsets[0].committable_offsets == {102}
 
         result = tracker.advance_offsets([InputMeta(partition=0, offset=101)])
         assert len(result) == 1
         assert result[0] == TopicPartition("consumer", partition=0, offset=103)
-        assert tracker._partition_to_tracker[0].committable_offsets == set()
+        assert tracker._partition_to_offsets[0].committable_offsets == set()
 
     def test_multiple_partitions(self, tracker: Tracker) -> None:
         tracker.register_partition(partition=0, offset=100)
@@ -133,7 +133,7 @@ class TestKafkaInputTopicOffsetCommitTracker:
 
         assert len(result) == 1
         assert result[0] == TopicPartition("consumer", 0, 10_000)
-        assert len(tracker._partition_to_tracker[0].committable_offsets) == 0
+        assert len(tracker._partition_to_offsets[0].committable_offsets) == 0
 
     def test_mixed_contiguous_non_contiguous(self, tracker: Tracker) -> None:
         tracker.register_partition(partition=0, offset=100)
@@ -143,4 +143,4 @@ class TestKafkaInputTopicOffsetCommitTracker:
 
         assert len(result) == 1
         assert result[0] == TopicPartition("consumer", partition=0, offset=103)
-        assert tracker._partition_to_tracker[0].committable_offsets == {104, 106}
+        assert tracker._partition_to_offsets[0].committable_offsets == {104, 106}

@@ -160,7 +160,7 @@ class Input(Connector, AsyncIterator[LogEvent | ErrorEvent | None]):
         try:
             await self.preprocessor.preprocess(event)
         except PreprocessingError as error:
-            logger.exception("Error during preprocessing")
+            logger.error("Error during preprocessing", exc_info=error)
             event.mark_failed(error)
             return ErrorEvent.from_failed_event(event)
 
