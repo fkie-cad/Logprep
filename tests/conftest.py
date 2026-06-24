@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 
+from logprep.registry import Registry
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import RefreshableGetter
 
@@ -23,6 +24,14 @@ def remove_interfering_env_variables(monkeypatch):
 def clear_getter_cache():
     """Clear getter cache after each test"""
     RefreshableGetter._shared.clear()  # pylint: disable=protected-access
+
+
+def pytest_sessionstart(session):  # pylint: disable=unused-argument
+    """Preload the cache on session start"""
+    Registry.get_classes()  # imports non-ng modules
+    Registry.set_ng_active(True)
+    Registry.get_classes()  # imports non-ng modules
+    Registry.set_ng_active(False)
 
 
 @pytest.fixture(autouse=True, scope="session")

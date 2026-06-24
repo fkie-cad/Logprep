@@ -12,7 +12,7 @@ Processor Configuration
     :linenos:
 
     - predetectorname:
-        type: ng_pre_detector
+        type: pre_detector
         rules:
             - tests/testdata/rules/rules
         outputs:
