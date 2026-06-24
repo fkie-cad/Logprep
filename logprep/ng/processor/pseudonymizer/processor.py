@@ -53,12 +53,11 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 from attrs import define, field, validators
 
-from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.ng.abc.event import OutputSpec
-from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
+from logprep.ng.abc.processor import OutputSpec, Processor
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
 from logprep.processor.base.rule import Rule
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.converters import convert_ordered_tuples_with_factory

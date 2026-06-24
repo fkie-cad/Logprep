@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from typing import Protocol, runtime_checkable
 
-from attrs import define, field, validators
+from attrs import define, field
 
 from logprep.abc.exceptions import LogprepExceptionGroup
 from logprep.util.helper import FieldValue
@@ -88,18 +88,6 @@ class _BaseFailableEvent(_FailableEvent):
         Caution: Might be changed to a single-valued attribute in the future.
         """
         return self._errors
-
-
-# TODO move somewhere else
-@define
-class OutputSpec:
-    """
-    Specifies an output by name and which target (e.g. topic for kafka, index for opensearch)
-    should be addressed.
-    """
-
-    output_name: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
-    output_target: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
 
 
 @define

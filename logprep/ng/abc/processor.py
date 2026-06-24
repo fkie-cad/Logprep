@@ -27,6 +27,18 @@ from logprep.util.rule_loader import RuleLoader
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
 
+
+@define
+class OutputSpec:
+    """
+    Specifies an output by name and which target (e.g. topic for kafka, index for opensearch)
+    should be addressed.
+    """
+
+    output_name: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
+    output_target: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
+
+
 logger = logging.getLogger("Processor")
 
 

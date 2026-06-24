@@ -5,7 +5,7 @@
 from copy import deepcopy
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import InputMeta, LogEvent, OutputSpec
+from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.connector.dummy.output import DummyOutput
 from logprep.ng.processor.pre_detector.sre_event import SreEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
@@ -59,10 +59,7 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
         dummy_output = Factory.create({"test connector": config})
-        event = SreEvent(
-            {"order": 0},
-            outputs=(OutputSpec("test_instance_name", "stdout"),),
-        )
+        event = SreEvent({"order": 0}, output_name="test_instance_name", output_target="stdout")
         await dummy_output.store_batch([event], target="whatever")
         assert len(event.errors) == 1
 

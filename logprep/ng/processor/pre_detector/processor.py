@@ -36,8 +36,7 @@ from uuid import uuid4
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.event import OutputSpec
-from logprep.ng.abc.processor import Processor
+from logprep.ng.abc.processor import OutputSpec, Processor
 from logprep.ng.processor.pre_detector.sre_event import SreEvent
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
