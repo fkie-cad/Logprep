@@ -48,7 +48,8 @@ from opensearchpy import (
 from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.exceptions import LogprepException
-from logprep.ng.abc.output import CriticalOutputError, Event, Output
+from logprep.ng.abc.event import OutputEvent
+from logprep.ng.abc.output import CriticalOutputError, Output
 
 logger = logging.getLogger("OpenSearchOutput")
 
@@ -245,7 +246,7 @@ class OpensearchOutput(Output):
         )
         return await super().setup()
 
-    async def _store(self, events: Sequence[Event]) -> None:
+    async def _store(self, events: Sequence[OutputEvent]) -> None:
         logger.debug("Flushing %d documents to opensearch", len(events))
 
         actions = (

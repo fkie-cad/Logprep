@@ -125,7 +125,7 @@ from logprep.ng.abc.event import (
 from logprep.ng.abc.input import Input
 from logprep.ng.util import http
 from logprep.ng.util.async_helpers import StoppableTask
-from logprep.ng.util.worker.types import SizeLimitedQueue
+from logprep.ng.util.workflow.worker import SizeLimitedQueue
 from logprep.util import rstr
 from logprep.util.credentials import (
     BasicAuthCredentials,

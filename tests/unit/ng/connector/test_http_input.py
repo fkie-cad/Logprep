@@ -24,7 +24,7 @@ from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.connector.http.input import HttpInput
-from logprep.ng.util.worker.types import SizeLimitedQueue
+from logprep.ng.util.workflow.worker import SizeLimitedQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from tests.unit.ng.connector.base import BaseInputTestCase
 

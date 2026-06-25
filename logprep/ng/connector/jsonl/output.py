@@ -25,7 +25,7 @@ from collections.abc import Sequence
 from attrs import define, field, validators
 
 from logprep.ng.abc.event import OutputEvent
-from logprep.ng.abc.output import Event, Output
+from logprep.ng.abc.output import Output
 
 
 class JsonlOutput(Output):
@@ -80,7 +80,7 @@ class JsonlOutput(Output):
         with open(filepath, "a+", encoding="utf8") as file:
             file.write(f"{json.dumps(line)}\n")
 
-    def _store_single(self, event: Event) -> None:
+    def _store_single(self, event: OutputEvent) -> None:
         """Store the event in the output destination."""
         document = event.data if event.output_target is None else {event.output_target: event.data}
         events_file = (

@@ -580,6 +580,7 @@ def benchmark_run(
 
         window_s = time.time() - t_run
 
+        # FIXME measurement window is closed but `kill_hard` allows logprep to operate for 5s after SIGTERM
         kill_hard(logprep_proc)
         logprep_proc = None
         _current_logprep_proc = None

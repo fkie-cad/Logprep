@@ -5,15 +5,12 @@ New output endpoint types are created by implementing it.
 import typing
 from abc import abstractmethod
 from collections.abc import Sequence
-from typing import TypeVar
 
 from attrs import define, field, validators
 
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.connector import Connector
 from logprep.ng.abc.event import OutputEvent
-
-Event = TypeVar("Event", bound=OutputEvent)
 
 
 class OutputError(LogprepException):
@@ -23,6 +20,7 @@ class OutputError(LogprepException):
     def from_error(
         cls, connector: "Output", error: Exception, message: str | None = None
     ) -> "OutputError":
+        """Generate an `OutputException` from a low level error"""
         connector.metrics.number_of_errors += 1
         if message is not None:
             return cls(f"{cls.__name__} in {connector.describe()}: {message}: {str(error)}")
@@ -31,6 +29,7 @@ class OutputError(LogprepException):
 
     @classmethod
     def from_message(cls, connector: "Output", message: str) -> "OutputError":
+        """Generate an `OutputException` from a message"""
         connector.metrics.number_of_errors += 1
         return cls(f"{cls.__name__} in {connector.describe()}: {message}")
 
@@ -111,5 +110,5 @@ class Output(Connector):
                 self.metrics.number_of_errors += 1
 
     @staticmethod
-    def _handle_error(event: Event, error: Exception) -> None:
+    def _handle_error(event: OutputEvent, error: Exception) -> None:
         event.mark_failed(error)

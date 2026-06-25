@@ -649,6 +649,9 @@ class Configuration:
        DOS (Denial of Service) attacks by sending failing logs.
     """
 
+    workflow: dict | None = field(default=None, eq=False)
+    """Workflow configuration according to `WorkflowConfig` for the ng world"""
+
     _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 
     _getter: Getter = field(

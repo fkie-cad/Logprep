@@ -15,7 +15,8 @@ from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
 from logprep.ng.connector.dummy.input import DummyInput
 from logprep.ng.connector.dummy.output import DummyOutput
-from logprep.ng.workflow import create_orchestrator
+from logprep.ng.util.workflow.config import WorkflowConfig
+from logprep.ng.util.workflow.workflow import create_orchestrator
 from logprep.util.typing import is_sequence_of
 
 
@@ -189,6 +190,7 @@ class TestWorkflow:
                 default_outputs=default_outputs,
                 error_output=error_output,
                 named_outputs=named_outputs,
+                config=WorkflowConfig.from_dict_or_default(),
             )
 
             await asyncio.gather(*(component.setup() for component in components))

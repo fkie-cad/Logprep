@@ -20,20 +20,16 @@ from logprep.ng.abc.processor import Processor
 from logprep.ng.processor import process
 from logprep.ng.util.async_helpers import raise_from_gather
 from logprep.ng.util.errors import ExtraEventDeliveryFailure
-from logprep.ng.util.worker.types import SizeLimitedQueue
-from logprep.ng.util.worker.worker import (
+from logprep.ng.util.workflow.config import WorkflowConfig
+from logprep.ng.util.workflow.worker import (
     BatchingWorker,
     SequentialWorker,
+    SizeLimitedQueue,
     Worker,
     WorkerOrchestrator,
 )
 
 logger = logging.getLogger("PipelineManager")
-
-# TODO make configurable via config
-BATCH_SIZE = 5000
-BATCH_INTERVAL_S = 5
-MAX_QUEUE_SIZE = BATCH_SIZE
 
 
 class InvalidOutput(LogprepException):
@@ -49,15 +45,26 @@ def create_orchestrator(
     default_outputs: Sequence[Output],
     named_outputs: dict[str, Output],
     error_output: Output | None,
+    config: WorkflowConfig,
 ) -> WorkerOrchestrator:  # pylint: disable=too-many-locals
     """
     Creates an worker orchestrator representing the core pipeline workflow.
     """
-    process_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
-    send_to_default_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
-    send_to_extras_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
-    send_to_error_queue = SizeLimitedQueue[ErrorEvent](maxsize=MAX_QUEUE_SIZE)
-    acknowledge_queue = SizeLimitedQueue[AcknowledgableEvent](maxsize=MAX_QUEUE_SIZE)
+    process_queue = SizeLimitedQueue[LogEvent](
+        maxsize=config.workers["processing_worker"].queue_size
+    )
+    send_to_default_queue = SizeLimitedQueue[LogEvent](
+        maxsize=config.workers["output_worker"].queue_size
+    )
+    send_to_extras_queue = SizeLimitedQueue[LogEvent](
+        maxsize=config.workers["extra_output_worker"].queue_size
+    )
+    send_to_error_queue = SizeLimitedQueue[ErrorEvent](
+        maxsize=config.workers["error_worker"].queue_size
+    )
+    acknowledge_queue = SizeLimitedQueue[AcknowledgableEvent](
+        maxsize=config.workers["acknowledge_worker"].queue_size
+    )
 
     async def _distribute_input(event: LogEvent | ErrorEvent | None) -> None:
         match event:
@@ -92,11 +99,10 @@ def create_orchestrator(
 
     processing_worker: Worker[LogEvent] = BatchingWorker(
         name="processing_worker",
-        batch_size=BATCH_SIZE,
-        batch_interval_s=BATCH_INTERVAL_S,
         in_queue=process_queue,
         out_queues=[send_to_extras_queue, send_to_default_queue, send_to_error_queue],
         handler=_processor_handler,
+        config=config.workers["processing_worker"],
     )
 
     async def _send_extras_handler(batch: Sequence[LogEvent]) -> None:
@@ -136,8 +142,7 @@ def create_orchestrator(
 
     extra_output_worker: Worker[LogEvent] = BatchingWorker(
         name="extra_output_worker",
-        batch_size=BATCH_SIZE,
-        batch_interval_s=BATCH_INTERVAL_S,
+        config=config.workers["extra_output_worker"],
         in_queue=send_to_extras_queue,
         out_queues=[send_to_default_queue, send_to_error_queue],
         handler=_send_extras_handler,
@@ -158,8 +163,7 @@ def create_orchestrator(
 
     output_worker: Worker[LogEvent] = BatchingWorker(
         name="output_worker",
-        batch_size=BATCH_SIZE,
-        batch_interval_s=BATCH_INTERVAL_S,
+        config=config.workers["output_worker"],
         in_queue=send_to_default_queue,
         out_queues=[acknowledge_queue, send_to_error_queue],
         handler=_send_default_output_handler,
@@ -189,8 +193,7 @@ def create_orchestrator(
 
     error_worker: Worker[ErrorEvent] = BatchingWorker(
         name="error_worker",
-        batch_size=BATCH_SIZE,
-        batch_interval_s=BATCH_INTERVAL_S,
+        config=config.workers["error_worker"],
         in_queue=send_to_error_queue,
         out_queues=[acknowledge_queue],
         handler=_send_error_output_handler,
@@ -198,8 +201,7 @@ def create_orchestrator(
 
     acknowledge_worker: Worker[AcknowledgableEvent] = BatchingWorker(
         name="acknowledge_worker",
-        batch_size=BATCH_SIZE,
-        batch_interval_s=BATCH_INTERVAL_S,
+        config=config.workers["acknowledge_worker"],
         in_queue=acknowledge_queue,
         out_queues=[],
         handler=input_source.acknowledge,
