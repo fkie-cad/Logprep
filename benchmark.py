@@ -38,6 +38,7 @@ _shutdown_requested: bool = False
 _current_logprep_proc: subprocess.Popen | None = None
 _current_compose_dir: Path | None = None
 _current_env: dict[str, str] | None = None
+_current_container_runtime: str = "docker"
 
 PROCESSED_TO_EVENT_NUM_WARNING_THRESHOLD_RATIO = 0.9
 """If more than XX% of generated events are processed -> warn"""
@@ -61,7 +62,7 @@ def _handle_sigint(signum, frame):
     if _current_compose_dir is not None and _current_env is not None:
         try:
             run_cmd(
-                ["docker", "compose", "down"],
+                [_current_container_runtime, "compose", "down"],
                 cwd=_current_compose_dir,
                 env=_current_env,
                 ignore_error=True,
@@ -337,7 +338,13 @@ def wait_for_opensearch(opensearch_url: str, *, timeout_s: float, interval_s: fl
 
 
 def wait_for_kafka_topic(
-    host: str, port: int, topic: str, *, timeout_s: float, interval_s: float = 0.5
+    host: str,
+    port: int,
+    topic: str,
+    *,
+    timeout_s: float,
+    interval_s: float = 0.5,
+    container_runtime: str,
 ) -> None:
     """
     Wait until Kafka responds to topic describe for a given topic.
@@ -348,6 +355,7 @@ def wait_for_kafka_topic(
         topic: Topic name to describe.
         timeout_s: Total timeout in seconds.
         interval_s: Poll interval in seconds.
+        container_runtime: Container runtime to use ("docker" or "podman").
     """
     deadline = time.time() + timeout_s
     last_err: Exception | None = None
@@ -356,7 +364,7 @@ def wait_for_kafka_topic(
         try:
             proc = subprocess.run(
                 [
-                    "docker",
+                    container_runtime,
                     "exec",
                     "kafka",
                     "kafka-topics.sh",
@@ -384,6 +392,7 @@ def send_test_data_to_kafka(
     gen_input_source: Path,
     event_num: int,
     bootstrap_servers: str,
+    container_runtime: str,
     topic: str = "consumer",
 ):
     """
@@ -399,13 +408,15 @@ def send_test_data_to_kafka(
         Kafka server to address
     topic : str, optional
         The topic to produce the events to, by default "consumer"
+    container_runtime : str
+        Container runtime to use ("docker" or "podman")
     """
     with open(gen_input_source, "r", encoding="utf-8") as f:
         events = f.readlines()
 
     with subprocess.Popen(
         [
-            "docker",
+            container_runtime,
             "exec",
             "-i",
             "kafka",
@@ -427,6 +438,7 @@ def compose_config_services(
     *,
     compose_dir: Path,
     env: dict[str, str],
+    container_runtime: str,
 ) -> list[str]:
     """
     Return all services defined in the docker compose project.
@@ -434,12 +446,13 @@ def compose_config_services(
     Args:
         compose_dir: Docker compose directory.
         env: Environment variables.
+        container_runtime: Container runtime to use ("docker" or "podman").
 
     Returns:
         Service names as a list of strings.
     """
     proc = subprocess.run(
-        ["docker", "compose", "config", "--services"],
+        [container_runtime, "compose", "config", "--services"],
         check=True,
         cwd=str(compose_dir),
         env=env,
@@ -455,6 +468,7 @@ def stop_unwanted_services(
     compose_dir: Path,
     env: dict[str, str],
     wanted: list[str],
+    container_runtime: str,
 ) -> None:
     """
     Stop any services not included in the wanted list.
@@ -463,15 +477,26 @@ def stop_unwanted_services(
         compose_dir: Docker compose directory.
         env: Environment variables.
         wanted: Services that should remain running.
+        container_runtime: Container runtime to use ("docker" or "podman").
     """
-    all_services = compose_config_services(compose_dir=compose_dir, env=env)
+    all_services = compose_config_services(
+        compose_dir=compose_dir, env=env, container_runtime=container_runtime
+    )
     unwanted = [s for s in all_services if s not in set(wanted)]
     if not unwanted:
         return
 
-    run_cmd(["docker", "compose", "stop", *unwanted], cwd=compose_dir, env=env, ignore_error=True)
     run_cmd(
-        ["docker", "compose", "rm", "-f", *unwanted], cwd=compose_dir, env=env, ignore_error=True
+        [container_runtime, "compose", "stop", *unwanted],
+        cwd=compose_dir,
+        env=env,
+        ignore_error=True,
+    )
+    run_cmd(
+        [container_runtime, "compose", "rm", "-f", *unwanted],
+        cwd=compose_dir,
+        env=env,
+        ignore_error=True,
     )
 
 
@@ -494,6 +519,7 @@ def benchmark_run(
     opensearch_url: str,
     processed_index: str,
     services: list[str],
+    container_runtime: str,
 ) -> RunResult:
     """
     Execute one benchmark run.
@@ -514,6 +540,7 @@ def benchmark_run(
         opensearch_url: OpenSearch base URL.
         processed_index: Index to count.
         services: Docker compose services to start (teardown uses compose down).
+        container_runtime: Container runtime to use ("docker" or "podman").
 
     Returns:
         RunResult for this run.
@@ -526,28 +553,39 @@ def benchmark_run(
 
     logprep_proc: subprocess.Popen | None = None
 
-    global _current_logprep_proc, _current_compose_dir, _current_env
+    global _current_logprep_proc, _current_compose_dir, _current_env, _current_container_runtime
     _current_compose_dir = compose_dir
     _current_env = env
+    _current_container_runtime = container_runtime
 
     try:
         ensure_vm_max_map_count()
 
-        run_cmd(["docker", "compose", "down"], cwd=compose_dir, env=env)
-        run_cmd(["docker", "volume", "rm", "compose_opensearch-data"], env=env, ignore_error=True)
+        run_cmd([container_runtime, "compose", "down"], cwd=compose_dir, env=env)
+        run_cmd(
+            [container_runtime, "volume", "rm", "compose_opensearch-data"],
+            env=env,
+            ignore_error=True,
+        )
 
         run_cmd(
-            ["docker", "compose", "up", "-d", "--no-deps", *services],
+            [container_runtime, "compose", "up", "-d", "--no-deps", *services],
             cwd=compose_dir,
             env=env,
         )
 
-        stop_unwanted_services(compose_dir=compose_dir, env=env, wanted=services)
+        stop_unwanted_services(
+            compose_dir=compose_dir, env=env, wanted=services, container_runtime=container_runtime
+        )
 
         if "kafka" in set(services):
             wait_for_tcp("127.0.0.1", 9092, timeout_s=float(sleep_after_compose_up_s))
             wait_for_kafka_topic(
-                "127.0.0.1", 9092, "consumer", timeout_s=float(sleep_after_compose_up_s)
+                "127.0.0.1",
+                9092,
+                "consumer",
+                timeout_s=float(sleep_after_compose_up_s),
+                container_runtime=container_runtime,
             )
 
         if "opensearch" in set(services):
@@ -569,6 +607,7 @@ def benchmark_run(
                 event_num,
                 bootstrap_servers,
             ),
+            kwargs={"container_runtime": container_runtime},
         )
         generator.start()
         t_run = time.time()
@@ -602,7 +641,7 @@ def benchmark_run(
         if logprep_proc is not None:
             kill_hard(logprep_proc)
         _current_logprep_proc = None
-        run_cmd(["docker", "compose", "down"], cwd=compose_dir, env=env, ignore_error=True)
+        run_cmd([container_runtime, "compose", "down"], cwd=compose_dir, env=env, ignore_error=True)
 
 
 # -------------------------
@@ -833,6 +872,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Number of kafka partitions for the consumer topic",
     )
 
+    parser.add_argument(
+        "--container-runtime",
+        type=str,
+        choices=("docker", "podman"),
+        default="docker",
+        help="Container runtime to use for compose and exec commands (default: docker).",
+    )
+
     return parser
 
 
@@ -898,6 +945,7 @@ if __name__ == "__main__":
             opensearch_url=args_.opensearch_url,
             processed_index=args_.processed_index,
             services=args_.services,
+            container_runtime=args_.container_runtime,
         )
         results.append(result)
         print_single_run_result(result)
