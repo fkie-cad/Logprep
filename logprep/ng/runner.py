@@ -18,11 +18,6 @@ from logprep.util.getter import RefreshableGetter
 
 logger = logging.getLogger("Runner")
 
-# TODO make configurable via config
-GRACEFUL_SHUTDOWN_TIMEOUT = 10
-HARD_SHUTDOWN_TIMEOUT = 15
-REFRESHABLE_GETTER_BASE_INTERVAL = 1
-
 
 class Runner:
     """Class responsible for running the log processing pipeline."""
@@ -34,13 +29,18 @@ class Runner:
     async def _run_pipeline_manager(self, stop_event: asyncio.Event, config: Configuration) -> None:
         pipeline_manager = PipelineManager(config)
         await pipeline_manager.setup()
-        await pipeline_manager.run(stop_event, GRACEFUL_SHUTDOWN_TIMEOUT)
+        await pipeline_manager.run(
+            stop_event,
+            config.graceful_orchestrator_shutdown_timeout_s,
+            config.graceful_worker_shutdown_timeout_s,
+        )
 
     async def _refresh_getters(self):
         while not self._stop_event.is_set():
             # TODO make getters async
             RefreshableGetter.refresh()
-            await asyncio.sleep(REFRESHABLE_GETTER_BASE_INTERVAL)
+            # TODO refreshable_getter_base_interval_s is not updated with new configs
+            await asyncio.sleep(self._config.refreshable_getter_base_interval_s)
 
     async def _refresh_config(self, config: Configuration) -> Configuration | None:
         return await wait_for_refreshed_config(config, self._stop_event)
@@ -81,7 +81,7 @@ class Runner:
                         )
 
                 logger.debug("Stopping PipelineManager for restart")
-                await pipeline_manager.stop_and_cancel(HARD_SHUTDOWN_TIMEOUT)
+                await pipeline_manager.stop_and_cancel(config.hard_orchestrator_shutdown_timeoout_s)
 
                 if pipeline_manager.task in done:
                     logger.debug(

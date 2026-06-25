@@ -74,11 +74,13 @@ class PipelineManager:
             workflow_config,
         )
 
-    async def run(self, stop_event: asyncio.Event, shutdown_timeout_s: float) -> None:
+    async def run(
+        self, stop_event: asyncio.Event, shutdown_timeout_s: float, worker_shutdown_timeout_s: float
+    ) -> None:
         """Run the runner and continuously process events until stopped."""
 
         try:
-            await self._orchestrator.run(stop_event, shutdown_timeout_s)
+            await self._orchestrator.run(stop_event, shutdown_timeout_s, worker_shutdown_timeout_s)
             if not stop_event.is_set():
                 logger.info("Worker orchestration stopped internally; shutting down...")
         except (CancelledError, Exception):

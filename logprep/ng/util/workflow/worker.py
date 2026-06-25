@@ -421,7 +421,12 @@ class WorkerOrchestrator:
     def _create_worker_tasks(self):
         return [self._create_worker_task(worker) for worker in self._workers]
 
-    async def run(self, stop_event: asyncio.Event, graceful_shutdown_timeout_s: float) -> None:
+    async def run(
+        self,
+        stop_event: asyncio.Event,
+        total_shutdown_timeout_s: float,
+        worker_group_shutdown_timeout_s: float,
+    ) -> None:
         """
         Start worker tasks and wait for them to finish.
         """
@@ -445,11 +450,11 @@ class WorkerOrchestrator:
 
         logger.debug("Stopping workers gracefully: %s", self._get_current_state())
 
-        await self._shut_down(graceful_shutdown_timeout_s)
+        await self._shut_down(total_shutdown_timeout_s, worker_group_shutdown_timeout_s)
 
         logger.debug("Workers stopped: %s", self._get_current_state())
 
-    async def _shut_down(self, timeout_s: float) -> None:
+    async def _shut_down(self, total_timeout_s: float, worker_group_timeout_s: float) -> None:
         """
         Fully shut down the manager.
 
@@ -458,12 +463,14 @@ class WorkerOrchestrator:
         """
 
         logger.debug(
-            "Waiting %f seconds for termination of %d tasks", timeout_s, len(self._worker_tasks)
+            "Waiting %f seconds for termination of %d tasks",
+            total_timeout_s,
+            len(self._worker_tasks),
         )
 
         try:
-            async with asyncio.timeout(timeout_s):
-                await self._stop_workers_in_topological_order()
+            async with asyncio.timeout(total_timeout_s):
+                await self._stop_workers_in_topological_order(worker_group_timeout_s)
         except TimeoutError:
             logger.debug("Encountered TimeoutError")
             unfinished_workers = [t for t in self._all_worker_tasks if not t.done()]
@@ -478,8 +485,7 @@ class WorkerOrchestrator:
                 )
                 await asyncio.gather(*unfinished_workers, return_exceptions=True)
 
-    async def _stop_workers_in_topological_order(self) -> None:
-        group_timeout_s = 5
+    async def _stop_workers_in_topological_order(self, worker_group_timeout_s: float) -> None:
 
         logger.debug("Stopping workers in topological order")
         for group in iterate_workers_topologically(self._workers):
@@ -492,13 +498,13 @@ class WorkerOrchestrator:
                 self._worker_tasks[worker] for worker in group if worker in self._worker_tasks
             ]
             try:
-                async with asyncio.timeout(group_timeout_s):
+                async with asyncio.timeout(worker_group_timeout_s):
                     results = await asyncio.gather(*group_tasks, return_exceptions=True)
 
             except TimeoutError:
                 logger.error(
                     "Worker group did not stop gracefully after %f seconds and had to be cancelled",
-                    group_timeout_s,
+                    worker_group_timeout_s,
                 )
                 results = await asyncio.gather(*group_tasks, return_exceptions=True)
 
