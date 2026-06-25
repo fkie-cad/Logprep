@@ -8,7 +8,7 @@ from attrs import define, field, validators
 
 from logprep.util.converters import convert_from_dict
 
-WorkerName: TypeAlias = Literal[
+ConfigurableWorkerName: TypeAlias = Literal[
     "processing_worker",
     "extra_output_worker",
     "output_worker",
@@ -16,7 +16,9 @@ WorkerName: TypeAlias = Literal[
     "acknowledge_worker",
 ]
 
-WORKER_NAMES: frozenset[str] = frozenset(get_args(WorkerName))
+WorkerName: TypeAlias = Literal["input_worker"] | ConfigurableWorkerName
+
+_CONFIGURABLE_WORKER_NAMES: frozenset[str] = frozenset(get_args(ConfigurableWorkerName))
 
 
 @define(kw_only=True)
@@ -41,9 +43,9 @@ class WorkerConfig:
 
 
 def _validate_all_workers_present(_, __, value: dict[WorkerName, WorkerConfig]) -> None:
-    if value.keys() != WORKER_NAMES:
-        missing = WORKER_NAMES - value.keys()
-        extraneous = value.keys() - WORKER_NAMES
+    if value.keys() != _CONFIGURABLE_WORKER_NAMES:
+        missing = _CONFIGURABLE_WORKER_NAMES - value.keys()
+        extraneous = value.keys() - _CONFIGURABLE_WORKER_NAMES
         raise ValueError(f"Misconfigured workers: missing={missing}, extraneous={extraneous}")
 
 
@@ -55,12 +57,13 @@ class WorkflowConfig:
 
     workers: dict[WorkerName, WorkerConfig] = field(
         validator=validators.deep_mapping(
-            key_validator=validators.in_(WORKER_NAMES),
+            key_validator=validators.in_(_CONFIGURABLE_WORKER_NAMES),
             value_validator=validators.instance_of(WorkerConfig),
             mapping_validator=_validate_all_workers_present,
         ),
         converter=lambda d: {
-            name: convert_from_dict(WorkerConfig, d.get(name, {})) for name in WORKER_NAMES
+            name: convert_from_dict(WorkerConfig, d.get(name, {}))
+            for name in _CONFIGURABLE_WORKER_NAMES
         },
         factory=dict,
     )

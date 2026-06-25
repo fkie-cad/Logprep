@@ -27,7 +27,7 @@ from collections.abc import (
 from typing import Any, Generic, TypeAlias, TypeVar
 
 from logprep.ng.util.async_helpers import STOP_SENTINEL
-from logprep.ng.util.workflow.config import WorkerConfig
+from logprep.ng.util.workflow.config import WorkerConfig, WorkerName
 
 logger = logging.getLogger("Worker")
 
@@ -54,7 +54,7 @@ class Worker(Generic[T], ABC):
 
     def __init__(
         self,
-        name: str,
+        name: WorkerName,
         in_queue: WorkerSource[T],
         out_queues: Sequence[SizeLimitedQueue],
     ) -> None:
@@ -121,7 +121,7 @@ class SequentialWorker(Worker[T], Generic[T]):
 
     def __init__(
         self,
-        name: str,
+        name: WorkerName,
         handler: AsyncHandler[T],
         in_queue: WorkerSource[T],
         out_queues: Sequence[SizeLimitedQueue],
@@ -147,7 +147,7 @@ class BatchingWorker(Worker[T], Generic[T]):
 
     def __init__(
         self,
-        name: str,
+        name: WorkerName,
         handler: AsyncHandler[Sequence[T]],
         in_queue: WorkerSource[T],
         out_queues: Sequence[SizeLimitedQueue],
