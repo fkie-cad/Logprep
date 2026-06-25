@@ -520,7 +520,7 @@ class ConfluentKafkaInput(Input):
             )
             self._commit_tracker.unregister_partition(tp.partition)
 
-    def _commit_callback(
+    async def _commit_callback(
         self, error: KafkaException | None, topic_partitions: list[TopicPartition]
     ) -> None:
         """Callback used to indicate success or failure of asynchronous and
