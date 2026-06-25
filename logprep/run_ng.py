@@ -5,6 +5,7 @@ import asyncio
 import logging
 import signal
 import sys
+import warnings
 from functools import partial
 from multiprocessing import set_start_method
 
@@ -14,6 +15,7 @@ import uvloop
 from logprep.ng.runner import Runner
 from logprep.ng.util.async_helpers import asyncio_exception_handler
 from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
+from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.registry import Registry
 from logprep.util.defaults import EXITCODES
 from logprep.util.helper import get_versions_string
@@ -49,6 +51,10 @@ def cli() -> None:
     Log messages are being read and written by so-called connectors.
     """
 
+    logging.captureWarnings(True)
+    logging.config.dictConfig(DEFAULT_LOG_CONFIG)
+    warnings.simplefilter("always", DeprecationWarning)
+
     set_start_method("fork", force=True)
     Registry.set_ng_active(True)
 
@@ -68,45 +74,45 @@ def run(configs: tuple[str], version=None) -> None:
     CONFIG is a path to configuration file (filepath or URL).
     """
 
-    async def _run(configs_: tuple[str], version_=None):
+    async def _run():
         if (task := asyncio.current_task()) is not None:
             task.set_name("root")
-        configuration = await _get_configuration(configs_)
+        configuration = await _get_configuration(configs)
         runner = Runner(configuration)
-        runner.setup_logging()
-        if version_:
-            _print_version(configuration)
-        for v in get_versions_string(configuration).split("\n"):
-            logger.info(v)
-        logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
-        logger.debug(f"Config path: {configs_}")
-        try:
-            if "pytest" not in sys.modules:
-                # needed for not blocking tests
-                loop = asyncio.get_running_loop()
-                loop.add_signal_handler(signal.SIGTERM, runner.stop)
-                loop.add_signal_handler(signal.SIGINT, runner.stop)
-            logger.debug("Configuration loaded")
-            await runner.run()
-        except SystemExit as error:
-            logger.debug(f"Exit received with code {error.code}")
-            sys.exit(error.code)
-        # pylint: disable=broad-except
-        except ExceptionGroup as error_group:
-            logger.exception(f"Multiple errors occurred: {error_group}")
-        except Exception as error:
-            logger.exception(f"A critical error occurred: {error}")
+        with runner.with_configured_logging():
+            if version:
+                _print_version(configuration)
+            for v in get_versions_string(configuration).split("\n"):
+                logger.info(v)
+            logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
+            logger.debug(f"Config path: {configs}")
+            try:
+                if "pytest" not in sys.modules:
+                    # needed for not blocking tests
+                    loop = asyncio.get_running_loop()
+                    loop.add_signal_handler(signal.SIGTERM, runner.stop)
+                    loop.add_signal_handler(signal.SIGINT, runner.stop)
+                logger.debug("Configuration loaded")
+                await runner.run()
+            except SystemExit as error:
+                logger.debug(f"Exit received with code {error.code}")
+                sys.exit(error.code)
+            # pylint: disable=broad-except
+            except ExceptionGroup as error_group:
+                logger.exception(f"Multiple errors occurred: {error_group}")
+            except Exception as error:
+                logger.exception(f"A critical error occurred: {error}")
 
-            if runner:
-                runner.stop()
-            sys.exit(EXITCODES.ERROR)
-        # pylint: enable=broad-except
+                if runner:
+                    runner.stop()
+                sys.exit(EXITCODES.ERROR)
+            # pylint: enable=broad-except
 
     with asyncio.Runner(loop_factory=uvloop.new_event_loop) as runner:
         handler = partial(asyncio_exception_handler, logger=logger)
         loop = runner.get_loop()
         loop.set_exception_handler(handler)
-        runner.run(_run(configs, version))
+        runner.run(_run())
 
 
 if __name__ == "__main__":

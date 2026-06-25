@@ -4,7 +4,8 @@ Runner module
 
 import asyncio
 import logging
-import warnings
+from collections.abc import Iterator
+from contextlib import contextmanager
 from functools import partial
 
 from attrs import asdict
@@ -14,6 +15,10 @@ from logprep.ng.util.async_helpers import StoppableTask
 from logprep.ng.util.config_refresh import wait_for_refreshed_config
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.ng.util.logging_helpers import (
+    decouple_logging_via_queue,
+    inject_task_names_in_log_records,
+)
 from logprep.util.getter import RefreshableGetter
 
 logger = logging.getLogger("Runner")
@@ -99,13 +104,17 @@ class Runner:
         logger.info("Setting stop signal for the runner")
         self._stop_event.set()
 
-    def setup_logging(self) -> None:
-        """Setup the logging configuration.
-        is called in the :code:`logprep.run_logprep` module.
+    @contextmanager
+    def with_configured_logging(self) -> Iterator[None]:
+        """
+        Setup the logging configuration. is called in the :code:`logprep.run_ng` module.
         """
 
         # TODO ensure asyncio exceptions are logged as json (e.g. ExceptionGroup)
-        warnings.simplefilter("always", DeprecationWarning)
-        logging.captureWarnings(True)
+
         log_config = DEFAULT_LOG_CONFIG | asdict(self._config.logger)
         logging.config.dictConfig(log_config)
+
+        with inject_task_names_in_log_records():
+            with decouple_logging_via_queue():
+                yield
