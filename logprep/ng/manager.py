@@ -13,14 +13,10 @@ from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
 from logprep.ng.util.async_helpers import raise_from_gather
 from logprep.ng.util.configuration import Configuration
-from logprep.ng.workflow import create_orchestrator
+from logprep.ng.util.workflow.config import WorkflowConfig
+from logprep.ng.util.workflow.workflow import create_orchestrator
 
 logger = logging.getLogger("PipelineManager")
-
-# TODO make configurable via config
-BATCH_SIZE = 1000
-BATCH_INTERVAL_S = 5
-MAX_QUEUE_SIZE = BATCH_SIZE
 
 
 class PipelineManager:
@@ -67,8 +63,15 @@ class PipelineManager:
 
         await asyncio.gather(*(component.setup() for component in self._components))
 
+        workflow_config = WorkflowConfig.from_dict_or_default(self.configuration.workflow)
+
         self._orchestrator = create_orchestrator(
-            input_connector, processors, default_outputs, named_outputs, error_output
+            input_connector,
+            processors,
+            default_outputs,
+            named_outputs,
+            error_output,
+            workflow_config,
         )
 
     async def run(self, stop_event: asyncio.Event, shutdown_timeout_s: float) -> None:

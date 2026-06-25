@@ -45,7 +45,6 @@ async def wait_for_refreshed_config(
         except TimeoutError:
             # stop_event has not been set, continue with normal loop
             logger.debug("Config refresh slept whole timeout. Continuing...")
-            pass
         except asyncio.CancelledError:
             logger.debug("Config refresh cancelled. Exiting...")
             raise

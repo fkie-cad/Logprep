@@ -16,24 +16,38 @@ import logging
 from abc import ABC, abstractmethod
 from asyncio import AbstractEventLoop, CancelledError, Task
 from collections import deque
-from collections.abc import AsyncIterator, Generator, Iterable, Sequence
+from collections.abc import (
+    AsyncIterator,
+    Callable,
+    Coroutine,
+    Generator,
+    Iterable,
+    Sequence,
+)
 from typing import Any, Generic, TypeAlias, TypeVar
 
 from logprep.ng.util.async_helpers import STOP_SENTINEL
-from logprep.ng.util.worker.types import AsyncHandler, SizeLimitedQueue
+from logprep.ng.util.workflow.config import WorkerConfig
 
-logger = logging.getLogger("Worker")  # pylint: disable=no-member
+logger = logging.getLogger("Worker")
 
 T = TypeVar("T")
-Input = TypeVar("Input")
-Intermediate = TypeVar("Intermediate")
-Output = TypeVar("Output")
 
 
-WorkerSource: TypeAlias = SizeLimitedQueue[Input] | AsyncIterator[Input]
+class SizeLimitedQueue(asyncio.Queue[T]):
+    """Queue wrapper which ensures a maxsize (>=0) is configured."""
+
+    def __init__(self, maxsize: int) -> None:
+        if maxsize <= 0:
+            raise ValueError("Queue must be bounded")
+        super().__init__(maxsize=maxsize)
 
 
-class Worker(Generic[Input], ABC):
+WorkerSource: TypeAlias = SizeLimitedQueue[T] | AsyncIterator[T]
+AsyncHandler: TypeAlias = Callable[[T], Coroutine[object, object, None]]
+
+
+class Worker(Generic[T], ABC):
     """
     Generic worker.
     """
@@ -41,7 +55,7 @@ class Worker(Generic[Input], ABC):
     def __init__(
         self,
         name: str,
-        in_queue: WorkerSource[Input],
+        in_queue: WorkerSource[T],
         out_queues: Sequence[SizeLimitedQueue],
     ) -> None:
         self.name = name
@@ -52,7 +66,7 @@ class Worker(Generic[Input], ABC):
         self._stop_event = asyncio.Event()
 
     @abstractmethod
-    async def _handle_next(self, item: Input) -> None:
+    async def _handle_next(self, item: T) -> None:
         """
         Handle next item from input
         """
@@ -62,8 +76,6 @@ class Worker(Generic[Input], ABC):
             case AsyncIterator():
                 while not self._stop_event.is_set():
                     item = await anext(self.in_queue)
-                    if item is STOP_SENTINEL:
-                        break
                     await self._handle_next(item)
                     await asyncio.sleep(0.0)
             case SizeLimitedQueue():
@@ -93,7 +105,7 @@ class Worker(Generic[Input], ABC):
 
     async def stop(self) -> None:
         """Issues the worker to stop. The stopping worker has to be awaited separately."""
-        match (self.in_queue):
+        match self.in_queue:
             case SizeLimitedQueue():
                 await self.in_queue.put(STOP_SENTINEL)  # type: ignore
             case AsyncIterator():
@@ -102,7 +114,7 @@ class Worker(Generic[Input], ABC):
                 raise TypeError(f"Unexpected in_queue type {type(self.in_queue)}")
 
 
-class SequentialWorker(Worker[Input], Generic[Input]):
+class SequentialWorker(Worker[T], Generic[T]):
     """
     Worker processing items one by one.
     """
@@ -110,8 +122,8 @@ class SequentialWorker(Worker[Input], Generic[Input]):
     def __init__(
         self,
         name: str,
-        handler: AsyncHandler[Input],
-        in_queue: WorkerSource[Input],
+        handler: AsyncHandler[T],
+        in_queue: WorkerSource[T],
         out_queues: Sequence[SizeLimitedQueue],
     ) -> None:
         super().__init__(name, in_queue, out_queues)
@@ -128,7 +140,7 @@ class SequentialWorker(Worker[Input], Generic[Input]):
         return f"Worker({', '.join(elements)})"
 
 
-class BatchingWorker(Worker[Input], Generic[Input]):
+class BatchingWorker(Worker[T], Generic[T]):
     """
     Generic batching worker.
     """
@@ -136,20 +148,19 @@ class BatchingWorker(Worker[Input], Generic[Input]):
     def __init__(
         self,
         name: str,
-        handler: AsyncHandler[Sequence[Input]],
-        in_queue: WorkerSource[Input],
+        handler: AsyncHandler[Sequence[T]],
+        in_queue: WorkerSource[T],
         out_queues: Sequence[SizeLimitedQueue],
-        batch_size: int,
-        batch_interval_s: float,
+        config: WorkerConfig,
     ) -> None:
         super().__init__(name, in_queue, out_queues)
 
         self._handler = handler
 
-        self._batch_interval_s = batch_interval_s
-        self._batch_size = batch_size
+        self._batch_interval_s = config.flush_interval_s
+        self._batch_size = config.batch_size
 
-        self._batch_buffer: deque[Input] = deque()
+        self._batch_buffer: deque[T] = deque()
         self._buffer_lock = asyncio.Lock()
 
         self._flush_timer: asyncio.Task[None] | None = None
@@ -203,7 +214,7 @@ class BatchingWorker(Worker[Input], Generic[Input]):
         except asyncio.CancelledError:
             return
 
-        batch: list[Input] | None = None
+        batch: list[T] | None = None
         async with self._buffer_lock:
             if self._batch_buffer:
                 batch = self._drain_locked()
@@ -214,7 +225,7 @@ class BatchingWorker(Worker[Input], Generic[Input]):
             logger.debug("Flushing messages based on timer")
             await self._flush_batch(batch)
 
-    def _drain_locked(self) -> list[Input]:
+    def _drain_locked(self) -> list[T]:
         """
         Drain the current buffer contents.
 
@@ -227,14 +238,14 @@ class BatchingWorker(Worker[Input], Generic[Input]):
         self._flush_timer = None
         return batch
 
-    async def _handle_next(self, item: Input) -> None:
+    async def _handle_next(self, item: T) -> None:
         """
         Add a single item to the batch buffer.
 
         May trigger a flush if the size threshold is reached. Starts the
         batch timer when the first item of a new batch arrives.
         """
-        batch_to_flush: list[Input] | None = None
+        batch_to_flush: list[T] | None = None
 
         async with self._buffer_lock:
             self._batch_buffer.append(item)
@@ -255,7 +266,7 @@ class BatchingWorker(Worker[Input], Generic[Input]):
             elements.append(f"#queue={self.in_queue.qsize()}")
         return f"Worker({', '.join(elements)})"
 
-    async def flush(self) -> None:
+    async def _flush(self) -> None:
         """
         Force flushing of buffered items.
 
@@ -263,7 +274,7 @@ class BatchingWorker(Worker[Input], Generic[Input]):
         timer state.
         """
 
-        batch_to_flush: list[Input] | None = None
+        batch_to_flush: list[T] | None = None
         async with self._buffer_lock:
             if self._batch_buffer:
                 batch_to_flush = self._drain_locked()
@@ -271,10 +282,10 @@ class BatchingWorker(Worker[Input], Generic[Input]):
             logger.debug("Flushing messages based on manual trigger")
             await self._flush_batch(batch_to_flush)
 
-    async def _process_batch(self, batch: list[Input]) -> None:
+    async def _process_batch(self, batch: list[T]) -> None:
         await self._handler(batch)
 
-    async def _flush_batch(self, batch: list[Input]) -> None:
+    async def _flush_batch(self, batch: list[T]) -> None:
         """
         Process and forward a completed batch.
 
@@ -294,7 +305,7 @@ class BatchingWorker(Worker[Input], Generic[Input]):
         """
         await super().run()
         self._cancel_timer_if_needed()
-        await self.flush()
+        await self._flush()
 
 
 def create_worker_graph(workers: Iterable[Worker]) -> dict[Worker, Sequence[Worker]]:
@@ -332,7 +343,7 @@ def iterate_workers_topologically(
     Yields
     ------
     Generator[Iterable[Worker]]
-        Generator yielding groups of workers for which all of their parents have been processed before
+        Yields groups of workers for which all of their parents have been processed before
     """
     successors = create_worker_graph(workers)
     predecessors = {
@@ -387,7 +398,7 @@ class WorkerOrchestrator:
         def _done(t: asyncio.Task[Any]) -> None:
             try:
                 assert self._worker_tasks[worker] == task
-                # del self._worker_tasks[worker]
+                del self._worker_tasks[worker]
 
                 logger.debug("Worker task %s is finished", worker.name)
 
