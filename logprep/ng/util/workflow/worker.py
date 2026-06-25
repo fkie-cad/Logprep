@@ -157,7 +157,7 @@ class BatchingWorker(Worker[T], Generic[T]):
 
         self._handler = handler
 
-        self._batch_interval_s = config.flush_interval_s
+        self._batch_interval_s = config.batch_interval_s
         self._batch_size = config.batch_size
 
         self._batch_buffer: deque[T] = deque()

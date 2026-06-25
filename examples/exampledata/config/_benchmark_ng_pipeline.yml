@@ -27,23 +27,23 @@ workflow:
     processing_worker:
       batch_size: 5000
       queue_size: 5000
-      flush_interval_s: 5
+      batch_interval_s: 5
     extra_output_worker:
       batch_size: 5000
       queue_size: 5000
-      flush_interval_s: 5
+      batch_interval_s: 5
     output_worker:
       batch_size: 5000
       queue_size: 5000
-      flush_interval_s: 5
+      batch_interval_s: 5
     error_worker:
       batch_size: 5000
       queue_size: 5000
-      flush_interval_s: 5
+      batch_interval_s: 5
     acknowledge_worker:
       batch_size: 5000
       queue_size: 5000
-      flush_interval_s: 5
+      batch_interval_s: 5
 pipeline:
   - labelername:
       type: labeler
