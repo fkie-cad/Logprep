@@ -652,6 +652,42 @@ class Configuration:
     workflow: dict | None = field(default=None, eq=False)
     """Workflow configuration according to `WorkflowConfig` for the ng world"""
 
+    refreshable_getter_base_interval_s: float = field(
+        validator=(validators.instance_of(float), validators.gt(0)), converter=float, default=0.25
+    )
+    """
+    Interval in which the refreshable getter scheduler is being called.
+    This parameter is temporary until the scheduler has been migrated to an async solution.
+    Ensure the base interval does not exceed ~5% of the minimum getter refresh interval.
+    Worst case scenario is checking the scheduler just before a scheduled job is due;
+    then it takes at least base interval time until the scheduler is checked again.
+    """
+
+    graceful_worker_shutdown_timeout_s: float = field(
+        validator=(validators.instance_of(float), validators.gt(0)), converter=float, default=5.0
+    )
+    """
+    Time limit per worker to drain its queue and finish up.
+    """
+
+    graceful_orchestrator_shutdown_timeout_s: float = field(
+        validator=(validators.instance_of(float), validators.gt(0)), converter=float, default=10.0
+    )
+    """
+    Time limit across all workers to drain all queues and finish up.
+    """
+
+    hard_orchestrator_shutdown_timeoout_s: float = field(
+        validator=(validators.instance_of(float), validators.gt(0)), converter=float, default=15.0
+    )
+    """
+    Time after which the orchestrator is considered stopped.
+    After that the application might exit (input exhaustion or stop signal)
+    or a new pipeline might start (config refresh).
+    Running into this timeout might be considered an error scenario in the future,
+    which leads to an application exit.
+    """
+
     _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 
     _getter: Getter = field(

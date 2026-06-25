@@ -197,7 +197,11 @@ class TestWorkflow:
 
             await asyncio.wait_for(
                 # start graceful shutdown when input is exhausted
-                orchestrator.run(dummy_input.empty_event, graceful_shutdown_timeout_s=0.5),
+                orchestrator.run(
+                    dummy_input.empty_event,
+                    total_shutdown_timeout_s=0.5,
+                    worker_group_shutdown_timeout_s=0.5,
+                ),
                 timeout=1,
             )
 
