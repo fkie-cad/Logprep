@@ -38,7 +38,6 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
 
     @pytest.fixture
     def mock_client(self):
-        # TODO do we need the whole path, or can we make this prettier?
         with mock.patch(f"{MODULE}.AsyncOpenSearch", spec=AsyncOpenSearch) as mock_client:
             mock_client.return_value = mock_client
             mock_client.cluster = mock.MagicMock()

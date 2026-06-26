@@ -10,10 +10,14 @@ from tests.unit.ng.event.test_event import TestEventClass
 
 class TestPseudonymEvents(TestEventClass):
 
-    pseudonym_event = PseudonymEvent(
-        data={"foo": "bar"}, output_name="opensearch", output_target="pseudonym_index"
-    )
+    def _create_test_event(self, data):
+        return PseudonymEvent(data, output_name="test1", output_target="test2")
 
-    assert pseudonym_event.data == {"foo": "bar"}
-    assert pseudonym_event.output_name == "opensearch"
-    assert pseudonym_event.output_target == "pseudonym_index"
+    def test_event_initializes(self):
+        pseudonym_event = PseudonymEvent(
+            data={"foo": "bar"}, output_name="opensearch", output_target="pseudonym_index"
+        )
+
+        assert pseudonym_event.data == {"foo": "bar"}
+        assert pseudonym_event.output_name == "opensearch"
+        assert pseudonym_event.output_target == "pseudonym_index"
