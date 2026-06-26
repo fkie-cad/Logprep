@@ -107,9 +107,9 @@ services:
     tmpfs:
       - /tmp/logprep/prometheus_multiproc:mode=777
     entrypoint:
-      - logprep
+      - ${LOGPREP_COMMAND-logprep}
       - run
-      - /home/logprep/examples/exampledata/config/pipeline.yml
+      - /home/logprep/${LOGPREP_CONFIG_PATH-examples/exampledata/config/pipeline.yml}
   grafana:
     image: bitnamilegacy/grafana:latest
     container_name: grafana

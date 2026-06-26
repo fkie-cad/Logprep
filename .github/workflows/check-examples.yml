@@ -8,6 +8,7 @@ jobs:
       matrix:
         profile: ["logprep"]
         python-version: ["3.11", "3.12", "3.13", "3.14"]
+        mode: ['ng', 'legacy']
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
@@ -28,6 +29,8 @@ jobs:
         env: &compose-env
           COMPOSE_PROFILES: ${{ matrix.profile }}
           PYTHON_VERSION: ${{ matrix.python-version }}
+          LOGPREP_COMMAND: ${{ matrix.mode == 'legacy' && 'logprep' || 'logprep-ng' }}
+          LOGPREP_CONFIG_PATH: examples/exampledata/config/${{ matrix.mode == 'legacy' && 'pipeline.yml' || 'ng_pipeline.yml'  }}
       - name: Run Compose setup
         working-directory: examples/compose
         run: docker compose up -d
