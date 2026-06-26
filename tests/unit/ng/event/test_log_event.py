@@ -9,7 +9,11 @@ from tests.unit.ng.event.test_event import TestEventClass
 
 
 class TestLogEvents(TestEventClass):
-    def test_log_event_initializes(self):
+
+    def _create_test_event(self, data):
+        return LogEvent(data, original=b"", input_meta=InputMeta())
+
+    def test_event_initializes(self):
         log_event = LogEvent(data={"foo": "bar"}, original=b"raw", input_meta=InputMeta())
 
         assert log_event.original == b"raw"

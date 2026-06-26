@@ -10,7 +10,10 @@ from tests.unit.ng.event.test_event import TestEventClass
 
 class TestFilteredEvents(TestEventClass):
 
-    def test_sre_event_initialization(self) -> None:
+    def _create_test_event(self, data):
+        return FilteredEvent(data, output_name="test1", output_target="test2")
+
+    def test_event_initializes(self) -> None:
         filtered_event = FilteredEvent(
             data={"foo": "bar"}, output_name="name", output_target="sre_topic"
         )

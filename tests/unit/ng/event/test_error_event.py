@@ -20,6 +20,9 @@ class DummyChildEvent(ExtraDataEvent):
 
 class TestErrorEvents(TestEventClass):
 
+    def _create_test_event(self, data):
+        return ErrorEvent(data, input_meta=InputMeta())
+
     def setup_method(self):
 
         self.child1_event = DummyChildEvent({"c1": 1}, output_name="whatever", output_target=None)
@@ -31,7 +34,7 @@ class TestErrorEvents(TestEventClass):
             data={"foo": "bar"}, original=b"raw", extra_data=[], input_meta=InputMeta()
         )
 
-    def test_error_event_initializes(self):
+    def test_event_initializes(self):
         self.log_event.extra_data = [self.child2_event]
         self.log_event.errors.append(ValueError("Some value is wrong"))
         error_event = ErrorEvent.from_failed_event(self.log_event)
