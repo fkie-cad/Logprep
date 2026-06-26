@@ -30,6 +30,7 @@ class Runner:
     def __init__(self, config: Configuration) -> None:
         self._config = config
         self._stop_event = asyncio.Event()
+        self._refreshable_getter_base_interval_s = config.refreshable_getter_base_interval_s
 
     async def _run_pipeline_manager(self, stop_event: asyncio.Event, config: Configuration) -> None:
         pipeline_manager = PipelineManager(config)
@@ -44,8 +45,7 @@ class Runner:
         while not self._stop_event.is_set():
             # TODO make getters async
             RefreshableGetter.refresh()
-            # TODO refreshable_getter_base_interval_s is not updated with new configs
-            await asyncio.sleep(self._config.refreshable_getter_base_interval_s)
+            await asyncio.sleep(self._refreshable_getter_base_interval_s)
 
     async def _refresh_config(self, config: Configuration) -> Configuration | None:
         return await wait_for_refreshed_config(config, self._stop_event)
@@ -83,6 +83,9 @@ class Runner:
                         config = new_config
                         refresh_config = tg.create_task(
                             self._refresh_config(config), name="config_refresh"
+                        )
+                        self._refreshable_getter_base_interval_s = (
+                            config.refreshable_getter_base_interval_s
                         )
 
                 logger.debug("Stopping PipelineManager for restart")
