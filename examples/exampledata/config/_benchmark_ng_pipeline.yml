@@ -2,7 +2,7 @@ version: 2
 # process_count: 1
 timeout: 0.1
 # restart_count: 2
-config_refresh_interval: 5
+config_refresh_interval: 0
 # error_backlog_size: 15000
 logger:
   level: WARNING
