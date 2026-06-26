@@ -165,8 +165,8 @@ class TestDeployment(TestBaseChartTest):
             ]
         }
         self.manifests = self.render_chart("logprep", logprep_values)
-        command = self.deployment["spec.template.spec.containers.0.command"]
-        assert command[3] == "http://external-config.bla"
+        args = self.deployment["spec.template.spec.containers.0.args"]
+        assert args[2] == "http://external-config.bla"
 
     def test_configuration_with_http_endpoints_volume_mount_is_not_populated(self):
         logprep_values = {
