@@ -151,6 +151,7 @@ def create_orchestrator(
     async def _send_default_output_handler(batch: Sequence[LogEvent]):
         # TODO ensure to retry forever for retryable errors
         await asyncio.gather(*(output.store(batch) for output in default_outputs))
+        logger.debug("Stored output in %s", ", ".join(out.name for out in default_outputs))
 
         # TODO all outputs attempt to set event.stored to True, if any succeeds it is set
         # this is in line with the docs: https://logprep.readthedocs.io/en/latest/configuration/output.html#output
