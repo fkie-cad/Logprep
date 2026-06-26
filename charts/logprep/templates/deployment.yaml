@@ -50,11 +50,11 @@ spec:
             - name: http-input
               containerPort: {{ .Values.input.uvicorn_config.port }}
             {{- end }}
-          command:
-            - logprep
+          command: {{ .Values.command }}
+          args:
             - run
-            {{- range $key, $value := .Values.configurations }}
-            - {{ $value.name }}
+            {{- range .Values.configurations }}
+            - {{ .name }}
             {{- end }}
             - input-config.yaml
             - output-config.yaml
@@ -88,17 +88,17 @@ spec:
               mountPath: /prometheus
             - name: logprep-cache-dir
               mountPath: /home/logprep/.cache
-            {{- range $key, $value := .Values.configurations }}
-            {{- if $value.data }}
+            {{- range .Values.configurations }}
+            {{- if .data }}
             - name: configurations
-              mountPath: /home/logprep/{{ $value.name }}
-              subPath: {{ $value.name }}
+              mountPath: /home/logprep/{{ .name }}
+              subPath: {{ .name }}
             {{- end }}
             {{- end }}
-            {{- range $key, $value := .Values.artifacts }}
+            {{- range .Values.artifacts }}
             - name: artifacts
-              mountPath: /home/logprep/{{ if $value.path }}{{ $value.path }}/{{ end }}{{ $value.name }}
-              subPath: {{ $value.name }}
+              mountPath: /home/logprep/{{ if .path }}{{ .path }}/{{ end }}{{ .name }}
+              subPath: {{ .name }}
             {{- end }}
             - name: exporter-config
               mountPath: /home/logprep/exporter-config.yaml
