@@ -55,7 +55,8 @@ class DummyInput(Input):
 
         if not self._documents:
             if not self.config.repeat_documents:
-                raise SourceDisconnectedWarning(self, "no documents left")
+                return None, None
+                # raise SourceDisconnectedWarning(self, "no documents left")
             del self.__dict__["_documents"]
 
         document = self._documents.pop(0)

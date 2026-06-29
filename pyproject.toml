@@ -101,6 +101,7 @@ dev = [
   "types-requests",
   "types-psutil",
   "types-PyYaml",
+  "ipython"
 ]
 
 doc = [

@@ -1,0 +1,38 @@
+version: 2
+process_count: 2
+timeout: 0.1
+restart_count: 2
+config_refresh_interval: 5
+error_backlog_size: 15000
+logger:
+  level: DEBUG
+  format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
+  datefmt: "%Y-%m-%d %H:%M:%S"
+  loggers:
+    "Runner": {"level": "DEBUG"}
+    "Processor": {"level": "DEBUG"}
+metrics:
+  enabled: true
+  port: 8001
+pipeline:
+  - list_comparison:
+      type: "list_comparison"
+      list_search_base_path: "http://localhost.de/${LOGPREP_LIST}"
+      refresh_interval: 10
+      rules:
+        - filter: "system_id"
+          list_comparison:
+            source_fields: ["system_id"]
+            target_field: "allowed"
+            list_file_paths:
+              - "system/${system_id}/allowed"
+            content_field: "content"
+input:
+  dummy:
+    type: dummy_input
+    documents: [{"system_id": 1, "running": "neovim"}, {"system_id": 2, "running": "neovim"}, {"system_id": 3, "running": "neovim"}, {"system_id": 4, "running": "steam"}, {"system_id": 1, "running": "neovim"}, {"system_id": 2, "running": "neovim"}, {"system_id": 3, "running": "neovim"}, {"system_id": 4, "running": "steam"}, {"system_id": 1, "running": "neovim"}, {"system_id": 2, "running": "neovim"}, {"system_id": 3, "running": "neovim"}, {"system_id": 4, "running": "steam"}]
+    repeat_documents: false
+    health_timeout: 600
+output:
+  opensearch:
+    type: dummy_output

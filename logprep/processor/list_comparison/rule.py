@@ -49,7 +49,12 @@ from attrs import define, field, validators
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import GetterConfig, GetterFactory, HttpGetter
+from logprep.util.getter import (
+    GetterConfig,
+    GetterFactory,
+    HttpGetter,
+    RefreshableGetter,
+)
 from logprep.util.helper import get_dotted_field_value
 
 
@@ -213,7 +218,7 @@ class ListComparisonRule(FieldManagerRule):
 
         def replace_placeholder_with_dotted_field(match: re.Match) -> str:
             val = get_dotted_field_value(event, match.group(1))
-            if not isinstance(val, (str, int, float, bool, type(None))):
+            if not isinstance(val, (str, int)):
                 raise ValueError("This is not a valid scalar value")
             return str(val)
 
@@ -228,6 +233,8 @@ class ListComparisonRule(FieldManagerRule):
 
             if dynamic_resolved in self._compare_sets:
                 self._http_getters[dynamic_resolved].signal_called()
+                dynamic_resolved -= "https:// | http://"
+                RefreshableGetter.signal_called_for_target(dynamic_resolved)
                 compare_sets_result[dynamic_resolved] = self._compare_sets[dynamic_resolved]
                 continue
 
@@ -244,7 +251,7 @@ class ListComparisonRule(FieldManagerRule):
 
             compare_set = self._update_compare_sets_via_http(http_getter, dynamic_resolved)
             http_getter.add_callback(
-                self._update_compare_sets_via_http, http_getter, dynamic_resolved
+                "processor", self._update_compare_sets_via_http, http_getter, dynamic_resolved
             )
 
             self._http_getters[dynamic_resolved] = http_getter

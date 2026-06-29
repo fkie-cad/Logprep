@@ -784,7 +784,7 @@ class TestHttpGetter:
         responses.add(responses.GET, url, json=mock_response_1)
         responses.add(responses.GET, url, json=mock_response_2)
 
-        getter_file_content = {target: {"refresh_interval": 0}}
+        getter_file_content = {"${zws}/api/.*": {"refresh_interval": 0}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
