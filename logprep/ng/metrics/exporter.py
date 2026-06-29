@@ -1,15 +1,13 @@
 """This module contains functionality to start a prometheus exporter and expose metrics with it"""
 
-import os
-import shutil
 from logging import getLogger
 from typing import Any, Awaitable, Callable, Iterable
 
-from prometheus_client import REGISTRY, make_asgi_app, multiprocess
+from prometheus_client import REGISTRY, make_asgi_app
 
+from logprep.ng.util.configuration import MetricsConfig
+from logprep.ng.util.defaults import DEFAULT_HEALTH_STATE
 from logprep.util import http
-from logprep.util.configuration import MetricsConfig
-from logprep.util.defaults import DEFAULT_HEALTH_STATE
 
 logger = getLogger("Exporter")
 
@@ -51,42 +49,7 @@ class PrometheusExporter:
         self.configuration = configuration
         self.server: http.ThreadingHTTPServer | None = None
         self.healthcheck_functions: Iterable[Callable] | None = None
-        self._multiprocessing_prepared = False
         self.app: Callable[[Any, Any, Any], Awaitable] | None = None
-
-    def prepare_multiprocessing(self):
-        """
-        Sets up the proper metric registry for multiprocessing and handles the necessary
-        temporary multiprocessing directory that the prometheus client expects.
-        """
-        if self._multiprocessing_prepared:
-            return
-        multiprocess.MultiProcessCollector(REGISTRY)
-        self._multiprocessing_prepared = True
-
-    def cleanup_prometheus_multiprocess_dir(self):
-        """removes the prometheus multiprocessing directory"""
-        multiprocess_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-        if not multiprocess_dir:
-            return
-        for root, dirs, files in os.walk(multiprocess_dir):
-            for file in files:
-                os.remove(os.path.join(root, file))
-            for directory in dirs:
-                shutil.rmtree(os.path.join(root, directory), ignore_errors=True)
-        logger.info("Cleaned up %s", multiprocess_dir)
-
-    def mark_process_dead(self, pid):
-        """
-        Remove the prometheus multiprocessing database file from the multiprocessing directory.
-        This ensures that prometheus won't export stale metrics in case a process has died.
-
-        Parameters
-        ----------
-        pid : int
-                    The Id of the process whose metrics should be removed
-        """
-        multiprocess.mark_process_dead(pid)
 
     def run(self, daemon=True):
         """Starts the default prometheus http endpoint"""
@@ -94,7 +57,8 @@ class PrometheusExporter:
             return
         port = self.configuration.port
         self.init_server(daemon=daemon)
-        self.prepare_multiprocessing()
+
+        assert self.server, "Should not be none after init_server"
         self.server.start()
         logger.info("Prometheus Exporter started on port %s", port)
 
@@ -115,6 +79,11 @@ class PrometheusExporter:
         if self.server and self.server.thread and self.server.thread.is_alive():
             self.server.shut_down()
         self.run()
+
+    def shutdown(self):
+        """Shuts down the exporter"""
+        if self.server and self.server.thread and self.server.thread.is_alive():
+            self.server.shut_down()
 
     def update_healthchecks(self, healthcheck_functions: Iterable[Callable], daemon=True) -> None:
         """Updates the healthcheck functions"""

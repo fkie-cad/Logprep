@@ -11,6 +11,7 @@ from functools import partial
 from attrs import asdict
 
 from logprep.ng.manager import PipelineManager
+from logprep.ng.metrics.exporter import PrometheusExporter
 from logprep.ng.util.async_helpers import StoppableTask
 from logprep.ng.util.config_refresh import wait_for_refreshed_config
 from logprep.ng.util.configuration import Configuration
@@ -30,6 +31,13 @@ class Runner:
     def __init__(self, config: Configuration) -> None:
         self._config = config
         self._stop_event = asyncio.Event()
+
+    def _start_prometheus_exporter(self) -> None:
+        if not self._config.metrics.enabled:
+            return
+
+        self.prometheus_exporter = PrometheusExporter(self._config.metrics)
+        self.prometheus_exporter.restart()
 
     async def _run_pipeline_manager(self, stop_event: asyncio.Event, config: Configuration) -> None:
         pipeline_manager = PipelineManager(config)
@@ -100,6 +108,8 @@ class Runner:
 
     def stop(self) -> None:
         """Stop the runner and signal the underlying processing pipeline to exit."""
+
+        self.prometheus_exporter.shutdown()
 
         logger.info("Setting stop signal for the runner")
         self._stop_event.set()
