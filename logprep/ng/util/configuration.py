@@ -679,7 +679,7 @@ class Configuration:
     Time limit across all workers to drain all queues and finish up.
     """
 
-    hard_orchestrator_shutdown_timeoout_s: float = field(
+    hard_orchestrator_shutdown_timeout_s: float = field(
         validator=(validators.instance_of(float), validators.gt(0)), converter=float, default=15.0
     )
     """

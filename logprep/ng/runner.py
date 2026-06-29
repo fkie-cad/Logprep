@@ -12,7 +12,7 @@ from attrs import asdict
 
 from logprep.ng.manager import PipelineManager
 from logprep.ng.util.async_helpers import StoppableTask
-from logprep.ng.util.config_refresh import wait_for_refreshed_config
+from logprep.ng.util.config_refresh import StopConfigRefresh, wait_for_refreshed_config
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.ng.util.logging_helpers import (
@@ -30,7 +30,6 @@ class Runner:
     def __init__(self, config: Configuration) -> None:
         self._config = config
         self._stop_event = asyncio.Event()
-        self._refreshable_getter_base_interval_s = config.refreshable_getter_base_interval_s
 
     async def _run_pipeline_manager(self, stop_event: asyncio.Event, config: Configuration) -> None:
         pipeline_manager = PipelineManager(config)
@@ -42,30 +41,44 @@ class Runner:
         )
 
     async def _refresh_getters(self):
-        while not self._stop_event.is_set():
+        while True:
             # TODO make getters async
             RefreshableGetter.refresh()
-            await asyncio.sleep(self._refreshable_getter_base_interval_s)
+            try:
+                async with asyncio.timeout(self._config.refreshable_getter_base_interval_s):
+                    await self._stop_event.wait()
+                logger.debug("stopped refreshing getters as the stop_event has been set")
+                return
+            except TimeoutError:
+                pass
 
     async def _refresh_config(self, config: Configuration) -> Configuration | None:
-        return await wait_for_refreshed_config(config, self._stop_event)
+        """
+        Run config refresh until an actually changed config has been found.
+        """
+        try:
+            return await wait_for_refreshed_config(self._stop_event, config)
+        except StopConfigRefresh:
+            logger.info("config refresh has been stopped")
+        await self._stop_event.wait()
+        return None
 
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
 
         async with asyncio.TaskGroup() as tg:
-            config = self._config
-
             wait_for_stop = tg.create_task(self._stop_event.wait(), name="wait_for_stop")
             refresh_getters_loop = tg.create_task(self._refresh_getters(), name="refresh_getters")
-            refresh_config = tg.create_task(self._refresh_config(config), name="refresh_config")
+            refresh_config = tg.create_task(
+                self._refresh_config(self._config), name="refresh_config"
+            )
 
             while not self._stop_event.is_set():
 
                 logger.debug("Starting PipelineManager with current config")
 
                 pipeline_manager = StoppableTask.from_callable(
-                    partial(self._run_pipeline_manager, config=config),
+                    partial(self._run_pipeline_manager, config=self._config),
                     partial(tg.create_task, name="pipeline_manager"),
                 )
 
@@ -80,16 +93,15 @@ class Runner:
                     logger.debug("Config refresh done; collect config and schedule new refresh")
                     new_config = await refresh_config
                     if new_config:
-                        config = new_config
+                        self._config = new_config
                         refresh_config = tg.create_task(
-                            self._refresh_config(config), name="config_refresh"
-                        )
-                        self._refreshable_getter_base_interval_s = (
-                            config.refreshable_getter_base_interval_s
+                            self._refresh_config(self._config), name="config_refresh"
                         )
 
                 logger.debug("Stopping PipelineManager for restart")
-                await pipeline_manager.stop_and_cancel(config.hard_orchestrator_shutdown_timeoout_s)
+                await pipeline_manager.stop_and_cancel(
+                    self._config.hard_orchestrator_shutdown_timeout_s
+                )
 
                 if pipeline_manager.task in done:
                     logger.debug(

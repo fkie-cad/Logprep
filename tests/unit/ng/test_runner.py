@@ -2,228 +2,420 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
 
+"""Tests for Runner.run()"""
+
+import asyncio
+from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
+from unittest.mock import AsyncMock, NonCallableMagicMock, patch
 
 import pytest
 
+from logprep.ng.manager import PipelineManager
 from logprep.ng.runner import Runner
+from logprep.ng.util.config_refresh import StopConfigRefresh
 from logprep.ng.util.configuration import Configuration
 
 
-@pytest.fixture(name="configuration")
-def get_logprep_config():
-    config_dict = {
-        "process_count": 2,
-        "pipeline": [
-            {
-                "processor_0": {
-                    "type": "generic_adder",
-                    "rules": [
-                        {
-                            "filter": "*",
-                            "generic_adder": {"add": {"event.tags": "generic added tag"}},
-                        }
-                    ],
-                }
-            },
-            {
-                "processor_1": {
-                    "type": "pseudonymizer",
-                    "pubkey_analyst": "examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem",
-                    "pubkey_depseudo": "examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem",
-                    "regex_mapping": "examples/exampledata/rules/pseudonymizer/regex_mapping.yml",
-                    "hash_salt": "a_secret_tasty_ingredient",
-                    "outputs": [{"kafka": "pseudonyms"}],
-                    "rules": [
-                        {
-                            "filter": "user.name",
-                            "pseudonymizer": {
-                                "id": "pseudonymizer-1a3c69b2-5d54-4b6b-ab07-c7ddbea7917c",
-                                "mapping": {"user.name": "RE_WHOLE_FIELD"},
-                            },
-                        }
-                    ],
-                    "max_cached_pseudonyms": 1000000,
-                }
-            },
-        ],
-        "input": {"file": {"type": "dummy_input", "documents": []}},
-        "output": {
-            "kafka": {
-                "type": "dummy_output",
-                "default": False,
-            },
-            "opensearch": {
-                "type": "dummy_output",
-            },
-        },
-        "error_output": {
-            "error": {
-                "type": "dummy_output",
-            }
-        },
-        "logger": {
-            "version": 1,
-            "handlers": {
-                "console": {
-                    "class": "logging.StreamHandler",
-                    "stream": "ext://sys.stdout",
-                }
-            },
-            "loggers": {
-                "Runner": {"level": "DEBUG", "handlers": ["console"], "propagate": True},
-                "root": {"level": "DEBUG", "handlers": ["console"]},
-            },
-        },
-    }
-    return Configuration(**config_dict)
+@dataclass
+class WithArgs:
+    fn: Callable
+
+
+async def block_until_event(event: asyncio.Event, *_, **__):
+    await event.wait()
+
+
+BLOCK_UNTIL_EVENT = WithArgs(block_until_event)
+
+
+def mock_sequence(*sequence: object):
+    """
+    Build an async side_effect from a declarative sequence.
+
+      - asyncio.Event  → await it, then continue
+      - WithArgs(fn)   → call fn(*args, **kwargs); await if coroutine; return the result
+      - callable       → call it; if the result is a coroutine, await it; then continue
+      - Exception inst → raise it
+      - any other obj  → return it
+    """
+    seq = list(sequence)
+
+    async def _impl(*args, **kwargs):
+        while seq:
+            elem = seq.pop(0)
+            match elem:
+                case Exception():
+                    raise elem
+                case WithArgs(fn=fn):
+                    result = fn(*args, **kwargs)
+                    if asyncio.iscoroutine(result):
+                        result = await result
+                    return result  # terminal
+                case elem if callable(elem):
+                    result = elem()
+                    if asyncio.iscoroutine(result):
+                        await result
+                case object():
+                    return elem
+        raise AssertionError("mock_sequence exhausted: called more times than declared")
+
+    return _impl
+
+
+def async_side_effects(*funcs: Callable[..., Coroutine]):
+    """
+    Test utility for async mocks to support multiple invocations with different code paths.
+
+    ```
+    async def handler1(): ...
+    async def handler2(): ...
+
+    some_mocked_func.side_effect = async_side_effects(handler1, handler2)
+
+    await some_mocked_func() # calls handler1
+    await some_mocked_func() # calls handler2
+    ```
+    """
+    seq = iter(funcs)
+
+    async def _call(*args, **kwargs):
+        next_func = next(seq)
+        result = next_func(*args, **kwargs)
+        assert asyncio.iscoroutine(result)
+        return await result
+
+    return _call
+
+
+MODULE = "logprep.ng.runner"
+CONFIG_REFRESH = f"{MODULE}.wait_for_refreshed_config"
+GETTER_REFRESH = f"{MODULE}.RefreshableGetter.refresh"
+PIPELINE_MANAGER = f"{MODULE}.PipelineManager"
+
+
+def make_config(
+    *,
+    version: str = "v1",
+    config_refresh_interval: float | None = None,
+    getter_refresh_interval: float = 0.0,
+    graceful_orchestrator_timeout: float = 5.0,
+    graceful_worker_timeout: float = 5.0,
+    hard_orchestrator_timeout: float = 5.0,
+) -> NonCallableMagicMock:
+    cfg = NonCallableMagicMock(spec=Configuration)
+    cfg.version = version
+    cfg.config_refresh_interval = config_refresh_interval
+    cfg.refreshable_getter_base_interval_s = getter_refresh_interval
+    cfg.graceful_orchestrator_shutdown_timeout_s = graceful_orchestrator_timeout
+    cfg.graceful_worker_shutdown_timeout_s = graceful_worker_timeout
+    cfg.hard_orchestrator_shutdown_timeout_s = hard_orchestrator_timeout
+    cfg.reload = AsyncMock()
+    return cfg
+
+
+def mock_config_refresh(
+    *sequence: WithArgs | Exception | Callable | Configuration, regular_behavior: bool = True
+):
+    """
+    Declarative mock factory for `wait_for_config_refresh`.
+    The standard lifecycle entails waiting for the externally provided event and raising a
+    `StopConfigRefresh` exception afterwards.
+    """
+    expanded = [*sequence]
+    if regular_behavior:
+        expanded.append(BLOCK_UNTIL_EVENT)
+        expanded.append(StopConfigRefresh("stop_event set"))
+    return mock_sequence(*expanded)
+
+
+def mock_pipeline_run(*sequence: WithArgs | Exception | Callable, regular_behavior: bool = True):
+    """
+    Declarative mock factory for `PipelineManager.run`.
+    The standard lifecycle entails blocking on the stop_event passed in by
+    `StoppableTask` until the pipeline is signalled to stop.
+    """
+    _sequence = [*sequence]
+    if regular_behavior:
+        _sequence.append(BLOCK_UNTIL_EVENT)
+    return mock_sequence(*_sequence)
+
+
+async def run_until_exception(runner: Runner) -> Exception | None:
+    try:
+        await runner.run()
+        return None
+    except Exception as exc:
+        if isinstance(exc, ExceptionGroup):
+            return exc.exceptions[0]
+        return exc
+
+
+async def stop_runner_after(runner: Runner, event: asyncio.Event, wait: float = 0.0) -> None:
+    await event.wait()
+    await asyncio.sleep(wait)
+    runner.stop()
+
+
+@pytest.fixture(name="config")
+def config_instance():
+    return make_config()
+
+
+@pytest.fixture(name="runner")
+def runner_instance(config):
+    return Runner(config)
+
+
+@pytest.fixture(autouse=True, name="getter_refresh")
+def noop_refreshable_getter():
+    with patch(GETTER_REFRESH) as getter_refresh:
+        yield getter_refresh
+
+
+@pytest.fixture(autouse=True, name="config_refresh")
+def disable_config_refresh():
+    disabled = AsyncMock(side_effect=StopConfigRefresh("config refresh disabled"))
+    with patch(CONFIG_REFRESH, new=disabled):
+        yield disabled
+
+
+@pytest.fixture(autouse=True, name="pipeline_manager")
+def noop_pipeline_manager():
+    with patch(PIPELINE_MANAGER, spec=PipelineManager) as pm:
+        pm.return_value = pm  # same mock for instances
+        yield pm
 
 
 class TestRunner:
-    def teardown_method(self):
-        Runner.instance = None
 
-    # def test_reload_calls_sender_shut_down(self, configuration):
-    #     runner = Runner(configuration)
-    #     with mock.patch.object(runner.sender, "shut_down") as mock_sender_shut_down:
-    #         runner.reload()
-    #         mock_sender_shut_down.assert_called_once()
+    async def test_external_stop_sets_stop_event(self, runner):
+        assert not runner._stop_event.is_set()
+        runner.stop()
+        assert runner._stop_event.is_set()
 
-    # def test_reload_starts_new_sender(self, configuration):
-    #     runner = Runner(configuration)
-    #     old_sender = runner.sender
-    #     runner.reload()
-    #     assert runner.sender is not old_sender
+    @pytest.mark.timeout(5)
+    async def test_external_stop_shuts_down_cleanly(
+        self, runner, pipeline_manager, config_refresh, getter_refresh
+    ):
+        pipeline_run_called = asyncio.Event()
 
-    # def test_reload_schedules_new_config_refresh_job(self, configuration):
-    #     runner = Runner(configuration)
-    #     with mock.patch(
-    #         "logprep.ng.util.configuration.Configuration.schedule_config_refresh"
-    #     ) as mock_schedule:
-    #         runner.reload()
-    #         mock_schedule.assert_called_once()
+        pipeline_manager.run.side_effect = mock_pipeline_run(pipeline_run_called.set)
 
-    # def test_process_events_iterates_sender(self, caplog, configuration):
-    #     caplog.set_level("DEBUG")
+        await asyncio.gather(
+            runner.run(),
+            stop_runner_after(runner, pipeline_run_called),
+        )
 
-    #     sender = mock.MagicMock()
-    #     sender.__iter__.return_value = [
-    #         mock.MagicMock(),
-    #         mock.MagicMock(),
-    #         mock.MagicMock(),
-    #         mock.MagicMock(),
-    #     ]
-    #     runner = Runner(configuration)
-    #     runner.sender = sender
+        pipeline_manager.setup.assert_called()
+        pipeline_manager.run.assert_called_once()
+        config_refresh.assert_called()
+        getter_refresh.assert_called()
 
-    #     assert runner
+    @pytest.mark.timeout(5)
+    async def test_pipeline_manager_stops_by_itself(self, runner, pipeline_manager, config_refresh):
+        pipeline_manager.run.side_effect = mock_pipeline_run(None, regular_behavior=False)
+        config_refresh.side_effect = mock_config_refresh()
 
-    #     runner._process_events()
+        await runner.run()
 
-    #     assert len(caplog.text.splitlines()) == 18, "all events processed plus start and end logs"
-    #     assert "event processed" in caplog.text
+        assert runner._stop_event.is_set()
+        pipeline_manager.run.assert_called_once()
 
-    # def test_run_refreshes_configuration(self, configuration):
-    #     sender = mock.MagicMock()
-    #     sender.__iter__.return_value = [
-    #         mock.MagicMock(),
-    #         mock.MagicMock(),
-    #         mock.MagicMock(),
-    #         mock.MagicMock(),
-    #     ]
-    #     runner = Runner(configuration)
-    #     runner.sender = sender
-    #     runner._process_events = mock.MagicMock()
-    #     assert runner
+    @pytest.mark.timeout(5)
+    async def test_pipeline_manager_exception_propagates(
+        self, runner, pipeline_manager, config_refresh
+    ):
+        pipeline_manager.run.side_effect = RuntimeError("pipeline failed")
+        config_refresh.side_effect = mock_config_refresh()
 
-    #     configuration.version = "set"
+        exc = await run_until_exception(runner)
 
-    #     with mock.patch.object(Configuration, "refresh", autospec=True) as mock_refresh:
-    #         mock_refresh.side_effect = lambda _: setattr(runner, "should_exit", True)
+        assert isinstance(exc, RuntimeError)
+        assert "pipeline failed" in str(exc)
 
-    #         runner.run()
-    #         mock_refresh.assert_called_with(configuration)
-    #         assert mock_refresh.call_count == 2
+    @pytest.mark.timeout(5)
+    async def test_pipeline_setup_exception_propagates(
+        self, runner, pipeline_manager, config_refresh
+    ):
+        pipeline_manager.setup.side_effect = RuntimeError("setup failed")
+        config_refresh.side_effect = mock_config_refresh()
 
-    # def test_process_events_logs_failed_event_on_debug(self, caplog, configuration):
-    #     caplog.set_level("DEBUG")
-    #     failing_event = mock.MagicMock()
-    #     failing_event.state = EventStateType.FAILED
+        exc = await run_until_exception(runner)
 
-    #     runner = Runner(configuration)
+        assert isinstance(exc, RuntimeError)
+        assert "setup failed" in str(exc)
 
-    #     with mock.patch.object(runner, "sender") as mock_sender:
-    #         mock_sender.__iter__.return_value = [
-    #             mock.MagicMock(),
-    #             failing_event,
-    #             mock.MagicMock(),
-    #         ]
+    @pytest.mark.timeout(5)
+    async def test_config_refresh_restarts_pipeline_with_new_config(
+        self, runner, pipeline_manager, config_refresh
+    ):
+        new_config = make_config(version="v2")
+        pipeline_restarted = asyncio.Event()
 
-    #         with caplog.at_level("DEBUG", logger="Runner"):
-    #             runner._process_events()
+        config_refresh.side_effect = mock_config_refresh(new_config)
 
-    #             runner_logs = [
-    #                 rec.getMessage().lower() for rec in caplog.records if rec.name == "Runner"
-    #             ]
-    #             assert any("event failed" in msg for msg in runner_logs)
-    #             assert any("event processed" in msg for msg in runner_logs)
+        pipeline_manager.run.side_effect = async_side_effects(
+            mock_pipeline_run(),
+            mock_pipeline_run(pipeline_restarted.set),
+        )
 
-    # def test_setup_logging_emits_env(self, configuration):
-    #     runner = Runner(configuration)
-    #     assert not os.environ.get("LOGPREP_LOG_CONFIG")
-    #     runner.setup_logging()
-    #     assert os.environ.get("LOGPREP_LOG_CONFIG")
+        await asyncio.gather(runner.run(), stop_runner_after(runner, pipeline_restarted))
 
-    # def test_setup_logging_calls_dict_config(self, configuration):
-    #     runner = Runner(configuration)
-    #     with mock.patch("logging.config.dictConfig") as mock_dict_config:
-    #         runner.setup_logging()
-    #         mock_dict_config.assert_called_once()
+        assert pipeline_manager.run.call_count == 2
+        assert pipeline_manager.setup.call_count == 2
+        assert pipeline_manager.call_args_list[1].args[0] is new_config
 
-    # def test_setup_logging_captures_warnings(self, configuration):
-    #     runner = Runner(configuration)
-    #     with mock.patch("logging.captureWarnings") as mock_capture_warnings:
-    #         runner.setup_logging()
-    #         mock_capture_warnings.assert_called_once_with(True)
+    @pytest.mark.timeout(5)
+    async def test_config_refresh_updates_config(self, runner, pipeline_manager, config_refresh):
+        config = make_config(getter_refresh_interval=0.1)
+        runner._config = config
+        new_config = make_config(version="v2", getter_refresh_interval="illegal")
 
-    # def test_setup_logging_sets_filter(self, configuration):
-    #     runner = Runner(configuration)
-    #     with mock.patch("warnings.simplefilter") as mock_simplefilter:
-    #         runner.setup_logging()
-    #         mock_simplefilter.assert_called_once_with("always", DeprecationWarning)
+        pipeline_manager.run.side_effect = async_side_effects(
+            mock_pipeline_run(),
+            mock_pipeline_run(),
+        )
+        config_refresh.side_effect = mock_config_refresh(new_config)
 
-    # def test_stop_method(self, configuration):
-    #     runner = Runner(configuration)
-    #     runner.stop()
-    #     runner.run()
+        exc = await run_until_exception(runner)
 
-    #     assert runner.should_exit
+        assert runner._config is new_config
+        assert isinstance(exc, TypeError)
 
-    # def test_process_none_event(self, configuration):
-    #     sender = mock.MagicMock()
-    #     sender.__iter__.return_value = [
-    #         None,
-    #     ]
+    @pytest.mark.timeout(5)
+    async def test_config_refresh_exception_propagates(
+        self, runner, pipeline_manager, config_refresh
+    ):
+        pipeline_manager.run.side_effect = mock_pipeline_run()
+        config_refresh.side_effect = mock_config_refresh(RuntimeError("refresh failed"))
 
-    #     runner = Runner(configuration)
-    #     runner.sender = sender
+        exc = await run_until_exception(runner)
 
-    #     with mock.patch.object(Configuration, "refresh", autospec=True) as mock_refresh:
-    #         mock_refresh.side_effect = lambda _: setattr(runner, "should_exit", True)
+        assert isinstance(exc, RuntimeError)
+        assert "refresh failed" in str(exc)
 
-    #         runner.run()
-    #         mock_refresh.assert_called_with(configuration)
-    #         assert mock_refresh.call_count == 1
+    @pytest.mark.timeout(5)
+    async def test_refresh_disabled_runner_runs_until_stopped(
+        self, runner, pipeline_manager, config_refresh
+    ):
+        pipeline_running = asyncio.Event()
 
-    # def test_shut_down_calls_input_connector_acknowledge(self, configuration):
-    #     runner = Runner(configuration)
+        pipeline_manager.run.side_effect = mock_pipeline_run(pipeline_running.set)
 
-    #     with mock.patch.object(runner._input_connector, "acknowledge") as mock_ack:
-    #         runner.shut_down()
-    #         mock_ack.assert_called_once()
+        result = await asyncio.gather(
+            runner.run(), stop_runner_after(runner, pipeline_running), return_exceptions=True
+        )
 
-    # def test_reload_calls_input_connector_acknowledge(self, configuration):
-    #     runner = Runner(configuration)
+        assert result[0] is None
+        pipeline_manager.run.assert_called_once()
 
-    #     with mock.patch.object(runner._input_connector, "acknowledge") as mock_ack:
-    #         runner.reload()
-    #         mock_ack.assert_called_once()
+    @pytest.mark.timeout(5)
+    async def test_getter_exception_propagates(self, runner, pipeline_manager, config_refresh):
+        class GetterError(RuntimeError):
+            pass
+
+        pipeline_manager.run.side_effect = mock_pipeline_run()
+        config_refresh.side_effect = mock_config_refresh()
+
+        with patch(GETTER_REFRESH, side_effect=GetterError("getter exploded")):
+            exc = await run_until_exception(runner)
+
+        assert isinstance(exc, GetterError)
+
+    @pytest.mark.timeout(5)
+    async def test_getter_loop_unexpected_stop_sets_stop_event(
+        self, runner, pipeline_manager, config_refresh
+    ):
+        pipeline_manager.run.side_effect = mock_pipeline_run()
+        config_refresh.side_effect = mock_config_refresh()
+
+        async def getter_loop_returns_early(self_inner):
+            return
+
+        with patch.object(Runner, "_refresh_getters", getter_loop_returns_early):
+            result = await asyncio.gather(runner.run(), return_exceptions=True)
+
+        assert result[0] is None
+        assert runner._stop_event.is_set()
+
+    @pytest.mark.timeout(5)
+    async def test_config_refresh_and_stop_race(self, runner, pipeline_manager, config_refresh):
+        pipeline_manager.run.side_effect = async_side_effects(
+            mock_pipeline_run(), mock_pipeline_run()
+        )
+        config_refresh.side_effect = mock_config_refresh(make_config(version="v2"))
+
+        async def stop_concurrently():
+            await asyncio.sleep(0)
+            runner.stop()
+
+        result = await asyncio.gather(runner.run(), stop_concurrently(), return_exceptions=True)
+
+        assert result[0] is None
+
+    @pytest.mark.timeout(5)
+    async def test_pipeline_crash_and_concurrent_stop(
+        self, runner, pipeline_manager, config_refresh
+    ):
+        class PipelineCrash(RuntimeError):
+            pass
+
+        pipeline_crashed = asyncio.Event()
+
+        pipeline_manager.run.side_effect = mock_pipeline_run(
+            pipeline_crashed.set, PipelineCrash("crash"), regular_behavior=False
+        )
+        config_refresh.side_effect = mock_config_refresh()
+
+        async def stop_on_crash():
+            await pipeline_crashed.wait()
+            runner.stop()
+
+        result = await asyncio.gather(runner.run(), stop_on_crash(), return_exceptions=True)
+
+        assert isinstance(result[0], ExceptionGroup)
+        assert any(isinstance(e, PipelineCrash) for e in result[0].exceptions)
+        assert result[1] is None
+
+    @pytest.mark.timeout(5)
+    async def test_multiple_config_refreshes_each_restart_pipeline(
+        self, runner, pipeline_manager, config_refresh
+    ):
+        v2 = make_config(version="v2")
+        v3 = make_config(version="v3")
+        pipeline_started_third_time = asyncio.Event()
+
+        pipeline_manager.run.side_effect = async_side_effects(
+            mock_pipeline_run(),
+            mock_pipeline_run(),
+            mock_pipeline_run(pipeline_started_third_time.set),
+        )
+        config_refresh.side_effect = mock_config_refresh(v2, v3)
+
+        await asyncio.gather(runner.run(), stop_runner_after(runner, pipeline_started_third_time))
+
+        assert pipeline_manager.run.call_count == 3
+        versions = [call.args[0].version for call in pipeline_manager.call_args_list]
+        assert versions == ["v1", "v2", "v3"]
+
+    @pytest.mark.timeout(5)
+    async def test_hard_shutdown_timeout_exceeded_pipeline_is_cancelled(
+        self, runner, pipeline_manager, config_refresh
+    ):
+        pipeline_started = asyncio.Event()
+
+        runner._config = make_config(hard_orchestrator_timeout=0.0)
+        config_refresh.side_effect = mock_config_refresh()
+
+        pipeline_manager.run.side_effect = mock_pipeline_run(
+            pipeline_started.set, asyncio.Event(), regular_behavior=False
+        )
+
+        result = await asyncio.gather(
+            runner.run(),
+            stop_runner_after(runner, pipeline_started),
+            return_exceptions=True,
+        )
+
+        assert result[0] is None

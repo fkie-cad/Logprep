@@ -11,9 +11,16 @@ from logprep.ng.util.configuration import Configuration
 logger = logging.getLogger("config_refresh")
 
 
+class StopConfigRefresh(Exception):
+    """
+    Configuration refresh has been disabled
+    """
+
+
 async def wait_for_refreshed_config(
-    current_config: Configuration, stop_event: asyncio.Event
-) -> Configuration | None:
+    stop_event: asyncio.Event,
+    current_config: Configuration,
+) -> Configuration:
 
     config = current_config
 
@@ -21,11 +28,8 @@ async def wait_for_refreshed_config(
     refresh_interval = config.config_refresh_interval
 
     if refresh_interval is None:
-        logger.debug("Config refresh has been disabled.")
-        await stop_event.wait()
-        return None
-    else:
-        logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
+        raise StopConfigRefresh("config_refresh_interval is not set")
+    logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
 
     loop = asyncio.get_running_loop()
     next_run = loop.time() + refresh_interval
@@ -70,8 +74,7 @@ async def wait_for_refreshed_config(
 
         next_run += refresh_interval
 
-    await stop_event.wait()
-    return None
+    raise StopConfigRefresh("config refresh has been stopped externally")
 
 
 async def config_refresh_gen(
@@ -110,7 +113,7 @@ async def config_refresh_gen(
         yield config
 
     while not stop_event.is_set():
-        new_config = await wait_for_refreshed_config(config, stop_event)
+        new_config = await wait_for_refreshed_config(stop_event, config)
         if new_config is None:
             break
         config = new_config
