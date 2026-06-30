@@ -106,11 +106,17 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             tracker.return_value = tracker
             yield tracker
 
-    def _create_log_event(self, data: dict[str, FieldValue], original: bytes | None = None):
+    def _create_log_event(
+        self,
+        data: dict[str, FieldValue],
+        original: bytes | None = None,
+        partition: int = 0,
+        offset: int = 0,
+    ):
         return LogEvent(
             data,
             original=original,
-            input_meta=ConfluentKafkaInputMeta(partition=0, offset=0),
+            input_meta=ConfluentKafkaInputMeta(partition=partition, offset=offset),
         )
 
     async def test_client_id_is_set_to_hostname(self):
@@ -196,49 +202,45 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         mock_consumer.close.assert_called_once()
 
-    # TODO migrate tests to test acknowledge() instead
-    # async def test_batch_finished_callback_calls_store_offsets(self, mock_consumer):
-    #     input_config = deepcopy(self.CONFIG)
-    #     kafka_input = Factory.create({"test": input_config})
+    async def test_acknowledge_calls_store_offsets_with_tracker_result(
+        self, mock_consumer, mock_tracker
+    ):
+        await self.object.setup()
 
-    #     kafka_consumer = kafka_input._consumer
-    #     message = "test message"
-    #     kafka_input._last_valid_record = message
-    #     kafka_input.batch_finished_callback()
-    #     kafka_consumer.store_offsets.assert_called()
-    #     kafka_consumer.store_offsets.assert_called_with(message=message)
+        expected_offsets = [TopicPartition("test_input_raw", partition=0, offset=43)]
+        mock_tracker.advance_offsets.return_value = expected_offsets
 
-    #     kafka_input.shut_down()
+        event = self._create_log_event({"some": "event"})
+        await self.object.acknowledge([event])
 
-    # @mock.patch(f"{MODULE}.Consumer")
-    # async def test_batch_finished_callback_does_not_call_store_offsets(self, _):
-    #     input_config = deepcopy(self.CONFIG)
-    #     kafka_input = Factory.create({"test": input_config})
+        mock_tracker.advance_offsets.assert_called_once()
+        mock_consumer.store_offsets.assert_called_with(offsets=expected_offsets)
 
-    #     kafka_consumer = kafka_input._consumer
-    #     kafka_input._last_valid_record = None
-    #     kafka_input.batch_finished_callback()
-    #     kafka_consumer.store_offsets.assert_not_called()
+    async def test_acknowledge_does_not_call_store_offsets_if_no_offset_committable(
+        self, mock_consumer, mock_tracker
+    ):
+        await self.object.setup()
 
-    #     kafka_input.shut_down()
+        mock_tracker.advance_offsets.return_value = []
 
-    # @mock.patch(f"{MODULE}.Consumer")
-    # async def test_batch_finished_callback_raises_input_warning_on_kafka_exception(self, _):
-    #     input_config = deepcopy(self.CONFIG)
-    #     kafka_input = Factory.create({"test": input_config})
+        event = self._create_log_event({"some": "event"})
+        await self.object.acknowledge([event])
 
-    #     kafka_consumer = kafka_input._consumer
-    #     return_sequence = [KafkaException("test error"), None]
+        mock_consumer.store_offsets.assert_not_called()
 
-    #     def raise_generator(return_sequence):
-    #         return list(reversed(return_sequence)).pop()
+    async def test_acknowledge_raises_input_warning_on_kafka_exception(
+        self, mock_consumer, mock_tracker
+    ):
+        await self.object.setup()
 
-    #     kafka_consumer.store_offsets.side_effect = raise_generator(return_sequence)
-    #     kafka_input._last_valid_record = {0: "message"}
-    #     with pytest.raises(InputWarning):
-    #         kafka_input.batch_finished_callback()
+        mock_tracker.advance_offsets.return_value = [
+            TopicPartition("test_input_raw", partition=0, offset=1)
+        ]
+        mock_consumer.store_offsets.side_effect = KafkaException("test error")
 
-    #     kafka_input.shut_down()
+        event = self._create_log_event({"some": "event"})
+        with pytest.raises(InputWarning, match="test error"):
+            await self.object.acknowledge([event])
 
     async def test_get_next_raises_critical_input_error_if_not_a_dict(self, mock_consumer):
         await self.object.setup()

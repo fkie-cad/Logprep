@@ -60,6 +60,7 @@ from logprep.ng.abc.input import (
     CriticalInputParsingError,
     FatalInputError,
     Input,
+    InputWarning,
 )
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
 from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
@@ -580,11 +581,17 @@ class ConfluentKafkaInput(Input):
             )
         )
 
-        if events and not commit_offsets:
-            logger.debug("events were acknowledged, no committable offset identified")
-            return
-
-        await self._consumer.store_offsets(offsets=commit_offsets)
+        if commit_offsets:
+            try:
+                logger.debug("storing offsets for %d partitions", len(commit_offsets))
+                await self._consumer.store_offsets(offsets=commit_offsets)
+            except KafkaException as error:
+                # only a warning as the next call will generally store higher offsets
+                raise InputWarning.from_error(
+                    self,
+                    error,
+                    message=f"could not store offsets ({', '.join(map(str, commit_offsets))})",
+                ) from error
 
     async def shut_down(self) -> None:
         """Shut down the confluent kafka input connector and cleanup resources."""

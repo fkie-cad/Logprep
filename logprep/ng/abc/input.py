@@ -57,12 +57,19 @@ class InputWarning(LogprepException):
     """May be catched but must be displayed to the user/logged."""
 
     @classmethod
-    def from_error(cls, connector: "Input", error: Exception) -> "InputWarning":
+    def from_error(
+        cls, connector: "Input", error: Exception, message: str | None = None
+    ) -> "InputWarning":
+        """Generate an `InputWarning` from a low level error"""
         connector.metrics.number_of_warnings += 1
-        return cls(f"{cls.__name__} in {connector.describe()}: {str(error)}")
+        if message is not None:
+            return cls(f"{cls.__name__} in {connector.describe()}: {message}: {str(error)}")
+        else:
+            return cls(f"{cls.__name__} in {connector.describe()}: {str(error)}")
 
     @classmethod
     def from_message(cls, connector: "Input", message: str) -> "InputWarning":
+        """Generate an `InputWarning` from a message"""
         connector.metrics.number_of_warnings += 1
         return cls(f"{cls.__name__} in {connector.describe()}: {message}")
 

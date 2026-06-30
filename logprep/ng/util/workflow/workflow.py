@@ -14,7 +14,7 @@ from logprep.ng.abc.event import (
     ExtraDataEvent,
     LogEvent,
 )
-from logprep.ng.abc.input import Input
+from logprep.ng.abc.input import Input, InputError, InputWarning
 from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
 from logprep.ng.processor import process
@@ -200,12 +200,21 @@ def create_orchestrator(
         handler=_send_error_output_handler,
     )
 
+    async def _acknowledge_events(batch: Sequence[AcknowledgableEvent]) -> None:
+        try:
+            await input_source.acknowledge(batch)
+        except InputWarning as warning:
+            logger.warning(str(warning))
+        except InputError as error:
+            logger.error(error)
+            raise error
+
     acknowledge_worker: Worker[AcknowledgableEvent] = BatchingWorker(
         name="acknowledge_worker",
         config=config.workers["acknowledge_worker"],
         in_queue=acknowledge_queue,
         out_queues=[],
-        handler=input_source.acknowledge,
+        handler=_acknowledge_events,
     )
 
     # TODO register a cleanup task to shutdown queues? is this necessary?
