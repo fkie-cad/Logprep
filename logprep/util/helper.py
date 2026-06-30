@@ -373,7 +373,7 @@ def get_field_value(event: dict[str, FieldValue], fields: Iterable[str]) -> Fiel
         for field in fields:
             current = _get_item(current, field)
         return current
-    except (KeyError, TypeError):
+    except (KeyError, ValueError, TypeError, IndexError):
         return MISSING
 
 

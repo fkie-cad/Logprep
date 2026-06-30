@@ -27,9 +27,11 @@ from logprep.util.helper import (
     FieldValue,
     Missing,
     add_fields_to,
+    field_list_to_dotted_field,
     get_dotted_field_list,
     get_dotted_field_value,
     get_dotted_field_value_with_missing,
+    get_field_value,
 )
 from logprep.util.preprocessor import (
     FullEventConfig,
@@ -268,12 +270,17 @@ class Input(Connector):
             if len(get_dotted_field_list(target)) == 1:
                 raise error
             original_target = target
-            target_value = get_dotted_field_value(event, target)
-            while target_value is None:
-                target, _, _ = target.rpartition(".")
-                target_value = get_dotted_field_value(event, target)
+
+            target_fields = list(get_dotted_field_list(target))
+            target_value = get_field_value(event, target_fields)
+            while target_value is MISSING:
+                target_fields.pop()
+                target_value = get_field_value(event, target_fields)
+
             add_fields_to(event, {original_target: time}, overwrite_target=True)
-            add_fields_to(event, {f"{target}.@original": target_value})
+            add_fields_to(
+                event, {field_list_to_dotted_field([*target_fields, "@original"]): target_value}
+            )
             assert True
 
     def _write_full_event_to_target_field(
