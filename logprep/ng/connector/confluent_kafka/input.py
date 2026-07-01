@@ -311,10 +311,11 @@ class ConfluentKafkaInput(Input):
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
-        DEFAULTS.update({"client.id": getfqdn()})
+        fqdn = getfqdn()
+        DEFAULTS.update({"client.id": fqdn})
         DEFAULTS.update(
             {
-                "group.instance.id": f"{getfqdn().strip('.')}-"
+                "group.instance.id": f"{fqdn.strip('.')}-"
                 f"Pipeline{self.pipeline_index}-pid{os.getpid()}"
             }
         )
@@ -537,7 +538,7 @@ class ConfluentKafkaInput(Input):
 
         if error is not None:
             self.metrics.commit_failures += 1
-            # TODO add a log warning
+            raise InputWarning.from_error(self, error, "Could not commit offsets")
         self.metrics.commit_success += 1
         for tp in topic_partitions:
             offset = tp.offset

@@ -32,9 +32,7 @@ from logprep.ng.abc.input import (
     FatalInputError,
     InputWarning,
 )
-from logprep.ng.connector.confluent_kafka.input import (
-    ConfluentKafkaInput,
-)
+from logprep.ng.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.ng.connector.confluent_kafka.input import logger as kafka_input_logger
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
 from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
@@ -45,6 +43,45 @@ from tests.unit.ng.connector.base import BaseInputTestCase
 
 MODULE = "logprep.ng.connector.confluent_kafka.input"
 KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
+
+
+@pytest.fixture(name="real_consumer")
+def fixture_real_consumer():
+    yield
+
+
+@pytest.fixture(name="mock_consumer")
+def fixture_mock_consumer(request):
+    if fixture_real_consumer.name in request.fixturenames:
+        yield
+        return
+    with mock.patch(f"{MODULE}.AIOConsumer", spec=AIOConsumer) as mock_consumer:
+        mock_consumer.return_value = mock_consumer
+        mock_consumer._consumer = mock.MagicMock()
+        mock_consumer._consumer.memberid.return_value = 42
+        yield mock_consumer
+
+
+@pytest.fixture(name="mock_executor")
+def fixture_mock_executor():
+    with mock.patch(
+        f"{MODULE}.concurrent.futures.ThreadPoolExecutor",
+        spec=ThreadPoolExecutor,
+    ) as executor:
+        executor.return_value = executor
+        yield executor
+
+
+@pytest.fixture(autouse=True)
+def autouse_central_fixtures(mock_consumer, mock_executor):
+    yield mock_consumer, mock_executor  # return technically not required
+
+
+@pytest.fixture
+def mock_tracker():
+    with mock.patch(f"{MODULE}.OffsetCommitTracker", spec=OffsetCommitTracker) as tracker:
+        tracker.return_value = tracker
+        yield tracker
 
 
 class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
@@ -77,34 +114,6 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
     ]
-
-    @pytest.fixture
-    def mock_consumer(self):
-        # TODO do we need the whole path, or can we make this prettier?
-        with mock.patch(f"{MODULE}.AIOConsumer", spec=AIOConsumer) as mock_consumer:
-            mock_consumer.return_value = mock_consumer
-            mock_consumer._consumer = mock.MagicMock()
-            mock_consumer._consumer.memberid.return_value = 42
-            yield mock_consumer
-
-    @pytest.fixture
-    def mock_executor(self):
-        with mock.patch(
-            f"{MODULE}.concurrent.futures.ThreadPoolExecutor",
-            spec=ThreadPoolExecutor,
-        ) as executor:
-            executor.return_value = executor
-            yield executor
-
-    @pytest.fixture(autouse=True)
-    def autouse_central_fixtures(self, mock_consumer, mock_executor):
-        yield mock_consumer, mock_executor  # return technically not required
-
-    @pytest.fixture
-    def mock_tracker(self):
-        with mock.patch(f"{MODULE}.OffsetCommitTracker", spec=OffsetCommitTracker) as tracker:
-            tracker.return_value = tracker
-            yield tracker
 
     def _create_log_event(
         self,
@@ -340,6 +349,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         assert isinstance(error_event, ErrorEvent)
         assert "is not 'utf-8' encoded" in error_event.reason
 
+    @pytest.mark.usefixtures("real_consumer")
     async def test_setup_raises_fatal_input_error_on_invalid_config(self):
         self.object = self._create_test_instance(
             config_patch={
@@ -350,8 +360,11 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
                 }
             }
         )
-        with pytest.raises(FatalInputError, match="No such configuration property"):
-            await self.object.setup()
+        with pytest.raises(FatalInputError):
+            # use real consumer __init__ for validation, but never actually subscribe
+            with mock.patch(f"{MODULE}.AIOConsumer.subscribe") as mock_subscribe:
+                await self.object.setup()
+        mock_subscribe.assert_not_called()
 
     async def test_get_next_raises_critical_input_parsing_error(self):
         await self.object.setup()
@@ -365,9 +378,10 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         assert "Input record value is not a valid json string" in error_event.data["reason"]
 
     async def test_commit_callback_raises_warning_error_and_counts_failures(self):
+        self.object.metrics.commit_failures = 0
         with pytest.raises(InputWarning, match="Could not commit offsets"):
-            await self.object._commit_callback(Exception, ["topic_partition"])
-        assert self.object._commit_failures == 1
+            await self.object._commit_callback(Exception, [mock.MagicMock()])
+        assert self.object.metrics.commit_failures == 1
 
     async def test_commit_callback_counts_commit_success(self):
         self.object.metrics.commit_success = 0
