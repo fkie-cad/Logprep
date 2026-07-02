@@ -131,9 +131,12 @@ class NetworkComparisonRule(ListComparisonRule):
         super().init_list_comparison(owner, list_search_base_path)
         self._convert_compare_sets_to_networks()
 
-    def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
-        super()._update_compare_sets_via_http(http_getter, list_path)
+    def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> set | None:
+        compare_set = super()._update_compare_sets_via_http(http_getter, list_path)
         self._convert_compare_sets_to_networks()
+        if compare_set is None:
+            return None
+        return self._compare_sets.get(list_path)
 
     def _convert_compare_sets_to_networks(self) -> None:
         network_comparison: dict = {}
