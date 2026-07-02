@@ -59,6 +59,10 @@ class Getter(ABC):
     )
     """used variables in content but not set in environment"""
 
+    @property
+    def uri(self) -> str:
+        return f"{self.protocol}://{self.target}"
+
     def get(self) -> str:
         """Returns content with enriched environment variables."""
         raw, _ = self._get_raw()

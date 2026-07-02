@@ -10,6 +10,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
+from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -190,6 +191,7 @@ class TestAmides(BaseProcessorTestCase):
         self.object = Factory.create({"amides": config})
 
         with monkeypatch.context() as monkey_context:
+            monkey_context.delenv(ENV_NAME_LOGPREP_GETTER_CONFIG, raising=False)
             monkey_context.chdir(tmp_path)
             self.object.setup()
             cached_file = Path(f"{current_process().name}-{self.object.name}.zip")
@@ -210,6 +212,7 @@ class TestAmides(BaseProcessorTestCase):
         self.object = Factory.create({"amides": config})
 
         with monkeypatch.context() as monkey_context:
+            monkey_context.delenv(ENV_NAME_LOGPREP_GETTER_CONFIG, raising=False)
             monkey_context.chdir(tmp_path)
             self.object.setup()
             loaded_file = Path(f"{current_process().name}-{self.object.name}.zip")

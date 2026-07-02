@@ -272,9 +272,10 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
     @responses.activate
     def test_network_comparison_loads_rule_with_http_template_in_list_search_base_path(self):
+        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
         responses.add(
             responses.GET,
-            "http://localhost/tests/testdata/bad_ips.list?ref=bla",
+            url,
             """127.0.0.1
 127.0.0.2
 127.0.0.3
@@ -299,7 +300,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         processor._rule_tree.add_rule(rule)
         processor.setup()
         assert processor.rules[0].compare_sets == {
-            "bad_ips.list": {
+            url: {
                 IPv4Network("127.0.0.1/32"),
                 IPv4Network("127.0.0.2/32"),
                 IPv4Network("127.0.0.3/32"),
@@ -365,7 +366,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
         HttpGetter._shared.clear()
 
-        getter_file_content = {target: {"refresh_interval": 10}}
+        getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
@@ -375,22 +376,22 @@ class TestNetworkComparison(BaseProcessorTestCase):
             processor._rule_tree.add_rule(rule)
             processor.setup()
             assert processor.rules[0].compare_sets == {
-                "bad_ips.list": {
+                url: {
                     IPv4Network("1.1.1.1/32"),
                     IPv4Network("2.2.2.2/32"),
                     IPv4Network("127.0.0.1/32"),
                 }
             }
             assert processor.rules[0].compare_sets == {
-                "bad_ips.list": {
+                url: {
                     IPv4Network("1.1.1.1/32"),
                     IPv4Network("2.2.2.2/32"),
                     IPv4Network("127.0.0.1/32"),
                 }
             }
-            HttpGetter(target=target, protocol="http").scheduler.run_all()
+            HttpGetter(target=url, protocol="http").scheduler.run_all()
             assert processor.rules[0].compare_sets == {
-                "bad_ips.list": {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
+                url: {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
             }
 
     def test_network_comparison_does_not_add_duplicates_from_list_source(self):
@@ -623,7 +624,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         log_event = LogEvent(document, original=b"")
         expected_recovered_document = {
             "ip": "1.2.3.4",
-            "ip_results": {"in_list": [list_name]},
+            "ip_results": {"in_list": [url]},
         }
 
         HttpGetter._shared.clear()
@@ -637,6 +638,6 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
         assert rule.data_error is None
         assert document == expected_recovered_document
-        assert rule.compare_sets == {list_name: {IPv4Network("1.2.3.4/32")}}
+        assert rule.compare_sets == {url: {IPv4Network("1.2.3.4/32")}}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200

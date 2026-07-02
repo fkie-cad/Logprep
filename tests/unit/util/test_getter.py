@@ -40,7 +40,8 @@ yaml = YAML(pure=True, typ="safe")
 
 
 @pytest.fixture(autouse=True)
-def fixture_clear_getter_cache():
+def fixture_clear_getter_cache(monkeypatch):
+    monkeypatch.delenv(ENV_NAME_LOGPREP_GETTER_CONFIG, raising=False)
     getter = HttpGetter(protocol="http", target="anything")
     getter._shared.clear()
 
@@ -68,8 +69,8 @@ class TestGetterFactory:
             ("file:///my/file", "file", "/my/file"),
             ("/my/file", "file", "/my/file"),
             ("my/file", "file", "my/file"),
-            ("http://my/file", "http", "my/file"),
-            ("https://my/file", "https", "my/file"),
+            ("http://my/file", "http", "http://my/file"),
+            ("https://my/file", "https", "https://my/file"),
         ],
     )
     def test_from_string_sets_protocol_and_target(
@@ -83,7 +84,7 @@ class TestGetterFactory:
     def test_getter_expands_from_environment(self):
         url = "https://${PYTEST_TEST_TARGET}"
         my_getter = GetterFactory.from_string(url)
-        assert my_getter.target == "the-web-target"
+        assert my_getter.target == "https://the-web-target"
 
     @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_environment_variables_in_content(self, tmp_path):
@@ -953,8 +954,8 @@ class TestHttpGetter:
         http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
         http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
 
-        assert http_getter_1.target == target_1
-        assert http_getter_2.target == target_2
+        assert http_getter_1.target == url_1
+        assert http_getter_2.target == url_2
 
     @responses.activate
     def test_getter_from_dict_with_two_getters_same_url_refresh_updates_cache(self, tmp_path):
@@ -1271,7 +1272,7 @@ class TestHttpGetter:
             def callback(foo, bar, keyword1=0):
                 self._callback_value += foo + bar + keyword1
 
-            http_getter_1.add_callback(callback, 1, 2, keyword1=3)
+            http_getter_1.add_callback("test_owner_1", callback, 1, 2, keyword1=3)
 
             http_getter_1.get_json()
             assert self._callback_value == 0
@@ -1288,7 +1289,7 @@ class TestHttpGetter:
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 12
-            http_getter_2.add_callback(callback, 1, 0, keyword1=1)
+            http_getter_2.add_callback("test_owner_2", callback, 1, 0, keyword1=1)
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 14
@@ -1322,7 +1323,7 @@ class TestHttpGetter:
             def callback(foo, bar, keyword1=0):
                 self._callback_value += foo + bar + keyword1
 
-            HttpGetter.add_callback_for_target(target_1, callback, 1, 2, keyword1=3)
+            HttpGetter.add_callback_for_target("test_owner_1", url_1, callback, 1, 2, keyword1=3)
 
             http_getter_1.get_json()
             assert self._callback_value == 0
@@ -1339,14 +1340,14 @@ class TestHttpGetter:
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 12
-            HttpGetter.add_callback_for_target(target_2, callback, 1, 0, keyword1=1)
+            HttpGetter.add_callback_for_target("test_owner_2", url_2, callback, 1, 0, keyword1=1)
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 14
 
     def test_add_callback_for_target_target_share_none(self):
         HttpGetter._shared["target"] = None
-        HttpGetter.add_callback_for_target("target", lambda: True)
+        HttpGetter.add_callback_for_target("test_owner", "target", lambda: True)
         assert HttpGetter._shared.get("target") is None
 
     def test_set_refresh_interval(self):

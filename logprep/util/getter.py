@@ -113,10 +113,10 @@ class DataSharedPerTarget:
     default_return_value: bytes | None = None
     """Default value to be returned if defined in the configuration"""
 
-    callbacks: list = []
+    callbacks: list = field(factory=list)
     """Callbacks called after a resource has changed and was successfully obtained"""
 
-    cleanup_callbacks: list = []
+    cleanup_callbacks: list = field(factory=list)
     """Callbacks called after a resource has timed out"""
 
     refreshing: bool = False

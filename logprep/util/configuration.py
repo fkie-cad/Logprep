@@ -200,6 +200,7 @@ from itertools import chain
 from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, Sequence
+
 from attrs import asdict, define, field, fields, validators
 from requests import RequestException
 from ruamel.yaml import YAML
@@ -724,13 +725,8 @@ class Configuration:
     def config_paths(self) -> list[str]:
         """Paths of the configuration files."""
         # pylint: disable=protected-access
-        targets = (
-            (config._getter.protocol, config._getter.target)
-            for config in self._configs
-            if config._getter
-        )
+        return [config._getter.uri for config in self._configs if config._getter]
         # pylint: enable=protected-access
-        return [f"{protocol}://{target}" for protocol, target in targets]
 
     @classmethod
     def from_source(cls, config_path: str) -> "Configuration":

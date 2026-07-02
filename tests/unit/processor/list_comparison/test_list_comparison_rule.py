@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import typing
 from unittest import mock
 
 import pytest
@@ -96,7 +97,9 @@ class TestListComparisonRule:
     ):
         rule = ListComparisonRule.create_from_dict(rule_definition)
 
-        rule.init_list_comparison("tests/testdata/unit/list_comparison/rules")
+        rule = typing.cast(ListComparisonRule, rule)
+
+        rule.init_list_comparison("test_owner", "tests/testdata/unit/list_comparison/rules")
 
         assert rule.compare_sets is not None
         assert isinstance(rule.compare_sets, dict)
@@ -119,6 +122,7 @@ class TestListComparisonRule:
             },
         }
         rule = ListComparisonRule.create_from_dict(rule_definition)
+        rule = typing.cast(ListComparisonRule, rule)
 
         with mock.patch(
             "logprep.processor.list_comparison.rule.ListComparisonRule._update_compare_sets_via_http",
@@ -126,6 +130,6 @@ class TestListComparisonRule:
         ):
             if will_fail:
                 with pytest.raises(TypeError, match=f"The target {url} must be a url"):
-                    rule._init_list_comparison_from_http(url)
+                    rule._load_http_compare_set(url)
             else:
-                rule._init_list_comparison_from_http(url)
+                rule._load_http_compare_set(url)

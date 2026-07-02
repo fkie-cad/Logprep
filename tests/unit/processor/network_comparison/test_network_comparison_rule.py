@@ -97,7 +97,7 @@ class TestNetworkComparisonRule:
     ):
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
 
-        rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")
+        rule.init_list_comparison("test_owner", "tests/testdata/unit/network_comparison/rules")
 
         assert rule.compare_sets is not None
         assert isinstance(rule.compare_sets, dict)
@@ -129,7 +129,7 @@ class TestNetworkComparisonRule:
         }
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
 
-        rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")
+        rule.init_list_comparison("test_owner", "tests/testdata/unit/network_comparison/rules")
 
         assert rule.compare_sets is not None
         assert isinstance(rule.compare_sets, dict)
@@ -152,4 +152,4 @@ class TestNetworkComparisonRule:
         with pytest.raises(
             ValueError, match="'invalid_network' does not appear to be an IPv4 or IPv6 network"
         ):
-            rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")
+            rule.init_list_comparison("test_owner", "tests/testdata/unit/network_comparison/rules")

@@ -65,7 +65,7 @@ class ListComparison(Processor):
     def setup(self) -> None:
         super().setup()
         for rule in typing.cast(list[ListComparisonRule], self.rules):
-            rule.init_list_comparison(self.config.list_search_base_path)
+            rule.init_list_comparison(self._job_tag_for_cleanup, self.config.list_search_base_path)
 
     def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
         """

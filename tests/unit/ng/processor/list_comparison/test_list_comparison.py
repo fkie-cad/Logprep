@@ -269,9 +269,10 @@ class TestListComparison(BaseProcessorTestCase):
 
     @responses.activate
     def test_list_comparison_loads_rule_with_http_template_in_list_search_base_path(self):
+        url = "http://localhost/tests/testdata/bad_users.list?ref=bla"
         responses.add(
             responses.GET,
-            "http://localhost/tests/testdata/bad_users.list?ref=bla",
+            url,
             """Franz
 Heinz
 Hans
@@ -295,7 +296,7 @@ Hans
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         processor.setup()
-        assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+        assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
 
     @responses.activate
     def test_list_comparison_loads_rule_using_http_and_updates_with_callback(self, tmp_path):
@@ -333,7 +334,7 @@ Heinz
 
         HttpGetter._shared.clear()
 
-        getter_file_content = {target: {"refresh_interval": 10}}
+        getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
@@ -342,10 +343,10 @@ Heinz
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)
             processor.setup()
-            assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
-            assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
-            HttpGetter(target=target, protocol="http").scheduler.run_all()
-            assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz"}}
+            assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
+            assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
+            HttpGetter(target=url, protocol="http").scheduler.run_all()
+            assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz"}}
 
     def test_list_comparison_does_not_add_duplicates_from_list_source(self):
         document = {"users": ["Franz", "Alpha"]}
@@ -602,7 +603,7 @@ Heinz
         log_event = LogEvent(document, original=b"")
         expected_recovered_document = {
             "user": "Foo",
-            "user_results": {"in_list": [list_name]},
+            "user_results": {"in_list": [url]},
         }
 
         HttpGetter._shared.clear()
@@ -616,7 +617,7 @@ Heinz
 
         assert rule.data_error is None
         assert document == expected_recovered_document
-        assert rule.compare_sets == {list_name: {"Foo"}}
+        assert rule.compare_sets == {url: {"Foo"}}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200
 
@@ -659,7 +660,7 @@ Heinz
 
         HttpGetter._shared.clear()
 
-        getter_file_content = {url.removeprefix("http://"): {"refresh_interval": 1}}
+        getter_file_content = {url: {"refresh_interval": 1}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}

@@ -168,6 +168,7 @@ class ListComparisonRule(FieldManagerRule):
                 if not self._config.list_search_base_path
                 else self._config.list_search_base_path
             )
+            self._init_static_http_list_comparison()
 
     def _update_compare_sets_via_http(
         self, http_getter: HttpGetter, fully_resoled_uri: str
@@ -204,8 +205,39 @@ class ListComparisonRule(FieldManagerRule):
             filename = os.path.basename(list_path)
             self._compare_sets.update({filename: set(file_elements)})
 
+    def _init_static_http_list_comparison(self) -> None:
+        for list_path in self._config.list_file_paths:
+            resolved = Template(self._config.list_search_base_path).substitute(
+                {**os.environ, **{"LOGPREP_LIST": list_path}}
+            )
+            if Template(resolved).get_identifiers():
+                continue
+            self._load_http_compare_set(resolved)
+
+    def _load_http_compare_set(self, resolved_uri: str) -> set[dict] | None:
+        http_getter = GetterFactory.from_string(resolved_uri)
+        if not isinstance(http_getter, HttpGetter):
+            raise TypeError(f"The target {resolved_uri} must be a url")
+
+        http_getter.signal_called()
+
+        compare_set = self._update_compare_sets_via_http(http_getter, resolved_uri)
+        owner = self._callback_owner
+        http_getter.add_callback(
+            owner, self._update_compare_sets_via_http, http_getter, resolved_uri
+        )
+
+        def cleanup():
+            self._compare_sets.pop(resolved_uri, None)
+            logger.debug("Deleted compare set for %s after cleanup", resolved_uri)
+
+        http_getter.add_cleanup_callback(owner, cleanup)
+        return compare_set
+
     def get_dynamic_set(self, event: dict) -> dict[str, set]:
         compare_sets_result: dict[str, set] = {}
+        if not self._config.list_search_base_path.startswith("http"):
+            return self._compare_sets
 
         for list_path in self._config.list_file_paths:
             list_search_base_path_resolved = Template(
@@ -231,24 +263,7 @@ class ListComparisonRule(FieldManagerRule):
                 compare_sets_result[dynamic_resolved] = self._compare_sets[dynamic_resolved]
                 continue
 
-            http_getter = GetterFactory.from_string(dynamic_resolved)
-            if not isinstance(http_getter, HttpGetter):
-                raise TypeError(f"The target {dynamic_resolved} must be a url")
-
-            http_getter.signal_called()
-
-            compare_set = self._update_compare_sets_via_http(http_getter, dynamic_resolved)
-            owner = self._callback_owner
-            http_getter.add_callback(
-                owner, self._update_compare_sets_via_http, http_getter, dynamic_resolved
-            )
-
-            def cleanup():
-                self._compare_sets.pop(dynamic_resolved, None)
-                logger.debug("Deleted compare set for %s after cleanup", dynamic_resolved)
-
-            http_getter.add_cleanup_callback(owner, cleanup)
-
+            compare_set = self._load_http_compare_set(dynamic_resolved)
             if compare_set:
                 compare_sets_result.update({dynamic_resolved: compare_set})
 
