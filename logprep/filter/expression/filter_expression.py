@@ -3,9 +3,11 @@
 import re
 from abc import ABC, abstractmethod
 from itertools import chain, zip_longest
-from typing import Any, Sequence
+from typing import Any, Generic, Sequence, TypeVar
 
 from logprep.util.helper import field_list_to_dotted_field
+
+RangeBoundary = TypeVar("RangeBoundary", int, float, str)
 
 
 class FilterExpressionError(Exception):
@@ -289,37 +291,88 @@ class FloatFilterExpression(KeyValueBasedFilterExpression):
         return value == self._expected_value
 
 
-class RangeBasedFilterExpression(KeyBasedFilterExpression):
+class RangeBasedFilterExpression(KeyBasedFilterExpression, Generic[RangeBoundary]):
     """Base class of filter expressions that match for a range of values."""
 
-    def __init__(self, key: Sequence[str], lower_bound: float, upper_bound: float):
+    def __init__(
+        self,
+        key: Sequence[str],
+        lower_bound: RangeBoundary,
+        upper_bound: RangeBoundary,
+        include_lower_bound: bool = True,
+        include_upper_bound: bool = True,
+    ):
         super().__init__(key)
-        self._lower_bound = lower_bound
-        self._upper_bound = upper_bound
+        self._lower_bound: RangeBoundary = lower_bound
+        self._upper_bound: RangeBoundary = upper_bound
+        self._include_lower_bound = include_lower_bound
+        self._include_upper_bound = include_upper_bound
 
     def __repr__(self) -> str:
-        return f"{self.key_as_dotted_string}:[{self._lower_bound} TO {self._upper_bound}]"
+        opening_bracket = "[" if self._include_lower_bound else "{"
+        closing_bracket = "]" if self._include_upper_bound else "}"
+
+        return (
+            f"{self.key_as_dotted_string}:"
+            f"{opening_bracket}{self._lower_bound} TO {self._upper_bound}"
+            f"{closing_bracket}"
+        )
+
+    def _matches_lower_bound(self, value: RangeBoundary) -> bool:
+        if self._include_lower_bound:
+            return value >= self._lower_bound
+        return value > self._lower_bound
+
+    def _matches_upper_bound(self, value: RangeBoundary) -> bool:
+        if self._include_upper_bound:
+            return value <= self._upper_bound
+        return value < self._upper_bound
+
+    def _matches_range(self, value: RangeBoundary) -> bool:
+        return self._matches_lower_bound(value) and self._matches_upper_bound(value)
 
     def does_match(self, document: dict):
         raise NotImplementedError
 
 
-class IntegerRangeFilterExpression(RangeBasedFilterExpression):
+class IntegerRangeFilterExpression(RangeBasedFilterExpression[int]):
     """Range based filter expression that matches for integers."""
 
     def does_match(self, document: dict) -> bool:
         value = self._get_value(self.key, document)
 
-        return self._lower_bound <= value <= self._upper_bound
+        if not isinstance(value, int) or isinstance(value, bool):
+            return False
+
+        return self._matches_range(value)
 
 
-class FloatRangeFilterExpression(RangeBasedFilterExpression):
+class FloatRangeFilterExpression(RangeBasedFilterExpression[float]):
     """Range based filter expression that matches for floats."""
 
     def does_match(self, document: dict) -> bool:
         value = self._get_value(self.key, document)
 
-        return self._lower_bound <= value <= self._upper_bound
+        if not isinstance(value, float) or isinstance(value, bool):
+            return False
+
+        return self._matches_range(value)
+
+
+class StringRangeFilterExpression(RangeBasedFilterExpression[str]):
+    """Range based filter expression that matches for strings.
+
+    String ranges are compared lexicographically.
+    """
+
+    def does_match(self, document: dict) -> bool:
+        value = self._get_value(self.key, document)
+
+        # Avoid comparing strings with other value types, which would raise a TypeError.
+        if not isinstance(value, str):
+            return False
+
+        return self._matches_range(value)
 
 
 class RegExFilterExpression(KeyValueBasedFilterExpression):

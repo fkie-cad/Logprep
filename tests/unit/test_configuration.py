@@ -28,7 +28,7 @@ original_registry_mapping = deepcopy(Registry.mapping)
 
 class TestConfiguration:
     def setup_method(self):
-        Registry.mapping = {"mock_processor": MockProcessor}
+        Registry.mapping = {"mock_processor": lambda: MockProcessor}
 
     def teardown_method(self):
         Registry.mapping = original_registry_mapping

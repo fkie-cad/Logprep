@@ -19,16 +19,12 @@ Example
 
 import logging
 import typing
-from typing import TYPE_CHECKING
 
 from attrs import define, field, validators
 
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import Output
 from logprep.ng.event.log_event import LogEvent
-
-if TYPE_CHECKING:
-    from logprep.abc.connector import Connector  # pragma: no cover
 
 logger = logging.getLogger("DummyOutput")
 
@@ -88,7 +84,7 @@ class DummyOutput(Output):
         return typing.cast("DummyOutput.Config", self._config)
 
     @Output._handle_errors
-    def store(self, event: Event) -> None:
+    def store(self, event: LogEvent) -> None:
         """Store the document in the output destination.
 
         Parameters

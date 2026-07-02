@@ -7,6 +7,20 @@
 
 ### Bugfix
 
+## 19.3.0
+### Breaking
+
+### Features
+* add Lucene range support for integer, floating-point, and lexicographic string values, including quoted ISO-8601 timestamps with timezone offsets.
+* add `deduplicator` processor that removes duplicates from lists
+
+### Improvements
+* add test cases for `decoder` and `timestamper` behavior when handling empty messages
+* remove unused dependencies and move development and documentation-only dependencies to their corresponding optional dependency groups.
+* lazy-load processor registry components to reduce import overhead when loading the registry module
+
+### Bugfix
+
 ## 19.2.0
 ### Breaking
 * chart: change default deployment strategy to RollingUpdate

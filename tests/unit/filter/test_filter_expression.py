@@ -8,21 +8,21 @@ from string import ascii_letters, digits
 import pytest
 
 from logprep.filter.expression.filter_expression import (
-    FilterExpression,
-    KeyDoesNotExistError,
-    StringFilterExpression,
-    IntegerFilterExpression,
-    And,
-    Or,
-    Not,
-    RegExFilterExpression,
-    IntegerRangeFilterExpression,
-    FloatRangeFilterExpression,
-    FloatFilterExpression,
     Always,
-    WildcardStringFilterExpression,
-    SigmaFilterExpression,
+    And,
     Exists,
+    FilterExpression,
+    FloatFilterExpression,
+    FloatRangeFilterExpression,
+    IntegerFilterExpression,
+    IntegerRangeFilterExpression,
+    KeyDoesNotExistError,
+    Not,
+    Or,
+    RegExFilterExpression,
+    SigmaFilterExpression,
+    StringFilterExpression,
+    WildcardStringFilterExpression,
 )
 from logprep.filter.lucene_filter import LuceneFilter
 
@@ -256,7 +256,7 @@ class TestIntegerRangeFilterExpression(ValueBasedFilterExpressionTest):
         assert not self.filter.matches({"key1": {"key2": 42 + 1}})
 
     def test_does_not_match_when_value_is_in_range_but_as_float(self):
-        assert self.filter.matches({"key1": {"key2": 24.0}})
+        assert not self.filter.matches({"key1": {"key2": 24.0}})
 
     def test_does_match_when_value_is_in_range(self):
         for i in range(23, 43):
@@ -583,3 +583,312 @@ class TestLuceneRepresentation:
         assert (
             str(filter_expression) == expected_lucene_filter_query
         ), f"Expected: '{expected_lucene_filter_query}', but got: '{filter_expression}'"
+
+    @pytest.mark.parametrize(
+        ("filter_expression", "matching_documents", "non_matching_documents"),
+        (
+            pytest.param(
+                "age:[0 TO 10] OR age:[20 TO 30]",
+                (
+                    {"age": 0},
+                    {"age": 5},
+                    {"age": 10},
+                    {"age": 20},
+                    {"age": 25},
+                    {"age": 30},
+                ),
+                (
+                    {"age": -1},
+                    {"age": 15},
+                    {"age": 31},
+                ),
+                id="integer-ranges-with-or",
+            ),
+            pytest.param(
+                "age:[0 TO 10] AND age:[5 TO 15]",
+                (
+                    {"age": 5},
+                    {"age": 7},
+                    {"age": 10},
+                ),
+                (
+                    {"age": 0},
+                    {"age": 4},
+                    {"age": 11},
+                    {"age": 15},
+                ),
+                id="integer-ranges-with-and",
+            ),
+            pytest.param(
+                "temperature:[18.5 TO 25.0] OR temperature:[33.5 TO 55.0]",
+                (
+                    {"temperature": 18.5},
+                    {"temperature": 20.0},
+                    {"temperature": 25.0},
+                    {"temperature": 33.5},
+                    {"temperature": 40.0},
+                    {"temperature": 55.0},
+                ),
+                (
+                    {"temperature": 18.4},
+                    {"temperature": 30.0},
+                    {"temperature": 55.1},
+                ),
+                id="float-ranges-with-or",
+            ),
+            pytest.param(
+                "temperature:[18.5 TO 33.5] AND temperature:[25.0 TO 55.0]",
+                (
+                    {"temperature": 25.0},
+                    {"temperature": 30.0},
+                    {"temperature": 33.5},
+                ),
+                (
+                    {"temperature": 18.5},
+                    {"temperature": 24.9},
+                    {"temperature": 33.6},
+                    {"temperature": 55.0},
+                ),
+                id="float-ranges-with-and",
+            ),
+            pytest.param(
+                "status:[alpha TO beta] OR status:[stable TO zulu]",
+                (
+                    {"status": "alpha"},
+                    {"status": "beta"},
+                    {"status": "stable"},
+                    {"status": "zulu"},
+                ),
+                (
+                    {"status": "delta"},
+                    {"status": "aaa"},
+                    {"status": "zzzz"},
+                ),
+                id="string-ranges-with-or",
+            ),
+            pytest.param(
+                "status:[alpha TO stable] AND status:[beta TO zulu]",
+                (
+                    {"status": "beta"},
+                    {"status": "delta"},
+                    {"status": "stable"},
+                ),
+                (
+                    {"status": "alpha"},
+                    {"status": "aaa"},
+                    {"status": "zulu"},
+                    {"status": "zzzz"},
+                ),
+                id="string-ranges-with-and",
+            ),
+            pytest.param(
+                "(age:[0 TO 10] OR age:[20 TO 30]) AND status:[active TO stable]",
+                (
+                    {"age": 5, "status": "active"},
+                    {"age": 25, "status": "beta"},
+                    {"age": 30, "status": "stable"},
+                ),
+                (
+                    {"age": 15, "status": "active"},
+                    {"age": 5, "status": "zzz"},
+                    {"age": 25, "status": "aaa"},
+                ),
+                id="parenthesized-non-group-ranges-with-and-to-other-field",
+            ),
+            pytest.param(
+                "(temperature:[18.5 TO 25.0] OR temperature:[33.5 TO 55.0]) "
+                "AND status:[ok TO stable]",
+                (
+                    {"temperature": 20.0, "status": "ok"},
+                    {"temperature": 40.0, "status": "stable"},
+                ),
+                (
+                    {"temperature": 30.0, "status": "ok"},
+                    {"temperature": 20.0, "status": "fail"},
+                    {"temperature": 40.0, "status": "zzz"},
+                ),
+                id="parenthesized-float-ranges-with-string-range-on-other-field",
+            ),
+            pytest.param(
+                "(status:[alpha TO beta] OR status:[stable TO zulu]) AND age:[18 TO 65]",
+                (
+                    {"status": "alpha", "age": 18},
+                    {"status": "stable", "age": 42},
+                    {"status": "zulu", "age": 65},
+                ),
+                (
+                    {"status": "delta", "age": 42},
+                    {"status": "alpha", "age": 17},
+                    {"status": "zulu", "age": 66},
+                ),
+                id="parenthesized-string-ranges-with-integer-range-on-other-field",
+            ),
+        ),
+    )
+    def test_created_range_filter_supports_combination_of_ranges(
+        self,
+        filter_expression,
+        matching_documents,
+        non_matching_documents,
+    ):
+        lucene_filter = LuceneFilter.create(filter_expression)
+
+        for document in matching_documents:
+            assert lucene_filter.matches(document)
+
+        for document in non_matching_documents:
+            assert not lucene_filter.matches(document)
+
+    @pytest.mark.parametrize(
+        ("filter_expression", "matching_documents", "non_matching_documents"),
+        (
+            pytest.param(
+                "age:([0 TO 10] OR [20 TO 30])",
+                (
+                    {"age": 0},
+                    {"age": 5},
+                    {"age": 10},
+                    {"age": 20},
+                    {"age": 25},
+                    {"age": 30},
+                ),
+                (
+                    {"age": -1},
+                    {"age": 15},
+                    {"age": 31},
+                ),
+                id="integer-field-group-ranges-with-or",
+            ),
+            pytest.param(
+                "age:([0 TO 10] AND [5 TO 15])",
+                (
+                    {"age": 5},
+                    {"age": 7},
+                    {"age": 10},
+                ),
+                (
+                    {"age": 0},
+                    {"age": 4},
+                    {"age": 11},
+                    {"age": 15},
+                ),
+                id="integer-field-group-ranges-with-and",
+            ),
+            pytest.param(
+                "temperature:([18.5 TO 25.0] OR [33.5 TO 55.0])",
+                (
+                    {"temperature": 18.5},
+                    {"temperature": 20.0},
+                    {"temperature": 25.0},
+                    {"temperature": 33.5},
+                    {"temperature": 40.0},
+                    {"temperature": 55.0},
+                ),
+                (
+                    {"temperature": 18.4},
+                    {"temperature": 30.0},
+                    {"temperature": 55.1},
+                ),
+                id="float-field-group-ranges-with-or",
+            ),
+            pytest.param(
+                "temperature:([18.5 TO 33.5] AND [25.0 TO 55.0])",
+                (
+                    {"temperature": 25.0},
+                    {"temperature": 30.0},
+                    {"temperature": 33.5},
+                ),
+                (
+                    {"temperature": 18.5},
+                    {"temperature": 24.9},
+                    {"temperature": 33.6},
+                    {"temperature": 55.0},
+                ),
+                id="float-field-group-ranges-with-and",
+            ),
+            pytest.param(
+                "status:([alpha TO beta] OR [stable TO zulu])",
+                (
+                    {"status": "alpha"},
+                    {"status": "beta"},
+                    {"status": "stable"},
+                    {"status": "zulu"},
+                ),
+                (
+                    {"status": "delta"},
+                    {"status": "aaa"},
+                    {"status": "zzzz"},
+                ),
+                id="string-field-group-ranges-with-or",
+            ),
+            pytest.param(
+                "status:([alpha TO stable] AND [beta TO zulu])",
+                (
+                    {"status": "beta"},
+                    {"status": "delta"},
+                    {"status": "stable"},
+                ),
+                (
+                    {"status": "alpha"},
+                    {"status": "aaa"},
+                    {"status": "zulu"},
+                    {"status": "zzzz"},
+                ),
+                id="string-field-group-ranges-with-and",
+            ),
+            pytest.param(
+                "age:([0 TO 10] OR [20 TO 30]) AND status:[active TO stable]",
+                (
+                    {"age": 5, "status": "active"},
+                    {"age": 25, "status": "beta"},
+                    {"age": 30, "status": "stable"},
+                ),
+                (
+                    {"age": 15, "status": "active"},
+                    {"age": 5, "status": "zzz"},
+                    {"age": 25, "status": "aaa"},
+                ),
+                id="integer-field-group-ranges-with-and-to-other-field",
+            ),
+            pytest.param(
+                "temperature:([18.5 TO 25.0] OR [33.5 TO 55.0]) " "AND status:[ok TO stable]",
+                (
+                    {"temperature": 20.0, "status": "ok"},
+                    {"temperature": 40.0, "status": "stable"},
+                ),
+                (
+                    {"temperature": 30.0, "status": "ok"},
+                    {"temperature": 20.0, "status": "fail"},
+                    {"temperature": 40.0, "status": "zzz"},
+                ),
+                id="float-field-group-ranges-with-string-range-on-other-field",
+            ),
+            pytest.param(
+                "status:([alpha TO beta] OR [stable TO zulu]) AND age:[18 TO 65]",
+                (
+                    {"status": "alpha", "age": 18},
+                    {"status": "stable", "age": 42},
+                    {"status": "zulu", "age": 65},
+                ),
+                (
+                    {"status": "delta", "age": 42},
+                    {"status": "alpha", "age": 17},
+                    {"status": "zulu", "age": 66},
+                ),
+                id="string-field-group-ranges-with-integer-range-on-other-field",
+            ),
+        ),
+    )
+    def test_created_range_filter_supports_combination_of_field_group_ranges(
+        self,
+        filter_expression,
+        matching_documents,
+        non_matching_documents,
+    ):
+        lucene_filter = LuceneFilter.create(filter_expression)
+
+        for document in matching_documents:
+            assert lucene_filter.matches(document)
+
+        for document in non_matching_documents:
+            assert not lucene_filter.matches(document)

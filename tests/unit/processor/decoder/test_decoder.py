@@ -337,6 +337,19 @@ test_cases = [
             "filter": "message",
             "decoder": {
                 "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+                "overwrite_target": True,
+            },
+        },
+        {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
+        {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
+        id="parse empty message for syslog rfc 3164 without error",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
                 "source_format": "syslog_rfc3164_local",
                 "overwrite_target": True,
             },
@@ -353,6 +366,19 @@ test_cases = [
             },
         },
         id="parse syslog rfc 3164 local",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164_local",
+                "overwrite_target": True,
+            },
+        },
+        {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
+        {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
+        id="parse empty message for syslog rfc 3164 local without error",
     ),
     pytest.param(
         {
@@ -380,6 +406,19 @@ test_cases = [
             },
         },
         id="parse syslog rfc 5424",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc5424",
+                "overwrite_target": True,
+            },
+        },
+        {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
+        {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
+        id="parse empty message for syslog rfc 5424 without error",
     ),
     pytest.param(
         {
