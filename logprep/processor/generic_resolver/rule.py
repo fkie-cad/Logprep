@@ -224,7 +224,10 @@ class GenericResolverRule(FieldManagerRule):
             if self._file_path:
                 getter = GetterFactory.from_string(self._file_path)
                 if isinstance(getter, RefreshableGetter):
-                    getter.add_callback(partial(self._add_from_path, self._file_path))
+                    getter.add_callback(
+                        f"generic_resolver:{self.id}:{self._file_path}",
+                        partial(self._add_from_path, self._file_path),
+                    )
                 self._add_from_path(self._file_path)
 
         def _add_from_path(self, path: str):

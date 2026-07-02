@@ -31,7 +31,9 @@ import typing
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.list_comparison.rule import ListComparisonRule
+from logprep.util.getter import RefreshableGetter
 from logprep.util.helper import (
     FieldValue,
     add_fields_to,
@@ -54,10 +56,6 @@ class ListComparison(Processor):
         e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
         will be filled by this processor. """
 
-        refresh_interval: int | None = field(
-            validator=validators.instance_of((int | None)), default=None
-        )
-
     rule_class = ListComparisonRule
 
     def setup(self):
@@ -66,7 +64,8 @@ class ListComparison(Processor):
             rule = typing.cast(ListComparisonRule, rule)
             config = typing.cast(ListComparison.Config, self._config)
             rule.init_list_comparison(
-                config.list_search_base_path, refresh_interval=config.refresh_interval
+                self._job_tag_for_cleanup,
+                config.list_search_base_path,
             )
 
     def _apply_rules(self, event: dict[str, FieldValue], rule: ListComparisonRule) -> None:
@@ -108,20 +107,27 @@ class ListComparison(Processor):
         )
 
         list_matches = self._get_lists_matching_with_values(rule, value_list, event)
-
         if len(list_matches) == 0:
             return list(rule.compare_sets.keys()), "not_in_list"
-        return [match.render() for match in list_matches], "in_list"
+        return list_matches, "in_list"
 
     def _get_lists_matching_with_values(
         self, rule: ListComparisonRule, value_list: list, event: dict
     ) -> list:
         """Iterate over string lists, check if element is in any."""
         list_matches = []
+        try:
+            dynamic_set = rule.get_dynamic_set(event)
+        except Exception as error:
+            raise ProcessingWarning(str(error), rule, event) from error
         for value in value_list:
-            for compare_list in rule.get_dynamic_set(event):
+            for compare_list in dynamic_set:
                 if compare_list in list_matches:
                     continue
                 if value in rule.compare_sets[compare_list]:
                     list_matches.append(compare_list)
         return list_matches
+
+    def _shut_down(self) -> None:
+        RefreshableGetter.remove_callbacks_for_owner(self._job_tag_for_cleanup)
+        return super()._shut_down()

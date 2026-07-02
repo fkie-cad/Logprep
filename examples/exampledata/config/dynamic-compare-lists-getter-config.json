@@ -1,0 +1,5 @@
+{
+  "http://localhost:8000/*": {
+    "refresh_interval": 10
+  }
+}

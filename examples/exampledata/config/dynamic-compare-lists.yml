@@ -17,8 +17,7 @@ metrics:
 pipeline:
   - list_comparison:
       type: "list_comparison"
-      list_search_base_path: "http://localhost.de/${LOGPREP_LIST}"
-      refresh_interval: 10
+      list_search_base_path: "http://localhost:8000/${LOGPREP_LIST}"
       rules:
         - filter: "system_id"
           list_comparison:

@@ -50,16 +50,11 @@ class RefreshableGetterError(LogprepException):
             super().__init__(message)
 
 
-@define
-class GetterConfig:
-    refresh_interval: int
-
-
 class GetterFactory:
     """Provides methods to create getters."""
 
     @classmethod
-    def from_string(cls, getter_string: str, config: GetterConfig | None = None) -> "Getter":
+    def from_string(cls, getter_string: str) -> "Getter":
         """Factory method to return a getter from a string in format :code:`<protocol>://<target>`.
         If no protocol is given, then the file protocol is assumed.
 
@@ -81,7 +76,7 @@ class GetterFactory:
         if protocol == "file":
             return FileGetter(protocol=protocol, target=target)  # type: ignore
         if protocol == "http" or protocol == "https":
-            return HttpGetter(protocol=protocol, target=target, config=config)  # type: ignore
+            return HttpGetter(protocol=protocol, target=f"{protocol}://{target}")  # type: ignore
         raise GetterNotFoundError(f"No getter for protocol '{protocol}'")
 
     @staticmethod
@@ -121,6 +116,9 @@ class DataSharedPerTarget:
     callbacks: list = []
     """Callbacks called after a resource has changed and was successfully obtained"""
 
+    cleanup_callbacks: list = []
+    """Callbacks called after a resource has timed out"""
+
     refreshing: bool = False
     """Used to check if getters are refreshing to prevent the scheduler running multiple times"""
 
@@ -135,8 +133,6 @@ class RefreshableGetter(Getter, ABC):
     """Interface for getters that refresh their value periodically"""
 
     _logger = logging.getLogger("RefreshableGetter")
-
-    config: GetterConfig | None = None
 
     _shared: ClassVar[dict[str, DataSharedPerTarget]] = {}
     """Dictionary to store DataSharedPerTarget objects per getter target"""
@@ -204,6 +200,9 @@ class RefreshableGetter(Getter, ABC):
     @property
     def uri(self) -> str:
         """Returns the URI of the target"""
+        # Protocol already in target
+        if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", self.target):
+            return self.target
         return f"{self.protocol}://{self.target}"
 
     @property
@@ -235,47 +234,60 @@ class RefreshableGetter(Getter, ABC):
             self.shared.default_return_value = self._get_default_return_value()
         return self.shared.default_return_value
 
-    def add_callback(self, fnc, *args, **kwargs):
+    def add_callback(self, owner: str, fnc, *args, **kwargs):
         """Add callbacks to call when http getter refreshes with new data"""
-        if self.target not in self._callbacks:
-            self._callbacks = []
-        self._callbacks.append({"function": fnc, "args": args, "kwargs": kwargs})
+        self._callbacks.append({"owner": owner, "function": fnc, "args": args, "kwargs": kwargs})
 
     @classmethod
-    def add_callback_for_target(cls, target, fnc, *args, **kwargs):
+    def add_callback_for_target(cls, owner: str, target, fnc, *args, **kwargs):
         """Add callbacks to call when http getter with given target refreshes with new data"""
-        shared = cls._shared[target]
+        shared = cls._shared.get(target)
         if shared is None:
             return
-        if target not in shared.callbacks:
-            shared.callbacks = []
-        shared.callbacks.append({"function": fnc, "args": args, "kwargs": kwargs})
+        shared.callbacks.append({"owner": owner, "function": fnc, "args": args, "kwargs": kwargs})
+
+    def add_cleanup_callback(self, owner: str, fnc, *args, **kwargs):
+        """Add callbacks to call when http getter times out"""
+        self.shared.cleanup_callbacks.append(
+            {"owner": owner, "function": fnc, "args": args, "kwargs": kwargs}
+        )
+
+    def _get_getter_config_entry(self) -> dict:
+        if ENV_NAME_LOGPREP_GETTER_CONFIG not in os.environ:
+            return {}
+
+        getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
+        if not getter_file_path or getter_file_path == self.target and self.protocol == "file":
+            return {}
+
+        getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()
+
+        for configured_target, config in getters_config.items():
+            if self._target_matches(configured_target):
+                return config
+
+        return {}
+
+    def _target_matches(self, configured_target: str) -> bool:
+        legacy_target = self.target.removeprefix("https://").removeprefix("http://")
+        candidates = (self.uri, self.target, legacy_target)
+
+        if configured_target.endswith("*"):
+            prefix = configured_target[:-1]
+            return any(candidate.startswith(prefix) for candidate in candidates)
+
+        return configured_target in candidates
 
     def _get_refresh_interval(self) -> int:
         """Get refresh interval from a configuration file"""
-        if self.config:
-            return self.config.refresh_interval
-
-        if ENV_NAME_LOGPREP_GETTER_CONFIG in os.environ:
-            getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
-            if getter_file_path == self.target and self.protocol == "file":
-                return 0
-            getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()  # type: ignore
-            return getters_config.get(self.target, {}).get("refresh_interval", 0)
-        return 0
+        return self._get_getter_config_entry().get("refresh_interval", 0)
 
     def _get_default_return_value(self) -> bytes | None:
         """Get default return value from a configuration file"""
-        if ENV_NAME_LOGPREP_GETTER_CONFIG in os.environ:
-            getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
-            if getter_file_path == self.target and self.protocol == "file":
-                return None
-            getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()  # type: ignore
-            default_return_value = getters_config.get(self.target, {}).get("default_return_value")
-            if default_return_value is None:
-                return None
-            return default_return_value.encode("utf-8")
-        return None
+        default_return_value = self._get_getter_config_entry().get("default_return_value")
+        if default_return_value is None:
+            return None
+        return default_return_value.encode("utf-8")
 
     def _refresh(self) -> None:
         """Refresh the current http getter"""
@@ -355,6 +367,24 @@ class RefreshableGetter(Getter, ABC):
         return False
 
     @classmethod
+    def remove_callbacks_for_owner(cls, owner: str) -> None:
+        empty_targets = []
+
+        for target, shared in cls._shared.items():
+            shared.callbacks = [
+                callback for callback in shared.callbacks if callback.get("owner") != owner
+            ]
+            shared.cleanup_callbacks = [
+                callback for callback in shared.cleanup_callbacks if callback.get("owner") != owner
+            ]
+
+            if shared.cache is None and not shared.callbacks and not shared.cleanup_callbacks:
+                empty_targets.append(target)
+
+        for target in empty_targets:
+            cls._shared.pop(target, None)
+
+    @classmethod
     def timed_out_for_target(cls, target: str):
         target_shared = cls._shared.get(target)
         if target_shared:
@@ -368,15 +398,20 @@ class RefreshableGetter(Getter, ABC):
 
     @classmethod
     def signal_called_for_target(cls, target: str):
-        cls._shared[target].last_called = time.monotonic()
+        shared = cls._shared.get(target)
+        if shared is None:
+            return
+
+        shared.last_called = time.monotonic()
 
     @classmethod
     def refresh(cls):
         """Run all pending getter schedulers"""
-        for target, shared_target_data in cls._shared.items():
+        for target, shared_target_data in list(cls._shared.items()):
             if cls.timed_out_for_target(target):
-                cls._shared.pop(target, None)
-                # Do more cleanup?
+                del cls._shared[target]
+                for callback in shared_target_data.cleanup_callbacks:
+                    callback["function"](*callback["args"], **callback["kwargs"])
                 continue
 
             if shared_target_data.scheduler:
