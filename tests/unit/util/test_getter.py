@@ -1613,3 +1613,72 @@ class TestHttpGetter:
 
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter._resolve_content_by_content_type() == expected
+
+    def test_http_getter_uri_does_not_duplicate_protocol(self):
+        http_getter = GetterFactory.from_string("http://example.test/path")
+
+        assert http_getter.target == "http://example.test/path"
+        assert http_getter.uri == "http://example.test/path"
+
+    def test_https_getter_uri_does_not_duplicate_protocol(self):
+        http_getter = GetterFactory.from_string("https://example.test/path")
+
+        assert http_getter.target == "https://example.test/path"
+        assert http_getter.uri == "https://example.test/path"
+
+    def test_getter_config_prefers_full_url_target_over_legacy_target(self, tmp_path):
+        target = f"{uuid.uuid4()}/resource"
+        url = f"https://{target}"
+
+        getter_file_content = {
+            target: {"refresh_interval": 1},
+            url: {"refresh_interval": 10},
+        }
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        moch_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", moch_env):
+            http_getter = GetterFactory.from_string(url)
+
+        assert isinstance(http_getter, HttpGetter)
+        assert http_getter._refresh_interval == 10
+
+    def test_remove_callbacks_for_owner_only_removes_matchin_owner(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+
+        owner_1_callback = mock.MagicMock()
+        owner_2_callback = mock.MagicMock()
+        owner_1_cleanup = mock.MagicMock()
+        owner_2_cleanup = mock.MagicMock()
+
+        http_getter.add_callback("owner-1", owner_1_callback)
+        http_getter.add_callback("owner-2", owner_2_callback)
+        http_getter.add_cleanup_callback("owner-1", owner_1_cleanup)
+        http_getter.add_cleanup_callback("owner-2", owner_2_cleanup)
+
+        RefreshableGetter.remove_callbacks_for_owner("owner-1")
+
+        assert http_getter.shared.callbacks == [
+            {"owner": "owner-2", "function": owner_2_callback, "args": (), "kwargs": {}}
+        ]
+
+        assert http_getter.shared.cleanup_callbacks == [
+            {"owner": "owner-2", "function": owner_2_cleanup, "args": (), "kwargs": {}}
+        ]
+
+    def test_callbacks_are_not_shared_between_targets(self):
+        http_getter_1 = HttpGetter(protocol="http", target="http://example.test/one")
+        http_getter_2 = HttpGetter(protocol="http", target="http://example.test/two")
+
+        callback = mock.MagicMock()
+        cleanup_callback = mock.MagicMock()
+
+        http_getter_1.add_callback("owner", callback)
+        http_getter_1.add_cleanup_callback("owner", cleanup_callback)
+
+        assert http_getter_1.shared.callbacks
+        assert http_getter_1.shared.cleanup_callbacks
+
+        assert http_getter_2.shared.callbacks == []
+        assert http_getter_2.shared.cleanup_callbacks == []
