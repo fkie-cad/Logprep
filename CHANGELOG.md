@@ -4,6 +4,35 @@
 ### Features
 
 ### Improvements
+* add launch configurations for ng and advanced debugging
+* preprocessor: move configs and partially (ng) logic in dedicated modules
+* partially use [msgspec.json.Decoder.type](https://github.com/fkie-cad/Logprep/pull/955) for type validation
+* tests: make tests (automatically) async, refactor component test hierarchy
+* tests: add testing dependencies (pytest-aiohttp, pytest-timeout)
+* tests: warm up lazy registry
+* tests: add ng acceptance and further unit tests
+* compose: allow setting number of topic partitions using env variables
+* benchmark: set kafka partitions to 1 for benchmark (configurable)
+* benchmark: add reference pipelines for ng and non-ng & disable config refresh
+* benchmark: use kafka-producer over logprep generate
+* benchmark: make container-runtime configurable (docker/podman)
+* fix mypy issues
+* helm: make ng activatable in deployment
+* ng: migrate to async
+* ng: replace iter-based workflow with asynchronous workers & queues
+* ng: implement graceful worker shutdown exhausting all work queues in topological order
+* ng: allow finite inputs to be exhausted, leading to graceful application shutdown
+* ng: rework event type hierarchy, remove states and event backlog
+* ng: integrate http input server in async loop & use for health check
+* ng: make error event first citizen (e.g. part of the input interface)
+* ng: use async client for confluent_kafka input & commit only acknowledged offsets
+* ng: use async client for confluent_kafka output
+* ng: remove admin client for confluent_kafka input/output
+* ng: use async client for opensearch output, *temporarily disabling retries for now*
+* ng: rework outputs to operate on batches and flush immediately
+* ng: use `OutputSpec` instead of `list[dict]` to specify desired output targets for extra events
+* ng: drop "ng_" prefix completely and use a setting in the global registry to activate ng
+* ng: decouple console logging via queue/listener in separate thread
 
 ### Bugfix
 * fix `dissector` not dissecting multiline strings
