@@ -58,8 +58,8 @@ class Runner:
         """
         try:
             return await wait_for_refreshed_config(self._stop_event, config)
-        except StopConfigRefresh:
-            logger.info("config refresh has been stopped")
+        except StopConfigRefresh as exc:
+            logger.info("config refresh stopped: %s", str(exc))
         await self._stop_event.wait()
         return None
 

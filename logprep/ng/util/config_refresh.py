@@ -28,7 +28,7 @@ async def wait_for_refreshed_config(
     refresh_interval = config.config_refresh_interval
 
     if refresh_interval is None:
-        raise StopConfigRefresh("config_refresh_interval is not set")
+        raise StopConfigRefresh("config_refresh_interval not set")
     logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
 
     loop = asyncio.get_running_loop()
@@ -74,7 +74,7 @@ async def wait_for_refreshed_config(
 
         next_run += refresh_interval
 
-    raise StopConfigRefresh("config refresh has been stopped externally")
+    raise StopConfigRefresh("stop_event set")
 
 
 async def config_refresh_gen(
