@@ -238,6 +238,13 @@ class RefreshableGetter(Getter, ABC):
         """Add callbacks to call when http getter refreshes with new data"""
         self._callbacks.append({"owner": owner, "function": fnc, "args": args, "kwargs": kwargs})
 
+    def add_callback_once(self, key: tuple, owner: str, fnc, *args, **kwargs):
+        if any(callback.get("key") == key for callback in self.shared.callbacks):
+            return
+        self.shared.callbacks.append(
+            {"key": key, "owner": owner, "function": fnc, "args": args, "kwargs": kwargs}
+        )
+
     @classmethod
     def add_callback_for_target(cls, owner: str, target, fnc, *args, **kwargs):
         """Add callbacks to call when http getter with given target refreshes with new data"""
@@ -252,6 +259,13 @@ class RefreshableGetter(Getter, ABC):
             {"owner": owner, "function": fnc, "args": args, "kwargs": kwargs}
         )
 
+    def add_cleanup_callback_once(self, key: tuple, owner: str, fnc, *args, **kwargs):
+        if any(callback.get("key") == key for callback in self.shared.cleanup_callbacks):
+            return
+        self.shared.cleanup_callbacks.append(
+            {"key": key, "owner": owner, "function": fnc, "args": args, "kwargs": kwargs}
+        )
+
     def _get_getter_config_entry(self) -> dict:
         if ENV_NAME_LOGPREP_GETTER_CONFIG not in os.environ:
             return {}
@@ -261,6 +275,12 @@ class RefreshableGetter(Getter, ABC):
             return {}
 
         getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()
+
+        legacy_target = self.target.removeprefix("https://").removeprefix("http://")
+
+        for candidate in (self.uri, self.target, legacy_target):
+            if candidate in getters_config:
+                return getters_config[candidate]
 
         for configured_target, config in getters_config.items():
             if self._target_matches(configured_target):

@@ -207,7 +207,7 @@ class ListComparisonRule(FieldManagerRule):
 
     def _init_static_http_list_comparison(self) -> None:
         for list_path in self._config.list_file_paths:
-            resolved = Template(self._config.list_search_base_path).substitute(
+            resolved = Template(self._config.list_search_base_path).safe_substitute(
                 {**os.environ, **{"LOGPREP_LIST": list_path}}
             )
             if Template(resolved).get_identifiers():
@@ -223,15 +223,19 @@ class ListComparisonRule(FieldManagerRule):
 
         compare_set = self._update_compare_sets_via_http(http_getter, resolved_uri)
         owner = self._callback_owner
-        http_getter.add_callback(
-            owner, self._update_compare_sets_via_http, http_getter, resolved_uri
+
+        refresh_key = (owner, resolved_uri, "list_comparison_refresh")
+        cleanup_key = (owner, resolved_uri, "list_comparison_cleanup")
+
+        http_getter.add_callback_once(
+            refresh_key, owner, self._update_compare_sets_via_http, http_getter, resolved_uri
         )
 
         def cleanup():
             self._compare_sets.pop(resolved_uri, None)
             logger.debug("Deleted compare set for %s after cleanup", resolved_uri)
 
-        http_getter.add_cleanup_callback(owner, cleanup)
+        http_getter.add_cleanup_callback_once(cleanup_key, owner, cleanup)
         return compare_set
 
     def get_dynamic_set(self, event: dict) -> dict[str, set]:
@@ -242,7 +246,7 @@ class ListComparisonRule(FieldManagerRule):
         for list_path in self._config.list_file_paths:
             list_search_base_path_resolved = Template(
                 self._config.list_search_base_path
-            ).substitute({**os.environ, **{"LOGPREP_LIST": list_path}})
+            ).safe_substitute({**os.environ, **{"LOGPREP_LIST": list_path}})
 
             resolved_tmpl = Template(list_search_base_path_resolved)
 
@@ -255,7 +259,9 @@ class ListComparisonRule(FieldManagerRule):
                     raise ValueError("value for list comparison is not a scalar value")
                 pass
 
-            dynamic_resolved = resolved_tmpl.safe_substitute(key_val)
+            # Dont use safe substitute here, as we want it to fail if an event key is missing,
+            # might be redundant because the previous func checks for Scalar str, int and None is not that
+            dynamic_resolved = resolved_tmpl.substitute(key_val)
 
             if dynamic_resolved in self._compare_sets:
                 RefreshableGetter.signal_called_for_target(dynamic_resolved)
@@ -264,7 +270,7 @@ class ListComparisonRule(FieldManagerRule):
                 continue
 
             compare_set = self._load_http_compare_set(dynamic_resolved)
-            if compare_set:
+            if compare_set is not None:
                 compare_sets_result.update({dynamic_resolved: compare_set})
 
         return compare_sets_result

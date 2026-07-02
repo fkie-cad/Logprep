@@ -1644,6 +1644,38 @@ class TestHttpGetter:
         assert isinstance(http_getter, HttpGetter)
         assert http_getter._refresh_interval == 10
 
+    def test_getter_config_matches_full_url_prefix_wildcard(self, tmp_path):
+        target = f"{uuid.uuid4()}/api/resource"
+        url = f"https://{target}"
+        configured_target = f"https://{target.removesuffix('/resource')}/*"
+
+        getter_file_content = {configured_target: {"refresh_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string(url)
+
+        assert isinstance(http_getter, HttpGetter)
+        assert http_getter._refresh_interval == 10
+
+    def test_getter_config_matches_legacy_target_prefix_wildcard(self, tmp_path):
+        target = f"{uuid.uuid4()}/api/resource"
+        url = f"https://{target}"
+        configured_target = f"{target.removesuffix('/resource')}/*"
+
+        getter_file_content = {configured_target: {"refresh_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string(url)
+
+        assert isinstance(http_getter, HttpGetter)
+        assert http_getter._refresh_interval == 10
+
     def test_remove_callbacks_for_owner_only_removes_matchin_owner(self):
         http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
 
@@ -1682,3 +1714,35 @@ class TestHttpGetter:
 
         assert http_getter_2.shared.callbacks == []
         assert http_getter_2.shared.cleanup_callbacks == []
+
+    def test_refresh_removes_timed_out_target_and_calls_cleanup_callbacks(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        cleanup_callback = mock.MagicMock()
+        scheduler = mock.MagicMock()
+
+        http_getter.add_cleanup_callback("owner", cleanup_callback, "foo", bar="baz")
+        http_getter.scheduler = scheduler
+        http_getter.shared.last_called = 100.0
+
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=161.1):
+            RefreshableGetter.refresh()
+
+        cleanup_callback.assert_called_once_with("foo", bar="baz")
+        scheduler.run_pending.assert_not_called()
+        assert "http://example.test/resource" not in HttpGetter._shared
+
+    def test_refresh_keeps_active_target_and_runs_scheduler(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        cleanup_callback = mock.MagicMock()
+        scheduler = mock.MagicMock()
+
+        http_getter.add_cleanup_callback("owner", cleanup_callback)
+        http_getter.scheduler = scheduler
+        http_getter.shared.last_called = 100.0
+
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=159.9):
+            RefreshableGetter.refresh()
+
+        cleanup_callback.assert_not_called()
+        scheduler.run_pending.assert_called_once()
+        assert "http://example.test/resource" in HttpGetter._shared
