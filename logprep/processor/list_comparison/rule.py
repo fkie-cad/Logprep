@@ -91,10 +91,17 @@ class ListComparisonRule(FieldManagerRule):
         list_search_base_path: str | None = field(
             default=None, validator=validators.optional(validators.instance_of(str))
         )
-        """Base Path from where to find relative files from :code:`list_file_paths`.
-        You can also pass a template with keys from environment,
-        e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
-        will be filled by this processor. """
+        """
+        Base path used to resolve this rule's relative ``list_file_paths``.
+
+        If unset, the processor-level ``list_search_base_path`` is used. A base path must
+        be configured either on the rule or on the processor.
+
+        The value may use getter syntax and ``string.Template`` placeholders.
+        Environment variables and ``${LOGPREP_LIST}`` are resolved during setup. For
+        HTTP(S) paths, unresolved placeholders are resolved from event fields during
+        processing.
+        """
         mapping: dict = field(default={}, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         content_field: str | None = field(
@@ -163,7 +170,17 @@ class ListComparisonRule(FieldManagerRule):
         callback_tag: str,
         list_search_base_path: str | None = None,
     ):
-        """init method for list_comparison lists"""
+        """Initialize comparison lists for this rule.
+
+        Local lists are loaded eagerly. Static HTTP(S) lists are loaded eagerly and
+        registered for refresh and cleanup callbacks. Dynamic HTTP(S) templates that
+        require event fields are loaded lazily during processing.
+
+        Raises
+        ------
+        InvalidConfigurationError
+            If neither the rule nor the processor provides ``list_search_base_path``.
+        """
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         self._callback_tag = callback_tag
         if not list_search_base_path.startswith("http"):
@@ -261,6 +278,20 @@ class ListComparisonRule(FieldManagerRule):
         logger.debug("Deleted compare set for %s after cleanup", resolved_uri)
 
     def get_dynamic_set(self, event: dict) -> dict[str, set]:
+        """Return the compare sets relevant for the current event.
+
+        For local and static lists, this returns the already initialized compare sets.
+        For dynamic HTTP(S) templates, event fields are used to resolve the target URL
+        and missing compare sets are loaded lazily.
+
+        Raises
+        ------
+        ValueError
+            If a required event field is missing or is not a scalar value.
+        Exception
+            Re-raises the stored data loading error if a dynamic HTTP(S) list cannot be
+            loaded, so the processor can apply the rule's failure tags.
+        """
         compare_sets_result: dict[str, set] = {}
         assert self._config.list_search_base_path
 

@@ -127,7 +127,11 @@ class NetworkComparisonRule(ListComparisonRule):
         """
 
     def init_list_comparison(self, owner: str, list_search_base_path: str | None = None) -> None:
-        """init method for list_comparison lists"""
+        """Initialize network comparison lists for this rule.
+
+        The base list-comparison initialization loads local, static HTTP(S), or dynamic
+        HTTP(S) compare sets. Loaded values are then converted to IP network objects.
+        """
         super().init_list_comparison(owner, list_search_base_path)
         self._convert_compare_sets_to_networks()
 

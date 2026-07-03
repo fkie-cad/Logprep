@@ -2,8 +2,9 @@
 NetworkComparison
 =================
 
-The `network_comparison` processor allows to compare values of source fields against lists provided
-as files.
+The `network_comparison` processor compares IP address values from source fields
+against network lists loaded from local files or HTTP(S) targets. It supports the
+same static and dynamic list path resolution as `list_comparison`.
 
 
 Processor Configuration
@@ -43,7 +44,12 @@ class NetworkComparison(ListComparison):
     def _get_lists_matching_with_values(
         self, rule: Rule, value_list: list, event: dict
     ) -> tuple[list, dict]:
-        """Iterate over network lists, check if element is in any."""
+        """Return matching network-list identifiers and the evaluated compare sets.
+
+        Invalid event values are reported as warnings and skipped. Dynamic list loading
+        errors are converted to ``ProcessingWarning`` so the rule's failure tags are
+        applied.
+        """
         rule = typing.cast(NetworkComparisonRule, rule)
         list_matches: list = []
         try:

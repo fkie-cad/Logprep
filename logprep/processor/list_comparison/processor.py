@@ -2,8 +2,10 @@
 ListComparison
 ==============
 
-The `list_comparison` processor allows to compare values of source fields against lists provided
-as files.
+The `list_comparison` processor compares values of source fields against
+comparison lists loaded from local files or HTTP(S) targets. HTTP base paths may
+be static or templated with environment variables and event fields for dynamic,
+lazy list loading.
 
 
 Processor Configuration
@@ -52,11 +54,16 @@ class ListComparison(Processor):
         list_search_base_path: str | None = field(
             validator=validators.optional(validators.instance_of(str)), default=None
         )
-        """Relative list paths in rules will be relative to this path if this is set.
-        This parameter is optional. For string format see :ref:`getters`.
-        You can also pass a template with keys from environment,
-        e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
-        will be filled by this processor. """
+        """
+        Base path used to resolve relative ``list_file_paths`` from rules.
+        This setting is optional on the processor if every rule defines its own
+        ``list_search_base_path``. It is required either here or in the rule config.
+
+        The value may use getter syntax and may contain ``string.Template`` placeholders.
+        Environment variables and ``${LOGPREP_LIST}`` are resolved during setup. For
+        HTTP(S) paths, placeholders that are not environment variables are resolved from
+        the event during processing, enabling dynamic list paths.
+        """
 
     rule_class = ListComparisonRule
 
@@ -96,9 +103,9 @@ class ListComparison(Processor):
         Returns
         -------
         tuple[list[str], str]
-            The result of the comparison, as well as a dictionary containing the result and a list
-            of filenames pertaining to said result.
-
+            A list of matching list identifiers and the result key ``"in_list"``, or all
+            evaluated list identifiers and the result key ``"not_in_list"`` if no value
+            matched.
         """
 
         field_value_to_be_checked = get_dotted_field_value(event, rule.source_fields[0])
@@ -116,7 +123,11 @@ class ListComparison(Processor):
     def _get_lists_matching_with_values(
         self, rule: ListComparisonRule, value_list: list, event: dict
     ) -> tuple[list, dict[str, set]]:
-        """Iterate over string lists, check if element is in any."""
+        """Return matching comparison-list identifiers and the evaluated compare sets.
+
+        Dynamic list loading errors are converted to ``ProcessingWarning`` so the rule's
+        failure tags are applied instead of producing a normal ``not_in_list`` result.
+        """
         list_matches = []
         try:
             dynamic_set = rule.get_dynamic_set(event)

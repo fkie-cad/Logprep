@@ -175,7 +175,7 @@ class RefreshableGetter(Getter, ABC):
 
     @cache.setter
     def cache(self, value: bytes) -> None:
-        """Sets the cache for the current targe"""
+        """Sets the cache for the current target"""
         self.shared.cache = value
 
     @property
@@ -280,7 +280,12 @@ class RefreshableGetter(Getter, ABC):
         fnc_args: Iterable[Any] | None = None,
         fnc_kwargs: dict[str, Any] | None = None,
     ):
-        """Add callbacks to call when http getter refreshes with new data"""
+        """Register a callback for successful refreshed data.
+
+        If ``deduplication_key`` is set, an existing callback with the same key is kept
+        and the new callback is ignored. The ``tag`` is used for later bulk removal and
+        is independent from the deduplication key.
+        """
         self._add_callback_to_shared(
             self.shared,
             self.target,
@@ -303,7 +308,11 @@ class RefreshableGetter(Getter, ABC):
         fnc_args: Iterable[Any] | None = None,
         fnc_kwargs: dict[str, Any] | None = None,
     ):
-        """Add callbacks to call when http getter with given target refreshes with new data"""
+        """Register a refresh callback for an already initialized target.
+
+        This is a no-op if the target has no shared getter state. ``deduplication_key``
+        prevents duplicate callback registration without affecting tag-based removal.
+        """
         shared = cls._shared.get(target)
         if shared is None:
             return
@@ -328,7 +337,11 @@ class RefreshableGetter(Getter, ABC):
         fnc_args: Iterable[Any] | None = None,
         fnc_kwargs: dict[str, Any] | None = None,
     ):
-        """Add callbacks to call when http getter times out"""
+        """Register a callback that runs when the target times out and is removed.
+
+        If ``deduplication_key`` is set, an existing cleanup callback with the same key
+        is kept and the new callback is ignored.
+        """
         self._add_callback_to_shared(
             self.shared,
             self.target,
@@ -500,7 +513,7 @@ class RefreshableGetter(Getter, ABC):
 
     @classmethod
     def refresh(cls):
-        """Run all pending getter schedulers"""
+        """Run pending refresh schedulers and cleanup timed-out targets."""
         for target, shared_target_data in list(cls._shared.items()):
             if cls.timed_out_for_target(target):
                 del cls._shared[target]
