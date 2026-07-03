@@ -1,6 +1,6 @@
 """Logprep time helpers module"""
 
-from datetime import datetime, tzinfo, UTC
+from datetime import UTC, datetime, tzinfo
 
 from logprep.abc.exceptions import LogprepException
 
@@ -126,10 +126,14 @@ class TimeParser:
     def _normalize_unix_timestamp(timestamp: str) -> int | float:
         """Normalize the input timestamp string to unix timestamp in seconds.
 
-        The input string is assumed to be in seconds if it is 10 digits long or shorter,
-        since seconds with more than 10 digits would be far into the future.
-        For strings longer than 10 digits the parsed integer is divided to be 10 digits long
-        before the decimal point.
+        Unix timestamps are assumed to be in seconds if the timestamp has 10 digits
+        or fewer before the decimal point, since seconds with more than 10 digits
+        would be far into the future. Timestamps with more than 10 digits before
+        the decimal point are scaled down so that 10 digits remain before the
+        decimal point.
+
+        Timestamp strings with a decimal point are parsed as float so fractional
+        seconds are preserved.
 
         Parameters
         ----------
@@ -144,16 +148,51 @@ class TimeParser:
         Raises
         ------
         TimeParserException
-            Raised if input timestamp string could not be parsed as integer
+            Raised if input timestamp string could not be parsed as a number
         """
         try:
-            return (
-                int(timestamp)
-                if len(timestamp) <= 10
-                else int(timestamp) / 10 ** (len(timestamp) - 10)
-            )
+            timestamp = timestamp.strip()
+            integer_part = TimeParser._get_unix_timestamp_integer_part(timestamp)
+
+            if "." in timestamp:
+                return TimeParser._normalize_fractional_unix_timestamp(timestamp, integer_part)
+
+            return TimeParser._normalize_integer_unix_timestamp(timestamp, integer_part)
         except ValueError as error:
             raise TimeParserException(str(error)) from error
+
+    @staticmethod
+    def _get_unix_timestamp_integer_part(timestamp: str) -> str:
+        """Return the integer part of a UNIX timestamp."""
+        return timestamp.split(".", maxsplit=1)[0]
+
+    @staticmethod
+    def _normalize_fractional_unix_timestamp(timestamp: str, integer_part: str) -> float:
+        """Normalize a fractional UNIX timestamp to seconds.
+
+        Fractional UNIX timestamps are parsed as float to preserve sub-second
+        precision. The digit-count heuristic is applied to the integer part only.
+        """
+        parsed_timestamp = float(timestamp)
+        return (
+            parsed_timestamp
+            if len(integer_part) <= 10
+            else parsed_timestamp / 10 ** (len(integer_part) - 10)
+        )
+
+    @staticmethod
+    def _normalize_integer_unix_timestamp(timestamp: str, integer_part: str) -> int | float:
+        """Normalize an integer-only UNIX timestamp to seconds.
+
+        Existing behavior is preserved: timestamps with 10 digits or fewer are
+        interpreted as seconds. Longer values are scaled down so that 10 digits
+        remain before the decimal point.
+        """
+        return (
+            int(timestamp)
+            if len(integer_part) <= 10
+            else int(timestamp) / 10 ** (len(integer_part) - 10)
+        )
 
     @classmethod
     def parse_datetime(
