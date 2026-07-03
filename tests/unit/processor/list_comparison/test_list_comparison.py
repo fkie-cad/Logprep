@@ -45,6 +45,33 @@ class TestListComparison(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
+    def test_list_comparison_uses_rule_level_list_search_base_path_without_processor_base_path(
+        self,
+    ):
+        document = {"user": "Franz"}
+        expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_search_base_path": self.CONFIG["list_search_base_path"],
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+        }
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+        processor.process(document)
+
+        assert document == expected
+
     def test_element_not_in_list(self):
         # Test if user Charlotte is not in user list
         document = {"user": "Charlotte"}

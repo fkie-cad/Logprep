@@ -1376,6 +1376,70 @@ class TestHttpGetter:
         HttpGetter.add_callback_for_target("target", "test_owner", lambda: True)
         assert HttpGetter._shared.get("target") is None
 
+    def test_add_callback_for_target_unknown_target_does_not_create_shared_state(self):
+        HttpGetter.add_callback_for_target("unknown-target", "test_owner", lambda: True)
+
+        assert "unknown-target" not in HttpGetter._shared
+
+    def test_deduplicated_callback_skips_existing_non_deduplicated_callback(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        first_callback = mock.MagicMock()
+        second_callback = mock.MagicMock()
+
+        http_getter.add_callback("owner", first_callback, deduplicate=False)
+        http_getter.add_callback("owner", second_callback, deduplicate=True)
+
+        assert http_getter.shared.callbacks == [
+            {
+                "tag": "owner",
+                "key": ("owner", "http://example.test/resource"),
+                "function": first_callback,
+                "args": [],
+                "kwargs": {},
+            }
+        ]
+
+    def test_deduplicated_cleanup_callback_skips_existing_non_deduplicated_callback(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        first_callback = mock.MagicMock()
+        second_callback = mock.MagicMock()
+
+        http_getter.add_cleanup_callback("owner", first_callback, deduplicate=False)
+        http_getter.add_cleanup_callback("owner", second_callback, deduplicate=True)
+
+        assert http_getter.shared.cleanup_callbacks == [
+            {
+                "tag": "owner",
+                "key": ("owner", "http://example.test/resource"),
+                "function": first_callback,
+                "args": [],
+                "kwargs": {},
+            }
+        ]
+
+    def test_deduplicated_callback_for_target_skips_existing_non_deduplicated_callback(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        _ = http_getter.shared
+        first_callback = mock.MagicMock()
+        second_callback = mock.MagicMock()
+
+        HttpGetter.add_callback_for_target(
+            "http://example.test/resource", "owner", first_callback, deduplicate=False
+        )
+        HttpGetter.add_callback_for_target(
+            "http://example.test/resource", "owner", second_callback, deduplicate=True
+        )
+
+        assert http_getter.shared.callbacks == [
+            {
+                "tag": "owner",
+                "key": ("owner", "http://example.test/resource"),
+                "function": first_callback,
+                "args": [],
+                "kwargs": {},
+            }
+        ]
+
     def test_set_refresh_interval(self):
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter._refresh_interval != 123

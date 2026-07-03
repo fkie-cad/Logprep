@@ -34,6 +34,34 @@ class TestNetworkComparison(BaseProcessorTestCase):
         self.object.process(log_event)
         assert log_event.data.get("tags") == ["_network_comparison_failure"]
 
+    def test_network_comparison_uses_rule_level_list_search_base_path_without_processor_base_path(
+        self,
+    ):
+        document = {"ip": "127.0.0.1"}
+        log_event = LogEvent(document, original=b"")
+        expected = {"ip": "127.0.0.1", "network_results": {"in_list": ["network_list.txt"]}}
+        rule_dict = {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "network_results",
+                "list_search_base_path": self.CONFIG["list_search_base_path"],
+                "list_file_paths": ["../lists/network_list.txt"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "ng_network_comparison",
+            "rules": [],
+        }
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+        processor.process(log_event)
+
+        assert log_event.data == expected
+
     def test_element_not_in_list(self):
         # Test if ip 1.2.34 is not in ip list
         document = {"ip1": "1.2.3.4"}
