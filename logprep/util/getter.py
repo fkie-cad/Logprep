@@ -238,14 +238,12 @@ class RefreshableGetter(Getter, ABC):
     @staticmethod
     def _build_callback(
         tag: str,
-        key: tuple[str, str],
         fnc: Callable,
         fnc_args: Iterable[Any] | None,
         fnc_kwargs: dict[str, Any] | None,
     ) -> dict[str, Any]:
         return {
             "tag": tag,
-            "key": key,
             "function": fnc,
             "args": fnc_args or [],
             "kwargs": fnc_kwargs or {},
@@ -259,17 +257,17 @@ class RefreshableGetter(Getter, ABC):
         callback_list_name: str,
         tag: str,
         fnc: Callable,
-        deduplicate: bool,
+        deduplication_key: tuple | None,
         fnc_args: Iterable[Any] | None,
         fnc_kwargs: dict[str, Any] | None,
     ) -> None:
         callbacks = getattr(shared, callback_list_name)
-        key = (tag, target)
-        callback = cls._build_callback(tag, key, fnc, fnc_args, fnc_kwargs)
+        callback = cls._build_callback(tag, fnc, fnc_args, fnc_kwargs)
 
-        if deduplicate:
-            if any(existing.get("key") == key for existing in callbacks):
+        if deduplication_key is not None:
+            if any(existing.get("key") == deduplication_key for existing in callbacks):
                 return
+            callback["key"] = deduplication_key
 
         callbacks.append(callback)
 
@@ -278,7 +276,7 @@ class RefreshableGetter(Getter, ABC):
         tag: str,
         fnc: Callable,
         *,
-        deduplicate: bool = False,
+        deduplication_key: tuple | None = None,
         fnc_args: Iterable[Any] | None = None,
         fnc_kwargs: dict[str, Any] | None = None,
     ):
@@ -289,7 +287,7 @@ class RefreshableGetter(Getter, ABC):
             "callbacks",
             tag,
             fnc,
-            deduplicate,
+            deduplication_key,
             fnc_args,
             fnc_kwargs,
         )
@@ -301,7 +299,7 @@ class RefreshableGetter(Getter, ABC):
         tag: str,
         fnc: Callable,
         *,
-        deduplicate: bool = False,
+        deduplication_key: tuple | None = None,
         fnc_args: Iterable[Any] | None = None,
         fnc_kwargs: dict[str, Any] | None = None,
     ):
@@ -316,7 +314,7 @@ class RefreshableGetter(Getter, ABC):
             "callbacks",
             tag,
             fnc,
-            deduplicate,
+            deduplication_key,
             fnc_args,
             fnc_kwargs,
         )
@@ -326,7 +324,7 @@ class RefreshableGetter(Getter, ABC):
         tag: str,
         fnc: Callable,
         *,
-        deduplicate: bool = False,
+        deduplication_key: tuple | None = None,
         fnc_args: Iterable[Any] | None = None,
         fnc_kwargs: dict[str, Any] | None = None,
     ):
@@ -337,7 +335,7 @@ class RefreshableGetter(Getter, ABC):
             "cleanup_callbacks",
             tag,
             fnc,
-            deduplicate,
+            deduplication_key,
             fnc_args,
             fnc_kwargs,
         )

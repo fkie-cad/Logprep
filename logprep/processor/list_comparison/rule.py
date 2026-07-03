@@ -241,7 +241,7 @@ class ListComparisonRule(FieldManagerRule):
         http_getter.add_callback(
             tag,
             self._update_compare_sets_via_http,
-            deduplicate=True,
+            deduplication_key=(tag, resolved_uri, id(self)),
             fnc_args=[
                 http_getter,
                 resolved_uri,
@@ -249,7 +249,10 @@ class ListComparisonRule(FieldManagerRule):
         )
 
         http_getter.add_cleanup_callback(
-            tag, self._cleanup, deduplicate=True, fnc_args=[resolved_uri]
+            tag,
+            self._cleanup,
+            deduplication_key=(tag, resolved_uri, id(self)),
+            fnc_args=[resolved_uri],
         )
         return compare_set
 
@@ -295,8 +298,12 @@ class ListComparisonRule(FieldManagerRule):
                 continue
 
             compare_set = self._load_http_compare_set(dynamic_resolved)
-            if compare_set is not None:
-                compare_sets_result.update({dynamic_resolved: compare_set})
+            if compare_set is None:
+                raise self._data_error or ValueError(
+                    f"could not load dynamic list comparison path {dynamic_resolved!r}"
+                )
+
+            compare_sets_result.update({dynamic_resolved: compare_set})
 
         return compare_sets_result
 
