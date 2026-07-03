@@ -10,6 +10,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import cached_property
+from gc import callbacks
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
@@ -74,9 +75,9 @@ class GetterFactory:
         if protocol is None:
             protocol = "file"
         if protocol == "file":
-            return FileGetter(protocol=protocol, target=target)  # type: ignore
+            return FileGetter(protocol=protocol, target=target)
         if protocol == "http" or protocol == "https":
-            return HttpGetter(protocol=protocol, target=f"{protocol}://{target}")  # type: ignore
+            return HttpGetter(protocol=protocol, target=f"{protocol}://{target}")
         raise GetterNotFoundError(f"No getter for protocol '{protocol}'")
 
     @staticmethod
@@ -234,37 +235,37 @@ class RefreshableGetter(Getter, ABC):
             self.shared.default_return_value = self._get_default_return_value()
         return self.shared.default_return_value
 
-    def add_callback(self, owner: str, fnc, *args, **kwargs):
+    def add_callback(self, tag: str, fnc, deduplicate: bool = False, *args, **kwargs):
         """Add callbacks to call when http getter refreshes with new data"""
-        self._callbacks.append({"owner": owner, "function": fnc, "args": args, "kwargs": kwargs})
+        callback = {"tag": tag, "function": fnc, "args": args, "kwargs": kwargs}
+        if deduplicate:
+            if any(callback.get("key") == (tag, self.target) for callback in self.shared.callbacks):
+                return
+            callback["key"] = (tag, self.target)
 
-    def add_callback_once(self, key: tuple, owner: str, fnc, *args, **kwargs):
-        if any(callback.get("key") == key for callback in self.shared.callbacks):
-            return
-        self.shared.callbacks.append(
-            {"key": key, "owner": owner, "function": fnc, "args": args, "kwargs": kwargs}
-        )
+        self._callbacks.append(callback)
 
     @classmethod
-    def add_callback_for_target(cls, owner: str, target, fnc, *args, **kwargs):
+    def add_callback_for_target(cls, tag: str, target, fnc, *args, **kwargs):
         """Add callbacks to call when http getter with given target refreshes with new data"""
         shared = cls._shared.get(target)
         if shared is None:
             return
-        shared.callbacks.append({"owner": owner, "function": fnc, "args": args, "kwargs": kwargs})
+        shared.callbacks.append({"tag": tag, "function": fnc, "args": args, "kwargs": kwargs})
 
-    def add_cleanup_callback(self, owner: str, fnc, *args, **kwargs):
+    def add_cleanup_callback(self, tag: str, fnc, deduplicate: bool, *args, **kwargs):
         """Add callbacks to call when http getter times out"""
-        self.shared.cleanup_callbacks.append(
-            {"owner": owner, "function": fnc, "args": args, "kwargs": kwargs}
-        )
+        callback = {"tag": tag, "function": fnc, "args": args, "kwargs": kwargs}
+        if deduplicate:
+            if any(
+                callback.get("key") == (tag, self.target)
+                for callback in self.shared.cleanup_callbacks
+            ):
+                return
 
-    def add_cleanup_callback_once(self, key: tuple, owner: str, fnc, *args, **kwargs):
-        if any(callback.get("key") == key for callback in self.shared.cleanup_callbacks):
-            return
-        self.shared.cleanup_callbacks.append(
-            {"key": key, "owner": owner, "function": fnc, "args": args, "kwargs": kwargs}
-        )
+            callback["key"] = (tag, self.target)
+
+        self.shared.cleanup_callbacks.append(callback)
 
     def _get_getter_config_entry(self) -> dict:
         if ENV_NAME_LOGPREP_GETTER_CONFIG not in os.environ:
@@ -374,7 +375,7 @@ class RefreshableGetter(Getter, ABC):
             raise ValueError(f"Cache is empty for {type(self).__name__} with URI '{self.uri}'")
         return self.cache, self.content_type
 
-    def signal_called(self):
+    def keep_alive(self):
         self.shared.last_called = time.monotonic()
 
     def timed_out(self):
@@ -387,15 +388,15 @@ class RefreshableGetter(Getter, ABC):
         return False
 
     @classmethod
-    def remove_callbacks_for_owner(cls, owner: str) -> None:
+    def remove_callbacks_for_tag(cls, tag: str) -> None:
         empty_targets = []
 
         for target, shared in cls._shared.items():
             shared.callbacks = [
-                callback for callback in shared.callbacks if callback.get("owner") != owner
+                callback for callback in shared.callbacks if callback.get("tag") != tag
             ]
             shared.cleanup_callbacks = [
-                callback for callback in shared.cleanup_callbacks if callback.get("owner") != owner
+                callback for callback in shared.cleanup_callbacks if callback.get("tag") != tag
             ]
 
             if shared.cache is None and not shared.callbacks and not shared.cleanup_callbacks:

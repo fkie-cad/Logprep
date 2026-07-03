@@ -85,7 +85,7 @@ class NetworkComparisonRule(ListComparisonRule):
         You can also pass a template with keys from environment,
         e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
         will be filled by this processor. """
-        mapping: dict = field(default={}, init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         content_field: str | None = field(
             validator=validators.optional(validators.instance_of(str)),

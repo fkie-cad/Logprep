@@ -142,7 +142,7 @@ class ListComparisonRule(FieldManagerRule):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._compare_sets = {}
-        self._callback_owner = ""
+        self._callback_tag = ""
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if list_search_base_path is None:
@@ -154,12 +154,12 @@ class ListComparisonRule(FieldManagerRule):
 
     def init_list_comparison(
         self,
-        callback_owner: str,
+        callback_tag: str,
         list_search_base_path: str | None = None,
     ):
         """init method for list_comparison lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
-        self._callback_owner = callback_owner
+        self._callback_tag = callback_tag
         if not list_search_base_path.startswith("http"):
             self._init_list_comparison_from_local_file(list_search_base_path)
         else:
@@ -168,21 +168,29 @@ class ListComparisonRule(FieldManagerRule):
                 if not self._config.list_search_base_path
                 else self._config.list_search_base_path
             )
+
+            # Check if this is a static (eagerly loaded) or dynamic (lazily loaded) list_comparison
+            if any(
+                identifier not in [*os.environ, "LOGPREP_LIST"]
+                for identifier in Template(self._config.list_search_base_path).get_identifiers()
+            ):
+                return
+
             self._init_static_http_list_comparison()
 
     def _update_compare_sets_via_http(
-        self, http_getter: HttpGetter, fully_resoled_uri: str
+        self, http_getter: HttpGetter, fully_resolved_uri: str
     ) -> set[dict] | None:
         try:
             content = http_getter.get_list(content_field=self._config.content_field)
             file_elements = (elem for elem in content if not elem.startswith("#"))
-            self._compare_sets[fully_resoled_uri] = set(file_elements)
+            self._compare_sets[fully_resolved_uri] = set(file_elements)
         except Exception as ex:
             self.mark_failed(error=ex)
             return None
         else:
             self.clear_failed()
-            return self._compare_sets[fully_resoled_uri]
+            return self._compare_sets[fully_resolved_uri]
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
         content_field = self._config.content_field
@@ -207,11 +215,9 @@ class ListComparisonRule(FieldManagerRule):
 
     def _init_static_http_list_comparison(self) -> None:
         for list_path in self._config.list_file_paths:
-            resolved = Template(self._config.list_search_base_path).safe_substitute(
+            resolved = Template(self._config.list_search_base_path).substitute(
                 {**os.environ, **{"LOGPREP_LIST": list_path}}
             )
-            if Template(resolved).get_identifiers():
-                continue
             self._load_http_compare_set(resolved)
 
     def _load_http_compare_set(self, resolved_uri: str) -> set[dict] | None:
@@ -219,24 +225,25 @@ class ListComparisonRule(FieldManagerRule):
         if not isinstance(http_getter, HttpGetter):
             raise TypeError(f"The target {resolved_uri} must be a url")
 
-        http_getter.signal_called()
+        http_getter.keep_alive()
 
         compare_set = self._update_compare_sets_via_http(http_getter, resolved_uri)
-        owner = self._callback_owner
+        tag = self._callback_tag
 
-        refresh_key = (owner, resolved_uri, "list_comparison_refresh")
-        cleanup_key = (owner, resolved_uri, "list_comparison_cleanup")
-
-        http_getter.add_callback_once(
-            refresh_key, owner, self._update_compare_sets_via_http, http_getter, resolved_uri
+        http_getter.add_callback(
+            tag,
+            self._update_compare_sets_via_http,
+            True,
+            http_getter,
+            resolved_uri,
         )
 
-        def cleanup():
-            self._compare_sets.pop(resolved_uri, None)
-            logger.debug("Deleted compare set for %s after cleanup", resolved_uri)
-
-        http_getter.add_cleanup_callback_once(cleanup_key, owner, cleanup)
+        http_getter.add_cleanup_callback(tag, self._cleanup, True, resolved_uri)
         return compare_set
+
+    def _cleanup(self, resolved_uri: str):
+        self._compare_sets.pop(resolved_uri, None)
+        logger.debug("Deleted compare set for %s after cleanup", resolved_uri)
 
     def get_dynamic_set(self, event: dict) -> dict[str, set]:
         compare_sets_result: dict[str, set] = {}
@@ -276,7 +283,8 @@ class ListComparisonRule(FieldManagerRule):
         return compare_sets_result
 
     @property
-    def compare_sets(self) -> dict[str, set]:  # pylint: disable=missing-docstring
+    def compare_sets(self) -> dict[str, set]:
+        """Returns the comparison sets"""
         return self._compare_sets
 
     @property

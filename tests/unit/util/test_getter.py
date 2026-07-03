@@ -1272,7 +1272,7 @@ class TestHttpGetter:
             def callback(foo, bar, keyword1=0):
                 self._callback_value += foo + bar + keyword1
 
-            http_getter_1.add_callback("test_owner_1", callback, 1, 2, keyword1=3)
+            http_getter_1.add_callback("test_owner_1", callback, False, 1, 2, keyword1=3)
 
             http_getter_1.get_json()
             assert self._callback_value == 0
@@ -1289,7 +1289,7 @@ class TestHttpGetter:
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 12
-            http_getter_2.add_callback("test_owner_2", callback, 1, 0, keyword1=1)
+            http_getter_2.add_callback("test_owner_2", callback, False, 1, 0, keyword1=1)
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 14
@@ -1676,7 +1676,7 @@ class TestHttpGetter:
         assert isinstance(http_getter, HttpGetter)
         assert http_getter._refresh_interval == 10
 
-    def test_remove_callbacks_for_owner_only_removes_matchin_owner(self):
+    def test_remove_callbacks_for_tag_only_removes_matching_tag(self):
         http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
 
         owner_1_callback = mock.MagicMock()
@@ -1684,19 +1684,19 @@ class TestHttpGetter:
         owner_1_cleanup = mock.MagicMock()
         owner_2_cleanup = mock.MagicMock()
 
-        http_getter.add_callback("owner-1", owner_1_callback)
-        http_getter.add_callback("owner-2", owner_2_callback)
-        http_getter.add_cleanup_callback("owner-1", owner_1_cleanup)
-        http_getter.add_cleanup_callback("owner-2", owner_2_cleanup)
+        http_getter.add_callback("owner-1", owner_1_callback, False)
+        http_getter.add_callback("owner-2", owner_2_callback, False)
+        http_getter.add_cleanup_callback("owner-1", owner_1_cleanup, False)
+        http_getter.add_cleanup_callback("owner-2", owner_2_cleanup, False)
 
-        RefreshableGetter.remove_callbacks_for_owner("owner-1")
+        RefreshableGetter.remove_callbacks_for_tag("owner-1")
 
         assert http_getter.shared.callbacks == [
-            {"owner": "owner-2", "function": owner_2_callback, "args": (), "kwargs": {}}
+            {"tag": "owner-2", "function": owner_2_callback, "args": (), "kwargs": {}}
         ]
 
         assert http_getter.shared.cleanup_callbacks == [
-            {"owner": "owner-2", "function": owner_2_cleanup, "args": (), "kwargs": {}}
+            {"tag": "owner-2", "function": owner_2_cleanup, "args": (), "kwargs": {}}
         ]
 
     def test_callbacks_are_not_shared_between_targets(self):
@@ -1706,8 +1706,8 @@ class TestHttpGetter:
         callback = mock.MagicMock()
         cleanup_callback = mock.MagicMock()
 
-        http_getter_1.add_callback("owner", callback)
-        http_getter_1.add_cleanup_callback("owner", cleanup_callback)
+        http_getter_1.add_callback("owner", callback, False)
+        http_getter_1.add_cleanup_callback("owner", cleanup_callback, False)
 
         assert http_getter_1.shared.callbacks
         assert http_getter_1.shared.cleanup_callbacks
@@ -1720,7 +1720,7 @@ class TestHttpGetter:
         cleanup_callback = mock.MagicMock()
         scheduler = mock.MagicMock()
 
-        http_getter.add_cleanup_callback("owner", cleanup_callback, "foo", bar="baz")
+        http_getter.add_cleanup_callback("owner", cleanup_callback, False, "foo", bar="baz")
         http_getter.scheduler = scheduler
         http_getter.shared.last_called = 100.0
 
@@ -1736,7 +1736,7 @@ class TestHttpGetter:
         cleanup_callback = mock.MagicMock()
         scheduler = mock.MagicMock()
 
-        http_getter.add_cleanup_callback("owner", cleanup_callback)
+        http_getter.add_cleanup_callback("owner", cleanup_callback, False)
         http_getter.scheduler = scheduler
         http_getter.shared.last_called = 100.0
 

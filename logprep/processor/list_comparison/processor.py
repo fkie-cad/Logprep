@@ -131,5 +131,5 @@ class ListComparison(Processor):
         return list_matches, dynamic_set
 
     def _shut_down(self) -> None:
-        RefreshableGetter.remove_callbacks_for_owner(self._job_tag_for_cleanup)
+        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
         return super()._shut_down()
