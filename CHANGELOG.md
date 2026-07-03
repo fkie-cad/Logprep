@@ -6,6 +6,7 @@
 ### Improvements
 
 ### Bugfix
+* add missing documentation for the `network_comparison` processor
 
 ## 19.3.0
 ### Breaking
