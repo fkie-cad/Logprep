@@ -1272,7 +1272,13 @@ class TestHttpGetter:
             def callback(foo, bar, keyword1=0):
                 self._callback_value += foo + bar + keyword1
 
-            http_getter_1.add_callback("test_owner_1", callback, False, 1, 2, keyword1=3)
+            http_getter_1.add_callback(
+                "test_owner_1",
+                callback,
+                deduplicate=False,
+                fnc_args=[1, 2],
+                fnc_kwargs={"keyword1": 3},
+            )
 
             http_getter_1.get_json()
             assert self._callback_value == 0
@@ -1289,7 +1295,13 @@ class TestHttpGetter:
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 12
-            http_getter_2.add_callback("test_owner_2", callback, False, 1, 0, keyword1=1)
+            http_getter_2.add_callback(
+                "test_owner_2",
+                callback,
+                deduplicate=False,
+                fnc_args=[1, 0],
+                fnc_kwargs={"keyword1": 1},
+            )
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 14
@@ -1323,7 +1335,14 @@ class TestHttpGetter:
             def callback(foo, bar, keyword1=0):
                 self._callback_value += foo + bar + keyword1
 
-            HttpGetter.add_callback_for_target("test_owner_1", url_1, callback, 1, 2, keyword1=3)
+            HttpGetter.add_callback_for_target(
+                url_1,
+                "test_owner_1",
+                callback,
+                deduplicate=False,
+                fnc_args=[1, 2],
+                fnc_kwargs={"keyword1": 3},
+            )
 
             http_getter_1.get_json()
             assert self._callback_value == 0
@@ -1340,14 +1359,21 @@ class TestHttpGetter:
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 12
-            HttpGetter.add_callback_for_target("test_owner_2", url_2, callback, 1, 0, keyword1=1)
+            HttpGetter.add_callback_for_target(
+                url_2,
+                "test_owner_2",
+                callback,
+                deduplicate=False,
+                fnc_args=[1, 0],
+                fnc_kwargs={"keyword1": 1},
+            )
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 14
 
     def test_add_callback_for_target_target_share_none(self):
         HttpGetter._shared["target"] = None
-        HttpGetter.add_callback_for_target("test_owner", "target", lambda: True)
+        HttpGetter.add_callback_for_target("target", "test_owner", lambda: True)
         assert HttpGetter._shared.get("target") is None
 
     def test_set_refresh_interval(self):
@@ -1684,19 +1710,31 @@ class TestHttpGetter:
         owner_1_cleanup = mock.MagicMock()
         owner_2_cleanup = mock.MagicMock()
 
-        http_getter.add_callback("owner-1", owner_1_callback, False)
-        http_getter.add_callback("owner-2", owner_2_callback, False)
-        http_getter.add_cleanup_callback("owner-1", owner_1_cleanup, False)
-        http_getter.add_cleanup_callback("owner-2", owner_2_cleanup, False)
+        http_getter.add_callback("owner-1", owner_1_callback, deduplicate=False)
+        http_getter.add_callback("owner-2", owner_2_callback, deduplicate=False)
+        http_getter.add_cleanup_callback("owner-1", owner_1_cleanup, deduplicate=False)
+        http_getter.add_cleanup_callback("owner-2", owner_2_cleanup, deduplicate=False)
 
         RefreshableGetter.remove_callbacks_for_tag("owner-1")
 
         assert http_getter.shared.callbacks == [
-            {"tag": "owner-2", "function": owner_2_callback, "args": (), "kwargs": {}}
+            {
+                "tag": "owner-2",
+                "key": ("owner-2", "http://example.test/resource"),
+                "function": owner_2_callback,
+                "args": [],
+                "kwargs": {},
+            }
         ]
 
         assert http_getter.shared.cleanup_callbacks == [
-            {"tag": "owner-2", "function": owner_2_cleanup, "args": (), "kwargs": {}}
+            {
+                "tag": "owner-2",
+                "key": ("owner-2", "http://example.test/resource"),
+                "function": owner_2_cleanup,
+                "args": [],
+                "kwargs": {},
+            }
         ]
 
     def test_callbacks_are_not_shared_between_targets(self):
@@ -1706,8 +1744,8 @@ class TestHttpGetter:
         callback = mock.MagicMock()
         cleanup_callback = mock.MagicMock()
 
-        http_getter_1.add_callback("owner", callback, False)
-        http_getter_1.add_cleanup_callback("owner", cleanup_callback, False)
+        http_getter_1.add_callback("owner", callback, deduplicate=False)
+        http_getter_1.add_cleanup_callback("owner", cleanup_callback, deduplicate=False)
 
         assert http_getter_1.shared.callbacks
         assert http_getter_1.shared.cleanup_callbacks
@@ -1720,7 +1758,13 @@ class TestHttpGetter:
         cleanup_callback = mock.MagicMock()
         scheduler = mock.MagicMock()
 
-        http_getter.add_cleanup_callback("owner", cleanup_callback, False, "foo", bar="baz")
+        http_getter.add_cleanup_callback(
+            "owner",
+            cleanup_callback,
+            deduplicate=False,
+            fnc_args=["foo"],
+            fnc_kwargs={"bar": "baz"},
+        )
         http_getter.scheduler = scheduler
         http_getter.shared.last_called = 100.0
 
@@ -1736,7 +1780,7 @@ class TestHttpGetter:
         cleanup_callback = mock.MagicMock()
         scheduler = mock.MagicMock()
 
-        http_getter.add_cleanup_callback("owner", cleanup_callback, False)
+        http_getter.add_cleanup_callback("owner", cleanup_callback, deduplicate=False)
         http_getter.scheduler = scheduler
         http_getter.shared.last_called = 100.0
 

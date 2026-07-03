@@ -50,7 +50,9 @@ class ListComparison(Processor):
     class Config(Processor.Config):
         """ListComparison config"""
 
-        list_search_base_path: str = field(validator=validators.instance_of(str))
+        list_search_base_path: str | None = field(
+            validator=validators.optional(validators.instance_of(str)), default=None
+        )
         """Relative list paths in rules will be relative to this path if this is set.
         This parameter is optional. For string format see :ref:`getters`.
         You can also pass a template with keys from environment,

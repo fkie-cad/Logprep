@@ -47,6 +47,7 @@ from string import Template
 
 from attrs import define, field, validators
 
+from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import (
@@ -87,7 +88,9 @@ class ListComparisonRule(FieldManagerRule):
            authenticity and integrity of the loaded values.
 
         """
-        list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
+        list_search_base_path: str | None = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
+        )
         """Base Path from where to find relative files from :code:`list_file_paths`.
         You can also pass a template with keys from environment,
         e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
@@ -145,12 +148,15 @@ class ListComparisonRule(FieldManagerRule):
         self._callback_tag = ""
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
-        if list_search_base_path is None:
+        if self._config.list_search_base_path:
             return self._config.list_search_base_path
-        # This seems weirdly wrong? Why do lexicographic check here?
-        if self._config.list_search_base_path > list_search_base_path:
-            return self._config.list_search_base_path
-        return list_search_base_path
+        elif list_search_base_path:
+            self._config.list_search_base_path = list_search_base_path
+            return list_search_base_path
+
+        raise InvalidConfigurationError(
+            "list_search_base_path must be set either in the processor config or in the rule"
+        )
 
     def init_list_comparison(
         self,
@@ -214,6 +220,8 @@ class ListComparisonRule(FieldManagerRule):
             self._compare_sets.update({filename: set(file_elements)})
 
     def _init_static_http_list_comparison(self) -> None:
+        assert self._config.list_search_base_path
+
         for list_path in self._config.list_file_paths:
             resolved = Template(self._config.list_search_base_path).substitute(
                 {**os.environ, **{"LOGPREP_LIST": list_path}}
@@ -233,12 +241,16 @@ class ListComparisonRule(FieldManagerRule):
         http_getter.add_callback(
             tag,
             self._update_compare_sets_via_http,
-            True,
-            http_getter,
-            resolved_uri,
+            deduplicate=True,
+            fnc_args=[
+                http_getter,
+                resolved_uri,
+            ],
         )
 
-        http_getter.add_cleanup_callback(tag, self._cleanup, True, resolved_uri)
+        http_getter.add_cleanup_callback(
+            tag, self._cleanup, deduplicate=True, fnc_args=[resolved_uri]
+        )
         return compare_set
 
     def _cleanup(self, resolved_uri: str):
@@ -247,6 +259,8 @@ class ListComparisonRule(FieldManagerRule):
 
     def get_dynamic_set(self, event: dict) -> dict[str, set]:
         compare_sets_result: dict[str, set] = {}
+        assert self._config.list_search_base_path
+
         if not self._config.list_search_base_path.startswith("http"):
             return self._compare_sets
 
@@ -275,7 +289,7 @@ class ListComparisonRule(FieldManagerRule):
             dynamic_resolved = resolved_tmpl.substitute(key_val)
 
             if dynamic_resolved in self._compare_sets:
-                RefreshableGetter.signal_called_for_target(dynamic_resolved)
+                RefreshableGetter.keep_alive_for_target(dynamic_resolved)
 
                 compare_sets_result[dynamic_resolved] = self._compare_sets[dynamic_resolved]
                 continue

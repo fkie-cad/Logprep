@@ -14,7 +14,7 @@ from gc import callbacks
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
-from typing import ClassVar
+from typing import Any, Callable, ClassVar, Iterable
 from urllib.parse import urlparse
 
 import requests
@@ -235,37 +235,112 @@ class RefreshableGetter(Getter, ABC):
             self.shared.default_return_value = self._get_default_return_value()
         return self.shared.default_return_value
 
-    def add_callback(self, tag: str, fnc, deduplicate: bool = False, *args, **kwargs):
-        """Add callbacks to call when http getter refreshes with new data"""
-        callback = {"tag": tag, "function": fnc, "args": args, "kwargs": kwargs}
-        if deduplicate:
-            if any(callback.get("key") == (tag, self.target) for callback in self.shared.callbacks):
-                return
-            callback["key"] = (tag, self.target)
-
-        self._callbacks.append(callback)
+    @staticmethod
+    def _build_callback(
+        tag: str,
+        key: tuple[str, str],
+        fnc: Callable,
+        fnc_args: Iterable[Any] | None,
+        fnc_kwargs: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        return {
+            "tag": tag,
+            "key": key,
+            "function": fnc,
+            "args": fnc_args or [],
+            "kwargs": fnc_kwargs or {},
+        }
 
     @classmethod
-    def add_callback_for_target(cls, tag: str, target, fnc, *args, **kwargs):
+    def _add_callback_to_shared(
+        cls,
+        shared: DataSharedPerTarget,
+        target: str,
+        callback_list_name: str,
+        tag: str,
+        fnc: Callable,
+        deduplicate: bool,
+        fnc_args: Iterable[Any] | None,
+        fnc_kwargs: dict[str, Any] | None,
+    ) -> None:
+        callbacks = getattr(shared, callback_list_name)
+        key = (tag, target)
+        callback = cls._build_callback(tag, key, fnc, fnc_args, fnc_kwargs)
+
+        if deduplicate:
+            if any(existing.get("key") == key for existing in callbacks):
+                return
+
+        callbacks.append(callback)
+
+    def add_callback(
+        self,
+        tag: str,
+        fnc: Callable,
+        *,
+        deduplicate: bool = False,
+        fnc_args: Iterable[Any] | None = None,
+        fnc_kwargs: dict[str, Any] | None = None,
+    ):
+        """Add callbacks to call when http getter refreshes with new data"""
+        self._add_callback_to_shared(
+            self.shared,
+            self.target,
+            "callbacks",
+            tag,
+            fnc,
+            deduplicate,
+            fnc_args,
+            fnc_kwargs,
+        )
+
+    @classmethod
+    def add_callback_for_target(
+        cls,
+        target: str,
+        tag: str,
+        fnc: Callable,
+        *,
+        deduplicate: bool = False,
+        fnc_args: Iterable[Any] | None = None,
+        fnc_kwargs: dict[str, Any] | None = None,
+    ):
         """Add callbacks to call when http getter with given target refreshes with new data"""
         shared = cls._shared.get(target)
         if shared is None:
             return
-        shared.callbacks.append({"tag": tag, "function": fnc, "args": args, "kwargs": kwargs})
 
-    def add_cleanup_callback(self, tag: str, fnc, deduplicate: bool, *args, **kwargs):
+        cls._add_callback_to_shared(
+            shared,
+            target,
+            "callbacks",
+            tag,
+            fnc,
+            deduplicate,
+            fnc_args,
+            fnc_kwargs,
+        )
+
+    def add_cleanup_callback(
+        self,
+        tag: str,
+        fnc: Callable,
+        *,
+        deduplicate: bool = False,
+        fnc_args: Iterable[Any] | None = None,
+        fnc_kwargs: dict[str, Any] | None = None,
+    ):
         """Add callbacks to call when http getter times out"""
-        callback = {"tag": tag, "function": fnc, "args": args, "kwargs": kwargs}
-        if deduplicate:
-            if any(
-                callback.get("key") == (tag, self.target)
-                for callback in self.shared.cleanup_callbacks
-            ):
-                return
-
-            callback["key"] = (tag, self.target)
-
-        self.shared.cleanup_callbacks.append(callback)
+        self._add_callback_to_shared(
+            self.shared,
+            self.target,
+            "cleanup_callbacks",
+            tag,
+            fnc,
+            deduplicate,
+            fnc_args,
+            fnc_kwargs,
+        )
 
     def _get_getter_config_entry(self) -> dict:
         if ENV_NAME_LOGPREP_GETTER_CONFIG not in os.environ:
@@ -418,7 +493,7 @@ class RefreshableGetter(Getter, ABC):
         return False
 
     @classmethod
-    def signal_called_for_target(cls, target: str):
+    def keep_alive_for_target(cls, target: str):
         shared = cls._shared.get(target)
         if shared is None:
             return
