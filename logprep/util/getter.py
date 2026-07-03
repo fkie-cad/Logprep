@@ -111,6 +111,9 @@ class DataSharedPerTarget:
     refresh_interval: int | None = None
     """Interval after which getters attempt to obtain the resource again"""
 
+    timeout_interval: int | None = None
+    """Timeout interval after which no more refresh attempts should be made, and resources should be cleaned up"""
+
     default_return_value: bytes | None = None
     """Default value to be returned if defined in the configuration"""
 
@@ -141,6 +144,8 @@ class RefreshableGetter(Getter, ABC):
     def _init_scheduler(self):
         if self._refresh_interval < 0:
             raise ValueError(f"'refresh_interval' must be >= 0: {self._refresh_interval}")
+        if self._timeout_interval < 0:
+            raise ValueError(f"'timeout_interval' must be >= 0: {self._timeout_interval}")
         if self._refresh_interval > 0:
             if self.scheduler is None:
                 self.scheduler = Scheduler()
@@ -228,6 +233,16 @@ class RefreshableGetter(Getter, ABC):
         """Sets the refresh interval for the current target"""
         self.shared.refresh_interval = value
 
+    @property
+    def _timeout_interval(self) -> int:
+        if self.shared.timeout_interval is None:
+            self.shared.timeout_interval = self._get_timeout_interval()
+        return self.shared.timeout_interval
+
+    @_timeout_interval.setter
+    def _timeout_interval(self, value: int) -> None:
+        self.shared.timeout_interval = value
+
     @cached_property
     def _default_return_value(self) -> bytes | None:
         """Configured default value to be returned if no value could be retrieved"""
@@ -253,7 +268,6 @@ class RefreshableGetter(Getter, ABC):
     def _add_callback_to_shared(
         cls,
         shared: DataSharedPerTarget,
-        target: str,
         callback_list_name: str,
         tag: str,
         fnc: Callable,
@@ -288,7 +302,6 @@ class RefreshableGetter(Getter, ABC):
         """
         self._add_callback_to_shared(
             self.shared,
-            self.target,
             "callbacks",
             tag,
             fnc,
@@ -319,7 +332,6 @@ class RefreshableGetter(Getter, ABC):
 
         cls._add_callback_to_shared(
             shared,
-            target,
             "callbacks",
             tag,
             fnc,
@@ -344,7 +356,6 @@ class RefreshableGetter(Getter, ABC):
         """
         self._add_callback_to_shared(
             self.shared,
-            self.target,
             "cleanup_callbacks",
             tag,
             fnc,
@@ -388,6 +399,10 @@ class RefreshableGetter(Getter, ABC):
     def _get_refresh_interval(self) -> int:
         """Get refresh interval from a configuration file"""
         return self._get_getter_config_entry().get("refresh_interval", 0)
+
+    def _get_timeout_interval(self) -> int:
+        """Get timeout interval from a configuration file"""
+        return self._get_getter_config_entry().get("timeout_interval", 60)
 
     def _get_default_return_value(self) -> bytes | None:
         """Get default return value from a configuration file"""
@@ -467,8 +482,7 @@ class RefreshableGetter(Getter, ABC):
     def timed_out(self):
         if self.shared.last_called:
             elapsed = time.monotonic() - self.shared.last_called
-            # TODO: make this configurable
-            if elapsed > 60:
+            if elapsed > self._get_timeout_interval():
                 return True
 
         return False
@@ -497,8 +511,11 @@ class RefreshableGetter(Getter, ABC):
         if target_shared:
             if target_shared.last_called:
                 elapsed = time.monotonic() - target_shared.last_called
-                # TODO: make this configurable
-                if elapsed > 60:
+                timeout_interval = target_shared.timeout_interval
+                if timeout_interval is None:
+                    timeout_interval = 60
+
+                if elapsed > timeout_interval:
                     return True
 
         return False
