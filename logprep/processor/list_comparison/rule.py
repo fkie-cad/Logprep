@@ -261,13 +261,17 @@ class ListComparisonRule(FieldManagerRule):
                 identifier: get_dotted_field_value(event, identifier)
                 for identifier in resolved_tmpl.get_identifiers()
             }
-            for _, val in key_val.items():
+            for identifier, val in key_val.items():
+                if val is None:
+                    raise ValueError(
+                        f"missing event field {identifier!r} for dynamic list comparison path"
+                    )
                 if not isinstance(val, (str, int)):
-                    raise ValueError("value for list comparison is not a scalar value")
+                    raise ValueError(
+                        f"value for list comparison field {identifier!r} is not a scalar value"
+                    )
                 pass
 
-            # Dont use safe substitute here, as we want it to fail if an event key is missing,
-            # might be redundant because the previous func checks for Scalar str, int and None is not that
             dynamic_resolved = resolved_tmpl.substitute(key_val)
 
             if dynamic_resolved in self._compare_sets:

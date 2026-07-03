@@ -705,7 +705,9 @@ Heinz
         assert document == expected
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert "value for list comparison is not a scalar value" in str(result.warnings[0])
+        assert "value for list comparison field 'tenant' is not a scalar value" in str(
+            result.warnings[0]
+        )
         assert len(responses.calls) == 0
 
     @responses.activate
@@ -742,7 +744,9 @@ Heinz
         assert document == expected
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert "value for list comparison is not a scalar value" in str(result.warnings[0])
+        assert "missing event field 'tenant' for dynamic list comparison path" in str(
+            result.warnings[0]
+        )
         assert len(responses.calls) == 0
 
     @responses.activate
