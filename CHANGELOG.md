@@ -2,10 +2,12 @@
 ### Breaking
 
 ### Features
+* allow `list_comparison` to use dynamic values from event to resolve list uris
 
 ### Improvements
 
 ### Bugfix
+* make `list_search_base_path` actually optional and correctly overrideable by rule config
 
 ## 19.3.0
 ### Breaking
