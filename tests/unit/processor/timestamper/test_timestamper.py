@@ -12,6 +12,101 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
     (
+        "parses unix timestamps with fractional seconds",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000.123",
+        },
+        {
+            "message": "1700000000.123",
+            "@timestamp": "2023-11-14T23:13:20.123000+01:00",
+        },
+    ),
+    (
+        "parses unix timestamps with microseconds",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000.123456",
+        },
+        {
+            "message": "1700000000.123456",
+            "@timestamp": "2023-11-14T23:13:20.123456+01:00",
+        },
+    ),
+    (
+        "normalizes long fractional unix timestamp string",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000123.456",
+        },
+        {
+            "message": "1700000000123.456",
+            "@timestamp": "2023-11-14T23:13:20.123456+01:00",
+        },
+    ),
+    (
+        "parses unix timestamps with fractional seconds from float",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": 1700000000.123,
+        },
+        {
+            "message": 1700000000.123,
+            "@timestamp": "2023-11-14T23:13:20.123000+01:00",
+        },
+    ),
+    (
+        "normalizes long fractional unix timestamp from float",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": 1700000000123.456,
+        },
+        {
+            "message": 1700000000123.456,
+            "@timestamp": "2023-11-14T23:13:20.123456+01:00",
+        },
+    ),
+    (
         "parses iso8601 without pattern",
         {
             "filter": "message",
