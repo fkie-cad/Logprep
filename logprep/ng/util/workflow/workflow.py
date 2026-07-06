@@ -83,19 +83,25 @@ def create_orchestrator(
     )
 
     async def _processor_handler(batch: Sequence[LogEvent]) -> None:
-        async def _handle(event: LogEvent):
-            processed_event = await process(event, processors)
+        # TODO use sync pipeline as long as processors are not truly async
+        for i, event in enumerate(batch):
+            try:
+                await process(event, processors)
+            except Exception as exc:
+                logger.error("unexpected error during event processing", exc_info=True)
+                if not event.is_failed():
+                    event.mark_failed(exc)
 
-            if not processed_event.errors:
-                if processed_event.extra_data:
-                    await send_to_extras_queue.put(processed_event)
+            if not event.errors:
+                if event.extra_data:
+                    await send_to_extras_queue.put(event)
                 else:
-                    await send_to_default_queue.put(processed_event)
+                    await send_to_default_queue.put(event)
             else:
-                await send_to_error_queue.put(ErrorEvent.from_failed_event(processed_event))
+                await send_to_error_queue.put(ErrorEvent.from_failed_event(event))
 
-        # TODO is it fine to only raise a subset of errors here?
-        await asyncio.gather(*map(_handle, batch))
+            if i % 50 == 0:
+                await asyncio.sleep(0)
 
     processing_worker: Worker[LogEvent] = BatchingWorker(
         name="processing_worker",
