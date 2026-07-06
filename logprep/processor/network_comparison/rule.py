@@ -135,10 +135,15 @@ class NetworkComparisonRule(ListComparisonRule):
         super().init_list_comparison(owner, list_search_base_path)
         self._convert_compare_sets_to_networks()
 
-    def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> set | None:
-        compare_set = super()._update_compare_sets_via_http(http_getter, list_path)
+    def _update_compare_sets_via_http(
+        self, http_getter: HttpGetter, list_path: str, *, mark_rule_failed: bool = True
+    ) -> set | None:
+        compare_set = super()._update_compare_sets_via_http(
+            http_getter, list_path, mark_rule_failed=mark_rule_failed
+        )
         self._convert_compare_sets_to_networks()
         if compare_set is None:
+            # TODO: Mark rule failed if set?
             return None
         return self._compare_sets.get(list_path)
 

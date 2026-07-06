@@ -202,15 +202,18 @@ class ListComparisonRule(FieldManagerRule):
             self._init_static_http_list_comparison()
 
     def _update_compare_sets_via_http(
-        self, http_getter: HttpGetter, fully_resolved_uri: str
+        self, http_getter: HttpGetter, fully_resolved_uri: str, *, mark_rule_failed: bool = True
     ) -> set[dict] | None:
         try:
             content = http_getter.get_list(content_field=self._config.content_field)
             file_elements = (elem for elem in content if not elem.startswith("#"))
             self._compare_sets[fully_resolved_uri] = set(file_elements)
         except Exception as ex:
-            self.mark_failed(error=ex)
-            return None
+            if mark_rule_failed:
+                self.mark_failed(error=ex)
+                return None
+            else:
+                raise ex
         else:
             self.clear_failed()
             return self._compare_sets[fully_resolved_uri]
@@ -245,14 +248,18 @@ class ListComparisonRule(FieldManagerRule):
             )
             self._load_http_compare_set(resolved)
 
-    def _load_http_compare_set(self, resolved_uri: str) -> set[dict] | None:
+    def _load_http_compare_set(
+        self, resolved_uri: str, *, dynamic: bool = False
+    ) -> set[dict] | None:
         http_getter = GetterFactory.from_string(resolved_uri)
         if not isinstance(http_getter, HttpGetter):
             raise TypeError(f"The target {resolved_uri} must be a url")
 
         http_getter.keep_alive()
 
-        compare_set = self._update_compare_sets_via_http(http_getter, resolved_uri)
+        compare_set = self._update_compare_sets_via_http(
+            http_getter, resolved_uri, mark_rule_failed=not dynamic
+        )
         tag = self._callback_tag
 
         http_getter.add_callback(
@@ -263,6 +270,7 @@ class ListComparisonRule(FieldManagerRule):
                 http_getter,
                 resolved_uri,
             ],
+            fnc_kwargs={"mark_rule_failed": not dynamic},
         )
 
         http_getter.add_cleanup_callback(
@@ -328,11 +336,8 @@ class ListComparisonRule(FieldManagerRule):
                 compare_sets_result[dynamic_resolved] = self._compare_sets[dynamic_resolved]
                 continue
 
-            compare_set = self._load_http_compare_set(dynamic_resolved)
-            if compare_set is None:
-                raise self._data_error or ValueError(
-                    f"could not load dynamic list comparison path {dynamic_resolved!r}"
-                )
+            compare_set = self._load_http_compare_set(dynamic_resolved, dynamic=True)
+            assert compare_set is not None
 
             compare_sets_result.update({dynamic_resolved: compare_set})
 

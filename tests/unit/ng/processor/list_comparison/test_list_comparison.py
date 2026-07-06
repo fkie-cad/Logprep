@@ -642,6 +642,67 @@ Heinz
         )
         assert len(responses.calls) == 0
 
+    @responses.activate
+    def test_list_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
+        failed_document = {"tenant": "acme", "user": "Foo"}
+        successful_document = {"tenant": "beta", "user": "Foo"}
+        failed_log_event = LogEvent(failed_document, original=b"")
+        successful_log_event = LogEvent(successful_document, original=b"")
+        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        failed_url = "http://localhost/acme/bad_users.list"
+        successful_url = "http://localhost/beta/bad_users.list"
+        expected_failed_document = {
+            "tenant": "acme",
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
+        expected_successful_document = {
+            "tenant": "beta",
+            "user": "Foo",
+            "user_results": {"in_list": [successful_url]},
+        }
+
+        responses.add(responses.GET, url=failed_url, status=500)
+        responses.add(responses.GET, url=successful_url, body="Foo\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "ng_list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        result = processor.process(failed_log_event)
+
+        assert failed_document == expected_failed_document
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert rule.data_error is None
+        assert failed_url not in rule.compare_sets
+        assert len(HttpGetter._shared[failed_url].callbacks) == 0
+        assert len(HttpGetter._shared[failed_url].cleanup_callbacks) == 0
+
+        processor.process(successful_log_event)
+
+        assert successful_document == expected_successful_document
+        assert rule.data_error is None
+        assert rule.compare_sets == {successful_url: {"Foo"}}
+
     def test_list_comparison_does_not_add_duplicates_from_list_source(self):
         document = {"users": ["Franz", "Alpha"]}
         log_event = LogEvent(document, original=b"")

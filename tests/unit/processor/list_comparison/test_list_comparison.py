@@ -777,11 +777,22 @@ Heinz
         assert len(responses.calls) == 0
 
     @responses.activate
-    def test_list_comparison_dynamic_http_failure_does_not_add_duplicate_callbacks(self):
-        document = {"tenant": "acme", "user": "Foo"}
+    def test_list_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
+        failed_document = {"tenant": "acme", "user": "Foo"}
+        successful_document = {"tenant": "beta", "user": "Foo"}
         url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
         failed_url = "http://localhost/acme/bad_users.list"
-        successful_url = "http://localhost/acme/good_users.list"
+        successful_url = "http://localhost/beta/bad_users.list"
+        expected_failed_document = {
+            "tenant": "acme",
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
+        expected_successful_document = {
+            "tenant": "beta",
+            "user": "Foo",
+            "user_results": {"in_list": [successful_url]},
+        }
 
         responses.add(responses.GET, url=failed_url, status=500)
         responses.add(responses.GET, url=successful_url, body="Foo\n", status=200)
@@ -791,7 +802,7 @@ Heinz
             "list_comparison": {
                 "source_fields": ["user"],
                 "target_field": "user_results",
-                "list_file_paths": ["bad_users.list", "good_users.list"],
+                "list_file_paths": ["bad_users.list"],
             },
             "description": "",
         }
@@ -808,12 +819,21 @@ Heinz
         processor._rule_tree.add_rule(rule)
         processor.setup()
 
-        processor.process(document)
-        document = {"tenant": "acme", "user": "Foo"}
-        processor.process(document)
+        result = processor.process(failed_document)
 
-        assert len(HttpGetter._shared[failed_url].callbacks) == 1
-        assert len(HttpGetter._shared[failed_url].cleanup_callbacks) == 1
+        assert failed_document == expected_failed_document
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert rule.data_error is None
+        assert failed_url not in rule.compare_sets
+        assert len(HttpGetter._shared[failed_url].callbacks) == 0
+        assert len(HttpGetter._shared[failed_url].cleanup_callbacks) == 0
+
+        processor.process(successful_document)
+
+        assert successful_document == expected_successful_document
+        assert rule.data_error is None
+        assert rule.compare_sets == {successful_url: {"Foo"}}
 
     @responses.activate
     def test_list_comparison_removes_timed_out_dynamic_compare_set(self):

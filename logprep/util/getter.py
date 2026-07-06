@@ -130,6 +130,15 @@ class DataSharedPerTarget:
     """Hash value of the obtained resource"""
 
     last_called: float | None = None
+    """Last called monotonic timestamp for timing out"""
+
+    @property
+    def timed_out(self) -> bool:
+        if self.timeout_interval is None:
+            return False
+        if self.last_called is None:
+            return False
+        return time.monotonic() - self.last_called > self.timeout_interval
 
 
 @define(kw_only=True)
@@ -203,7 +212,7 @@ class RefreshableGetter(Getter, ABC):
         """Sets the hash of the current targets value"""
         self.shared.hash = value
 
-    @property
+    @cached_property
     def uri(self) -> str:
         """Returns the URI of the target"""
         # Protocol already in target
@@ -479,13 +488,16 @@ class RefreshableGetter(Getter, ABC):
     def keep_alive(self):
         self.shared.last_called = time.monotonic()
 
-    def timed_out(self):
-        if self.shared.last_called:
-            elapsed = time.monotonic() - self.shared.last_called
-            if elapsed > self._get_timeout_interval():
-                return True
+    def timed_out(self) -> bool:
+        return self.shared.timed_out
 
-        return False
+    @classmethod
+    def timed_out_for_target(cls, target: str) -> bool:
+        target_shared = cls._shared.get(target)
+        if target_shared is None:
+            return False
+
+        return target_shared.timed_out
 
     @classmethod
     def remove_callbacks_for_tag(cls, tag: str) -> None:
@@ -504,21 +516,6 @@ class RefreshableGetter(Getter, ABC):
 
         for target in empty_targets:
             cls._shared.pop(target, None)
-
-    @classmethod
-    def timed_out_for_target(cls, target: str):
-        target_shared = cls._shared.get(target)
-        if target_shared:
-            if target_shared.last_called:
-                elapsed = time.monotonic() - target_shared.last_called
-                timeout_interval = target_shared.timeout_interval
-                if timeout_interval is None:
-                    timeout_interval = 60
-
-                if elapsed > timeout_interval:
-                    return True
-
-        return False
 
     @classmethod
     def keep_alive_for_target(cls, target: str):

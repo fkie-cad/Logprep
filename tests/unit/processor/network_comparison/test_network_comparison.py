@@ -9,7 +9,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter, RefreshableGetterError
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -470,6 +470,65 @@ class TestNetworkComparison(BaseProcessorTestCase):
         processor.setup()
         processor.process(document)
         assert document == expected, testcase
+
+    @responses.activate
+    def test_network_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
+        failed_document = {"tenant": "acme", "ip": "1.2.3.4"}
+        successful_document = {"tenant": "beta", "ip": "1.2.3.4"}
+        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        failed_url = "http://localhost/acme/bad_ips.list"
+        successful_url = "http://localhost/beta/bad_ips.list"
+        expected_failed_document = {
+            "tenant": "acme",
+            "ip": "1.2.3.4",
+            "tags": ["_network_comparison_failure"],
+        }
+        expected_successful_document = {
+            "tenant": "beta",
+            "ip": "1.2.3.4",
+            "ip_results": {"in_list": [successful_url]},
+        }
+
+        responses.add(responses.GET, url=failed_url, status=500)
+        responses.add(responses.GET, url=successful_url, body="1.2.3.4\n", status=200)
+
+        rule_dict = {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["bad_ips.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "network_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        result = processor.process(failed_document)
+
+        assert failed_document == expected_failed_document
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert rule.data_error is None
+        assert failed_url not in rule.compare_sets
+        assert len(HttpGetter._shared[failed_url].callbacks) == 0
+        assert len(HttpGetter._shared[failed_url].cleanup_callbacks) == 0
+
+        processor.process(successful_document)
+
+        assert successful_document == expected_successful_document
+        assert rule.data_error is None
+        assert rule.compare_sets == {successful_url: {IPv4Network("1.2.3.4/32")}}
 
     @responses.activate
     def test_network_comparison_process_adds_failure_tag_if_http_list_request_returns_500(
