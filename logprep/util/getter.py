@@ -220,6 +220,11 @@ class RefreshableGetter(Getter, ABC):
             return self.target
         return f"{self.protocol}://{self.target}"
 
+    @cached_property
+    def legacy_target(self) -> str:
+        """Return the legacy target which is the target stripped of https:// and http:// protocol prefixes"""
+        return self.target.removeprefix("https://").removeprefix("http://")
+
     @property
     def _callbacks(self) -> list:
         """Returns the callbacks for the current target"""
@@ -383,9 +388,7 @@ class RefreshableGetter(Getter, ABC):
 
         getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()
 
-        legacy_target = self.target.removeprefix("https://").removeprefix("http://")
-
-        for candidate in (self.uri, self.target, legacy_target):
+        for candidate in (self.uri, self.target, self.legacy_target):
             if candidate in getters_config:
                 return getters_config[candidate]
 
@@ -396,8 +399,7 @@ class RefreshableGetter(Getter, ABC):
         return {}
 
     def _target_matches(self, configured_target: str) -> bool:
-        legacy_target = self.target.removeprefix("https://").removeprefix("http://")
-        candidates = (self.uri, self.target, legacy_target)
+        candidates = (self.uri, self.legacy_target)
 
         if configured_target.endswith("*"):
             prefix = configured_target[:-1]
