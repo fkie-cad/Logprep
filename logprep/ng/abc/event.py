@@ -6,7 +6,7 @@ import json
 import typing
 from collections.abc import Sequence
 from datetime import datetime, timezone
-from typing import Protocol, runtime_checkable
+from typing import Protocol
 
 from attrs import define, field
 
@@ -27,7 +27,6 @@ class _FailableEvent(Protocol):
         """Checks if an error has been registered with this event"""
 
 
-@runtime_checkable
 class AcknowledgableEvent(_FailableEvent, Protocol):
     """
     Protocol encapsulating the aspects of an event which has been
@@ -37,7 +36,6 @@ class AcknowledgableEvent(_FailableEvent, Protocol):
     input_meta: InputMeta
 
 
-@runtime_checkable
 class OutputEvent(_FailableEvent, Protocol):
     """Protocol encapsulating the aspects of an event which can be
     handed to an `Output` for sending."""
@@ -50,7 +48,6 @@ class OutputEvent(_FailableEvent, Protocol):
     stored: bool
 
 
-@runtime_checkable
 class ProcessableEvent(_FailableEvent, Protocol):
     """Protocol encapsulating the aspects of an event which can be
     handed to an `Output` for sending."""

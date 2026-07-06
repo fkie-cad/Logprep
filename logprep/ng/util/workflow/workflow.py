@@ -5,6 +5,7 @@ Runner module
 import asyncio
 import itertools
 import logging
+import typing
 from collections.abc import Sequence
 
 from logprep.abc.exceptions import LogprepException
@@ -162,7 +163,7 @@ def create_orchestrator(
         for event in batch:
             if event.errors:
                 await send_to_error_queue.put(ErrorEvent.from_failed_event(event))
-            elif isinstance(event, AcknowledgableEvent):
+            elif event.input_meta is not None:
                 await acknowledge_queue.put(event)
 
     output_worker: Worker[LogEvent] = BatchingWorker(
@@ -190,8 +191,9 @@ def create_orchestrator(
                 )
 
         for event in to_acknowledge:
-            if isinstance(event, AcknowledgableEvent):
-                await acknowledge_queue.put(event)
+            if event.input_meta is not None:
+                # TODO runtime_checkable is not performant; find a better way
+                await acknowledge_queue.put(typing.cast(AcknowledgableEvent, event))
             else:
                 logger.debug("not acknowleding event")
 
