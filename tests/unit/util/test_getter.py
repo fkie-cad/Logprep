@@ -5,12 +5,11 @@
 # pylint: disable=protected-access
 import json
 import re
-import sys
 import uuid
 from datetime import datetime, timedelta
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -37,13 +36,6 @@ from logprep.util.getter import (
 )
 
 yaml = YAML(pure=True, typ="safe")
-
-
-@pytest.fixture(autouse=True)
-def fixture_clear_getter_cache(monkeypatch):
-    monkeypatch.delenv(ENV_NAME_LOGPREP_GETTER_CONFIG, raising=False)
-    getter = HttpGetter(protocol="http", target="anything")
-    getter._shared.clear()
 
 
 def _get_cache_as_json(refreshable_getter: RefreshableGetter) -> dict:
