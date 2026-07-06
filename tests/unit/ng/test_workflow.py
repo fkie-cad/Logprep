@@ -153,7 +153,7 @@ class TestWorkflow:
     async def run_workflow(
         dummy_input: DummyInput,
         processors: Sequence[Processor],
-        default_output: Output,
+        default_output: Output | None,
         named_outputs: dict[str, Output],
         error_output: Output,
     ) -> AsyncGenerator:
@@ -169,7 +169,7 @@ class TestWorkflow:
         async def run(
             dummy_input: DummyInput = dummy_input,
             processors: Sequence[Processor] = processors,
-            default_outputs: Sequence[Output] = (default_output,),
+            default_output: Output | None = default_output,
             named_outputs: dict[str, Output] = named_outputs,
             error_output: Output = error_output,
         ):
@@ -178,7 +178,7 @@ class TestWorkflow:
                 {
                     dummy_input,
                     *processors,
-                    *default_outputs,
+                    *([default_output] if default_output is not None else []),
                     *named_outputs.values(),
                     error_output,
                 }
@@ -187,7 +187,7 @@ class TestWorkflow:
             orchestrator = create_orchestrator(
                 dummy_input,
                 processors,
-                default_outputs=default_outputs,
+                default_output=default_output,
                 error_output=error_output,
                 named_outputs=named_outputs,
                 config=WorkflowConfig.from_dict_or_default(),
@@ -271,21 +271,3 @@ class TestWorkflow:
 
         # TODO fail harder than only a log entry?
         assert "failed to store 1 error events in the error output" in caplog.text
-
-    async def test_event_flow_to_multiple_default_outputs(
-        self,
-        run_workflow,
-        opensearch_output,
-        another_output,
-        named_outputs,
-        error_output,
-        dummy_input,
-    ) -> None:
-        await run_workflow(default_outputs=[opensearch_output, another_output])
-
-        assert len(opensearch_output.events) == 3, "3 log events sent"
-        assert len(another_output.events) == 3, "3 log events sent"
-
-        assert len(named_outputs["kafka"].events) == 1, "1 extra data event"
-        assert len(error_output.events) == 0, "no errors"
-        assert len(dummy_input.acknowledged_events) == 3, "3 log events acknowledged"

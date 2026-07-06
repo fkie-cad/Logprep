@@ -58,6 +58,9 @@ class PipelineManager:
         if not default_outputs:
             logger.warning("No default output configured")
 
+        assert len(default_outputs) <= 1, "Config verification ensures <=1 default outputs"
+        default_output = default_outputs[0] if default_outputs else None
+
         if error_output is None:
             logger.warning("No error output configured")
 
@@ -68,7 +71,7 @@ class PipelineManager:
         self._orchestrator = create_orchestrator(
             input_connector,
             processors,
-            default_outputs,
+            default_output,
             named_outputs,
             error_output,
             workflow_config,

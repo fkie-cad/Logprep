@@ -1023,6 +1023,20 @@ class Configuration:
                     Factory.create({output_name: output_config})
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
+            default_outputs = {
+                # TODO remove redundant default value for property "default"
+                name: config
+                for name, config in self.output.items()
+                if config.get("default", True)
+            }
+            if len(default_outputs) > 1:
+                errors.append(
+                    InvalidConfigurationError(
+                        "only one default output allowed, found %d: %s",
+                        len(default_outputs),
+                        ", ".join(default_outputs.keys()),
+                    )
+                )
         if self.error_output:
             for output_name, output_config in self.error_output.items():
                 try:

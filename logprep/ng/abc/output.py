@@ -91,6 +91,7 @@ class Output(Connector):
             Events to be stored.
         """
         try:
+            # TODO ensure to retry forever for retryable errors
             await self._store(events)
         except Exception as error:
             for event in events:
