@@ -36,7 +36,7 @@ import functools
 import logging
 import os
 import typing
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from functools import partial
 from socket import getfqdn
 from types import MappingProxyType  # pylint: disable=no-name-in-module
@@ -49,6 +49,7 @@ from confluent_kafka import (
     OFFSET_INVALID,
     OFFSET_STORED,
     KafkaException,
+    Message,
     TopicPartition,
 )
 from confluent_kafka.aio import AIOConsumer
@@ -137,13 +138,13 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description=(
                     "Number of ops (callbacks, events, etc) waiting in "
-                    "queue for application to serve with rd_kafka_poll()"
+                    "queue for application to serve with rd_kafka_consume()"
                 ),
                 name="confluent_kafka_input_librdkafka_replyq",
             )
         )
         """Number of ops (callbacks, events, etc) waiting in queue for application
-           to serve with rd_kafka_poll()
+           to serve with rd_kafka_consume()
         """
         librdkafka_tx: GaugeMetric = field(
             factory=lambda: GaugeMetric(
@@ -282,11 +283,16 @@ class ConfluentKafkaInput(Input):
         Defaults to 2.
         """
 
-    __slots__ = [
-        "_commit_tracker",
-        "_consumer",
-        "_executor",
-    ]
+        consume_num_message: int = field(
+            validator=validators.instance_of(int),
+            default=200,
+        )
+        """
+        Number of messages to consume once and then yield step by step.
+        Defaults to 200.
+        """
+
+    __slots__ = ["_commit_tracker", "_consumer", "_executor", "_message_iter"]
 
     @property
     def config(self) -> Config:
@@ -330,6 +336,7 @@ class ConfluentKafkaInput(Input):
             )
 
             self._consumer = AIOConsumer(self._kafka_config, executor=self._executor)
+            self._message_iter: Iterator[Message] = iter([])
 
             await self._consumer.subscribe(
                 [self.config.topic],
@@ -349,7 +356,7 @@ class ConfluentKafkaInput(Input):
     async def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
-        This callback is served upon calling client.poll()
+        This callback is served upon calling client.consume()
 
         Parameters
         ----------
@@ -360,7 +367,7 @@ class ConfluentKafkaInput(Input):
         logger.error("%s: %s", self.describe(), error)
 
     async def _stats_callback(self, stats_raw: str) -> None:
-        """Callback for statistics data. This callback is triggered by poll()
+        """Callback for statistics data. This callback is triggered by consume()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
         Parameters
@@ -398,19 +405,35 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
 
+    async def _get_next_message(self, timeout: float) -> Message | None:
+        try:
+            return next(self._message_iter)
+        except StopIteration:
+            pass
+
+        try:
+            self._message_iter = iter(
+                await self._consumer.consume(
+                    num_messages=self.config.consume_num_message, timeout=timeout
+                )
+            )
+        except RuntimeError as error:
+            raise FatalInputError.from_error(self, error) from error
+
+        return next(self._message_iter, None)
+
     async def _get_raw_event(self, timeout: float) -> tuple[bytes, ConfluentKafkaInputMeta] | None:
         """Get next raw Message from Kafka"""
 
-        try:
-            message = await self._consumer.poll(timeout=timeout)
-        except RuntimeError as error:
-            raise FatalInputError.from_error(self, error) from error
+        message = await self._get_next_message(timeout)
 
         if message is None:
             return None
 
         if message_error := message.error():
-            raise CriticalInputError.from_error(self, message_error, "Error in kafka record")
+            raise CriticalInputError.from_message(
+                self, f"encountered kafka error: {str(message_error)}"
+            )
 
         message_value = message.value()
         partition = message.partition()
@@ -526,7 +549,7 @@ class ConfluentKafkaInput(Input):
         self, error: KafkaException | None, topic_partitions: list[TopicPartition]
     ) -> None:
         """Callback used to indicate success or failure of asynchronous and
-        automatic commit requests. This callback is served upon calling consumer.poll()
+        automatic commit requests. This callback is served upon calling consumer.consume()
 
         Parameters
         ----------

@@ -176,7 +176,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_get_next_returns_none_if_no_records(self, mock_consumer):
         await self.object.setup()
 
-        mock_consumer.poll.return_value = None
+        mock_consumer.consume.return_value = []
 
         event = await self.object.get_next(1)
         assert event is None
@@ -198,7 +198,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         await self.object.setup()
 
-        mock_consumer.poll.return_value = mock_kafka_message
+        mock_consumer.consume.return_value = [mock_kafka_message]
 
         with pytest.raises(CriticalInputError):
             await self.object.get_next(1)
@@ -261,7 +261,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.offset.return_value = 42
         mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         error_event = await self.object.get_next(1)
         assert isinstance(error_event, ErrorEvent)
@@ -279,7 +279,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.offset.return_value = 42
         mock_record.value.return_value = "I'm not valid json".encode("utf8")
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         error_event = await self.object.get_next(1)
         assert isinstance(error_event, ErrorEvent)
@@ -297,7 +297,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.partition.return_value = 1
         mock_record.offset.return_value = 42
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         event = await self.object._get_event(0.001)
         assert event.data == {"element": "in list"}
@@ -311,7 +311,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.partition.return_value = 1
         mock_record.offset.return_value = 42
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         await self.object.setup()
 
@@ -326,7 +326,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.partition.return_value = 1
         mock_record.offset.return_value = 42
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         await self.object.setup()
 
@@ -341,7 +341,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.partition.return_value = 1
         mock_record.offset.return_value = 42
 
-        mock_consumer.poll.return_value = mock_record
+        mock_consumer.consume.return_value = [mock_record]
 
         await self.object.setup()
 
@@ -487,7 +487,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         await self.object.shut_down()
 
     async def test_raises_fatal_input_error_if_poll_raises_runtime_error(self, mock_consumer):
-        mock_consumer.poll.side_effect = RuntimeError("test error")
+        mock_consumer.consume.side_effect = RuntimeError("test error")
 
         await self.object.setup()
 
