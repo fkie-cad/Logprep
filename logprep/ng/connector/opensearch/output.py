@@ -219,10 +219,9 @@ class OpensearchOutput(Output):
             "_op_type": self.config.default_op_type,
         }
 
-    def describe(self) -> str:
+    def _describe(self) -> str:
         """Get name of Opensearch endpoint with the host."""
-        base_description = Output.describe(self)
-        return f"{base_description} - Opensearch Output: {self.config.hosts}"
+        return f"{Output._describe(self)} - Opensearch Output: {self.config.hosts}"
 
     def _create_ssl_context(self) -> ssl.SSLContext | None:
         """Returns the ssl context"""

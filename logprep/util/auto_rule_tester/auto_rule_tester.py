@@ -381,7 +381,7 @@ class AutoRuleTester:
         if rule_test.get("rules"):
             return rule_test.get("rules", [])
         raise AutoRuleTesterException(
-            f"No rules provided for processor of type {processor.describe()}"
+            f"No rules provided for processor of type {processor.description}"
         )
 
     def _load_rules(self, processor: "Processor"):

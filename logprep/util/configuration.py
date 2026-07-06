@@ -1106,7 +1106,7 @@ class Configuration:
             for output_name, _ in output.items():
                 if output_name not in self.output:
                     raise InvalidRuleDefinitionError(
-                        f"{processor.describe()}: output"
+                        f"{processor.description}: output"
                         f" '{output_name}' does not exist in logprep outputs"
                     )
 

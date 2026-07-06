@@ -166,7 +166,7 @@ class Processor(Component):
         """Return metric labels."""
         return {
             "component": "processor",
-            "description": self.describe(),
+            "description": self.description,
             "type": self.config.type,
             "name": self.name,
         }
@@ -187,7 +187,7 @@ class Processor(Component):
 
         """
         self._result = ProcessorResult(processor_name=self.name, event=event)  # type: ignore
-        logger.debug("%s processing event %s", self.describe(), event)
+        logger.debug("%s processing event %s", self.description, event)
         if self._bypass_rule_tree:
             self._process_all_rules(event)
             return self.result
@@ -274,7 +274,7 @@ class Processor(Component):
             self._rule_tree.add_rule(rule)
         if logger.isEnabledFor(logging.DEBUG):
             number_rules = self._rule_tree.number_of_rules
-            logger.debug("%s loaded %s rules", self.describe(), number_rules)
+            logger.debug("%s loaded %s rules", self.description, number_rules)
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:

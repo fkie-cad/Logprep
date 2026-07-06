@@ -141,7 +141,7 @@ class S3Output(Output):
         """The input callback is called after the maximum backlog size has been reached
         if this is set to True (optional)"""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) Timeout after :code:`message_backlog` is flushed if 
+        """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
 
     @define(kw_only=True)
@@ -194,7 +194,7 @@ class S3Output(Output):
     def _replace_pattern(self) -> re.Pattern[str]:
         return re.compile(r"%{\S+?}")
 
-    def describe(self) -> str:
+    def _describe(self) -> str:
         """Get name of s3 endpoint with the host.
 
         Returns
@@ -203,8 +203,7 @@ class S3Output(Output):
             Acts as output connector for AWS s3.
 
         """
-        base_description = super().describe()
-        return f"{base_description} - S3 Output: {self._config.endpoint_url}"
+        return f"{super()._describe()} - S3 Output: {self.config.endpoint_url}"
 
     @_handle_s3_error
     def setup(self) -> None:

@@ -1122,7 +1122,7 @@ class Configuration:
         for spec in rule.outputs:
             if spec.output_name not in self.output:
                 raise InvalidRuleDefinitionError(
-                    f"{processor.describe()}: output"
+                    f"{processor.description}: output"
                     f" '{spec.output_name}' does not exist in logprep outputs"
                 )
 

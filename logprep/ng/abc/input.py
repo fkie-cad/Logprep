@@ -31,14 +31,14 @@ class InputError(LogprepException):
     ) -> "InputError":
         connector.metrics.number_of_errors += 1
         if message is not None:
-            return cls(f"{cls.__name__} in {connector.describe()}: {message}: {str(error)}")
+            return cls(f"{cls.__name__} in {connector.description}: {message}: {str(error)}")
         else:
-            return cls(f"{cls.__name__} in {connector.describe()}: {str(error)}")
+            return cls(f"{cls.__name__} in {connector.description}: {str(error)}")
 
     @classmethod
     def from_message(cls, connector: "Input", message: str) -> "InputError":
         connector.metrics.number_of_errors += 1
-        return cls(f"{cls.__name__} in {connector.describe()}: {message}")
+        return cls(f"{cls.__name__} in {connector.description}: {message}")
 
 
 class CriticalInputError(InputError):
@@ -63,15 +63,15 @@ class InputWarning(LogprepException):
         """Generate an `InputWarning` from a low level error"""
         connector.metrics.number_of_warnings += 1
         if message is not None:
-            return cls(f"{cls.__name__} in {connector.describe()}: {message}: {str(error)}")
+            return cls(f"{cls.__name__} in {connector.description}: {message}: {str(error)}")
         else:
-            return cls(f"{cls.__name__} in {connector.describe()}: {str(error)}")
+            return cls(f"{cls.__name__} in {connector.description}: {str(error)}")
 
     @classmethod
     def from_message(cls, connector: "Input", message: str) -> "InputWarning":
         """Generate an `InputWarning` from a message"""
         connector.metrics.number_of_warnings += 1
-        return cls(f"{cls.__name__} in {connector.describe()}: {message}")
+        return cls(f"{cls.__name__} in {connector.description}: {message}")
 
 
 # =====================================================================================================================
@@ -122,7 +122,7 @@ class Input(Connector, AsyncIterator[LogEvent | ErrorEvent | None]):
         """Return the metric labels for this component."""
         return {
             "component": "input",
-            "description": self.describe(),
+            "description": self.description,
             "type": self.config.type,
             "name": self.name,
         }

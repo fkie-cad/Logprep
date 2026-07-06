@@ -79,7 +79,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
             test_error = Exception("test error")
             self.object._error_callback(test_error)
             mock_error.assert_called()
-            mock_error.assert_called_with("%s: %s", self.object.describe(), test_error)
+            mock_error.assert_called_with("%s: %s", self.object.description, test_error)
         assert self.object.metrics.number_of_errors == 1
 
     async def test_stats_callback_sets_metric_object_attributes(self):

@@ -19,6 +19,7 @@
 * fix mypy issues
 * helm: make ng activatable in deployment
 * performance: avoid dynamically decorating functions with @Metric.measure_time
+* performance: make component.describe() a cached_property named description
 * ng: migrate to async
 * ng: replace iter-based workflow with asynchronous workers & queues
 * ng: implement graceful worker shutdown exhausting all work queues in topological order

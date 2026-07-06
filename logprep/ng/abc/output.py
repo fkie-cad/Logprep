@@ -23,15 +23,15 @@ class OutputError(LogprepException):
         """Generate an `OutputException` from a low level error"""
         connector.metrics.number_of_errors += 1
         if message is not None:
-            return cls(f"{cls.__name__} in {connector.describe()}: {message}: {str(error)}")
+            return cls(f"{cls.__name__} in {connector.description}: {message}: {str(error)}")
         else:
-            return cls(f"{cls.__name__} in {connector.describe()}: {str(error)}")
+            return cls(f"{cls.__name__} in {connector.description}: {str(error)}")
 
     @classmethod
     def from_message(cls, connector: "Output", message: str) -> "OutputError":
         """Generate an `OutputException` from a message"""
         connector.metrics.number_of_errors += 1
-        return cls(f"{cls.__name__} in {connector.describe()}: {message}")
+        return cls(f"{cls.__name__} in {connector.description}: {message}")
 
 
 class CriticalOutputError(OutputError):
@@ -73,7 +73,7 @@ class Output(Connector):
         """Return the metric labels for this component."""
         return {
             "component": "output",
-            "description": self.describe(),
+            "description": self.description,
             "type": self.config.type,
             "name": self.name,
         }

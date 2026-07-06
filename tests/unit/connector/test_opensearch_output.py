@@ -30,7 +30,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
 
     def test_describe_returns_output(self):
         assert (
-            self.object.describe()
+            self.object.description
             == "OpensearchOutput (Test Instance Name) - Opensearch Output: ['localhost:9200']"
         )
 

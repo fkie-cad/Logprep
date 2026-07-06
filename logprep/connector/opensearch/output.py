@@ -219,7 +219,7 @@ class OpensearchOutput(Output):
         flush_timeout = self.config.flush_timeout
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
 
-    def describe(self) -> str:
+    def _describe(self) -> str:
         """Get name of Opensearch endpoint with the host.
 
         Returns
@@ -228,8 +228,7 @@ class OpensearchOutput(Output):
             Acts as output connector for Opensearch.
 
         """
-        base_description = Output.describe(self)
-        return f"{base_description} - Opensearch Output: {self.config.hosts}"
+        return f"{Output._describe(self)} - Opensearch Output: {self.config.hosts}"
 
     def store(self, document: dict) -> None:
         """Store a document in the index defined in the document or to the default index.

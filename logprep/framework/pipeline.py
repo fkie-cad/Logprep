@@ -245,8 +245,8 @@ class Pipeline:
         for _, output in self._output.items():
             output.setup()
         self.logger.debug(
-            f"Created connectors -> input: '{self._input.describe()}',"
-            f" output -> '{[output.describe() for _, output in self._output.items()]}'"
+            f"Created connectors -> input: '{self._input.description}',"
+            f" output -> '{[output.description for _, output in self._output.items()]}'"
         )
         self._input.pipeline_index = self.pipeline_index
         self._input.setup()

@@ -364,7 +364,7 @@ class ConfluentKafkaInput(Input):
             the error that occurred
         """
         self.metrics.number_of_errors += 1
-        logger.error("%s: %s", self.describe(), error)
+        logger.error("%s: %s", self.description, error)
 
     async def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by consume()
@@ -400,10 +400,11 @@ class ConfluentKafkaInput(Input):
             "assignment_size", DEFAULT_RETURN
         )
 
-    def describe(self) -> str:
+    def _describe(self) -> str:
         """Get name of Kafka endpoint and bootstrap servers"""
-        base_description = super().describe()
-        return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
+        return (
+            f"{super()._describe()} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
+        )
 
     async def _get_next_message(self, timeout: float) -> Message | None:
         try:

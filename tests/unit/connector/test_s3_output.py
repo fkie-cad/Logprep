@@ -48,7 +48,7 @@ class TestS3Output(BaseOutputTestCase):
 
     def test_describe_returns_s3_output(self):
         assert (
-            self.object.describe()
+            self.object.description
             == "S3Output (Test Instance Name) - S3 Output: http://localhost:23423"
         )
 

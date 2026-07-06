@@ -23,7 +23,7 @@ class TestConsoleOutput(BaseOutputTestCase):
     }
 
     def test_describe_returns_console_output(self):
-        assert self.object.describe() == f"{self.object.__class__.__name__} (Test Instance Name)"
+        assert self.object.description == f"{self.object.__class__.__name__} (Test Instance Name)"
 
     @mock.patch("logprep.ng.connector.console.output.pprint")
     def test_store_calls_pprint(self, mock_pprint):

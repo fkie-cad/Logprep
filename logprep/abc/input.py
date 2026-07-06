@@ -47,7 +47,7 @@ class InputError(LogprepException):
 
     def __init__(self, input_connector: "Input", message: str) -> None:
         input_connector.metrics.number_of_errors += 1
-        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
+        super().__init__(f"{self.__class__.__name__} in {input_connector.description}: {message}")
 
 
 class CriticalInputError(InputError):
@@ -74,7 +74,7 @@ class InputWarning(LogprepException):
 
     def __init__(self, input_connector: "Input", message: str) -> None:
         input_connector.metrics.number_of_warnings += 1
-        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
+        super().__init__(f"{self.__class__.__name__} in {input_connector.description}: {message}")
 
 
 class SourceDisconnectedWarning(InputWarning):
@@ -147,7 +147,7 @@ class Input(Connector):
         """Return the metric labels for this component."""
         return {
             "component": "input",
-            "description": self.describe(),
+            "description": self.description,
             "type": self.config.type,
             "name": self.name,
         }

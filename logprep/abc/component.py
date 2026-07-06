@@ -92,18 +92,17 @@ class Component(ABC):
     def __repr__(self):
         return camel_to_snake(self.__class__.__name__)
 
-    def describe(self) -> str:
-        """Provide a brief name-like description of the connector.
-
-        The description is indicating its type _and_ the name provided when creating it.
-
-        Examples
-        --------
-
-        >>> ConfluentKafkaInput(name)
-
-        """
+    def _describe(self) -> str:
         return f"{self.__class__.__name__} ({self.name})"
+
+    @cached_property
+    def description(self) -> str:
+        """
+        Provide a brief name-like description of the connector.
+        The description is indicating its type _and_ the name provided when creating it.
+        For instance: "ConfluentKafkaInput(name)"
+        """
+        return self._describe()
 
     def setup(self):
         """Set the component up."""

@@ -77,7 +77,7 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
         assert isinstance(self.object.__slots__, Iterable)
 
     def test_describe(self):
-        describe_string = self.object.describe()
+        describe_string = self.object.description
         expected_base_description = f"{self.object.__class__.__name__} (Test Instance Name)"
         assert describe_string.startswith(expected_base_description)
 
