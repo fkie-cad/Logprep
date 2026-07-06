@@ -8,6 +8,7 @@
 
 ### Bugfix
 * make `list_search_base_path` actually optional and correctly overrideable by rule config
+* add missing documentation for the `network_comparison` processor
 
 ## 19.3.0
 ### Breaking
