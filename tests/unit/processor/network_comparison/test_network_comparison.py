@@ -392,16 +392,53 @@ class TestNetworkComparison(BaseProcessorTestCase):
                     IPv4Network("127.0.0.1/32"),
                 }
             }
-            assert processor.rules[0].compare_sets == {
-                url: {
-                    IPv4Network("1.1.1.1/32"),
-                    IPv4Network("2.2.2.2/32"),
-                    IPv4Network("127.0.0.1/32"),
-                }
-            }
             HttpGetter(target=url, protocol="http").scheduler.run_all()
             assert processor.rules[0].compare_sets == {
                 url: {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
+            }
+
+    @responses.activate
+    def test_network_comparison_conversion_does_not_affect_unmodified_entries(self, tmp_path):
+        url1 = "http://localhost/tests/testdata/bad_ips_1.list?ref=bla"
+        responses.add(responses.GET, url1, "127.0.0.1")
+        responses.add(responses.GET, url1, "1.1.1.1")
+
+        url2 = "http://localhost/tests/testdata/bad_ips_2.list?ref=bla"
+        responses.add(responses.GET, url2, "2.2.2.2", headers={"etag": "1"})
+        responses.add(responses.GET, url2, headers={"etag": "1"}, status=304)
+
+        config = {
+            "type": "network_comparison",
+            "rules": [
+                {
+                    "filter": "ip",
+                    "network_comparison": {
+                        "source_fields": ["ip"],
+                        "target_field": "ip_results",
+                        "list_file_paths": ["bad_ips_1.list", "bad_ips_2.list"],
+                    },
+                }
+            ],
+            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
+        }
+
+        HttpGetter._shared.clear()
+
+        getter_file_content = {url1: {"refresh_interval": 10}, url2: {"refresh_interval": 10}}
+        http_getter_conf = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            processor = Factory.create({"custom_lister": config})
+            processor.setup()
+            assert processor.rules[0].compare_sets == {
+                url1: {IPv4Network("127.0.0.1/32")},
+                url2: {IPv4Network("2.2.2.2/32")},
+            }
+            HttpGetter(target=url1, protocol="http").scheduler.run_all()
+            assert processor.rules[0].compare_sets == {
+                url1: {IPv4Network("1.1.1.1/32")},
+                url2: {IPv4Network("2.2.2.2/32")},
             }
 
     def test_network_comparison_does_not_add_duplicates_from_list_source(self):
