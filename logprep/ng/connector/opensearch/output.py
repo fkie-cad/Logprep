@@ -282,7 +282,10 @@ class OpensearchOutput(Output):
 
                     logger.debug("event failed to send: %s", action_item)
 
-                    assert isinstance(action_item, dict) and len(action_item) == 1
+                    if not (isinstance(action_item, dict) and len(action_item) == 1):
+                        raise CriticalOutputError(
+                            f"unexpected structure of response item: {action_item}"
+                        )
                     # structure of action_item is always `{ $op_type: { ... } }`
                     op_type, item = typing.cast(tuple[str, dict[str, Any]], action_item.popitem())
 
@@ -304,8 +307,8 @@ class OpensearchOutput(Output):
                 else CriticalOutputError.from_message(self, "iteration ended abruptly")
             )
 
-            for i, event in enumerate(events):
-                if not event.stored or event.is_failed():
+            for event in events:
+                if not event.stored or not event.is_failed():
                     event.mark_failed(error)
 
     async def health(self) -> bool:  # type: ignore[override]

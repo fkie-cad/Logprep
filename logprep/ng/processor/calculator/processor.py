@@ -70,7 +70,6 @@ class Calculator(FieldManager):
         return BNF()
 
     def _calculate(self, event: dict, rule: CalculatorRule, expression: str) -> Callable:
-
         @timeout(seconds=rule.timeout)
         def calculate(event, rule: CalculatorRule, expression: str) -> float | None:
             try:
