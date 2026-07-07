@@ -85,7 +85,7 @@ class NetworkComparisonRule(ListComparisonRule):
         You can also pass a template with keys from environment,
         e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
         will be filled by this processor. """
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         content_field: str | None = field(
             validator=validators.optional(validators.instance_of(str)),
@@ -126,20 +126,35 @@ class NetworkComparisonRule(ListComparisonRule):
                     Reads the list from the ``"content"`` key of the JSON object.
         """
 
-    def init_list_comparison(self, list_search_base_path: str | None = None) -> None:
-        """init method for list_comparison lists"""
-        super().init_list_comparison(list_search_base_path)
+    def init_list_comparison(
+        self, callback_tag: str, list_search_base_path: str | None = None
+    ) -> None:
+        """Initialize network comparison lists for this rule.
+
+        The base list-comparison initialization loads local, static HTTP(S), or dynamic
+        HTTP(S) compare sets. Loaded values are then converted to IP network objects.
+        """
+        super().init_list_comparison(callback_tag, list_search_base_path)
         self._convert_compare_sets_to_networks()
 
-    def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
-        super()._update_compare_sets_via_http(http_getter, list_path)
-        self._convert_compare_sets_to_networks()
+    def _update_compare_sets_via_http(
+        self, http_getter: HttpGetter, fully_resolved_uri: str, *, mark_rule_failed: bool = True
+    ) -> set | None:
+        compare_set = super()._update_compare_sets_via_http(
+            http_getter, fully_resolved_uri, mark_rule_failed=mark_rule_failed
+        )
+        if compare_set is None:
+            return None
+        self._convert_compare_sets_to_networks(updated_list_path=fully_resolved_uri)
+        return self._compare_sets.get(fully_resolved_uri)
 
-    def _convert_compare_sets_to_networks(self) -> None:
-        network_comparison: dict = {}
-        for list_name, compare_strings in self._compare_sets.items():
-            if compare_strings:
-                network_comparison[list_name] = set()
-                for compare_string in compare_strings:
-                    network_comparison[list_name].add(ip_network(compare_string))
-        self._compare_sets = network_comparison
+    def _convert_compare_sets_to_networks(self, updated_list_path: str | None = None) -> None:
+        self._compare_sets = {
+            list_path: (
+                set(map(ip_network, compare_strings))
+                if (updated_list_path is None or list_path == updated_list_path)
+                else compare_strings
+            )
+            for list_path, compare_strings in self._compare_sets.items()
+            if compare_strings
+        }

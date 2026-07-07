@@ -41,20 +41,29 @@ target field :code:`List_comparison.example`.
    :noindex:
 """
 
+import logging
 import os.path
 from string import Template
 
 from attrs import define, field, validators
 
+from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import GetterFactory, HttpGetter
+from logprep.util.getter import (
+    GetterFactory,
+    HttpGetter,
+    RefreshableGetter,
+)
+from logprep.util.helper import get_dotted_field_value
+
+logger = logging.getLogger()
 
 
 class ListComparisonRule(FieldManagerRule):
     """Check if documents match a filter."""
 
-    _compare_sets: dict
+    _compare_sets: dict[str, set]
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
@@ -79,12 +88,21 @@ class ListComparisonRule(FieldManagerRule):
            authenticity and integrity of the loaded values.
 
         """
-        list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
-        """Base Path from where to find relative files from :code:`list_file_paths`.
-        You can also pass a template with keys from environment,
-        e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
-        will be filled by this processor. """
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        list_search_base_path: str | None = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
+        )
+        """
+        Base path used to resolve this rule's relative ``list_file_paths``.
+
+        If unset, the processor-level ``list_search_base_path`` is used. A base path must
+        be configured either on the rule or on the processor.
+
+        The value may use getter syntax and ``string.Template`` placeholders.
+        Environment variables and ``${LOGPREP_LIST}`` are resolved during setup. For
+        HTTP(S) paths, unresolved placeholders are resolved from event fields during
+        processing.
+        """
+        mapping: dict = field(default={}, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         content_field: str | None = field(
             validator=validators.optional(validators.instance_of(str)),
@@ -134,42 +152,71 @@ class ListComparisonRule(FieldManagerRule):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._compare_sets = {}
+        self._callback_tag = ""
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
-        if list_search_base_path is None:
+        if self._config.list_search_base_path:
             return self._config.list_search_base_path
-        if self._config.list_search_base_path > list_search_base_path:
-            return self._config.list_search_base_path
-        return list_search_base_path
+        elif list_search_base_path:
+            self._config.list_search_base_path = list_search_base_path
+            return list_search_base_path
 
-    def init_list_comparison(self, list_search_base_path: str | None = None):
-        """init method for list_comparison lists"""
+        raise InvalidConfigurationError(
+            "list_search_base_path must be set either in the processor config or in the rule"
+        )
+
+    def init_list_comparison(
+        self,
+        callback_tag: str,
+        list_search_base_path: str | None = None,
+    ):
+        """Initialize comparison lists for this rule.
+
+        Local lists are loaded eagerly. Static HTTP(S) lists are loaded eagerly and
+        registered for refresh and cleanup callbacks. Dynamic HTTP(S) templates that
+        require event fields are loaded lazily during processing.
+
+        Raises
+        ------
+        InvalidConfigurationError
+            If neither the rule nor the processor provides ``list_search_base_path``.
+        """
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
-        if list_search_base_path.startswith("http"):
-            self._init_list_comparison_from_http(list_search_base_path)
-        else:
+        self._callback_tag = callback_tag
+        if not list_search_base_path.startswith("http"):
             self._init_list_comparison_from_local_file(list_search_base_path)
-
-    def _init_list_comparison_from_http(self, list_search_base_path: str) -> None:
-        for list_path in self._config.list_file_paths:
-            list_search_base_path_resolved = Template(list_search_base_path).substitute(
-                {**os.environ, **{"LOGPREP_LIST": list_path}}
+        else:
+            self._config.list_search_base_path = (
+                list_search_base_path
+                if not self._config.list_search_base_path
+                else self._config.list_search_base_path
             )
-            http_getter = GetterFactory.from_string(list_search_base_path_resolved)
-            if not isinstance(http_getter, HttpGetter):
-                raise TypeError(f"The target {list_search_base_path_resolved} must be a url")
-            self._update_compare_sets_via_http(http_getter, list_path)
-            http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
 
-    def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
+            # Check if this is a static (eagerly loaded) or dynamic (lazily loaded) list_comparison
+            if any(
+                identifier not in [*os.environ, "LOGPREP_LIST"]
+                for identifier in Template(self._config.list_search_base_path).get_identifiers()
+            ):
+                return
+
+            self._init_static_http_list_comparison()
+
+    def _update_compare_sets_via_http(
+        self, http_getter: HttpGetter, fully_resolved_uri: str, *, mark_rule_failed: bool = True
+    ) -> set[dict] | None:
         try:
             content = http_getter.get_list(content_field=self._config.content_field)
             file_elements = (elem for elem in content if not elem.startswith("#"))
-            self._compare_sets.update({list_path: set(file_elements)})
+            self._compare_sets[fully_resolved_uri] = set(file_elements)
         except Exception as ex:
-            self.mark_failed(error=ex)
+            if mark_rule_failed:
+                self.mark_failed(error=ex)
+                return None
+            else:
+                raise ex
         else:
             self.clear_failed()
+            return self._compare_sets[fully_resolved_uri]
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
         content_field = self._config.content_field
@@ -192,8 +239,113 @@ class ListComparisonRule(FieldManagerRule):
             filename = os.path.basename(list_path)
             self._compare_sets.update({filename: set(file_elements)})
 
+    def _init_static_http_list_comparison(self) -> None:
+        assert self._config.list_search_base_path
+
+        for list_path in self._config.list_file_paths:
+            resolved = Template(self._config.list_search_base_path).substitute(
+                {**os.environ, **{"LOGPREP_LIST": list_path}}
+            )
+            self._load_http_compare_set(resolved)
+
+    def _load_http_compare_set(
+        self, resolved_uri: str, *, dynamic: bool = False
+    ) -> set[dict] | None:
+        http_getter = GetterFactory.from_string(resolved_uri)
+        if not isinstance(http_getter, HttpGetter):
+            raise TypeError(f"The target {resolved_uri} must be a url")
+
+        http_getter.keep_alive()
+
+        compare_set = self._update_compare_sets_via_http(
+            http_getter, resolved_uri, mark_rule_failed=not dynamic
+        )
+        tag = self._callback_tag
+
+        http_getter.add_callback(
+            tag,
+            self._update_compare_sets_via_http,
+            deduplication_key=(tag, resolved_uri, id(self)),
+            fnc_args=[
+                http_getter,
+                resolved_uri,
+            ],
+            fnc_kwargs={"mark_rule_failed": not dynamic},
+        )
+
+        http_getter.add_cleanup_callback(
+            tag,
+            self._cleanup,
+            deduplication_key=(tag, resolved_uri, id(self)),
+            fnc_args=[resolved_uri],
+        )
+        return compare_set
+
+    def _cleanup(self, resolved_uri: str):
+        self._compare_sets.pop(resolved_uri, None)
+        logger.debug("Deleted compare set for %s after cleanup", resolved_uri)
+
+    def get_dynamic_set(self, event: dict) -> dict[str, set]:
+        """Return the compare sets relevant for the current event.
+
+        For local and static lists, this returns the already initialized compare sets.
+        For dynamic HTTP(S) templates, event fields are used to resolve the target URL
+        and missing compare sets are loaded lazily.
+
+        Raises
+        ------
+        ValueError
+            If a required event field is missing or is not a scalar value.
+        Exception
+            Re-raises the stored data loading error if a dynamic HTTP(S) list cannot be
+            loaded, so the processor can apply the rule's failure tags.
+        """
+        compare_sets_result: dict[str, set] = {}
+        assert self._config.list_search_base_path
+
+        if not self._config.list_search_base_path.startswith("http"):
+            return self._compare_sets
+
+        for list_path in self._config.list_file_paths:
+            list_search_base_path_resolved = Template(
+                self._config.list_search_base_path
+            ).safe_substitute({**os.environ, **{"LOGPREP_LIST": list_path}})
+
+            resolved_tmpl = Template(list_search_base_path_resolved)
+
+            key_val = {
+                identifier: get_dotted_field_value(event, identifier)
+                for identifier in resolved_tmpl.get_identifiers()
+            }
+            for identifier, val in key_val.items():
+                if val is None:
+                    raise ValueError(
+                        f"missing event field {identifier!r} for dynamic list comparison path"
+                    )
+                if not isinstance(val, (str, int)):
+                    raise ValueError(
+                        f"value for list comparison field {identifier!r} is not a scalar value"
+                    )
+                pass
+
+            dynamic_resolved = resolved_tmpl.substitute(key_val)
+
+            if dynamic_resolved in self._compare_sets:
+                RefreshableGetter.keep_alive_for_target(dynamic_resolved)
+
+                compare_sets_result[dynamic_resolved] = self._compare_sets[dynamic_resolved]
+                continue
+
+            compare_set = self._load_http_compare_set(dynamic_resolved, dynamic=True)
+            assert compare_set is not None
+
+            compare_sets_result.update({dynamic_resolved: compare_set})
+
+        return compare_sets_result
+
     @property
-    def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
+    def compare_sets(self) -> dict[str, set]:
+        """Returns the comparison sets"""
         return self._compare_sets
 
     @property

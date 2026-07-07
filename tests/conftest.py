@@ -4,6 +4,24 @@ from multiprocessing import set_start_method
 
 import pytest
 
+from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.getter import RefreshableGetter
+
+
+@pytest.fixture(autouse=True)
+def remove_interfering_env_variables(monkeypatch):
+    """Remove environment variables which might interfere with tests"""
+    monkeypatch.delenv("LOGPREP_GETTER_CONFIG", raising=False)
+    monkeypatch.delenv(ENV_NAME_LOGPREP_GETTER_CONFIG, raising=False)
+    monkeypatch.delenv("PROMETHEUS_MULTIPROC_DIR", raising=False)
+    monkeypatch.delenv("prometheus_multiproc_dir", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def clear_getter_cache():
+    """Clear getter cache after each test"""
+    RefreshableGetter._shared.clear()  # pylint: disable=protected-access
+
 
 @pytest.fixture(scope="session", autouse=True)
 def configure_multiprocess_start_method():

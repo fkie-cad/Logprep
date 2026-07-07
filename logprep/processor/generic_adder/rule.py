@@ -83,6 +83,7 @@ In the following example two files are being used, but only the first existing f
 # pylint: enable=anomalous-backslash-in-string
 
 import copy
+import typing
 
 from attrs import define, field, validators
 
@@ -163,7 +164,10 @@ class GenericAdderRule(FieldManagerRule):
                 for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
                     getter = GetterFactory.from_string(add_file)
                     if isinstance(getter, RefreshableGetter):
-                        getter.add_callback(self._refresh_add)
+                        # TODO: This never gets cleaned up, Memory leak on a lot of new generic adders / generic resolvers
+                        getter.add_callback(
+                            f"generic_adder:{self.id}:{add_file}", self._refresh_add
+                        )
                     self._add_from_path()
 
         def _add_from_path(self):
@@ -194,4 +198,5 @@ class GenericAdderRule(FieldManagerRule):
     @property
     def add(self) -> dict:
         """Returns the fields to add"""
-        return self._config.add
+        config = typing.cast(GenericAdderRule.Config, self._config)
+        return config.add

@@ -2,16 +2,19 @@
 They are returned by the GetterFactory.
 """
 
+import datetime
 import logging
 import os
 import re
+import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import cached_property
+from gc import callbacks
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
-from typing import ClassVar
+from typing import Any, Callable, ClassVar, Iterable
 from urllib.parse import urlparse
 
 import requests
@@ -72,11 +75,9 @@ class GetterFactory:
         if protocol is None:
             protocol = "file"
         if protocol == "file":
-            return FileGetter(protocol=protocol, target=target)  # type: ignore
-        if protocol == "http":
-            return HttpGetter(protocol=protocol, target=target)  # type: ignore
-        if protocol == "https":
-            return HttpGetter(protocol=protocol, target=target)  # type: ignore
+            return FileGetter(protocol=protocol, target=target)
+        if protocol == "http" or protocol == "https":
+            return HttpGetter(protocol=protocol, target=f"{protocol}://{target}")
         raise GetterNotFoundError(f"No getter for protocol '{protocol}'")
 
     @staticmethod
@@ -110,17 +111,34 @@ class DataSharedPerTarget:
     refresh_interval: int | None = None
     """Interval after which getters attempt to obtain the resource again"""
 
+    timeout_interval: int | None = None
+    """Timeout interval after which no more refresh attempts should be made, and resources should be cleaned up"""
+
     default_return_value: bytes | None = None
     """Default value to be returned if defined in the configuration"""
 
-    callbacks: list = []
+    callbacks: list = field(factory=list)
     """Callbacks called after a resource has changed and was successfully obtained"""
+
+    cleanup_callbacks: list = field(factory=list)
+    """Callbacks called after a resource has timed out"""
 
     refreshing: bool = False
     """Used to check if getters are refreshing to prevent the scheduler running multiple times"""
 
     hash: str | None = None
     """Hash value of the obtained resource"""
+
+    last_called: float | None = None
+    """Last called monotonic timestamp for timing out"""
+
+    @property
+    def timed_out(self) -> bool:
+        if self.timeout_interval is None:
+            return False
+        if self.last_called is None:
+            return False
+        return time.monotonic() - self.last_called > self.timeout_interval
 
 
 @define(kw_only=True)
@@ -135,6 +153,8 @@ class RefreshableGetter(Getter, ABC):
     def _init_scheduler(self):
         if self._refresh_interval < 0:
             raise ValueError(f"'refresh_interval' must be >= 0: {self._refresh_interval}")
+        if self._timeout_interval < 0:
+            raise ValueError(f"'timeout_interval' must be >= 0: {self._timeout_interval}")
         if self._refresh_interval > 0:
             if self.scheduler is None:
                 self.scheduler = Scheduler()
@@ -169,7 +189,7 @@ class RefreshableGetter(Getter, ABC):
 
     @cache.setter
     def cache(self, value: bytes) -> None:
-        """Sets the cache for the current targe"""
+        """Sets the cache for the current target"""
         self.shared.cache = value
 
     @property
@@ -192,10 +212,18 @@ class RefreshableGetter(Getter, ABC):
         """Sets the hash of the current targets value"""
         self.shared.hash = value
 
-    @property
+    @cached_property
     def uri(self) -> str:
         """Returns the URI of the target"""
+        # Protocol already in target
+        if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", self.target):
+            return self.target
         return f"{self.protocol}://{self.target}"
+
+    @cached_property
+    def legacy_target(self) -> str:
+        """Return the legacy target which is the target stripped of https:// and http:// protocol prefixes"""
+        return self.target.removeprefix("https://").removeprefix("http://")
 
     @property
     def _callbacks(self) -> list:
@@ -219,6 +247,16 @@ class RefreshableGetter(Getter, ABC):
         """Sets the refresh interval for the current target"""
         self.shared.refresh_interval = value
 
+    @property
+    def _timeout_interval(self) -> int:
+        if self.shared.timeout_interval is None:
+            self.shared.timeout_interval = self._get_timeout_interval()
+        return self.shared.timeout_interval
+
+    @_timeout_interval.setter
+    def _timeout_interval(self, value: int) -> None:
+        self.shared.timeout_interval = value
+
     @cached_property
     def _default_return_value(self) -> bytes | None:
         """Configured default value to be returned if no value could be retrieved"""
@@ -226,44 +264,163 @@ class RefreshableGetter(Getter, ABC):
             self.shared.default_return_value = self._get_default_return_value()
         return self.shared.default_return_value
 
-    def add_callback(self, fnc, *args, **kwargs):
-        """Add callbacks to call when http getter refreshes with new data"""
-        if self.target not in self._callbacks:
-            self._callbacks = []
-        self._callbacks.append({"function": fnc, "args": args, "kwargs": kwargs})
+    @staticmethod
+    def _build_callback(
+        tag: str,
+        fnc: Callable,
+        fnc_args: Iterable[Any] | None,
+        fnc_kwargs: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        return {
+            "tag": tag,
+            "function": fnc,
+            "args": fnc_args or [],
+            "kwargs": fnc_kwargs or {},
+        }
 
     @classmethod
-    def add_callback_for_target(cls, target, fnc, *args, **kwargs):
-        """Add callbacks to call when http getter with given target refreshes with new data"""
-        shared = cls._shared[target]
+    def _add_callback_to_shared(
+        cls,
+        shared: DataSharedPerTarget,
+        callback_list_name: str,
+        tag: str,
+        fnc: Callable,
+        deduplication_key: tuple | None,
+        fnc_args: Iterable[Any] | None,
+        fnc_kwargs: dict[str, Any] | None,
+    ) -> None:
+        callbacks = getattr(shared, callback_list_name)
+        callback = cls._build_callback(tag, fnc, fnc_args, fnc_kwargs)
+
+        if deduplication_key is not None:
+            if any(existing.get("key") == deduplication_key for existing in callbacks):
+                return
+            callback["key"] = deduplication_key
+
+        callbacks.append(callback)
+
+    def add_callback(
+        self,
+        tag: str,
+        fnc: Callable,
+        *,
+        deduplication_key: tuple | None = None,
+        fnc_args: Iterable[Any] | None = None,
+        fnc_kwargs: dict[str, Any] | None = None,
+    ):
+        """Register a callback for successful refreshed data.
+
+        If ``deduplication_key`` is set, an existing callback with the same key is kept
+        and the new callback is ignored. The ``tag`` is used for later bulk removal and
+        is independent from the deduplication key.
+        """
+        self._add_callback_to_shared(
+            self.shared,
+            "callbacks",
+            tag,
+            fnc,
+            deduplication_key,
+            fnc_args,
+            fnc_kwargs,
+        )
+
+    @classmethod
+    def add_callback_for_target(
+        cls,
+        target: str,
+        tag: str,
+        fnc: Callable,
+        *,
+        deduplication_key: tuple | None = None,
+        fnc_args: Iterable[Any] | None = None,
+        fnc_kwargs: dict[str, Any] | None = None,
+    ):
+        """Register a refresh callback for an already initialized target.
+
+        This is a no-op if the target has no shared getter state. ``deduplication_key``
+        prevents duplicate callback registration without affecting tag-based removal.
+        """
+        shared = cls._shared.get(target)
         if shared is None:
             return
-        if target not in shared.callbacks:
-            shared.callbacks = []
-        shared.callbacks.append({"function": fnc, "args": args, "kwargs": kwargs})
+
+        cls._add_callback_to_shared(
+            shared,
+            "callbacks",
+            tag,
+            fnc,
+            deduplication_key,
+            fnc_args,
+            fnc_kwargs,
+        )
+
+    def add_cleanup_callback(
+        self,
+        tag: str,
+        fnc: Callable,
+        *,
+        deduplication_key: tuple | None = None,
+        fnc_args: Iterable[Any] | None = None,
+        fnc_kwargs: dict[str, Any] | None = None,
+    ):
+        """Register a callback that runs when the target times out and is removed.
+
+        If ``deduplication_key`` is set, an existing cleanup callback with the same key
+        is kept and the new callback is ignored.
+        """
+        self._add_callback_to_shared(
+            self.shared,
+            "cleanup_callbacks",
+            tag,
+            fnc,
+            deduplication_key,
+            fnc_args,
+            fnc_kwargs,
+        )
+
+    def _get_getter_config_entry(self) -> dict:
+        if ENV_NAME_LOGPREP_GETTER_CONFIG not in os.environ:
+            return {}
+
+        getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
+        if not getter_file_path or getter_file_path == self.target and self.protocol == "file":
+            return {}
+
+        getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()
+
+        for candidate in (self.uri, self.target, self.legacy_target):
+            if candidate in getters_config:
+                return getters_config[candidate]
+
+        for configured_target, config in getters_config.items():
+            if self._target_matches(configured_target):
+                return config
+
+        return {}
+
+    def _target_matches(self, configured_target: str) -> bool:
+        candidates = (self.uri, self.legacy_target)
+
+        if configured_target.endswith("*"):
+            prefix = configured_target[:-1]
+            return any(candidate.startswith(prefix) for candidate in candidates)
+
+        return configured_target in candidates
 
     def _get_refresh_interval(self) -> int:
         """Get refresh interval from a configuration file"""
-        if ENV_NAME_LOGPREP_GETTER_CONFIG in os.environ:
-            getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
-            if getter_file_path == self.target and self.protocol == "file":
-                return 0
-            getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()  # type: ignore
-            return getters_config.get(self.target, {}).get("refresh_interval", 0)
-        return 0
+        return self._get_getter_config_entry().get("refresh_interval", 0)
+
+    def _get_timeout_interval(self) -> int:
+        """Get timeout interval from a configuration file"""
+        return self._get_getter_config_entry().get("timeout_interval", 60)
 
     def _get_default_return_value(self) -> bytes | None:
         """Get default return value from a configuration file"""
-        if ENV_NAME_LOGPREP_GETTER_CONFIG in os.environ:
-            getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
-            if getter_file_path == self.target and self.protocol == "file":
-                return None
-            getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()  # type: ignore
-            default_return_value = getters_config.get(self.target, {}).get("default_return_value")
-            if default_return_value is None:
-                return None
-            return default_return_value.encode("utf-8")
-        return None
+        default_return_value = self._get_getter_config_entry().get("default_return_value")
+        if default_return_value is None:
+            return None
+        return default_return_value.encode("utf-8")
 
     def _refresh(self) -> None:
         """Refresh the current http getter"""
@@ -330,10 +487,56 @@ class RefreshableGetter(Getter, ABC):
             raise ValueError(f"Cache is empty for {type(self).__name__} with URI '{self.uri}'")
         return self.cache, self.content_type
 
+    def keep_alive(self):
+        self.shared.last_called = time.monotonic()
+
+    def timed_out(self) -> bool:
+        return self.shared.timed_out
+
+    @classmethod
+    def timed_out_for_target(cls, target: str) -> bool:
+        target_shared = cls._shared.get(target)
+        if target_shared is None:
+            return False
+
+        return target_shared.timed_out
+
+    @classmethod
+    def remove_callbacks_for_tag(cls, tag: str) -> None:
+        empty_targets = []
+
+        for target, shared in cls._shared.items():
+            shared.callbacks = [
+                callback for callback in shared.callbacks if callback.get("tag") != tag
+            ]
+            shared.cleanup_callbacks = [
+                callback for callback in shared.cleanup_callbacks if callback.get("tag") != tag
+            ]
+
+            if shared.cache is None and not shared.callbacks and not shared.cleanup_callbacks:
+                empty_targets.append(target)
+
+        for target in empty_targets:
+            cls._shared.pop(target, None)
+
+    @classmethod
+    def keep_alive_for_target(cls, target: str):
+        shared = cls._shared.get(target)
+        if shared is None:
+            return
+
+        shared.last_called = time.monotonic()
+
     @classmethod
     def refresh(cls):
-        """Run all pending getter schedulers"""
-        for shared_target_data in cls._shared.values():
+        """Run pending refresh schedulers and cleanup timed-out targets."""
+        for target, shared_target_data in list(cls._shared.items()):
+            if cls.timed_out_for_target(target):
+                del cls._shared[target]
+                for callback in shared_target_data.cleanup_callbacks:
+                    callback["function"](*callback["args"], **callback["kwargs"])
+                continue
+
             if shared_target_data.scheduler:
                 shared_target_data.scheduler.run_pending()
 

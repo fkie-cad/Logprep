@@ -5,12 +5,11 @@
 # pylint: disable=protected-access
 import json
 import re
-import sys
 import uuid
 from datetime import datetime, timedelta
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -39,12 +38,6 @@ from logprep.util.getter import (
 yaml = YAML(pure=True, typ="safe")
 
 
-@pytest.fixture(autouse=True)
-def fixture_clear_getter_cache():
-    getter = HttpGetter(protocol="http", target="anything")
-    getter._shared.clear()
-
-
 def _get_cache_as_json(refreshable_getter: RefreshableGetter) -> dict:
     if refreshable_getter.cache:
         return json.loads(refreshable_getter.cache.decode())
@@ -68,8 +61,8 @@ class TestGetterFactory:
             ("file:///my/file", "file", "/my/file"),
             ("/my/file", "file", "/my/file"),
             ("my/file", "file", "my/file"),
-            ("http://my/file", "http", "my/file"),
-            ("https://my/file", "https", "my/file"),
+            ("http://my/file", "http", "http://my/file"),
+            ("https://my/file", "https", "https://my/file"),
         ],
     )
     def test_from_string_sets_protocol_and_target(
@@ -83,7 +76,7 @@ class TestGetterFactory:
     def test_getter_expands_from_environment(self):
         url = "https://${PYTEST_TEST_TARGET}"
         my_getter = GetterFactory.from_string(url)
-        assert my_getter.target == "the-web-target"
+        assert my_getter.target == "https://the-web-target"
 
     @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_environment_variables_in_content(self, tmp_path):
@@ -784,7 +777,7 @@ class TestHttpGetter:
         responses.add(responses.GET, url, json=mock_response_1)
         responses.add(responses.GET, url, json=mock_response_2)
 
-        getter_file_content = {target: {"refresh_interval": 0}}
+        getter_file_content = {"${zws}/api/.*": {"refresh_interval": 0}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
@@ -810,6 +803,19 @@ class TestHttpGetter:
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
         with mock.patch.dict("os.environ", mock_env):
             with pytest.raises(ValueError, match=r"'refresh_interval' must be >= 0: -1"):
+                GetterFactory.from_string(url)
+
+    @responses.activate
+    def test_get_raw_raises_exception_if_timeout_interval_is_negative(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+
+        getter_file_content = {target: {"timeout_interval": -1}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            with pytest.raises(ValueError, match=r"'timeout_interval' must be >= 0: -1"):
                 GetterFactory.from_string(url)
 
     @responses.activate
@@ -953,8 +959,8 @@ class TestHttpGetter:
         http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
         http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
 
-        assert http_getter_1.target == target_1
-        assert http_getter_2.target == target_2
+        assert http_getter_1.target == url_1
+        assert http_getter_2.target == url_2
 
     @responses.activate
     def test_getter_from_dict_with_two_getters_same_url_refresh_updates_cache(self, tmp_path):
@@ -1271,7 +1277,12 @@ class TestHttpGetter:
             def callback(foo, bar, keyword1=0):
                 self._callback_value += foo + bar + keyword1
 
-            http_getter_1.add_callback(callback, 1, 2, keyword1=3)
+            http_getter_1.add_callback(
+                "test_tag123_1",
+                callback,
+                fnc_args=[1, 2],
+                fnc_kwargs={"keyword1": 3},
+            )
 
             http_getter_1.get_json()
             assert self._callback_value == 0
@@ -1288,7 +1299,12 @@ class TestHttpGetter:
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 12
-            http_getter_2.add_callback(callback, 1, 0, keyword1=1)
+            http_getter_2.add_callback(
+                "test_tag123_2",
+                callback,
+                fnc_args=[1, 0],
+                fnc_kwargs={"keyword1": 1},
+            )
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 14
@@ -1322,7 +1338,13 @@ class TestHttpGetter:
             def callback(foo, bar, keyword1=0):
                 self._callback_value += foo + bar + keyword1
 
-            HttpGetter.add_callback_for_target(target_1, callback, 1, 2, keyword1=3)
+            HttpGetter.add_callback_for_target(
+                url_1,
+                "test_tag123_1",
+                callback,
+                fnc_args=[1, 2],
+                fnc_kwargs={"keyword1": 3},
+            )
 
             http_getter_1.get_json()
             assert self._callback_value == 0
@@ -1339,21 +1361,109 @@ class TestHttpGetter:
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 12
-            HttpGetter.add_callback_for_target(target_2, callback, 1, 0, keyword1=1)
+            HttpGetter.add_callback_for_target(
+                url_2,
+                "test_tag123_2",
+                callback,
+                fnc_args=[1, 0],
+                fnc_kwargs={"keyword1": 1},
+            )
             http_getter_2.scheduler.run_all()
             http_getter_2.get_json()
             assert self._callback_value == 14
 
     def test_add_callback_for_target_target_share_none(self):
         HttpGetter._shared["target"] = None
-        HttpGetter.add_callback_for_target("target", lambda: True)
+        HttpGetter.add_callback_for_target("target", "test_tag123", lambda: True)
         assert HttpGetter._shared.get("target") is None
+
+    def test_add_callback_for_target_unknown_target_does_not_create_shared_state(self):
+        HttpGetter.add_callback_for_target("unknown-target", "test_tag123", lambda: True)
+
+        assert "unknown-target" not in HttpGetter._shared
+
+    def test_callback_with_duplicate_deduplication_key_is_skipped(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        first_callback = mock.MagicMock()
+        second_callback = mock.MagicMock()
+        deduplication_key = ("tag123", "http://example.test/resource", "rule")
+
+        http_getter.add_callback("tag123", first_callback, deduplication_key=deduplication_key)
+        http_getter.add_callback("tag123", second_callback, deduplication_key=deduplication_key)
+
+        assert http_getter.shared.callbacks == [
+            {
+                "tag": "tag123",
+                "key": deduplication_key,
+                "function": first_callback,
+                "args": [],
+                "kwargs": {},
+            }
+        ]
+
+    def test_cleanup_callback_with_duplicate_deduplication_key_is_skipped(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        first_callback = mock.MagicMock()
+        second_callback = mock.MagicMock()
+        deduplication_key = ("tag123", "http://example.test/resource", "rule")
+
+        http_getter.add_cleanup_callback(
+            "tag123", first_callback, deduplication_key=deduplication_key
+        )
+        http_getter.add_cleanup_callback(
+            "tag123", second_callback, deduplication_key=deduplication_key
+        )
+
+        assert http_getter.shared.cleanup_callbacks == [
+            {
+                "tag": "tag123",
+                "key": deduplication_key,
+                "function": first_callback,
+                "args": [],
+                "kwargs": {},
+            }
+        ]
+
+    def test_callback_for_target_with_duplicate_deduplication_key_is_skipped(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        _ = http_getter.shared
+        first_callback = mock.MagicMock()
+        second_callback = mock.MagicMock()
+        deduplication_key = ("tag123", "http://example.test/resource", "rule")
+
+        HttpGetter.add_callback_for_target(
+            "http://example.test/resource",
+            "tag123",
+            first_callback,
+            deduplication_key=deduplication_key,
+        )
+        HttpGetter.add_callback_for_target(
+            "http://example.test/resource",
+            "tag123",
+            second_callback,
+            deduplication_key=deduplication_key,
+        )
+
+        assert http_getter.shared.callbacks == [
+            {
+                "tag": "tag123",
+                "key": deduplication_key,
+                "function": first_callback,
+                "args": [],
+                "kwargs": {},
+            }
+        ]
 
     def test_set_refresh_interval(self):
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter._refresh_interval != 123
         http_getter._refresh_interval = 123
         assert http_getter._refresh_interval == 123
+
+    def test_timeout_interval_defaults_to_60(self):
+        http_getter: HttpGetter = GetterFactory.from_string("http://something")
+
+        assert http_getter._timeout_interval == 60
 
     def test_refresh_while_already_refreshing_stops(self):
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
@@ -1612,3 +1722,246 @@ class TestHttpGetter:
 
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter._resolve_content_by_content_type() == expected
+
+    def test_http_getter_uri_does_not_duplicate_protocol(self):
+        http_getter = GetterFactory.from_string("http://example.test/path")
+
+        assert http_getter.target == "http://example.test/path"
+        assert http_getter.uri == "http://example.test/path"
+
+    def test_https_getter_uri_does_not_duplicate_protocol(self):
+        http_getter = GetterFactory.from_string("https://example.test/path")
+
+        assert http_getter.target == "https://example.test/path"
+        assert http_getter.uri == "https://example.test/path"
+
+    def test_getter_config_prefers_full_url_target_over_legacy_target(self, tmp_path):
+        target = f"{uuid.uuid4()}/resource"
+        url = f"https://{target}"
+
+        getter_file_content = {
+            target: {"refresh_interval": 1},
+            url: {"refresh_interval": 10},
+        }
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        moch_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", moch_env):
+            http_getter = GetterFactory.from_string(url)
+
+        assert isinstance(http_getter, HttpGetter)
+        assert http_getter._refresh_interval == 10
+
+    def test_getter_config_matches_full_url_prefix_wildcard(self, tmp_path):
+        target = f"{uuid.uuid4()}/api/resource"
+        url = f"https://{target}"
+        configured_target = f"https://{target.removesuffix('/resource')}/*"
+
+        getter_file_content = {configured_target: {"refresh_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string(url)
+
+        assert isinstance(http_getter, HttpGetter)
+        assert http_getter._refresh_interval == 10
+
+    def test_getter_config_matches_legacy_target_prefix_wildcard(self, tmp_path):
+        target = f"{uuid.uuid4()}/api/resource"
+        url = f"https://{target}"
+        configured_target = f"{target.removesuffix('/resource')}/*"
+
+        getter_file_content = {configured_target: {"refresh_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string(url)
+
+        assert isinstance(http_getter, HttpGetter)
+        assert http_getter._refresh_interval == 10
+
+    def test_getter_config_timeout_interval_exact_match(self, tmp_path):
+        target = f"{uuid.uuid4()}/resource"
+        url = f"https://{target}"
+
+        getter_file_content = {target: {"timeout_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string(url)
+
+        assert isinstance(http_getter, HttpGetter)
+        assert http_getter._timeout_interval == 10
+
+    def test_getter_config_timeout_interval_matches_full_url_prefix_wildcard(self, tmp_path):
+        target = f"{uuid.uuid4()}/api/resource"
+        url = f"https://{target}"
+        configured_target = f"https://{target.removesuffix('/resource')}/*"
+
+        getter_file_content = {configured_target: {"timeout_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string(url)
+
+        assert isinstance(http_getter, HttpGetter)
+        assert http_getter._timeout_interval == 10
+
+    def test_getter_config_timeout_interval_matches_legacy_target_prefix_wildcard(self, tmp_path):
+        target = f"{uuid.uuid4()}/api/resource"
+        url = f"https://{target}"
+        configured_target = f"{target.removesuffix('/resource')}/*"
+
+        getter_file_content = {configured_target: {"timeout_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string(url)
+
+        assert isinstance(http_getter, HttpGetter)
+        assert http_getter._timeout_interval == 10
+
+    def test_remove_callbacks_for_tag_only_removes_matching_tag(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+
+        tag123_1_callback = mock.MagicMock()
+        tag123_2_callback = mock.MagicMock()
+        tag123_1_cleanup = mock.MagicMock()
+        tag123_2_cleanup = mock.MagicMock()
+
+        http_getter.add_callback("tag123-1", tag123_1_callback)
+        http_getter.add_callback("tag123-2", tag123_2_callback)
+        http_getter.add_cleanup_callback("tag123-1", tag123_1_cleanup)
+        http_getter.add_cleanup_callback("tag123-2", tag123_2_cleanup)
+
+        RefreshableGetter.remove_callbacks_for_tag("tag123-1")
+
+        assert http_getter.shared.callbacks == [
+            {
+                "tag": "tag123-2",
+                "function": tag123_2_callback,
+                "args": [],
+                "kwargs": {},
+            }
+        ]
+
+        assert http_getter.shared.cleanup_callbacks == [
+            {
+                "tag": "tag123-2",
+                "function": tag123_2_cleanup,
+                "args": [],
+                "kwargs": {},
+            }
+        ]
+
+    def test_callbacks_are_not_shared_between_targets(self):
+        http_getter_1 = HttpGetter(protocol="http", target="http://example.test/one")
+        http_getter_2 = HttpGetter(protocol="http", target="http://example.test/two")
+
+        callback = mock.MagicMock()
+        cleanup_callback = mock.MagicMock()
+
+        http_getter_1.add_callback("tag123", callback)
+        http_getter_1.add_cleanup_callback("tag123", cleanup_callback)
+
+        assert http_getter_1.shared.callbacks
+        assert http_getter_1.shared.cleanup_callbacks
+
+        assert http_getter_2.shared.callbacks == []
+        assert http_getter_2.shared.cleanup_callbacks == []
+
+    def test_refresh_removes_timed_out_target_and_calls_cleanup_callbacks(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        cleanup_callback = mock.MagicMock()
+        scheduler = mock.MagicMock()
+
+        http_getter.add_cleanup_callback(
+            "tag123",
+            cleanup_callback,
+            fnc_args=["foo"],
+            fnc_kwargs={"bar": "baz"},
+        )
+        http_getter.scheduler = scheduler
+        http_getter.shared.last_called = 100.0
+
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=161.1):
+            RefreshableGetter.refresh()
+
+        cleanup_callback.assert_called_once_with("foo", bar="baz")
+        scheduler.run_pending.assert_not_called()
+        assert "http://example.test/resource" not in HttpGetter._shared
+
+    def test_refresh_removes_target_after_configured_timeout_interval(self, tmp_path):
+        target = "example.test/resource"
+        url = f"http://{target}"
+        getter_file_content = {target: {"timeout_interval": 120}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string(url)
+
+        cleanup_callback = mock.MagicMock()
+        scheduler = mock.MagicMock()
+        http_getter.add_cleanup_callback("tag123", cleanup_callback)
+        http_getter.scheduler = scheduler
+        http_getter.shared.last_called = 100.0
+
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=220.1):
+            RefreshableGetter.refresh()
+
+        cleanup_callback.assert_called_once()
+        scheduler.run_pending.assert_not_called()
+        assert url not in HttpGetter._shared
+
+    def test_refresh_keeps_active_target_and_runs_scheduler(self):
+        http_getter = HttpGetter(protocol="http", target="http://example.test/resource")
+        cleanup_callback = mock.MagicMock()
+        scheduler = mock.MagicMock()
+
+        http_getter.add_cleanup_callback("tag123", cleanup_callback)
+        http_getter.scheduler = scheduler
+        http_getter.shared.last_called = 100.0
+
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=159.9):
+            RefreshableGetter.refresh()
+
+        cleanup_callback.assert_not_called()
+        scheduler.run_pending.assert_called_once()
+        assert "http://example.test/resource" in HttpGetter._shared
+
+    def test_refresh_keeps_target_until_configured_timeout_interval(self, tmp_path):
+        target = "example.test/resource"
+        url = f"http://{target}"
+        getter_file_content = {target: {"timeout_interval": 120}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string(url)
+
+        cleanup_callback = mock.MagicMock()
+        scheduler = mock.MagicMock()
+        http_getter.add_cleanup_callback("tag123", cleanup_callback)
+        http_getter.scheduler = scheduler
+        http_getter.shared.last_called = 100.0
+
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=219.9):
+            RefreshableGetter.refresh()
+
+        cleanup_callback.assert_not_called()
+        scheduler.run_pending.assert_called_once()
+        assert url in HttpGetter._shared

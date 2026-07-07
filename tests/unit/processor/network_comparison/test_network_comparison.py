@@ -9,7 +9,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter, RefreshableGetterError
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -31,6 +31,33 @@ class TestNetworkComparison(BaseProcessorTestCase):
         document = {"ip1": "Franz"}
         self.object.process(document)
         assert document.get("tags") == ["_network_comparison_failure"]
+
+    def test_network_comparison_uses_rule_level_list_search_base_path_without_processor_base_path(
+        self,
+    ):
+        document = {"ip": "127.0.0.1"}
+        expected = {"ip": "127.0.0.1", "network_results": {"in_list": ["network_list.txt"]}}
+        rule_dict = {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "network_results",
+                "list_search_base_path": self.CONFIG["list_search_base_path"],
+                "list_file_paths": ["../lists/network_list.txt"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "network_comparison",
+            "rules": [],
+        }
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+        processor.process(document)
+
+        assert document == expected
 
     def test_element_not_in_list(self):
         # Test if ip 1.2.34 is not in ip list
@@ -255,9 +282,10 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
     @responses.activate
     def test_network_comparison_loads_rule_with_http_template_in_list_search_base_path(self):
+        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
         responses.add(
             responses.GET,
-            "http://localhost/tests/testdata/bad_ips.list?ref=bla",
+            url,
             """127.0.0.1
 127.0.0.2
 127.0.0.3
@@ -282,7 +310,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         processor._rule_tree.add_rule(rule)
         processor.setup()
         assert processor.rules[0].compare_sets == {
-            "bad_ips.list": {
+            url: {
                 IPv4Network("127.0.0.1/32"),
                 IPv4Network("127.0.0.2/32"),
                 IPv4Network("127.0.0.3/32"),
@@ -348,7 +376,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
         HttpGetter._shared.clear()
 
-        getter_file_content = {target: {"refresh_interval": 10}}
+        getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
@@ -358,22 +386,59 @@ class TestNetworkComparison(BaseProcessorTestCase):
             processor._rule_tree.add_rule(rule)
             processor.setup()
             assert processor.rules[0].compare_sets == {
-                "bad_ips.list": {
+                url: {
                     IPv4Network("1.1.1.1/32"),
                     IPv4Network("2.2.2.2/32"),
                     IPv4Network("127.0.0.1/32"),
                 }
             }
+            HttpGetter(target=url, protocol="http").scheduler.run_all()
             assert processor.rules[0].compare_sets == {
-                "bad_ips.list": {
-                    IPv4Network("1.1.1.1/32"),
-                    IPv4Network("2.2.2.2/32"),
-                    IPv4Network("127.0.0.1/32"),
-                }
+                url: {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
             }
-            HttpGetter(target=target, protocol="http").scheduler.run_all()
+
+    @responses.activate
+    def test_network_comparison_conversion_does_not_affect_unmodified_entries(self, tmp_path):
+        url1 = "http://localhost/tests/testdata/bad_ips_1.list?ref=bla"
+        responses.add(responses.GET, url1, "127.0.0.1")
+        responses.add(responses.GET, url1, "1.1.1.1")
+
+        url2 = "http://localhost/tests/testdata/bad_ips_2.list?ref=bla"
+        responses.add(responses.GET, url2, "2.2.2.2", headers={"etag": "1"})
+        responses.add(responses.GET, url2, headers={"etag": "1"}, status=304)
+
+        config = {
+            "type": "network_comparison",
+            "rules": [
+                {
+                    "filter": "ip",
+                    "network_comparison": {
+                        "source_fields": ["ip"],
+                        "target_field": "ip_results",
+                        "list_file_paths": ["bad_ips_1.list", "bad_ips_2.list"],
+                    },
+                }
+            ],
+            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
+        }
+
+        HttpGetter._shared.clear()
+
+        getter_file_content = {url1: {"refresh_interval": 10}, url2: {"refresh_interval": 10}}
+        http_getter_conf = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            processor = Factory.create({"custom_lister": config})
+            processor.setup()
             assert processor.rules[0].compare_sets == {
-                "bad_ips.list": {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
+                url1: {IPv4Network("127.0.0.1/32")},
+                url2: {IPv4Network("2.2.2.2/32")},
+            }
+            HttpGetter(target=url1, protocol="http").scheduler.run_all()
+            assert processor.rules[0].compare_sets == {
+                url1: {IPv4Network("1.1.1.1/32")},
+                url2: {IPv4Network("2.2.2.2/32")},
             }
 
     def test_network_comparison_does_not_add_duplicates_from_list_source(self):
@@ -442,6 +507,65 @@ class TestNetworkComparison(BaseProcessorTestCase):
         processor.setup()
         processor.process(document)
         assert document == expected, testcase
+
+    @responses.activate
+    def test_network_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
+        failed_document = {"tenant": "acme", "ip": "1.2.3.4"}
+        successful_document = {"tenant": "beta", "ip": "1.2.3.4"}
+        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        failed_url = "http://localhost/acme/bad_ips.list"
+        successful_url = "http://localhost/beta/bad_ips.list"
+        expected_failed_document = {
+            "tenant": "acme",
+            "ip": "1.2.3.4",
+            "tags": ["_network_comparison_failure"],
+        }
+        expected_successful_document = {
+            "tenant": "beta",
+            "ip": "1.2.3.4",
+            "ip_results": {"in_list": [successful_url]},
+        }
+
+        responses.add(responses.GET, url=failed_url, status=500)
+        responses.add(responses.GET, url=successful_url, body="1.2.3.4\n", status=200)
+
+        rule_dict = {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["bad_ips.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "network_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        result = processor.process(failed_document)
+
+        assert failed_document == expected_failed_document
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert rule.data_error is None
+        assert failed_url not in rule.compare_sets
+        assert len(HttpGetter._shared[failed_url].callbacks) == 0
+        assert len(HttpGetter._shared[failed_url].cleanup_callbacks) == 0
+
+        processor.process(successful_document)
+
+        assert successful_document == expected_successful_document
+        assert rule.data_error is None
+        assert rule.compare_sets == {successful_url: {IPv4Network("1.2.3.4/32")}}
 
     @responses.activate
     def test_network_comparison_process_adds_failure_tag_if_http_list_request_returns_500(
@@ -602,7 +726,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         document = {"ip": "1.2.3.4"}
         expected_recovered_document = {
             "ip": "1.2.3.4",
-            "ip_results": {"in_list": [list_name]},
+            "ip_results": {"in_list": [url]},
         }
 
         HttpGetter._shared.clear()
@@ -616,6 +740,6 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
         assert rule.data_error is None
         assert document == expected_recovered_document
-        assert rule.compare_sets == {list_name: {IPv4Network("1.2.3.4/32")}}
+        assert rule.compare_sets == {url: {IPv4Network("1.2.3.4/32")}}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200

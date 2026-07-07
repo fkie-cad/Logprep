@@ -2,8 +2,10 @@
 ListComparison
 ==============
 
-The `list_comparison` processor allows to compare values of source fields against lists provided
-as files.
+The `list_comparison` processor compares values of source fields against
+comparison lists loaded from local files or HTTP(S) targets. HTTP base paths may
+be static or templated with environment variables and event fields for dynamic,
+lazy list loading.
 
 
 Processor Configuration
@@ -31,8 +33,10 @@ import typing
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.list_comparison.rule import ListComparisonRule
+from logprep.util.getter import RefreshableGetter
 from logprep.util.helper import (
     FieldValue,
     add_fields_to,
@@ -48,12 +52,19 @@ class ListComparison(Processor):
     class Config(Processor.Config):
         """ListComparison config"""
 
-        list_search_base_path: str = field(validator=validators.instance_of(str))
-        """Relative list paths in rules will be relative to this path if this is set.
-        This parameter is optional. For string format see :ref:`getters`.
-        You can also pass a template with keys from environment,
-        e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
-        will be filled by this processor. """
+        list_search_base_path: str | None = field(
+            validator=validators.optional(validators.instance_of(str)), default=None
+        )
+        """
+        Base path used to resolve relative ``list_file_paths`` from rules.
+        This setting is optional on the processor if every rule defines its own
+        ``list_search_base_path``. It is required either here or in the rule config.
+
+        The value may use getter syntax and may contain ``string.Template`` placeholders.
+        Environment variables and ``${LOGPREP_LIST}`` are resolved during setup. For
+        HTTP(S) paths, placeholders that are not environment variables are resolved from
+        the event during processing, enabling dynamic list paths.
+        """
 
     rule_class = ListComparisonRule
 
@@ -65,7 +76,7 @@ class ListComparison(Processor):
     def setup(self) -> None:
         super().setup()
         for rule in typing.cast(list[ListComparisonRule], self.rules):
-            rule.init_list_comparison(self.config.list_search_base_path)
+            rule.init_list_comparison(self._job_tag_for_cleanup, self.config.list_search_base_path)
 
     def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
         """
@@ -94,9 +105,9 @@ class ListComparison(Processor):
         Returns
         -------
         tuple[list[str], str]
-            The result of the comparison, as well as a dictionary containing the result and a list
-            of filenames pertaining to said result.
-
+            A list of matching list identifiers and the result key ``"in_list"``, or all
+            evaluated list identifiers and the result key ``"not_in_list"`` if no value
+            matched.
         """
 
         field_value_to_be_checked = get_dotted_field_value(event, rule.source_fields[0])
@@ -106,21 +117,35 @@ class ListComparison(Processor):
             else [field_value_to_be_checked]
         )
 
-        list_matches = self._get_lists_matching_with_values(rule, value_list, event)
+        list_matches, compare_sets = self._get_lists_matching_with_values(rule, value_list, event)
 
         if len(list_matches) == 0:
-            return list(rule.compare_sets.keys()), "not_in_list"
+            return list(compare_sets.keys()), "not_in_list"
         return list_matches, "in_list"
 
     def _get_lists_matching_with_values(
-        self, rule: ListComparisonRule, value_list: list, _: dict
-    ) -> list:
-        """Iterate over string lists, check if element is in any."""
+        self, rule: ListComparisonRule, value_list: list, event: dict
+    ) -> tuple[list, dict[str, set]]:
+        """Return matching comparison-list identifiers and the evaluated compare sets.
+
+        Dynamic list loading errors are converted to ``ProcessingWarning`` so the rule's
+        failure tags are applied instead of producing a normal ``not_in_list`` result.
+        """
         list_matches = []
+        try:
+            dynamic_set = rule.get_dynamic_set(event)
+        except Exception as error:
+            raise ProcessingWarning(str(error), rule, event) from error
+
         for value in value_list:
-            for compare_list in rule.compare_sets:
+            for compare_list, compare_values in dynamic_set.items():
                 if compare_list in list_matches:
                     continue
-                if value in rule.compare_sets[compare_list]:
+                if value in compare_values:
                     list_matches.append(compare_list)
-        return list_matches
+
+        return list_matches, dynamic_set
+
+    def _shut_down(self) -> None:
+        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
+        return super()._shut_down()

@@ -193,6 +193,7 @@ The following config file will be valid by setting the given environment variabl
 import json
 import logging
 import os
+import typing
 from copy import deepcopy
 from importlib.metadata import version
 from itertools import chain
@@ -225,8 +226,10 @@ from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
 from logprep.util.getter import (
+    FileGetter,
     GetterFactory,
     GetterNotFoundError,
+    RefreshableGetter,
     RefreshableGetterError,
 )
 from logprep.util.rule_loader import RuleLoader
@@ -653,7 +656,7 @@ class Configuration:
     _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 
     _getter: Getter = field(
-        validator=validators.instance_of(Getter),
+        validator=validators.instance_of((FileGetter | RefreshableGetter)),
         default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
         repr=False,
         eq=False,
@@ -741,13 +744,8 @@ class Configuration:
     def config_paths(self) -> list[str]:
         """Paths of the configuration files."""
         # pylint: disable=protected-access
-        targets = (
-            (config._getter.protocol, config._getter.target)
-            for config in self._configs
-            if config._getter
-        )
+        return [config._getter.uri for config in self._configs if config._getter]
         # pylint: enable=protected-access
-        return [f"{protocol}://{target}" for protocol, target in targets]
 
     @classmethod
     def from_source(cls, config_path: str) -> "Configuration":
@@ -796,7 +794,7 @@ class Configuration:
         """
         if not config_paths:
             config_paths = [DEFAULT_CONFIG_LOCATION]
-        errors = []
+        errors: List[Exception] = []
         configs: List[Configuration] = []
         for config_path in config_paths:
             try:
@@ -963,7 +961,7 @@ class Configuration:
     def _build_merged_pipeline(self) -> None:
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
         pipeline = list(chain(*pipelines))
-        errors = []
+        errors: list[Exception] = []
         pipeline_with_loaded_rules = []
         for processor_definition in pipeline:
             try:
@@ -1039,6 +1037,7 @@ class Configuration:
         for processor_config in self.pipeline:
             try:
                 processor = Factory.create(deepcopy(processor_config))
+                processor = typing.cast(Processor, processor)
                 processor.setup()
                 self._verify_rules(processor)
             except (
@@ -1058,6 +1057,8 @@ class Configuration:
         if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
             try:
                 credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+                if credentials_file_path is None:
+                    raise ValueError("credentials file path was None but expected it to be set")
                 _ = CredentialsFactory.get_content(Path(credentials_file_path))
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)

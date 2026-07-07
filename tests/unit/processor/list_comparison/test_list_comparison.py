@@ -3,15 +3,17 @@
 import json
 import time
 from ipaddress import IPv4Network
+from multiprocessing import process
 from pathlib import Path
 from string import Template
 from unittest import mock
 
 import pytest
 import responses
+from _pytest import config
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
     GetterFactory,
@@ -41,6 +43,33 @@ class TestListComparison(BaseProcessorTestCase):
         document = {"user": "Franz"}
         expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
         self.object.process(document)
+        assert document == expected
+
+    def test_list_comparison_uses_rule_level_list_search_base_path_without_processor_base_path(
+        self,
+    ):
+        document = {"user": "Franz"}
+        expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_search_base_path": self.CONFIG["list_search_base_path"],
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+        }
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+        processor.process(document)
+
         assert document == expected
 
     def test_element_not_in_list(self):
@@ -266,9 +295,10 @@ class TestListComparison(BaseProcessorTestCase):
 
     @responses.activate
     def test_list_comparison_loads_rule_with_http_template_in_list_search_base_path(self):
+        url = "http://localhost/tests/testdata/bad_users.list?ref=bla"
         responses.add(
             responses.GET,
-            "http://localhost/tests/testdata/bad_users.list?ref=bla",
+            url,
             """Franz
 Heinz
 Hans
@@ -295,7 +325,7 @@ Hans
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         processor.setup()
-        assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+        assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -311,9 +341,10 @@ Hans
     )
     @responses.activate
     def test_list_comparison_loads_json_list_from_http(self, json_content, content_field):
+        url = "http://localhost:8080/v2/valuestore/test_4"
         responses.add(
             responses.GET,
-            "http://localhost:8080/v2/valuestore/test_4",
+            url,
             json.dumps(json_content),
             content_type="application/json",
         )
@@ -342,7 +373,7 @@ Hans
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         processor.setup()
-        assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+        assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -473,7 +504,7 @@ Heinz
 
         HttpGetter._shared.clear()
 
-        getter_file_content = {target: {"refresh_interval": 10}}
+        getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
@@ -482,10 +513,370 @@ Heinz
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)
             processor.setup()
-            assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
-            assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
-            HttpGetter(target=target, protocol="http").scheduler.run_all()
-            assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz"}}
+            assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
+            assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
+            HttpGetter(target=url, protocol="http").scheduler.run_all()
+            assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz"}}
+
+    @responses.activate
+    def test_list_comparison_resolves_dynamic_http_template_from_event(self):
+        document = {"tenant": "acme", "user": "Foo"}
+        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        list_name = "bad_users.list"
+        url = "http://localhost/acme/bad_users.list"
+        expected = {
+            "tenant": "acme",
+            "user": "Foo",
+            "user_results": {"in_list": [url]},
+        }
+
+        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        assert rule.compare_sets == {}
+        assert len(responses.calls) == 0
+
+        processor.process(document)
+
+        assert document == expected
+        assert rule.compare_sets == {url: {"Foo", "Bar"}}
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == url
+
+    @responses.activate
+    def test_list_comparison_reuses_dynamic_http_compare_set_and_signals_activity(self):
+        first_document = {"tenant": "acme", "user": "Foo"}
+        second_document = {"tenant": "acme", "user": "Bar"}
+        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        list_name = "bad_users.list"
+        url = "http://localhost/acme/bad_users.list"
+
+        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        with mock.patch("logprep.util.getter.time.monotonic", side_effect=[100.0, 125.0]):
+            processor.process(first_document)
+            assert HttpGetter._shared[url].last_called == 100.0
+
+            processor.process(second_document)
+            assert HttpGetter._shared[url].last_called == 125.0
+
+        assert len(responses.calls) == 1
+        assert first_document["user_results"] == {"in_list": [url]}
+        assert second_document["user_results"] == {"in_list": [url]}
+
+    @responses.activate
+    def test_list_comparison_dynamic_not_in_list_uses_current_event_compare_set(self):
+        first_document = {"tenant": "acme", "user": "Foo"}
+        second_document = {"tenant": "beta", "user": "Missing"}
+        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        list_name = "bad_users.list"
+        first_url = "http://localhost/acme/bad_users.list"
+        second_url = "http://localhost/beta/bad_users.list"
+        expected_second_document = {
+            "tenant": "beta",
+            "user": "Missing",
+            "user_results": {"not_in_list": [second_url]},
+        }
+
+        responses.add(responses.GET, url=first_url, body="Foo\n", status=200)
+        responses.add(responses.GET, url=second_url, body="Bar\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        processor.process(first_document)
+        processor.process(second_document)
+
+        assert first_document["user_results"] == {"in_list": [first_url]}
+        assert second_document == expected_second_document
+        assert rule.compare_sets == {
+            first_url: {"Foo"},
+            second_url: {"Bar"},
+        }
+
+    @responses.activate
+    def test_list_comparison_dynamic_empty_http_list_is_used_for_not_in_list(self):
+        document = {"tenant": "acme", "user": "Foo"}
+        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        list_name = "bad_users.list"
+        url = "http://localhost/acme/bad_users.list"
+        expected = {
+            "tenant": "acme",
+            "user": "Foo",
+            "user_results": {"not_in_list": [url]},
+        }
+
+        responses.add(responses.GET, url=url, body="", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        processor.process(document)
+
+        assert document == expected
+        assert rule.compare_sets == {url: set()}
+
+    @responses.activate
+    def test_list_comparison_dynamic_http_template_rejects_non_scalar_event_values(self):
+        document = {"tenant": ["acme"], "user": "Foo"}
+        expected = {
+            "tenant": ["acme"],
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost/${tenant}/${LOGPREP_LIST}",
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        result = processor.process(document)
+
+        assert document == expected
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert "value for list comparison field 'tenant' is not a scalar value" in str(
+            result.warnings[0]
+        )
+        assert len(responses.calls) == 0
+
+    @responses.activate
+    def test_list_comparison_dynamic_http_template_adds_failure_tag_if_event_field_is_missing(self):
+        document = {"user": "Foo"}
+        expected = {
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost/${tenant}/${LOGPREP_LIST}",
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        result = processor.process(document)
+
+        assert document == expected
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert "missing event field 'tenant' for dynamic list comparison path" in str(
+            result.warnings[0]
+        )
+        assert len(responses.calls) == 0
+
+    @responses.activate
+    def test_list_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
+        failed_document = {"tenant": "acme", "user": "Foo"}
+        successful_document = {"tenant": "beta", "user": "Foo"}
+        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        failed_url = "http://localhost/acme/bad_users.list"
+        successful_url = "http://localhost/beta/bad_users.list"
+        expected_failed_document = {
+            "tenant": "acme",
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
+        expected_successful_document = {
+            "tenant": "beta",
+            "user": "Foo",
+            "user_results": {"in_list": [successful_url]},
+        }
+
+        responses.add(responses.GET, url=failed_url, status=500)
+        responses.add(responses.GET, url=successful_url, body="Foo\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        result = processor.process(failed_document)
+
+        assert failed_document == expected_failed_document
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert rule.data_error is None
+        assert failed_url not in rule.compare_sets
+        assert len(HttpGetter._shared[failed_url].callbacks) == 0
+        assert len(HttpGetter._shared[failed_url].cleanup_callbacks) == 0
+
+        processor.process(successful_document)
+
+        assert successful_document == expected_successful_document
+        assert rule.data_error is None
+        assert rule.compare_sets == {successful_url: {"Foo"}}
+
+    @responses.activate
+    def test_list_comparison_removes_timed_out_dynamic_compare_set(self):
+        document = {"tenant": "acme", "user": "Foo"}
+        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        list_name = "bad_users.list"
+        url = "http://localhost/acme/bad_users.list"
+
+        responses.add(responses.GET, url=url, body="Foo\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
+            processor.process(document)
+
+        assert rule.compare_sets == {url: {"Foo"}}
+        assert url in HttpGetter._shared
+
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=161.1):
+            refresh_getters()
+
+        assert url not in rule.compare_sets
+        assert url not in HttpGetter._shared
 
     def test_list_comparison_does_not_add_duplicates_from_list_source(self):
         document = {"users": ["Franz", "Alpha"]}
@@ -564,11 +955,10 @@ Heinz
         expected_result,
     ):
         document = {"user": "Foo"}
-        expected_document = {"user": "Foo", "user_results": {"not_in_list": ["bad_users.list"]}}
-
         url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         list_name = "bad_users.list"
         url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+        expected_document = {"user": "Foo", "user_results": {"not_in_list": [url]}}
 
         responses.add(
             responses.GET,
@@ -605,7 +995,7 @@ Heinz
         assert document == expected_document
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
-        assert rule.compare_sets[list_name] == expected_result
+        assert rule.compare_sets[url] == expected_result
 
     @responses.activate
     def test_list_comparison_process_adds_failure_tag_if_http_list_returns_500(
@@ -751,7 +1141,7 @@ Heinz
         document = {"user": "Foo"}
         expected_recovered_document = {
             "user": "Foo",
-            "user_results": {"in_list": [list_name]},
+            "user_results": {"in_list": [url]},
         }
 
         HttpGetter._shared.clear()
@@ -765,7 +1155,7 @@ Heinz
 
         assert rule.data_error is None
         assert document == expected_recovered_document
-        assert rule.compare_sets == {list_name: {"Foo"}}
+        assert rule.compare_sets == {url: {"Foo"}}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200
 
@@ -807,7 +1197,7 @@ Heinz
 
         HttpGetter._shared.clear()
 
-        getter_file_content = {url.removeprefix("http://"): {"refresh_interval": 1}}
+        getter_file_content = {url: {"refresh_interval": 1}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}

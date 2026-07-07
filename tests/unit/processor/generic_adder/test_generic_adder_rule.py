@@ -140,12 +140,12 @@ class TestGenericAdderRule:
 
         HttpGetter._shared.clear()
 
-        getter_file_content = {target: {"refresh_interval": 10}}
+        getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
         with patch.dict("os.environ", mock_env):
-            scheduler = HttpGetter(protocol="http", target=target).scheduler
+            scheduler = HttpGetter(protocol="http", target=url).scheduler
             rule = GenericAdderRule.create_from_dict(rule_definition)
             assert rule.add == expected_1
             HttpGetter.refresh()

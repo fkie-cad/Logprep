@@ -1,9 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import typing
 from unittest import mock
 
 import pytest
 
+from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.list_comparison.rule import ListComparisonRule
 
 
@@ -96,11 +98,31 @@ class TestListComparisonRule:
     ):
         rule = ListComparisonRule.create_from_dict(rule_definition)
 
-        rule.init_list_comparison("tests/testdata/unit/list_comparison/rules")
+        rule = typing.cast(ListComparisonRule, rule)
+
+        rule.init_list_comparison("test_owner", "tests/testdata/unit/list_comparison/rules")
 
         assert rule.compare_sets is not None
         assert isinstance(rule.compare_sets, dict)
         assert len(rule.compare_sets.keys()) > 0
+
+    def test_init_list_comparison_raises_if_no_base_path_is_configured(self):
+        rule_definition = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+            "description": "",
+        }
+        rule = ListComparisonRule.create_from_dict(rule_definition)
+
+        with pytest.raises(
+            InvalidConfigurationError,
+            match="list_search_base_path must be set either in the processor config or in the rule",
+        ):
+            rule.init_list_comparison("test_owner")
 
     @pytest.mark.parametrize(
         ("url", "will_fail"),
@@ -119,6 +141,7 @@ class TestListComparisonRule:
             },
         }
         rule = ListComparisonRule.create_from_dict(rule_definition)
+        rule = typing.cast(ListComparisonRule, rule)
 
         with mock.patch(
             "logprep.processor.list_comparison.rule.ListComparisonRule._update_compare_sets_via_http",
@@ -126,6 +149,6 @@ class TestListComparisonRule:
         ):
             if will_fail:
                 with pytest.raises(TypeError, match=f"The target {url} must be a url"):
-                    rule._init_list_comparison_from_http(url)
+                    rule._load_http_compare_set(url)
             else:
-                rule._init_list_comparison_from_http(url)
+                rule._load_http_compare_set(url)
