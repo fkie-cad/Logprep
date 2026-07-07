@@ -134,6 +134,7 @@ def create_orchestrator(
                 *(
                     named_outputs[name].store(events)
                     for name, events in output_name_to_extra_events.items()
+                    if events
                 ),
                 return_exceptions=True,
             ),

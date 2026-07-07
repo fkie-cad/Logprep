@@ -24,8 +24,7 @@ class OutputError(LogprepException):
         connector.metrics.number_of_errors += 1
         if message is not None:
             return cls(f"{cls.__name__} in {connector.description}: {message}: {str(error)}")
-        else:
-            return cls(f"{cls.__name__} in {connector.description}: {str(error)}")
+        return cls(f"{cls.__name__} in {connector.description}: {str(error)}")
 
     @classmethod
     def from_message(cls, connector: "Output", message: str) -> "OutputError":
@@ -99,16 +98,16 @@ class Output(Connector):
                     event.mark_failed(error)
 
         for event in events:
-            if event.stored:
-                self.metrics.number_of_processed_events += 1
-            else:
-                if not event.is_failed():
-                    event.mark_failed(
-                        CriticalOutputError.from_message(
-                            self, "invariant broken; event neither failed nor stored after store"
-                        )
+            if not event.stored and not event.is_failed():
+                event.mark_failed(
+                    CriticalOutputError.from_message(
+                        self, "invariant broken; event neither failed nor stored after store"
                     )
-                self.metrics.number_of_errors += 1
+                )
+
+        # modify metrics in batches
+        self.metrics.number_of_processed_events += sum(1 for e in events if e.stored)
+        self.metrics.number_of_errors += sum(1 for e in events if e.is_failed())
 
     @staticmethod
     def _handle_error(event: OutputEvent, error: Exception) -> None:
