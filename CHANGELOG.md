@@ -14,6 +14,7 @@
 * allow `list_comparison` and `network_comparison` to use dynamic values from event to resolve list uris
 
 ### Improvements
+* fix Pyparsing deprecation warnings
 
 ### Bugfix
 * make `list_search_base_path` actually optional and correctly overrideable by rule config
