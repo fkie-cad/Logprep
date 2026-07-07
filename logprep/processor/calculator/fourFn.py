@@ -18,6 +18,7 @@ import operator
 
 from pyparsing import (
     CaselessKeyword,
+    DelimitedList,
     Forward,
     Group,
     Literal,
@@ -26,7 +27,6 @@ from pyparsing import (
     Word,
     alphanums,
     alphas,
-    delimitedList,
 )
 
 epsilon = 1e-12
@@ -138,7 +138,7 @@ class BNF(Forward):
     def __init__(self) -> None:
         super().__init__()
         self.exprStack = []
-        expr_list = delimitedList(Group(self))  # pylint: disable=E1121
+        expr_list = DelimitedList(Group(self))  # pylint: disable=E1121
 
         # add parse action that replaces the function identifier with a (name, number of args) tuple
         def insert_fn_argcount_tuple(t):
@@ -146,23 +146,25 @@ class BNF(Forward):
             num_args = len(t[0])
             t.insert(0, (fn, num_args))
 
-        fn_call = (self.ident + self.lpar - Group(expr_list) + self.rpar).setParseAction(
+        fn_call = (self.ident + self.lpar - Group(expr_list) + self.rpar).set_parse_action(
             insert_fn_argcount_tuple
         )
         atom = (
             self.addop[...]
             + (
-                (fn_call | self.pi | self.e | self.fnumber | self.ident).setParseAction(
+                (fn_call | self.pi | self.e | self.fnumber | self.ident).set_parse_action(
                     self.push_first
                 )
                 | Group(self.lpar + self + self.rpar)
             )
-        ).setParseAction(self.push_unary_minus)
+        ).set_parse_action(self.push_unary_minus)
 
         # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...",
         # we get right-to-left exponents,
         # instead of left-to-right that is, 2^3^2 = 2^(3^2), not (2^3)^2.
         factor = Forward()
-        factor <<= atom + (self.expop + factor).setParseAction(self.push_first)[...]
-        term = factor + (self.multop + factor).setParseAction(self.push_first)[...]
-        self <<= term + (self.addop + term).setParseAction(self.push_first)[...]
+        factor <<= atom + (self.expop + factor).set_parse_action(self.push_first)[...]
+        term = factor + (self.multop + factor).set_parse_action(self.push_first)[...]
+
+        forward_self: Forward = self
+        forward_self <<= term + (self.addop + term).set_parse_action(self.push_first)[...]

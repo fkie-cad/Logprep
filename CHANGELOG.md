@@ -5,6 +5,7 @@
 * add support for `dict` in `generic_adder`
 
 ### Improvements
+* fix Pyparsing deprecation warnings
 
 ### Bugfix
 * fix `add_fields_to` injecting identical objects instead of copies
