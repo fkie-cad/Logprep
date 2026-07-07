@@ -1,5 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
 
+import copy
 import functools
 import itertools
 import re
@@ -121,7 +122,7 @@ def _add_field_to(
 
     if overwrite_target:
         target_parent = reduce(_add_and_overwrite_key, field_path[:-1], event)
-        target_parent[target_key] = content
+        target_parent[target_key] = copy.deepcopy(content)
         return
     try:
         target_parent = reduce(_add_and_not_overwrite_key, field_path[:-1], event)
@@ -129,7 +130,7 @@ def _add_field_to(
         raise FieldExistsWarning(rule, event, [target_field]) from error
     existing_value = target_parent.get(target_key)
     if existing_value is None:
-        target_parent[target_key] = content
+        target_parent[target_key] = copy.deepcopy(content)
         return
     if not merge_with_target:
         raise FieldExistsWarning(rule, event, [target_field])
@@ -146,7 +147,7 @@ def _add_field_to(
     else:
         if not overwrite_target:
             raise FieldExistsWarning(rule, event, [target_field])
-        target_parent[target_key] = [existing_value, content]
+        target_parent[target_key] = [existing_value, copy.deepcopy(content)]
 
 
 def _add_field_to_silent_fail(*args, **kwargs) -> None | str:

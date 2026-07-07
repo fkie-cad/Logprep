@@ -2,10 +2,13 @@
 ### Breaking
 
 ### Features
+* add support for `dict` in `generic_adder`
 
 ### Improvements
 
 ### Bugfix
+* fix `add_fields_to` injecting identical objects instead of copies
+* fix `generic_adder` accumulating state by inserting identical objects in events
 
 ## 19.4.0
 ### Breaking

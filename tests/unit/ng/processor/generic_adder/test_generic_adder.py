@@ -6,12 +6,14 @@
 # pylint: disable=too-many-positional-arguments
 
 import re
+import typing
 from copy import deepcopy
 
 import pytest
 
 from logprep.factory import Factory
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.processor.generic_adder.processor import GenericAdder
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
@@ -69,3 +71,38 @@ class TestGenericAdder(BaseProcessorTestCase):
             config["rules"] = [RULES_DIR_INVALID]
             configuration = {"test processor": config}
             Factory.create(configuration)
+
+    def test_add_only_copies(self):
+        instance = typing.cast(
+            GenericAdder,
+            self._create_test_instance(
+                {
+                    "some_generic_adder": {
+                        "type": "ng_generic_adder",
+                        "rules": [
+                            {
+                                "filter": "*",
+                                "generic_adder": {
+                                    "add": {
+                                        "some_list_field": ["some_value"],
+                                        "some_dict_field": {"some_key": "some_value"},
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                }
+            ),
+        )
+
+        event = {}
+        log_event = LogEvent(event, original=b"")
+        instance.process(log_event)
+
+        rule_add = instance.rules[0].add
+
+        assert event["some_list_field"] == ["some_value"]
+        assert event["some_list_field"] is not rule_add["some_list_field"], "only copies in events"
+
+        assert event["some_dict_field"] == {"some_key": "some_value"}
+        assert event["some_dict_field"] is not rule_add["some_dict_field"], "only copies in events"
