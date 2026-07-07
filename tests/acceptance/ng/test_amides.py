@@ -26,7 +26,7 @@ def config():
                 "amides": {
                     "type": "amides",
                     "models_path": "tests/testdata/unit/amides/model.zip",
-                    "rules": ["tests/testdata/unit/amides/rules"],
+                    "rules": ["tests/testdata/unit/amides/rules/amides_1.yml"],
                     "max_cache_entries": 1000,
                     "num_rule_attributions": 10,
                     "decision_threshold": 0.32,
