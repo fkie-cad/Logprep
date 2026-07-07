@@ -213,7 +213,7 @@ class Preprocessor:
 
         complete_event: str | dict = {}
         if target.format == "dict":
-            complete_event = self._decoder.decode(raw_event.decode("utf-8"))
+            complete_event = self._decoder.decode(raw_event)
         else:
             complete_event = json.dumps(raw_event.decode("utf-8"))
 

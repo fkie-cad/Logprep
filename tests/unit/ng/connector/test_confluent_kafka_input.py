@@ -347,7 +347,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         error_event = await self.object._get_event(0.001)
         assert isinstance(error_event, ErrorEvent)
-        assert "is not 'utf-8' encoded" in error_event.reason
+        assert "is not a valid json string" in error_event.reason
 
     @pytest.mark.usefixtures("real_consumer")
     async def test_setup_raises_fatal_input_error_on_invalid_config(self):

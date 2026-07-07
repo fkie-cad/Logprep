@@ -479,11 +479,7 @@ class ConfluentKafkaInput(Input):
     def _decode_raw_event(self, raw_event: bytes) -> dict:
         """Parse the raw document from Kafka into a json."""
         try:
-            return self._decoder.decode(raw_event.decode("utf-8"))
-        except UnicodeDecodeError as error:
-            raise CriticalInputParsingError.from_message(
-                self, "Input record value is not 'utf-8' encoded"
-            ) from error
+            return self._decoder.decode(raw_event)
         except msgspec.DecodeError as error:
             raise CriticalInputParsingError.from_message(
                 self, "Input record value is not a valid json string representing an object"
