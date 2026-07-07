@@ -497,7 +497,7 @@ class AutoRuleTester:
         processor : Processor
             processor to reset tree on
         """
-        if hasattr(processor, "rules"):
+        if hasattr(processor, "rules") and isinstance(processor.rules, list):
             processor.rules.clear()
         if hasattr(processor, "_rule_tree"):
             processor._rule_tree = RuleTree()

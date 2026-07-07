@@ -301,7 +301,7 @@ class S3Output(Output):
     @_handle_s3_error
     def _write_document_batch(self, document_batch: dict, identifier: str) -> None:
         logger.debug('Writing "%s" to s3 bucket "%s"', identifier, self.config.bucket)
-        s3_obj = self._s3_resource.Object(self.config.bucket, identifier)
+        s3_obj = self._s3_resource.Object(self.config.bucket, identifier)  # type: ignore
         s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
         self.metrics.number_of_successful_writes += len(document_batch)
 
