@@ -2,6 +2,15 @@
 ### Breaking
 
 ### Features
+
+### Improvements
+
+### Bugfix
+
+## 19.4.0
+### Breaking
+
+### Features
 * allow `list_comparison` and `network_comparison` to use dynamic values from event to resolve list uris
 
 ### Improvements
