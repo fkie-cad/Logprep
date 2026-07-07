@@ -76,25 +76,23 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
     async def test_add_only_copies(self):
         instance = self._create_test_instance(
             {
-                "some_generic_adder": {
-                    "type": "generic_adder",
-                    "rules": [
-                        {
-                            "filter": "*",
-                            "generic_adder": {
-                                "add": {
-                                    "some_list_field": ["some_value"],
-                                    "some_dict_field": {"some_key": "some_value"},
-                                }
-                            },
-                        }
-                    ],
-                }
+                "type": "generic_adder",
+                "rules": [
+                    {
+                        "filter": "*",
+                        "generic_adder": {
+                            "add": {
+                                "some_list_field": ["some_value"],
+                                "some_dict_field": {"some_key": "some_value"},
+                            }
+                        },
+                    }
+                ],
             }
         )
 
         event = {}
-        log_event = LogEvent(event, original=b"")
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await instance.process(log_event)
 
         rule_add = instance.rules[0].add

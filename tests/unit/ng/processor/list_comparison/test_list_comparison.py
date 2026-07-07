@@ -42,7 +42,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         self,
     ):
         document = {"user": "Franz"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
         rule_dict = {
             "filter": "user",
@@ -382,7 +382,7 @@ Heinz
     @responses.activate
     async def test_list_comparison_resolves_dynamic_http_template_from_event(self):
         document = {"tenant": "acme", "user": "Foo"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
         list_name = "bad_users.list"
         url = "http://localhost/acme/bad_users.list"
@@ -430,8 +430,8 @@ Heinz
     async def test_list_comparison_reuses_dynamic_http_compare_set_and_signals_activity(self):
         first_document = {"tenant": "acme", "user": "Foo"}
         second_document = {"tenant": "acme", "user": "Bar"}
-        first_log_event = LogEvent(first_document, original=b"")
-        second_log_event = LogEvent(second_document, original=b"")
+        first_log_event = LogEvent(first_document, original=b"", input_meta=InputMeta())
+        second_log_event = LogEvent(second_document, original=b"", input_meta=InputMeta())
         url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
         list_name = "bad_users.list"
         url = "http://localhost/acme/bad_users.list"
@@ -475,8 +475,8 @@ Heinz
     async def test_list_comparison_dynamic_not_in_list_uses_current_event_compare_set(self):
         first_document = {"tenant": "acme", "user": "Foo"}
         second_document = {"tenant": "beta", "user": "Missing"}
-        first_log_event = LogEvent(first_document, original=b"")
-        second_log_event = LogEvent(second_document, original=b"")
+        first_log_event = LogEvent(first_document, original=b"", input_meta=InputMeta())
+        second_log_event = LogEvent(second_document, original=b"", input_meta=InputMeta())
         url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
         list_name = "bad_users.list"
         first_url = "http://localhost/acme/bad_users.list"
@@ -525,7 +525,7 @@ Heinz
     @responses.activate
     async def test_list_comparison_dynamic_empty_http_list_is_used_for_not_in_list(self):
         document = {"tenant": "acme", "user": "Foo"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
         list_name = "bad_users.list"
         url = "http://localhost/acme/bad_users.list"
@@ -567,7 +567,7 @@ Heinz
     @responses.activate
     async def test_list_comparison_dynamic_http_template_rejects_non_scalar_event_values(self):
         document = {"tenant": ["acme"], "user": "Foo"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "tenant": ["acme"],
             "user": "Foo",
@@ -610,7 +610,7 @@ Heinz
         self,
     ):
         document = {"user": "Foo"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "user": "Foo",
             "tags": ["_list_comparison_failure"],
@@ -651,8 +651,8 @@ Heinz
     async def test_list_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
         failed_document = {"tenant": "acme", "user": "Foo"}
         successful_document = {"tenant": "beta", "user": "Foo"}
-        failed_log_event = LogEvent(failed_document, original=b"")
-        successful_log_event = LogEvent(successful_document, original=b"")
+        failed_log_event = LogEvent(failed_document, original=b"", input_meta=InputMeta())
+        successful_log_event = LogEvent(successful_document, original=b"", input_meta=InputMeta())
         url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
         failed_url = "http://localhost/acme/bad_users.list"
         successful_url = "http://localhost/beta/bad_users.list"

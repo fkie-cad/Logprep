@@ -39,7 +39,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         self,
     ):
         document = {"ip": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"ip": "127.0.0.1", "network_results": {"in_list": ["network_list.txt"]}}
         rule_dict = {
             "filter": "ip",
@@ -498,8 +498,8 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
     async def test_network_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
         failed_document = {"tenant": "acme", "ip": "1.2.3.4"}
         successful_document = {"tenant": "beta", "ip": "1.2.3.4"}
-        failed_log_event = LogEvent(failed_document, original=b"")
-        successful_log_event = LogEvent(successful_document, original=b"")
+        failed_log_event = LogEvent(failed_document, original=b"", input_meta=InputMeta())
+        successful_log_event = LogEvent(successful_document, original=b"", input_meta=InputMeta())
         url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
         failed_url = "http://localhost/acme/bad_ips.list"
         successful_url = "http://localhost/beta/bad_ips.list"
