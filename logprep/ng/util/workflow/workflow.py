@@ -93,9 +93,12 @@ def create_orchestrator(
                 if not event.is_failed():
                     event.mark_failed(exc)
 
-            if not event.errors:
+            if not event.is_failed():
                 if event.extra_data:
                     await send_to_extras_queue.put(event)
+                elif not event.data:
+                    # TODO no data ~ deleted; maybe use a more explicit state in the future
+                    await acknowledge_queue.put(event)
                 else:
                     await send_to_default_queue.put(event)
             else:
@@ -145,6 +148,9 @@ def create_orchestrator(
             if any(extra.errors for extra in event.extra_data):
                 event.mark_failed(ExtraEventDeliveryFailure.from_event(event))
                 await send_to_error_queue.put(ErrorEvent.from_failed_event(event))
+            elif not event.data:
+                # no data ~ deleted; see processing_worker for details
+                await acknowledge_queue.put(event)
             else:
                 await send_to_default_queue.put(event)
 

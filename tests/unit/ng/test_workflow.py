@@ -26,6 +26,8 @@ def get_input_mock():
         {"message": "Log message 1"},
         {"message": "Log message 2"},
         {"user": {"name": "John Doe"}},
+        {"user": {"name": "John Doe / delete"}, "delete_me": "whatever"},
+        {"message": "Log message 2", "delete_me": "whatever"},
     ]
 
 
@@ -79,6 +81,14 @@ async def get_processors_mock():
                         }
                     ],
                     "max_cached_pseudonyms": 1000000,
+                }
+            }
+        ),
+        Factory.create(
+            {
+                "deleter": {
+                    "type": "deleter",
+                    "rules": [{"filter": "delete_me", "deleter": {"delete": True}}],
                 }
             }
         ),
@@ -217,9 +227,9 @@ class TestWorkflow:
         await run_workflow()
 
         assert len(default_output.events) == 3, "3 log events sent"
-        assert len(named_outputs["kafka"].events) == 1, "1 extra data event"
+        assert len(named_outputs["kafka"].events) == 2, "2 extra data events"
         assert len(error_output.events) == 0, "no errors"
-        assert len(dummy_input.acknowledged_events) == 3, "3 log events acknowledged"
+        assert len(dummy_input.acknowledged_events) == 5, "5 log events acknowledged"
 
     async def test_processor_failure_to_error_output(
         self, run_workflow, default_output, named_outputs, error_output, dummy_input, processors
@@ -232,8 +242,8 @@ class TestWorkflow:
 
         assert len(default_output.events) == 0, "no regular output expected"
         assert len(named_outputs["kafka"].events) == 0, "no extra events expected"
-        assert len(error_output.events) == 3, "only errors"
-        assert len(dummy_input.acknowledged_events) == 3, "3 log events acknowledged"
+        assert len(error_output.events) == 5, "only errors"
+        assert len(dummy_input.acknowledged_events) == 5, "5 log events acknowledged"
 
     async def test_default_output_failure_to_error_output(
         self, run_workflow, default_output: DummyOutput, named_outputs, error_output, dummy_input
@@ -242,12 +252,12 @@ class TestWorkflow:
 
         await run_workflow()
 
-        assert len(default_output.events) == 2, "2/3 events were stored"
+        assert len(default_output.events) == 2, "2/5 events were stored"
         assert is_sequence_of(default_output.events, LogEvent)
-        assert len(named_outputs["kafka"].events) == 1, "the 3rd event had an extra event"
+        assert len(named_outputs["kafka"].events) == 2, "the 3rd and 4th event had an extra event"
         assert len(error_output.events) == 1, "the 1st event failed and was routed to error"
         assert is_sequence_of(error_output.events, ErrorEvent)
-        assert len(dummy_input.acknowledged_events) == 3, "3 log events acknowledged"
+        assert len(dummy_input.acknowledged_events) == 5, "5 log events acknowledged"
 
     async def test_extra_event_targets_invalid_output(
         self, run_workflow, default_output: DummyOutput, error_output, dummy_input
@@ -255,11 +265,11 @@ class TestWorkflow:
 
         await run_workflow(named_outputs={})
 
-        assert len(default_output.events) == 2, "2/3 events were stored"
+        assert len(default_output.events) == 2, "2/5 events were stored"
         assert is_sequence_of(default_output.events, LogEvent)
-        assert len(error_output.events) == 1, "the 1st event failed and was routed to error"
+        assert len(error_output.events) == 2, "2 events with extras failed due to missing output"
         assert is_sequence_of(error_output.events, ErrorEvent)
-        assert len(dummy_input.acknowledged_events) == 3, "3 log events acknowledged"
+        assert len(dummy_input.acknowledged_events) == 5, "5 log events acknowledged"
 
     async def test_error_output_failure_error_message(
         self, run_workflow, default_output, error_output, caplog
