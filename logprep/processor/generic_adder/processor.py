@@ -24,7 +24,10 @@ Processor Configuration
 .. automodule:: logprep.processor.generic_adder.rule
 """
 
+import typing
+
 from logprep.abc.processor import Processor
+from logprep.processor.base.rule import Rule
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.helper import add_fields_to
 
@@ -34,7 +37,8 @@ class GenericAdder(Processor):
 
     rule_class = GenericAdderRule
 
-    def _apply_rules(self, event: dict, rule: GenericAdderRule):
+    def _apply_rules(self, event: dict, rule: Rule):
+        rule = typing.cast(GenericAdderRule, rule)
         items_to_add = rule.add
         if items_to_add:
             add_fields_to(event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target)

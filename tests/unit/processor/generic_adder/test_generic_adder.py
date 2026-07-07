@@ -3,12 +3,14 @@
 # pylint: disable=unused-argument
 # pylint: disable=too-many-arguments
 import re
+import typing
 from copy import deepcopy
 
 import pytest
 
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.generic_adder.processor import GenericAdder
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
@@ -425,3 +427,37 @@ class TestGenericAdder(BaseProcessorTestCase):
             config["rules"] = [RULES_DIR_INVALID]
             configuration = {"test processor": config}
             Factory.create(configuration)
+
+    def test_add_only_copies(self):
+        instance = typing.cast(
+            GenericAdder,
+            self._create_test_instance(
+                {
+                    "some_generic_adder": {
+                        "type": "generic_adder",
+                        "rules": [
+                            {
+                                "filter": "*",
+                                "generic_adder": {
+                                    "add": {
+                                        "some_list_field": ["some_value"],
+                                        "some_dict_field": {"some_key": "some_value"},
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                }
+            ),
+        )
+
+        event = {}
+        instance.process(event)
+
+        rule_add = instance.rules[0].add
+
+        assert event["some_list_field"] == ["some_value"]
+        assert event["some_list_field"] is not rule_add["some_list_field"], "only copies in events"
+
+        assert event["some_dict_field"] == {"some_key": "some_value"}
+        assert event["some_dict_field"] is not rule_add["some_dict_field"], "only copies in events"
