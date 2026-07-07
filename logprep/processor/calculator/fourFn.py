@@ -165,4 +165,6 @@ class BNF(Forward):
         factor = Forward()
         factor <<= atom + (self.expop + factor).set_parse_action(self.push_first)[...]
         term = factor + (self.multop + factor).set_parse_action(self.push_first)[...]
-        self <<= term + (self.addop + term).set_parse_action(self.push_first)[...]
+
+        forward_self: Forward = self
+        forward_self <<= term + (self.addop + term).set_parse_action(self.push_first)[...]
