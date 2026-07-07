@@ -44,7 +44,7 @@ import typing
 from collections import defaultdict
 from functools import cached_property
 from time import time
-from typing import Any, DefaultDict, Optional
+from typing import TYPE_CHECKING, Any, DefaultDict, Optional
 from uuid import uuid4
 
 import boto3
@@ -61,6 +61,9 @@ from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import CounterMetric, Metric
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
+
+if TYPE_CHECKING:
+    from boto3.resources.factory import ServiceResource
 
 
 def _handle_s3_error(func):
@@ -172,7 +175,7 @@ class S3Output(Output):
         return typing.cast(S3Output.Config, self._config)
 
     @cached_property
-    def _s3_resource(self) -> boto3.resources.factory.ServiceResource:
+    def _s3_resource(self) -> "ServiceResource":
         session = boto3.Session(
             aws_access_key_id=self.config.aws_access_key_id,
             aws_secret_access_key=self.config.aws_secret_access_key,
@@ -215,7 +218,7 @@ class S3Output(Output):
         flush_timeout = self.config.flush_timeout
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
 
-        _ = self._s3_resource.meta.client.head_bucket(Bucket=self.config.bucket)
+        _ = self._s3_resource.meta.client.head_bucket(Bucket=self.config.bucket)  # type: ignore
 
     def store(self, document: dict) -> None:
         """Store a document into s3 bucket.
