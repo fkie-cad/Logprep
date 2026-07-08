@@ -26,23 +26,23 @@ workflow:
   workers:
     processing_worker:
       batch_size: 5000
-      queue_size: 5000
+      queue_size: 20000
       batch_interval_s: 5
     extra_output_worker:
       batch_size: 5000
-      queue_size: 5000
+      queue_size: 20000
       batch_interval_s: 5
     output_worker:
       batch_size: 5000
-      queue_size: 5000
+      queue_size: 20000
       batch_interval_s: 5
     error_worker:
       batch_size: 5000
-      queue_size: 5000
+      queue_size: 20000
       batch_interval_s: 5
     acknowledge_worker:
       batch_size: 5000
-      queue_size: 5000
+      queue_size: 20000
       batch_interval_s: 5
 pipeline:
   - labelername:
@@ -102,7 +102,6 @@ input:
   kafka:
     type: confluentkafka_input
     topic: consumer
-    timeout: 0.1
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       group.id: cgroup3
@@ -111,6 +110,9 @@ input:
       queued.min.messages: "100000"
       queued.max.messages.kbytes: "65536"
       statistics.interval.ms: "60000"
+    timeout: 0.5
+    consume_num_message: 200
+    max_workers: 2
     preprocessing:
       version_info_target_field: Logprep_version_info
       log_arrival_time_target_field: event.ingested
@@ -125,13 +127,11 @@ output:
       - 127.0.0.1:9200
     default_index: processed
     default_op_type: create
-    message_backlog_size: 2500
     timeout: 10000
-    flush_timeout: 60
     user: admin
     secret: admin
     desired_cluster_status: ["green", "yellow"]
-    chunk_size: 25
+    chunk_size: 2500
 error_output:
   opensearch:
     type: opensearch_output
@@ -139,10 +139,8 @@ error_output:
       - 127.0.0.1:9200
     default_index: errors
     default_op_type: create
-    message_backlog_size: 2500
     timeout: 10000
-    flush_timeout: 60
     user: admin
     secret: admin
     desired_cluster_status: ["green", "yellow"]
-    chunk_size: 25
+    chunk_size: 1000

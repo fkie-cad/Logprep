@@ -795,7 +795,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--event-num",
         type=int,
-        default=200_000,
+        default=400_000,
         help="Number of events generated per run.",
     )
 

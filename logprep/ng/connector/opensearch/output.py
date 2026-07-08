@@ -122,8 +122,11 @@ class OpensearchOutput(Output):
         be indexed. The document will be transformed into a string to prevent rejections by the
         default index."""
 
-        message_backlog_size: int = field(validator=validators.instance_of(int))
-        """Amount of documents to store before sending them."""
+        message_backlog_size: int = field(validator=validators.instance_of(int), default=1)
+        """Amount of documents to store before sending them.
+        DEPRECATED: This Argument is deprecated and doesnt do anything anymore,
+        it will be removed in the future
+        """
 
         timeout: int = field(validator=validators.instance_of(int), default=500)
         """(Optional) Timeout for the connection (default is 500ms)."""
@@ -139,7 +142,10 @@ class OpensearchOutput(Output):
 
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
         """(Optional) Timeout after :code:`message_backlog` is flushed if
-        :code:`message_backlog_size` is not reached."""
+        :code:`message_backlog_size` is not reached.
+        DEPRECATED: This Argument is deprecated and doesnt do anything anymore,
+        it will be removed in the future
+        """
 
         thread_count: int = field(
             default=4, validator=(validators.instance_of(int), validators.gt(1))
@@ -308,7 +314,7 @@ class OpensearchOutput(Output):
             )
 
             for event in events:
-                if not event.stored or not event.is_failed():
+                if not event.stored and not event.is_failed():
                     event.mark_failed(error)
 
     async def health(self) -> bool:  # type: ignore[override]
