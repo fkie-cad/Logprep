@@ -6,6 +6,7 @@
 ### Improvements
 
 ### Bugfix
+* fix dissector not dissecting multiline strings
 
 ## 19.4.1
 
