@@ -2,6 +2,16 @@
 ### Breaking
 
 ### Features
+
+### Improvements
+
+### Bugfix
+
+## 19.4.1
+
+### Breaking
+
+### Features
 * add support for `dict` in `generic_adder`
 
 ### Improvements
