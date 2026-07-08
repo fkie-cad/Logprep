@@ -227,6 +227,8 @@ class DissectorRule(FieldManagerRule):
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.fullmatch(SECTION_MATCH, section)
+                if section_match is None:
+                    raise ValueError("section did not match fully")
                 separator = section_match.group("separator")
                 separator = "" if separator is None else separator
                 separator = separator.replace("\\(", "(")
