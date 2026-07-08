@@ -124,7 +124,7 @@ from typing import Any
 
 from _socket import gethostname
 from attrs import define, field, validators
-from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge, Histogram
 from prometheus_client.metrics import MetricWrapperBase
 
 from logprep.util.helper import _add_field_to_silent_fail
@@ -146,10 +146,19 @@ class Metric(ABC):
         ],
         factory=dict,
     )
-    _registry: CollectorRegistry = field(default=None)
     _prefix: str = field(default="logprep_")
     inject_label_values: bool = field(default=True)
     _tracker: MetricWrapperBase = field(init=False, default=None)
+    _registry: CollectorRegistry | None = field(default=None)
+
+    def __attrs_post_init__(self):
+        if self._registry is not None:
+            return
+
+        if os.environ.get("PROMETHEUS_MULTIPROC_DIR", "") != "":
+            self._registry = None
+        else:
+            self._registry = REGISTRY
 
     @property
     @abstractmethod
@@ -172,7 +181,9 @@ class Metric(ABC):
             self._tracker = self._init_tracker()
         except ValueError as error:
             # pylint: disable=protected-access
-            tracker = self._registry._names_to_collectors.get(self.fullname)
+            tracker = None
+            if self._registry:
+                tracker = self._registry._names_to_collectors.get(self.fullname)
             # pylint: enable=protected-access
             if tracker is not None:
                 if not isinstance(tracker, self.collector_type):
