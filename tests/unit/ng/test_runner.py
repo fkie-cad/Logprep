@@ -14,7 +14,7 @@ import pytest
 from logprep.ng.manager import PipelineManager
 from logprep.ng.runner import Runner
 from logprep.ng.util.config_refresh import StopConfigRefresh
-from logprep.ng.util.configuration import Configuration
+from logprep.ng.util.configuration import Configuration, MetricsConfig
 
 
 @dataclass
@@ -102,6 +102,7 @@ def make_config(
     graceful_orchestrator_timeout: float = 5.0,
     graceful_worker_timeout: float = 5.0,
     hard_orchestrator_timeout: float = 5.0,
+    metrics_enabled: bool = False,
 ) -> NonCallableMagicMock:
     cfg = NonCallableMagicMock(spec=Configuration)
     cfg.version = version
@@ -110,6 +111,7 @@ def make_config(
     cfg.graceful_orchestrator_shutdown_timeout_s = graceful_orchestrator_timeout
     cfg.graceful_worker_shutdown_timeout_s = graceful_worker_timeout
     cfg.hard_orchestrator_shutdown_timeout_s = hard_orchestrator_timeout
+    cfg.metrics = MetricsConfig(enabled=metrics_enabled)
     cfg.reload = AsyncMock()
     return cfg
 
@@ -211,6 +213,26 @@ class TestRunner:
         pipeline_manager.run.assert_called_once()
         config_refresh.assert_called()
         getter_refresh.assert_called()
+
+    @pytest.mark.timeout(5)
+    async def test_metrics_enabled_starts_exporter_and_injects_component_healthchecks(
+        self, pipeline_manager, config_refresh
+    ):
+        config = make_config(metrics_enabled=True)
+        runner = Runner(config)
+        component = NonCallableMagicMock()
+        component.health = AsyncMock(return_value=True)
+        pipeline_manager.components.return_value = [component]
+        pipeline_manager.run.side_effect = mock_pipeline_run(None, regular_behavior=False)
+
+        with patch(f"{MODULE}.PrometheusExporter") as exporter_cls:
+            exporter = exporter_cls.return_value
+
+            await runner.run()
+
+        exporter_cls.assert_called_once_with(config.metrics)
+        exporter.restart.assert_called_once()
+        exporter.update_healthchecks.assert_called_once_with([component.health])
 
     @pytest.mark.timeout(5)
     async def test_pipeline_manager_stops_by_itself(self, runner, pipeline_manager, config_refresh):
