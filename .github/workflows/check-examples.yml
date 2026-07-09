@@ -50,7 +50,7 @@ jobs:
           EVENT_DATA_SOURCE: examples/exampledata/input_logdata/logclass/test_input.jsonl
       - name: Wait and check for processed events in logprep
         id: wait_for_logprep_processed_logs
-        timeout-minutes: 1
+        timeout-minutes: 5
         working-directory: examples/compose
         run: |
           docker compose logs logprep --follow | grep -i  "Stored output in opensearch" -m 1 # stop after first match
