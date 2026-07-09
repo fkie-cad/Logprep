@@ -31,18 +31,22 @@ class Runner:
     def __init__(self, config: Configuration) -> None:
         self._config = config
         self._stop_event = asyncio.Event()
-        self.prometheus_exporter = PrometheusExporter(self._config.metrics)
+        self.prometheus_exporter: PrometheusExporter | None = None
 
     def _start_prometheus_exporter(self) -> None:
         if not self._config.metrics.enabled:
             return
-
+        self.prometheus_exporter = PrometheusExporter(self._config.metrics)
         self.prometheus_exporter.restart()
 
     async def _run_pipeline_manager(self, stop_event: asyncio.Event, config: Configuration) -> None:
         self._start_prometheus_exporter()
         pipeline_manager = PipelineManager(config)
         await pipeline_manager.setup()
+        if self.prometheus_exporter:
+            self.prometheus_exporter.update_healthchecks(
+                [c.health for c in pipeline_manager.components()]
+            )
         await pipeline_manager.run(
             stop_event,
             config.graceful_orchestrator_shutdown_timeout_s,
@@ -128,7 +132,8 @@ class Runner:
     def stop(self) -> None:
         """Stop the runner and signal the underlying processing pipeline to exit."""
 
-        self.prometheus_exporter.shutdown()
+        if self.prometheus_exporter is not None:
+            self.prometheus_exporter.shutdown()
 
         logger.info("Setting stop signal for the runner")
         self._stop_event.set()

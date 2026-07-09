@@ -155,6 +155,10 @@ class Metric(ABC):
         if self._registry is not None:
             return
 
+        # When this environment variable is set, the prometheus_client will automatically run in multiprocessing mode
+        # In that mode it is not allowed to set a Registry specifically.
+        # For the non multiprocessing mode, we need to set a Registry otherwise our custom metrics never get
+        # registered and then subsequently cannot be exported
         if os.environ.get("PROMETHEUS_MULTIPROC_DIR", "") != "":
             self._registry = None
         else:
