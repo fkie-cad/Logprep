@@ -1093,20 +1093,9 @@ class Configuration:
         missing_env_vars = tuple(chain(*[getter.missing_env_vars for getter in getters]))
         if missing_env_vars:
             raise MissingEnvironmentError(", ".join(missing_env_vars))
-        if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
-            prometheus_multiproc_path = os.environ["PROMETHEUS_MULTIPROC_DIR"]
-            if not Path(prometheus_multiproc_path).exists():
-                raise InvalidConfigurationError(
-                    (
-                        "PROMETHEUS_MULTIPROC_DIR is set, but "
-                        f"'{prometheus_multiproc_path}' does not exist"
-                    )
-                )
-        if self.metrics.enabled:
-            if "PROMETHEUS_MULTIPROC_DIR" not in os.environ:
-                raise InvalidConfigurationError(
-                    "Metrics enabled but PROMETHEUS_MULTIPROC_DIR is not set"
-                )
+        if "PROMETHEUS_MULTIPROC_DIR" in os.environ and self.metrics.enabled:
+            os.environ.pop("PROMETHEUS_MULTIPROC_DIR", None)
+            # TODO possibly write a warning to user
 
     def _verify_rules(self, processor: Processor) -> None:
         rule_ids = []

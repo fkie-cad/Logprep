@@ -31,9 +31,15 @@ jobs:
           PYTHON_VERSION: ${{ matrix.python-version }}
           LOGPREP_COMMAND: ${{ matrix.mode == 'legacy' && 'logprep' || 'logprep-ng' }}
           LOGPREP_CONFIG_PATH: examples/exampledata/config/${{ matrix.mode == 'legacy' && 'pipeline.yml' || 'ng_pipeline.yml'  }}
-      - name: Run Compose setup
+      - name: Run Compose setup (ng)
+        if: matrix.mode == 'ng'
         working-directory: examples/compose
         run: docker compose up -d
+        env: *compose-env
+      - name: Run Compose setup (legacy)
+        if: matrix.mode == 'legacy'
+        working-directory: examples/compose
+        run: docker compose -f docker-compose.yml -f docker-compose.legacy-metrics.yml up -d
         env: *compose-env
       - name: Debug - show compose services
         working-directory: examples/compose
@@ -50,7 +56,7 @@ jobs:
           EVENT_DATA_SOURCE: examples/exampledata/input_logdata/logclass/test_input.jsonl
       - name: Wait and check for processed events in logprep
         id: wait_for_logprep_processed_logs
-        timeout-minutes: 5
+        timeout-minutes: 1
         working-directory: examples/compose
         run: |
           docker compose logs logprep --follow | grep -i  "Stored output in opensearch" -m 1 # stop after first match
@@ -99,8 +105,13 @@ jobs:
             echo "Sanity check failed"
             exit 1
           fi
-      - name: Stop Compose setup
+      - name: Stop Compose setup (ng)
+        if: always() && matrix.mode == 'ng'
         working-directory: examples/compose
-        if: always()
         run: docker compose down
+        env: *compose-env
+      - name: Stop Compose setup (legacy)
+        if: always() && matrix.mode == 'legacy'
+        working-directory: examples/compose
+        run: docker compose -f docker-compose.yml -f docker-compose.legacy-metrics.yml down
         env: *compose-env
