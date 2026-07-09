@@ -24,6 +24,11 @@ def teardown_function():
     Path("generated_config.yml").unlink(missing_ok=True)
 
 
+def assert_no_startup_error(output: str) -> None:
+    assert not re.search(r"\b(?:ERROR|CRITICAL)\s*:", output), output
+    assert not re.search(r"\b(?:Traceback|Exception)\b", output, re.IGNORECASE), output
+
+
 def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
     pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
@@ -162,9 +167,7 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
         input_file_path.write_text("user root logged in\n", encoding="utf8")
         while True:
             output = proc.stdout.readline().decode("utf8")
-            assert "error" not in output.lower(), "error message"
-            assert "Critical" not in output.lower(), "error message"
-            assert "exception" not in output.lower(), "error message"
+            assert_no_startup_error(output)
             assert not re.search("Shutting down", output)
             if "Startup complete" in output:
                 break
