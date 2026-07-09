@@ -55,17 +55,9 @@ class PrometheusExporter:
         """Starts the default prometheus http endpoint"""
         if self.is_running:
             return
-        port = self.configuration.port
-        self.init_server(daemon=daemon)
-
-        assert self.server, "Should not be none after init_server"
-        self.server.start()
-        logger.info("Prometheus Exporter started on port %s", port)
-
-    def init_server(self, daemon=True) -> None:
-        """Initializes the server"""
         if not self.app:
             self.app = make_patched_asgi_app(self.healthcheck_functions)
+
         port = self.configuration.port
         self.server = http.ThreadingHTTPServer(
             self.configuration.uvicorn_config | {"port": port, "host": "0.0.0.0"},
@@ -74,11 +66,15 @@ class PrometheusExporter:
             logger_name="Exporter",
         )
 
-    def restart(self):
+        assert self.server, "Should not be none after init_server"
+        self.server.start()
+        logger.info("Prometheus Exporter started on port %s", port)
+
+    def restart(self, daemon=True):
         """Restarts the exporter"""
         if self.server and self.server.thread and self.server.thread.is_alive():
             self.server.shut_down()
-        self.run()
+        self.run(daemon)
 
     def shutdown(self):
         """Shuts down the exporter"""
@@ -89,7 +85,4 @@ class PrometheusExporter:
         """Updates the healthcheck functions"""
         self.healthcheck_functions = healthcheck_functions
         self.app = make_patched_asgi_app(self.healthcheck_functions)
-        if self.server and self.server.thread and self.server.thread.is_alive():
-            self.server.shut_down()
-        self.init_server(daemon=daemon)
-        self.run()
+        self.restart(daemon)

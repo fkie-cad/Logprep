@@ -84,7 +84,7 @@ class PrometheusExporter:
         Parameters
         ----------
         pid : int
-                    The Id of the process whose metrics should be removed
+            The Id of the process whose metrics should be removed
         """
         multiprocess.mark_process_dead(pid)
 

@@ -563,6 +563,9 @@ class HttpInput(Input):
         bool
             :code:`True` if all endpoints can be called without error
         """
+        if not await super().health():
+            return False
+
         async with aiohttp.ClientSession(
             base_url=self.target,
             timeout=aiohttp.ClientTimeout(self.config.health_timeout),
@@ -588,7 +591,7 @@ class HttpInput(Input):
                 self.metrics.number_of_errors += 1
                 return False
 
-        return await super().health()
+        return True
 
     async def acknowledge(self, events: Sequence[AcknowledgableEvent]):
         logger.info("acknowledge called but not implemented")

@@ -14,13 +14,12 @@ from attrs import asdict
 from attrs.exceptions import FrozenInstanceError
 from prometheus_client import Counter, Gauge, Histogram
 
-from logprep.abc.component import Component
 from logprep.factory import Factory
 from logprep.metrics.metrics import Metric
-from logprep.ng.abc.component import NgComponent
+from logprep.ng.abc.component import NgComponent as Component
 from logprep.util.helper import camel_to_snake
 
-ComponentTypeT = TypeVar("ComponentTypeT", bound=NgComponent)
+ComponentTypeT = TypeVar("ComponentTypeT", bound=Component)
 
 
 class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
@@ -94,9 +93,9 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
     def test_schedules_tasks_only_once(self):
         mock_task = mock.MagicMock()
         self.object._schedule_task(task=mock_task, seconds=1)
-        job_count = len(NgComponent._scheduler.jobs)
+        job_count = len(Component._scheduler.jobs)
         self.object._schedule_task(task=mock_task, seconds=1)
-        assert job_count == len(NgComponent._scheduler.jobs)
+        assert job_count == len(Component._scheduler.jobs)
 
     @staticmethod
     def asdict_filter(attribute, value, block_list=None):
@@ -144,7 +143,7 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
             assert isinstance(metric_attribute.tracker, possibile_tracker_types)
 
     def test_all_metric_attributes_are_tested(self):
-        if self.object.__class__.Metrics is NgComponent.Metrics:
+        if self.object.__class__.Metrics is Component.Metrics:
             return
         assert self.expected_metrics, "expected_metrics is empty"
         fullnames = {metric.fullname for metric in self.metric_attributes.values()}
@@ -159,7 +158,7 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
 
     @pytest.fixture()
     def component_scheduler(self):
-        with mock.patch.object(NgComponent, "_scheduler", schedule.Scheduler()) as scheduler:
+        with mock.patch.object(Component, "_scheduler", schedule.Scheduler()) as scheduler:
             yield scheduler
 
     async def test_job_cleanup_on_shutdown(self, component_scheduler):

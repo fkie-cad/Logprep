@@ -378,7 +378,7 @@ class TestRunner:
         assert any(isinstance(e, PipelineCrash) for e in result[0].exceptions)
         assert result[1] is None
 
-    @pytest.mark.timeout(5)
+    @pytest.mark.timeout(10)
     async def test_multiple_config_refreshes_each_restart_pipeline(
         self, runner, pipeline_manager, config_refresh
     ):

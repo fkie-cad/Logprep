@@ -584,6 +584,9 @@ class ConfluentKafkaInput(Input):
             True if the component is healthy, False otherwise.
         """
 
+        if not await super().health():
+            return False
+
         try:
             metadata = await self._consumer.list_topics(timeout=self.config.health_timeout)
             if self.config.topic not in metadata.topics:
@@ -593,7 +596,7 @@ class ConfluentKafkaInput(Input):
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return await super().health()
+        return True
 
     async def acknowledge(self, events: Sequence[AcknowledgableEvent]):
         commit_offsets = list(
