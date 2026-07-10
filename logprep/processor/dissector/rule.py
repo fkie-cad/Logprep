@@ -118,7 +118,7 @@ SEPERATOR = r"(\((?P<separator>\\\)|[^)]+)\))?"
 TARGET_FIELD = r"(?P<target_field>[^\/\|\}-]*)"
 POSITION = r"(\/(?P<position>\d*))?"
 DATATYPE = r"(\|(?P<datatype>int|float|bool))?"
-SECTION_MATCH = rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{STRIP_CHAR}{POSITION}{DATATYPE}{END}(?P<delimiter>.*)"
+SECTION_MATCH = rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{STRIP_CHAR}{POSITION}{DATATYPE}{END}(?P<delimiter>[\s\S]*)"
 
 MAPPING_VALIDATION_REGEX = re.compile(rf"^({DELIMITER})?({DISSECT}({DELIMITER})?)+({DISSECT})?$")
 
@@ -226,7 +226,9 @@ class DissectorRule(FieldManagerRule):
                 pattern = "%{}" + pattern
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
-                section_match = re.match(SECTION_MATCH, section)
+                section_match = re.fullmatch(SECTION_MATCH, section)
+                if section_match is None:
+                    raise ValueError("section did not match fully")
                 separator = section_match.group("separator")
                 separator = "" if separator is None else separator
                 separator = separator.replace("\\(", "(")

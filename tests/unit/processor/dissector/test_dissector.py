@@ -691,6 +691,19 @@ test_cases = [
         },
         id="handle curly braces in message full case",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "%{field1}\n%{field2}"}},
+        },
+        {"message": "first line\nsecond line"},
+        {
+            "message": "first line\nsecond line",
+            "field1": "first line",
+            "field2": "second line",
+        },
+        id="dissects fields seperated by newline delimiter",
+    ),
 ]
 failure_test_cases = [
     pytest.param(
