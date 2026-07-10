@@ -191,6 +191,7 @@ class Metric(ABC):
     def _init_tracker(self) -> MetricWrapperBase:
         """Create the concrete prometheus metric object"""
 
+    # TODO refactor measure_time for ng reducing implicit logic relying on hasattr
     @staticmethod
     def measure_time(metric_name: str = "processing_time_per_event", self_arg: int = 0):
         """Decorate function to measure execution time for function and add results to event."""
