@@ -1095,7 +1095,9 @@ class Configuration:
             raise MissingEnvironmentError(", ".join(missing_env_vars))
         if "PROMETHEUS_MULTIPROC_DIR" in os.environ and self.metrics.enabled:
             os.environ.pop("PROMETHEUS_MULTIPROC_DIR", None)
-            # TODO possibly write a warning to user
+            logger.warning(
+                "PROMETHEUS_MULTIPROC_DIR was set, even though it should be unset for ng"
+            )
 
     def _verify_rules(self, processor: Processor) -> None:
         rule_ids = []

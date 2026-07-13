@@ -546,10 +546,13 @@ def benchmark_run(
         RunResult for this run.
     """
     env = os.environ.copy()
-    env["PROMETHEUS_MULTIPROC_DIR"] = prometheus_multiproc_dir
-    env["KAFKA_CONSUMER_PARTITIONS"] = str(kafka_partitions)
+    if not ng:
+        env["PROMETHEUS_MULTIPROC_DIR"] = prometheus_multiproc_dir
+        reset_prometheus_dir(prometheus_multiproc_dir)
+    else:
+        env.pop("PROMETHEUS_MULTIPROC_DIR")
 
-    reset_prometheus_dir(prometheus_multiproc_dir)
+    env["KAFKA_CONSUMER_PARTITIONS"] = str(kafka_partitions)
 
     logprep_proc: subprocess.Popen | None = None
 

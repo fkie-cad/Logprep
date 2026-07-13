@@ -82,8 +82,10 @@ class Runner:
             prometheus_exporter_task = None
             if self._config.metrics.enabled:
                 self.prometheus_exporter = PrometheusExporter(self._config.metrics)
-                prometheus_exporter_task = tg.create_task(
-                    self.prometheus_exporter.run(), name="prometheus_exporter"
+
+                prometheus_exporter_task = StoppableTask.from_stop(
+                    tg.create_task(self.prometheus_exporter.run(), name="prometheus_exporter"),
+                    self.prometheus_exporter.stop,
                 )
                 await self.prometheus_exporter.wait_until_started()
 
@@ -104,7 +106,7 @@ class Runner:
                         pipeline_manager.task,
                     ]
                     if prometheus_exporter_task is not None:
-                        managed_tasks.append(prometheus_exporter_task)
+                        managed_tasks.append(prometheus_exporter_task.task)
 
                     logger.info("Startup complete")
                     logger.debug("Waiting for long-running tasks to complete or fail")
@@ -143,6 +145,8 @@ class Runner:
             finally:
                 if self.prometheus_exporter is not None:
                     self.prometheus_exporter.stop()
+                if prometheus_exporter_task is not None:
+                    await prometheus_exporter_task.stop_and_cancel(10.0)
 
     def stop(self) -> None:
         """Stop the runner and signal the underlying processing pipeline to exit."""

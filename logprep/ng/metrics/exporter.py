@@ -63,29 +63,29 @@ class PrometheusExporter:
 
     def __init__(self, configuration: MetricsConfig):
         logger.debug("Initializing Prometheus Exporter")
-        self.configuration = configuration
-        self.healthcheck_functions: Iterable[Callable] | None = None
-        self.app = make_patched_asgi_app(self._get_healthcheck_functions)
-        port = self.configuration.port
-        self.server = AsyncHTTPServer(
-            self.configuration.uvicorn_config | {"port": port, "host": "0.0.0.0"},
-            self.app,
+        self._configuration = configuration
+        self._healthcheck_functions: Iterable[Callable] | None = None
+        self._app = make_patched_asgi_app(self._get_healthcheck_functions)
+        port = self._configuration.port
+        self._server = AsyncHTTPServer(
+            self._configuration.uvicorn_config | {"port": port, "host": "0.0.0.0"},
+            self._app,
         )
 
     async def run(self) -> None:
         """Starts the default prometheus http endpoint"""
-        await self.server.run()
+        await self._server.run()
 
     async def wait_until_started(self) -> None:
-        await self.server.wait_until_started()
-        logger.info("Prometheus Exporter started on port %s", self.configuration.port)
+        await self._server.wait_until_started()
+        logger.info("Prometheus Exporter started on port %s", self._configuration.port)
 
     def _get_healthcheck_functions(self) -> Iterable[Healthcheck] | None:
         return self.healthcheck_functions
 
     def stop(self) -> None:
         """Shuts down the exporter"""
-        self.server.stop()
+        self._server.stop()
 
     def update_healthchecks(
         self,
