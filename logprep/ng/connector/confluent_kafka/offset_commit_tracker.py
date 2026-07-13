@@ -52,9 +52,8 @@ class OffsetCommitTracker:
         Unregisters a previously registered partition from the tracker.
         Non-committed pending offsets are potentially lost through this operation.
         """
-        try:
-            tracker = self._partition_to_offsets[partition]
-        except KeyError:
+        tracker = self._partition_to_offsets.pop(partition, None)
+        if tracker is None:
             logger.warning("unregistering unknown partition %d", partition)
             return set()
         logger.debug(
@@ -68,7 +67,6 @@ class OffsetCommitTracker:
                 tracker.committable_offsets,
                 partition,
             )
-        del self._partition_to_offsets[partition]
         return tracker.committable_offsets
 
     def advance_offsets(

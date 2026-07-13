@@ -90,15 +90,18 @@ class Runner:
                 )
 
                 if refresh_config in done:
-                    logger.debug("Config refresh done; collect config and schedule new refresh")
                     new_config = await refresh_config
                     if new_config:
+                        logger.debug("Config refresh done; apply config and schedule new refresh")
                         self._config = new_config
                         refresh_config = tg.create_task(
                             self._refresh_config(self._config), name="config_refresh"
                         )
+                    else:
+                        logger.debug("Config refresh task stopped while shutting down")
+                        assert self._stop_event.is_set()
 
-                logger.debug("Stopping PipelineManager for restart")
+                logger.debug("Stopping PipelineManager")
                 await pipeline_manager.stop_and_cancel(
                     self._config.hard_orchestrator_shutdown_timeout_s
                 )

@@ -46,7 +46,7 @@ class PipelineManager:
             }
 
             error_output = (
-                cast(Output, Factory.create(self.configuration.error_output))
+                cast(Output, recorder.create(self.configuration.error_output))
                 if self.configuration.error_output
                 else None
             )
