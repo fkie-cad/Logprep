@@ -14,13 +14,12 @@ from attrs import asdict
 from attrs.exceptions import FrozenInstanceError
 from prometheus_client import Counter, Gauge, Histogram
 
-from logprep.abc.component import Component
 from logprep.factory import Factory
 from logprep.metrics.metrics import Metric
-from logprep.ng.abc.component import NgComponent
+from logprep.ng.abc.component import NgComponent as Component
 from logprep.util.helper import camel_to_snake
 
-ComponentTypeT = TypeVar("ComponentTypeT", bound=NgComponent)
+ComponentTypeT = TypeVar("ComponentTypeT", bound=Component)
 
 
 class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
@@ -206,3 +205,12 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
     async def test_health_returns_bool(self):
         await self.object.setup()
         assert isinstance(await self.object.health(), bool)
+
+    async def test_health_returns_false_after_shutdown(self):
+        component = Component("test", Component.Config(type="test"))
+
+        assert await component.health() is True
+
+        await component.shut_down()
+
+        assert await component.health() is False

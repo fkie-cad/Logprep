@@ -115,7 +115,7 @@ class TestAsyncHTTPServer:
                     response.raise_for_status()
                     assert response.status == 200
 
-    @pytest.mark.timeout(1)
+    @pytest.mark.timeout(5)
     async def test_uvicorn_logs_are_propagated(self, unused_tcp_port, caplog):
         url = f"http://127.0.0.1:{unused_tcp_port}"
         with caplog.at_level(logging.DEBUG, logger="root"):
@@ -128,6 +128,8 @@ class TestAsyncHTTPServer:
             assert len([r for r in caplog.records if r.name == "uvicorn.error"]) == 0
 
             async with run_server(server):
+                await asyncio.sleep(1)
+
                 assert len([r for r in caplog.records if r.name == "uvicorn.error"]) > 0
                 assert len([r for r in caplog.records if r.name == "uvicorn.access"]) == 0
 

@@ -324,6 +324,9 @@ class ConfluentKafkaOutput(Output):
 
     async def health(self) -> bool:  # type: ignore[override]
         """Check the health of kafka producer."""
+        if not await super().health():
+            return False
+
         try:
             metadata = await self._producer.list_topics(timeout=self.config.health_timeout)
             if self.config.topic not in metadata.topics:
@@ -333,7 +336,7 @@ class ConfluentKafkaOutput(Output):
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return await super().health()
+        return True
 
     async def setup(self) -> None:
         """Set the confluent kafka output connector."""

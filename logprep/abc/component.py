@@ -165,6 +165,9 @@ class Component(ABC):
 
         """
         logger.debug("Checking health of %s", self.name)
+        if self._is_shut_down:
+            return False
+
         return True
 
     def _schedule_task(self, task: Callable, seconds: int, *args, **kwargs) -> None:

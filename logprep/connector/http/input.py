@@ -679,6 +679,9 @@ class HttpInput(Input):
         bool
             :code:`True` if all endpoints can be called without error
         """
+        if not super().health():
+            return False
+
         for endpoint in self.health_endpoints:
             try:
                 requests.get(
@@ -689,4 +692,4 @@ class HttpInput(Input):
                 self._typed_metrics.number_of_errors += 1
                 return False
 
-        return super().health()
+        return True

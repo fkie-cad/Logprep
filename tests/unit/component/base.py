@@ -181,3 +181,7 @@ class BaseComponentTestCase(ABC):
 
     def test_health_returns_bool(self):
         assert isinstance(self.object.health(), bool)
+
+    def test_health_returns_false_after_shutdown(self):
+        self.object.shut_down()
+        assert self.object.health() is False

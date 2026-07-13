@@ -7,7 +7,6 @@ import tempfile
 import time
 from pathlib import Path
 
-import pytest
 import requests
 
 from logprep.ng.util.configuration import LoggerConfig
@@ -22,6 +21,11 @@ from tests.acceptance.ng.util import (
 
 def teardown_function():
     Path("generated_config.yml").unlink(missing_ok=True)
+
+
+def assert_no_startup_error(output: str) -> None:
+    assert not re.search(r"\b(?:ERROR|CRITICAL)\s*:", output), output
+    assert not re.search(r"\b(?:Traceback|Exception)\b", output, re.IGNORECASE), output
 
 
 def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
@@ -115,7 +119,6 @@ output:
                 output = proc.stdout.readline().decode("utf8")
 
 
-@pytest.mark.skip("exporter not in ng yet")  # TODO integrate exporter
 def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     temp_dir = tempfile.gettempdir()
     input_file_path = Path(os.path.join(temp_dir, "input.txt"))
@@ -159,13 +162,11 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
         }
     )
     config_path.write_text(config.as_yaml(), encoding="utf-8")
-    with run_logprep(config_path, env={"PROMETHEUS_MULTIPROC_DIR": tmp_path}) as proc:
+    with run_logprep(config_path) as proc:
         input_file_path.write_text("user root logged in\n", encoding="utf8")
         while True:
             output = proc.stdout.readline().decode("utf8")
-            assert "error" not in output.lower(), "error message"
-            assert "Critical" not in output.lower(), "error message"
-            assert "exception" not in output.lower(), "error message"
+            assert_no_startup_error(output)
             assert not re.search("Shutting down", output)
             if "Startup complete" in output:
                 break

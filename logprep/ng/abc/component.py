@@ -29,6 +29,7 @@ class NgComponent(Component):
 
     async def shut_down(self) -> None:  # type: ignore[override]
         """Shut down ng component and cleanup resources."""
+        self._is_shut_down = True
         self._clear_scheduled_jobs()
         self._clear_properties()
 
@@ -41,6 +42,8 @@ class NgComponent(Component):
             True if the component is healthy, False otherwise.
 
         """
+        if self._is_shut_down:
+            return False
         return True
 
     async def _wait_for_health(self) -> None:  # type: ignore[override]

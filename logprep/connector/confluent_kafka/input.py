@@ -574,7 +574,8 @@ class ConfluentKafkaInput(Input):
         bool
             True if the component is healthy, False otherwise.
         """
-
+        if not super().health():
+            return False
         try:
             metadata = self._admin.list_topics(timeout=self.config.health_timeout)
             if self.config.topic not in metadata.topics:
@@ -584,7 +585,8 @@ class ConfluentKafkaInput(Input):
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return super().health()
+
+        return True
 
     def setup(self) -> None:
         """Set the component up."""

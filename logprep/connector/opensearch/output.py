@@ -308,6 +308,9 @@ class OpensearchOutput(Output):
 
     def health(self) -> bool:
         """Check the health of the component."""
+        if not super().health():
+            return False
+
         try:
             resp = self._search_context.cluster.health(
                 params={"timeout": self.config.health_timeout}
@@ -316,7 +319,7 @@ class OpensearchOutput(Output):
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return super().health() and resp.get("status") in self.config.desired_cluster_status
+        return resp.get("status") in self.config.desired_cluster_status
 
     def _shut_down(self):
         self._write_backlog()

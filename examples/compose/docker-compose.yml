@@ -89,8 +89,6 @@ services:
       - prometheus
   logprep:
     image: logprep:py${PYTHON_VERSION:-3.11}
-    environment:
-      PROMETHEUS_MULTIPROC_DIR: /tmp/logprep/prometheus_multiproc
     container_name: logprep
     profiles:
       - logprep
@@ -104,8 +102,6 @@ services:
         condition: service_started
     volumes:
       - ../../examples/:/home/logprep/examples/
-    tmpfs:
-      - /tmp/logprep/prometheus_multiproc:mode=777
     entrypoint:
       - ${LOGPREP_COMMAND-logprep}
       - run

@@ -5,9 +5,11 @@ Runner module
 import asyncio
 import logging
 from asyncio import CancelledError
-from typing import cast
+from typing import Sequence, cast
 
+from logprep.abc.component import Component
 from logprep.factory import Factory
+from logprep.ng.abc.component import NgComponent
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
@@ -91,6 +93,9 @@ class PipelineManager:
             await self._shut_down()
             raise
         await self._shut_down()
+
+    def components(self) -> Sequence[Component]:
+        return self._components
 
     async def _shut_down(self) -> None:
         """Shut down runner components, and required runner attributes."""

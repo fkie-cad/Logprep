@@ -5,6 +5,7 @@ from multiprocessing import active_children, set_start_method
 from unittest import mock
 
 import pytest
+from prometheus_client import REGISTRY
 
 from logprep.registry import Registry
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
@@ -18,6 +19,18 @@ def remove_interfering_env_variables(monkeypatch):
     monkeypatch.delenv(ENV_NAME_LOGPREP_GETTER_CONFIG, raising=False)
     monkeypatch.delenv("PROMETHEUS_MULTIPROC_DIR", raising=False)
     monkeypatch.delenv("prometheus_multiproc_dir", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def clear_prometheus_registry():
+    """Clear Prometheus registry before each test to prevent state pollution"""
+    collectors = list(REGISTRY._collector_to_names.keys())
+    for collector in collectors:
+        try:
+            REGISTRY.unregister(collector)
+        except Exception:
+            pass
+    yield
 
 
 @pytest.fixture(autouse=True)

@@ -63,5 +63,6 @@ class TestLoggerConfig(TestBaseChartTest):
     )
     def test_environment_variable_is_set_if_debug_loglevel(self, logger_config, expected):
         self.manifests = self.render_chart("logprep", logger_config)
-        debug_var = self.deployment["spec.template.spec.containers.0.env.0"]
-        assert (debug_var["name"] == "DEBUG") == expected
+        env = self.deployment["spec.template.spec.containers.0.env"] or []
+
+        assert any(var["name"] == "DEBUG" for var in env) == expected

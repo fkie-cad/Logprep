@@ -8,6 +8,7 @@ from unittest import mock
 import pytest
 from attrs import define, field
 from prometheus_client import (
+    REGISTRY,
     CollectorRegistry,
     Counter,
     Gauge,
@@ -51,6 +52,23 @@ class TestMetric:
         assert isinstance(metric1.tracker, Counter)
         assert isinstance(metric2.tracker, Counter)
         assert metric1.tracker == metric2.tracker
+
+    def test_init_tracker_reuses_collector_from_default_registry(self):
+        metric1 = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+        )
+        metric2 = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+        )
+        metric1.init_tracker()
+        metric2.init_tracker()
+
+        assert metric1.tracker == metric2.tracker
+        assert REGISTRY._names_to_collectors[metric1.fullname] == metric1.tracker
 
     def test_counter_metric_sets_labels(self):
         metric = CounterMetric(
