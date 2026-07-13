@@ -139,12 +139,13 @@ class Runner:
                         logger.warning("Getter refresh loop stopped unexpectedly. Exiting...")
                         self._stop_event.set()
 
-                    if prometheus_exporter_task is not None and prometheus_exporter_task in done:
+                    if (
+                        prometheus_exporter_task is not None
+                        and prometheus_exporter_task.task in done
+                    ):
                         logger.debug("PrometheusExporter stopped unexpectedly. Exiting...")
                         self._stop_event.set()
             finally:
-                if self.prometheus_exporter is not None:
-                    self.prometheus_exporter.stop()
                 if prometheus_exporter_task is not None:
                     await prometheus_exporter_task.stop_and_cancel(10.0)
 
