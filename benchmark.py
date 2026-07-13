@@ -550,7 +550,7 @@ def benchmark_run(
         env["PROMETHEUS_MULTIPROC_DIR"] = prometheus_multiproc_dir
         reset_prometheus_dir(prometheus_multiproc_dir)
     else:
-        env.pop("PROMETHEUS_MULTIPROC_DIR")
+        env.pop("PROMETHEUS_MULTIPROC_DIR", None)
 
     env["KAFKA_CONSUMER_PARTITIONS"] = str(kafka_partitions)
 
