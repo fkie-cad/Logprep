@@ -205,3 +205,12 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
     async def test_health_returns_bool(self):
         await self.object.setup()
         assert isinstance(await self.object.health(), bool)
+
+    async def test_health_returns_false_after_shutdown(self):
+        component = Component("test", Component.Config(type="test"))
+
+        assert await component.health() is True
+
+        await component.shut_down()
+
+        assert await component.health() is False
