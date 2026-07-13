@@ -3,13 +3,13 @@
 import asyncio
 import typing
 from logging import getLogger
-from typing import Any, Awaitable, Callable, Iterable
+from typing import Awaitable, Callable, Iterable
 
 from prometheus_client import REGISTRY, make_asgi_app
 
 from logprep.ng.util.configuration import MetricsConfig
 from logprep.ng.util.defaults import DEFAULT_HEALTH_STATE
-from logprep.util import http
+from logprep.ng.util.http import AsyncHTTPServer
 
 logger = getLogger("Exporter")
 
@@ -61,50 +61,31 @@ def make_patched_asgi_app(functions_provider: HealthcheckProvider) -> Callable:
 class PrometheusExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
 
-    @property
-    def is_running(self) -> bool:
-        """Returns whether the exporter is running"""
-        return bool(self.server and self.server.thread and self.server.thread.is_alive())
-
     def __init__(self, configuration: MetricsConfig):
         logger.debug("Initializing Prometheus Exporter")
         self.configuration = configuration
-        self.server: http.ThreadingHTTPServer | None = None
         self.healthcheck_functions: Iterable[Callable] | None = None
-        self.app: Callable[[Any, Any, Any], Awaitable] | None = None
-
-    def run(self, daemon=True):
-        """Starts the default prometheus http endpoint"""
-        if self.is_running:
-            return
-        if not self.app:
-            self.app = make_patched_asgi_app(self._get_healthcheck_functions)
-
+        self.app = make_patched_asgi_app(self._get_healthcheck_functions)
         port = self.configuration.port
-        self.server = http.ThreadingHTTPServer(
+        self.server = AsyncHTTPServer(
             self.configuration.uvicorn_config | {"port": port, "host": "0.0.0.0"},
             self.app,
-            daemon=daemon,
-            logger_name="Exporter",
         )
 
-        assert self.server, "Should not be none after init_server"
-        self.server.start()
-        logger.info("Prometheus Exporter started on port %s", port)
+    async def run(self) -> None:
+        """Starts the default prometheus http endpoint"""
+        await self.server.run()
 
-    def restart(self, daemon=True):
-        """Restarts the exporter"""
-        if self.server and self.server.thread and self.server.thread.is_alive():
-            self.server.shut_down()
-        self.run(daemon)
+    async def wait_until_started(self) -> None:
+        await self.server.wait_until_started()
+        logger.info("Prometheus Exporter started on port %s", self.configuration.port)
 
     def _get_healthcheck_functions(self) -> Iterable[Healthcheck] | None:
         return self.healthcheck_functions
 
-    def shutdown(self):
+    def stop(self) -> None:
         """Shuts down the exporter"""
-        if self.server and self.server.thread and self.server.thread.is_alive():
-            self.server.shut_down()
+        self.server.stop()
 
     def update_healthchecks(
         self,

@@ -225,14 +225,19 @@ class TestRunner:
         pipeline_manager.components.return_value = [component]
         pipeline_manager.run.side_effect = mock_pipeline_run(None, regular_behavior=False)
 
-        with patch(f"{MODULE}.PrometheusExporter") as exporter_cls:
+        with patch(f"{MODULE}.PrometheusExporter", autospec=True) as exporter_cls:
             exporter = exporter_cls.return_value
+            exporter_stopped = asyncio.Event()
+            exporter.run.side_effect = exporter_stopped.wait
+            exporter.stop.side_effect = exporter_stopped.set
 
             await runner.run()
 
         exporter_cls.assert_called_once_with(config.metrics)
-        exporter.restart.assert_called_once()
+        exporter.run.assert_awaited_once_with()
+        exporter.wait_until_started.assert_awaited_once_with()
         exporter.update_healthchecks.assert_called_once_with([component.health])
+        exporter.stop.assert_called_once_with()
 
     @pytest.mark.timeout(5)
     async def test_pipeline_manager_stops_by_itself(self, runner, pipeline_manager, config_refresh):

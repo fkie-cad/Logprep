@@ -9,7 +9,6 @@ from asgiref.testing import ApplicationCommunicator
 
 from logprep.ng.metrics.exporter import PrometheusExporter, make_patched_asgi_app
 from logprep.ng.util.configuration import MetricsConfig
-from logprep.util import http
 
 
 class TestHealthEndpoint:
@@ -97,26 +96,27 @@ class TestHealthEndpoint:
         new_healthcheck.assert_called_once()
 
 
-@mock.patch(
-    "logprep.util.http.ThreadingHTTPServer",
-    new=mock.create_autospec(http.ThreadingHTTPServer),
-)
-@mock.patch("logging.config.dictConfig", new=lambda *args, **kwargs: None)
-@mock.patch("logging.getLogger", new=lambda _: mock.MagicMock())
 class TestPrometheusExporter:
-    def test_run_starts_http_server(self):
+    @mock.patch("logprep.ng.metrics.exporter.AsyncHTTPServer", autospec=True)
+    async def test_run_serves_with_async_http_server(self, server_cls):
         exporter = PrometheusExporter(MetricsConfig(enabled=True, port=8000))
 
-        exporter.run()
+        await exporter.run()
 
-        exporter.server.start.assert_called_once()
+        server_cls.return_value.run.assert_awaited_once_with()
 
-    def test_shutdown_stops_running_server(self):
+    @mock.patch("logprep.ng.metrics.exporter.AsyncHTTPServer", autospec=True)
+    async def test_wait_until_started_waits_for_async_http_server(self, server_cls):
         exporter = PrometheusExporter(MetricsConfig(enabled=True, port=8000))
-        exporter.run()
-        exporter.server.thread = mock.Mock()
-        exporter.server.thread.is_alive.return_value = True
 
-        exporter.shutdown()
+        await exporter.wait_until_started()
 
-        exporter.server.shut_down.assert_called_once()
+        server_cls.return_value.wait_until_started.assert_awaited_once_with()
+
+    @mock.patch("logprep.ng.metrics.exporter.AsyncHTTPServer", autospec=True)
+    def test_stop_signals_async_http_server(self, server_cls):
+        exporter = PrometheusExporter(MetricsConfig(enabled=True, port=8000))
+
+        exporter.stop()
+
+        server_cls.return_value.stop.assert_called_once_with()
