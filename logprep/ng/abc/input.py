@@ -92,13 +92,12 @@ class Input(Connector, AsyncIterator[LogEvent | ErrorEvent | None]):
             converter=lambda d: convert_from_dict(PreprocessingConfig, d),
             factory=PreprocessingConfig,
         )
-        """
-        See :class:`.PreprocessingConfig` for further details.
-        """
+        """See :class:`PreprocessingConfig` for further details."""
 
         timeout: float = field(
             validator=(validators.instance_of(float), validators.gt(0)), default=5.0, eq=False
         )
+        """Timeout for retrieving the next event"""
 
     def __init__(self, name: str, configuration: "Input.Config") -> None:
         super().__init__(name, configuration)

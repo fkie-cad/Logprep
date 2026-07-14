@@ -97,7 +97,7 @@ PIPELINE_MANAGER = f"{MODULE}.PipelineManager"
 def make_config(
     *,
     version: str = "v1",
-    config_refresh_interval: float | None = None,
+    config_refresh_interval: float | None = 1.0,
     getter_refresh_interval: float = 0.0,
     graceful_orchestrator_timeout: float = 5.0,
     graceful_worker_timeout: float = 5.0,
@@ -137,10 +137,10 @@ def mock_pipeline_run(*sequence: WithArgs | Exception | Callable, regular_behavi
     The standard lifecycle entails blocking on the stop_event passed in by
     `StoppableTask` until the pipeline is signalled to stop.
     """
-    _sequence = [*sequence]
+    expanded = [*sequence]
     if regular_behavior:
-        _sequence.append(BLOCK_UNTIL_EVENT)
-    return mock_sequence(*_sequence)
+        expanded.append(BLOCK_UNTIL_EVENT)
+    return mock_sequence(*expanded)
 
 
 async def run_until_exception(runner: Runner) -> Exception | None:
@@ -216,7 +216,8 @@ class TestRunner:
 
     @pytest.mark.timeout(5)
     async def test_metrics_enabled_starts_exporter_and_injects_component_healthchecks(
-        self, pipeline_manager, config_refresh
+        self,
+        pipeline_manager,
     ):
         config = make_config(metrics_enabled=True)
         runner = Runner(config)
@@ -323,9 +324,7 @@ class TestRunner:
         assert "refresh failed" in str(exc)
 
     @pytest.mark.timeout(5)
-    async def test_refresh_disabled_runner_runs_until_stopped(
-        self, runner, pipeline_manager, config_refresh
-    ):
+    async def test_refresh_disabled_runner_runs_until_stopped(self, runner, pipeline_manager):
         pipeline_running = asyncio.Event()
 
         pipeline_manager.run.side_effect = mock_pipeline_run(pipeline_running.set)
@@ -405,7 +404,7 @@ class TestRunner:
         assert any(isinstance(e, PipelineCrash) for e in result[0].exceptions)
         assert result[1] is None
 
-    @pytest.mark.timeout(10)
+    @pytest.mark.timeout(5)
     async def test_multiple_config_refreshes_each_restart_pipeline(
         self, runner, pipeline_manager, config_refresh
     ):

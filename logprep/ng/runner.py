@@ -4,7 +4,7 @@ Runner module
 
 import asyncio
 import logging
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from functools import partial
 
@@ -61,6 +61,7 @@ class Runner:
     async def _refresh_config(self, config: Configuration) -> Configuration | None:
         """
         Run config refresh until an actually changed config has been found.
+        Waits for the runner stop event before returning `None`.
         """
         try:
             return await wait_for_refreshed_config(self._stop_event, config)
@@ -68,6 +69,13 @@ class Runner:
             logger.info("config refresh stopped: %s", str(exc))
         await self._stop_event.wait()
         return None
+
+    def _unwrap_tasks(self, *items: StoppableTask | asyncio.Task | None) -> Sequence[asyncio.Task]:
+        return [
+            item.task if isinstance(item, StoppableTask) else item
+            for item in items
+            if item is not None
+        ]
 
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
@@ -79,11 +87,11 @@ class Runner:
                 self._refresh_config(self._config), name="refresh_config"
             )
 
-            prometheus_exporter_task = None
+            prometheus_exporter = None
             if self._config.metrics.enabled:
                 self.prometheus_exporter = PrometheusExporter(self._config.metrics)
 
-                prometheus_exporter_task = StoppableTask.from_stop(
+                prometheus_exporter = StoppableTask.from_stop(
                     tg.create_task(self.prometheus_exporter.run(), name="prometheus_exporter"),
                     self.prometheus_exporter.stop,
                 )
@@ -99,55 +107,51 @@ class Runner:
                         partial(tg.create_task, name="pipeline_manager"),
                     )
 
-                    managed_tasks = [
-                        wait_for_stop,
-                        refresh_config,
-                        refresh_getters_loop,
-                        pipeline_manager.task,
-                    ]
-                    if prometheus_exporter_task is not None:
-                        managed_tasks.append(prometheus_exporter_task.task)
-
                     logger.info("Startup complete")
                     logger.debug("Waiting for long-running tasks to complete or fail")
                     done, _ = await asyncio.wait(
-                        managed_tasks,
+                        self._unwrap_tasks(
+                            wait_for_stop,
+                            refresh_config,
+                            refresh_getters_loop,
+                            pipeline_manager,
+                            prometheus_exporter,
+                        ),
                         return_when=asyncio.FIRST_COMPLETED,
                     )
 
                     if refresh_config in done:
-                        logger.debug("Config refresh done; collect config and schedule new refresh")
                         new_config = await refresh_config
                         if new_config:
+                            logger.debug(
+                                "Config refresh done; collect config and schedule new refresh"
+                            )
                             self._config = new_config
                             refresh_config = tg.create_task(
                                 self._refresh_config(self._config), name="config_refresh"
                             )
+                        else:
+                            assert self._stop_event.is_set()
 
-                    logger.debug("Stopping PipelineManager for restart")
+                    logger.debug("Stopping PipelineManager")
                     await pipeline_manager.stop_and_cancel(
                         self._config.hard_orchestrator_shutdown_timeout_s
                     )
 
                     if pipeline_manager.task in done:
-                        logger.debug(
-                            "PipelineManager did stop by itself (error or input exhaustion). Exiting..."
-                        )
+                        logger.debug("PipelineManager did stop by itself. Exiting...")
                         self._stop_event.set()
 
                     if refresh_getters_loop in done:
                         logger.warning("Getter refresh loop stopped unexpectedly. Exiting...")
                         self._stop_event.set()
 
-                    if (
-                        prometheus_exporter_task is not None
-                        and prometheus_exporter_task.task in done
-                    ):
+                    if prometheus_exporter is not None and prometheus_exporter.task in done:
                         logger.debug("PrometheusExporter stopped unexpectedly. Exiting...")
                         self._stop_event.set()
             finally:
-                if prometheus_exporter_task is not None:
-                    await prometheus_exporter_task.stop_and_cancel(10.0)
+                if prometheus_exporter is not None:
+                    await prometheus_exporter.stop_and_cancel(10.0)
 
     def stop(self) -> None:
         """Stop the runner and signal the underlying processing pipeline to exit."""

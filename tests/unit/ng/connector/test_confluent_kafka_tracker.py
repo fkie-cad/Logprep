@@ -126,6 +126,14 @@ class TestKafkaInputOffsetCommitTracker:
         assert result1 == [TopicPartition("consumer", partition=0, offset=102)]
         assert result2 == []
 
+    def test_warn_on_offset_already_committed(self, tracker: Tracker, caplog) -> None:
+        tracker.register_partition(partition=0, offset=100)
+        result = tracker.advance_offsets(
+            [InputMeta(partition=0, offset=99), InputMeta(partition=0, offset=100)]
+        )
+        assert result == [TopicPartition("consumer", partition=0, offset=101)]
+        assert "offset 99 already committed" in caplog.text
+
     def test_many_offsets(self, tracker: Tracker) -> None:
         tracker.register_partition(partition=0, offset=0)
         offsets = [InputMeta(partition=0, offset=i) for i in range(0, 10_000)]
