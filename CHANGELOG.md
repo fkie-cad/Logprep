@@ -40,6 +40,10 @@
 * ng: drop "ng_" prefix completely and use a setting in the global registry to activate ng
 * ng: decouple console logging via queue/listener in separate thread
 * improve `list_comparison` performance
+* ng: implement circuit breaker utility to protect downstream systems
+* ng: enable opensearch output to retry on transport- and item-level failures + circuit breaker
+* ng: add metrics for opensearch output
+
 
 ### Bugfix
 * fix `dissector` not dissecting multiline strings
