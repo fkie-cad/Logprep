@@ -65,8 +65,8 @@ class Grok:
     custom_patterns: dict = field(factory=dict)
     fullmatch: bool = field(default=True)
     predefined_patterns: dict = field(init=False, factory=dict, repr=False)
-    type_mapper: dict = field(init=False, factory=dict)
-    field_mapper: dict = field(init=False, factory=dict)
+    type_mappings: dict = field(init=False, factory=dict)
+    field_mappings: dict = field(init=False, factory=dict)
     regex_obj = field(init=False, default=None)
 
     def __attrs_post_init__(self):
@@ -106,16 +106,16 @@ class Grok:
         if not matches:
             return {}
         first_match = matches[0]
-        if self.type_mapper:
+        if self.type_mappings:
             for key, match in first_match.items():
-                type_ = INT_FLOAT.get(self.type_mapper.get(key))
-                if type_ is not None:
-                    first_match[key] = type_(match)
-        return {self.field_mapper[field_hash]: value for field_hash, value in first_match.items()}
+                type_mapper = INT_FLOAT.get(self.type_mappings.get(key))
+                if type_mapper is not None:
+                    first_match[key] = type_mapper(match)
+        return {self.field_mappings[field_hash]: value for field_hash, value in first_match.items()}
 
     def _map_types(self, matches):
         for key, match in matches.items():
-            type_ = INT_FLOAT.get(self.type_mapper.get(key))
+            type_ = INT_FLOAT.get(self.type_mappings.get(key))
             if type_ is not None and match is not None:
                 matches[key] = type_(match)
         return matches
@@ -147,13 +147,13 @@ class Grok:
         type_str = match.group(8)
         dotted_fields = self._logstash_to_dotted_field(fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
-        if fields_hash in self.field_mapper:
+        if fields_hash in self.field_mappings:
             fields_hash += (
                 f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
             )
         if type_str is not None:
-            self.type_mapper |= {fields_hash: type_str}
-        self.field_mapper |= {fields_hash: dotted_fields}
+            self.type_mappings |= {fields_hash: type_str}
+        self.field_mappings |= {fields_hash: dotted_fields}
         return rf"(?P<{fields_hash}>" rf"{pattern.regex_str})"
 
     def _resolve_oniguruma(self, match: re.Match) -> str:
@@ -161,11 +161,11 @@ class Grok:
         pattern = match.group(2)
         dotted_fields = self._logstash_to_dotted_field(fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
-        if fields_hash in self.field_mapper:
+        if fields_hash in self.field_mappings:
             fields_hash += (
                 f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
             )
-        self.field_mapper |= {fields_hash: dotted_fields}
+        self.field_mappings |= {fields_hash: dotted_fields}
         return rf"(?P<{fields_hash}>" rf"{pattern})"
 
     def _load_search_pattern(self):
