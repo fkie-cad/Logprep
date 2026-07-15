@@ -100,14 +100,16 @@ class Grok:
             match_obj = [regex_pattern.search(text) for regex_pattern in self.regex_obj]
 
         match_obj = [match for match in match_obj if match is not None]
-        matches = [match.groupdict() for match in match_obj]
+        matches = [
+            {k: v for k, v in match.groupdict(None).items() if v is not None} for match in match_obj
+        ]
         if not matches:
             return {}
         first_match = matches[0]
         if self.type_mapper:
             for key, match in first_match.items():
                 type_ = INT_FLOAT.get(self.type_mapper.get(key))
-                if type_ is not None and match is not None:
+                if type_ is not None:
                     first_match[key] = type_(match)
         return {self.field_mapper[field_hash]: value for field_hash, value in first_match.items()}
 
