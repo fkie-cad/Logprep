@@ -151,19 +151,46 @@ test_cases = [
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"normalize me!": "123.123.123.123 1234 bar"},
+                "event_data": {"normalize me!": "123.123.123.123 1234 foo"},
             }
         },
         {
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"normalize me!": "123.123.123.123 1234 bar"},
+                "event_data": {"normalize me!": "123.123.123.123 1234 foo"},
             },
             "some_ip": "123.123.123.123",
             "port": 1234,
         },
         id="grok list match first matching after skipping non matching with same target fields",
+    ),
+    pytest.param(
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {
+                    "winlog.event_data.normalize me!": "%{IP:some_ip} %{NUMBER:port:int} foo|%{IP:some_ip} %{NUMBER:port:int} bar",
+                }
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234 foo"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234 foo"},
+            },
+            "some_ip": "123.123.123.123",
+            "port": 1234,
+        },
+        id="grok non-list match first matching after skipping non matching with same target fields",
     ),
     pytest.param(
         {

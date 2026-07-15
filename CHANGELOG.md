@@ -38,6 +38,7 @@
 
 ### Bugfix
 * fix `dissector` not dissecting multiline strings
+* fix `grokker` dropping matches on duplicate named capture groups
 
 ## 19.4.1
 

@@ -183,7 +183,7 @@ class GrokkerRule(DissectorRule):
 
         # to ensure no string splitting is done during processing for target fields:
         for _, grok in self.actions.items():
-            target_fields = list(grok.field_mapper.values())
+            target_fields = list(grok.field_mappings.values())
             if not target_fields:
                 raise InvalidRuleDefinitionError("no target fields defined")
             for target_field in target_fields:
