@@ -20,6 +20,7 @@ from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import EXITCODES
 
 
+@mock.patch("logprep.registry.Registry.set_ng_active", new=lambda _: None)
 class TestRunLogprepCli:
     def setup_method(self):
         self.cli_runner = CliRunner()

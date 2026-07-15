@@ -381,7 +381,7 @@ class AutoRuleTester:
         if rule_test.get("rules"):
             return rule_test.get("rules", [])
         raise AutoRuleTesterException(
-            f"No rules provided for processor of type {processor.describe()}"
+            f"No rules provided for processor of type {processor.description}"
         )
 
     def _load_rules(self, processor: "Processor"):
@@ -497,7 +497,7 @@ class AutoRuleTester:
         processor : Processor
             processor to reset tree on
         """
-        if hasattr(processor, "rules"):
+        if hasattr(processor, "rules") and isinstance(processor.rules, list):
             processor.rules.clear()
         if hasattr(processor, "_rule_tree"):
             processor._rule_tree = RuleTree()

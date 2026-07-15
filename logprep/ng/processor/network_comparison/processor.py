@@ -13,7 +13,7 @@ Processor Configuration
     :linenos:
 
     - networkcomparisonname:
-        type: ng_network_comparison
+        type: network_comparison
         rules:
             - tests/testdata/rules/rules
         list_search_base_path: /path/to/list/dir
@@ -24,7 +24,7 @@ Processor Configuration
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.ng.processor.network_comparison.rule
+.. automodule:: logprep.processor.network_comparison.rule
 """
 
 import typing

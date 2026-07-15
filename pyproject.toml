@@ -44,6 +44,7 @@ keywords = [
   "logdata",
 ]
 dependencies = [
+  "aiohttp>=3.14.1", # [>=3.14.1]: CVE-2026-47265
   "attrs<26",
   "confluent-kafka>2,<3",
   "filelock<4",
@@ -51,7 +52,7 @@ dependencies = [
   "jsonref<2",
   "luqum<2",
   "numpy>=1.26.0,<3",
-  "opensearch-py>=3.2,<4", # [>=3.2]: #904
+  "opensearch-py[async]>=3.2,<4", # [>=3.2]: #904
   "prometheus_client<1",
   "pycryptodome<4",
   "pyparsing<4",
@@ -79,11 +80,13 @@ dev = [
   "pylint",
   "pytest",
   "pytest-cov",
+  "pytest-aiohttp",
+  "pytest-timeout",
   "responses",
   "jinja2",
   "cibuildwheel",
   "asgiref",
-  "pytest-asyncio",
+  "pytest-asyncio>=1.4.0",
   "pre-commit",
   "mypy>=1.18.2",
   "psutil",
@@ -156,7 +159,7 @@ max-attributes=12
 [tool.pylint.CLASSES]
 
 # List of method names used to declare (i.e. assign) instance attributes.
-defining-attr-methods="__init__,__new__,setup"
+defining-attr-methods="__init__,__new__,__attrs_post_init__,setup,_setup"
 
 [tool.mypy]
 # use imported type information but don't report issues if not a file under check
@@ -179,3 +182,8 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["luqum.*"]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+# automatically run async test_* methods as test (instead of @pytest.mark.asyncio)
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

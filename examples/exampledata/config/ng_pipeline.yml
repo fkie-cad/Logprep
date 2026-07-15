@@ -5,34 +5,38 @@ restart_count: 2
 config_refresh_interval: 300
 error_backlog_size: 1500000
 logger:
-  level: INFO
+  level: DEBUG
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
     "py.warnings": {"level": "ERROR"}
-    "Runner": {"level": "INFO"}
+    "Runner": {"level": "DEBUG"}
     "Processor": {"level": "ERROR"}
     "Exporter": {"level": "ERROR"}
     "uvicorn": {"level": "ERROR"}
     "uvicorn.access": {"level": "ERROR"}
-    "OpenSearchOutput": {"level": "DEBUG"}
+    "OpenSearchOutput": {"level": "ERROR"}
     "KafkaOutput": {"level": "ERROR"}
+    "Input": {"level": "ERROR"}
+    "Worker": {"level": "ERROR"}
+    "async_helpers": {"level": "ERROR"}
+    "KafkaOffsetTracker": {"level": "ERROR"}
 metrics:
   enabled: true
   port: 8001
 pipeline:
   - labelername:
-      type: ng_labeler
+      type: labeler
       schema: examples/exampledata/rules/labeler/schema.json
       include_parent_labels: true
       rules:
         - examples/exampledata/rules/labeler/rules
   - dissector:
-      type: ng_dissector
+      type: dissector
       rules:
         - examples/exampledata/rules/dissector/rules
   - dropper:
-      type: ng_dropper
+      type: dropper
       rules:
         - examples/exampledata/rules/dropper/rules
         - filter: "test_dropper"
@@ -41,7 +45,7 @@ pipeline:
               - drop_me
           description: "..."
   - pre_detector:
-      type: ng_pre_detector
+      type: pre_detector
       rules:
         - examples/exampledata/rules/pre_detector/rules
       outputs:
@@ -49,7 +53,7 @@ pipeline:
       tree_config: examples/exampledata/rules/pre_detector/tree_config.json
       alert_ip_list_path: examples/exampledata/rules/pre_detector/alert_ips.yml
   - amides:
-      type: ng_amides
+      type: amides
       rules:
         - examples/exampledata/rules/amides/rules
       models_path: examples/exampledata/models/model.zip
@@ -57,7 +61,7 @@ pipeline:
       max_cache_entries: 1000000
       decision_threshold: 0.32
   - pseudonymizer:
-      type: ng_pseudonymizer
+      type: pseudonymizer
       pubkey_analyst: examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem
       pubkey_depseudo: examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
       regex_mapping: examples/exampledata/rules/pseudonymizer/regex_mapping.yml
@@ -68,7 +72,7 @@ pipeline:
         - examples/exampledata/rules/pseudonymizer/rules/
       max_cached_pseudonyms: 1000000
   - calculator:
-      type: ng_calculator
+      type: calculator
       rules:
         - filter: "test_label: execute"
           calculator:
@@ -76,8 +80,9 @@ pipeline:
             calc: "1 + 1"
 input:
   kafka:
-    type: ng_confluentkafka_input
+    type: confluentkafka_input
     topic: consumer
+    timeout: 5.0
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       group.id: cgroup3
@@ -96,7 +101,7 @@ input:
         output_field: Full_event
 output:
   opensearch:
-    type: ng_opensearch_output
+    type: opensearch_output
     hosts:
       - 127.0.0.1:9200
     default_index: processed
@@ -109,7 +114,7 @@ output:
     desired_cluster_status: ["green", "yellow"]
     chunk_size: 25
   kafka:
-    type: ng_confluentkafka_output
+    type: confluentkafka_output
     default: false
     topic: producer
     flush_timeout: 300
@@ -118,7 +123,7 @@ output:
       statistics.interval.ms: "60000"
 error_output:
   kafka_error_output:
-    type: ng_confluentkafka_output
+    type: confluentkafka_output
     topic: errors
     flush_timeout: 300
     send_timeout: 0

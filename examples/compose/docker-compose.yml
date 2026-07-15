@@ -64,9 +64,9 @@ services:
     command: |
       sh -c
       "((sleep 15 && echo 'kafka up' &&
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic consumer &&
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic errors &&
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic producer)&) &&
+      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_CONSUMER_PARTITIONS-4} --topic consumer &&
+      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_ERROR_PARTITIONS-4} --topic errors &&
+      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_PRODUCER_PARTITIONS-4} --topic producer)&) &&
       /opt/bitnami/scripts/kafka/run.sh"
     healthcheck:
       test:
@@ -89,8 +89,6 @@ services:
       - prometheus
   logprep:
     image: logprep:py${PYTHON_VERSION:-3.11}
-    environment:
-      PROMETHEUS_MULTIPROC_DIR: /tmp/logprep/prometheus_multiproc
     container_name: logprep
     profiles:
       - logprep
@@ -104,12 +102,10 @@ services:
         condition: service_started
     volumes:
       - ../../examples/:/home/logprep/examples/
-    tmpfs:
-      - /tmp/logprep/prometheus_multiproc:mode=777
     entrypoint:
-      - logprep
+      - ${LOGPREP_COMMAND-logprep}
       - run
-      - /home/logprep/examples/exampledata/config/pipeline.yml
+      - /home/logprep/${LOGPREP_CONFIG_PATH-examples/exampledata/config/pipeline.yml}
   grafana:
     image: bitnamilegacy/grafana:latest
     container_name: grafana

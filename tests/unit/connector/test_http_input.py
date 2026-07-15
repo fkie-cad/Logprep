@@ -25,7 +25,7 @@ from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from tests.unit.connector.base import BaseInputTestCase
 
 
-@pytest.fixture(scope="function", name="credentials_file_path")
+@pytest.fixture(name="credentials_file_path")
 def create_credentials(tmp_path):
     secret_file_path = tmp_path / "secret-0.txt"
     secret_file_path.write_text("secret_password")

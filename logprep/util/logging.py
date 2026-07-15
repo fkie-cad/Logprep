@@ -1,11 +1,20 @@
 """helper classes for logprep logging"""
 
+import atexit
 import logging
 import multiprocessing as mp
 from logging.handlers import QueueListener
 from socket import gethostname
 
-logqueue = mp.Queue(-1)
+logqueue: mp.Queue = mp.Queue(-1)
+
+
+def _cleanup_logqueue():
+    logqueue.cancel_join_thread()
+    logqueue.close()
+
+
+atexit.register(_cleanup_logqueue)
 
 
 class LogprepFormatter(logging.Formatter):

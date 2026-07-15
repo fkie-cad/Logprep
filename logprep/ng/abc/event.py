@@ -2,338 +2,177 @@
 
 """abstract module for event"""
 
-from abc import ABC, abstractmethod
-from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, Optional
+import json
+import typing
+from collections.abc import Sequence
+from datetime import datetime, timezone
+from typing import Protocol
 
-from logprep.ng.event.event_state import EventState, EventStateType
-from logprep.util.helper import (
-    FieldValue,
-    add_fields_to,
-    get_dotted_field_value,
-    pop_dotted_field_value,
-)
+from attrs import define, field
 
-if TYPE_CHECKING:  # pragma: no cover
-    from logprep.processor.base.rule import Rule
+from logprep.abc.exceptions import LogprepExceptionGroup
+from logprep.util.helper import FieldValue
 
 
-class EventMetadata(ABC):
-    """Abstract EventMetadata Class to define the Interface"""
+@define
+class InputMeta:
+    """InputMeta Class to define the Interface"""
 
 
-class Event(ABC):
+class _FailableEvent(Protocol):
+    def mark_failed(self, error: Exception) -> None:
+        """Register an event-related error and hence mark the event as failed"""
+
+    def is_failed(self) -> bool:
+        """Checks if an error has been registered with this event"""
+
+
+class AcknowledgableEvent(_FailableEvent, Protocol):
     """
-    Abstract base class representing an event in the processing pipeline.
-
-    Encapsulates data, warnings, errors, and processing state.
+    Protocol encapsulating the aspects of an event which has been
+    received from an `Input` and might therefore be acknowledgedable.
     """
 
-    __slots__: tuple[str, ...] = ("data", "_state", "errors", "warnings")
+    input_meta: InputMeta
 
-    def __init__(
-        self,
-        data: dict[str, Any],
-        *,
-        state: EventStateType | EventState | None = None,
-    ) -> None:
-        """
-        Initialize an Event instance.
 
-        Parameters
-        ----------
-        data : dict[str, Any]
-            The raw or processed data associated with the event.
-        state : EventStateType, EventState, optional
-            An optional initial EventState. Defaults to a new EventState() if not provided.
+class OutputEvent(_FailableEvent, Protocol):
+    """Protocol encapsulating the aspects of an event which can be
+    handed to an `Output` for sending."""
 
-        Examples
-        --------
-        Basic usage with automatic state:
+    data: dict[str, FieldValue]
 
-        >>> event = Event({"source": "syslog"})
-        >>> event.data
-        {'source': 'syslog'}
-        >>> event.state.current_state.name
-        'RECEIVING'
+    output_target: str | None
+    """Indicates to which target inside an output the event should be routed"""
 
-        Providing a custom state
-        >>> custom_state = EventStateType.PROCESSED
-        >>> event = Event({"source": "api"}, state=custom_state)
-        >>> event.state is custom_state
-        True
+    stored: bool
 
-        Handling warnings and errors:
 
-        >>> event = Event({"id": 123})
-        >>> event.warnings.append(ValueError("Missing timestamp"))
-        >>> event.errors.append(ValueError("Invalid format"))
-        >>> isinstance(event.errors[0], ValueError)
-        True
-        """
-        self._state: EventState = EventState()
+class ProcessableEvent(_FailableEvent, Protocol):
+    """Protocol encapsulating the aspects of an event which can be
+    handed to an `Output` for sending."""
 
-        if isinstance(state, EventState):
-            self._state = state
-        elif state is not None and state in list(EventStateType):
-            self._state.current_state = state
-        elif state is not None:
-            raise TypeError("state must be an instance of EventStateType or EventState, or None")
-        self.data: dict[str, Any] = data
-        self.warnings: list[Exception] = []
-        self.errors: list[Exception] = []
-        super().__init__()
+    data: dict[str, FieldValue]
 
-    def __eq__(self, other: object) -> bool:
-        """
-        Determines whether two Event instances are considered equal.
-        Equality is defined by the equality of their `data` content.
+    output_target: str | None
+    """Indicates to which target inside an output the event should be routed"""
 
-        Parameters
-        ----------
-        other : object
-            The object to compare against.
 
-        Returns
-        -------
-        bool
-            True if the other object is an Event and its `data` is equal to this instance's `data`.
-        """
+@define
+class _BaseFailableEvent(_FailableEvent):
+    """
+    Base class for events which can fail during processing.
+    """
 
-        if not isinstance(other, Event):
-            return NotImplemented
+    # TODO change to single item?
+    _errors: list[Exception] = field(factory=list, init=False)
 
-        return self.data == other.data
+    warnings: list[Exception] = field(factory=list, init=False, eq=False)
+    """
+    Warnings occurred during processing. Deprecated.
+    """
 
-    def __hash__(self) -> int:
-        """
-        Returns a hash based on the immutable representation of the `data` field.
-        This enables Event instances to be used as keys in dictionaries or as members of sets.
+    def mark_failed(self, error: Exception) -> None:
+        self._errors.append(error)
 
-        Returns
-        -------
-        int
-            A hash value derived from the event's `data`.
-        """
-
-        return hash(self._deep_freeze(self.data))
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(data={self.data}, state={self.state.current_state})"
+    def is_failed(self) -> bool:
+        return bool(self._errors) or bool(self.warnings)
 
     @property
-    def state(self) -> EventState:
-        """Return the current EventState instance."""
-
-        return self._state
-
-    def _deep_freeze(self, obj: Any) -> Any:
+    def errors(self) -> Sequence[Exception]:
         """
-        Recursively converts a data structure into a
-        hashable (immutable) representation. Used internally for generating
-        consistent hash values from nested dictionaries/lists.
-
-        Parameters
-        ----------
-        obj : Any
-            The object (usually dict or list) to be frozen.
-
-        Returns
-        -------
-        Any
-            A hashable, immutable version of the input object.
+        Returns all registered errors, empty list if there are none.
+        Caution: Might be changed to a single-valued attribute in the future.
         """
-
-        if isinstance(obj, dict):
-            return frozenset((k, self._deep_freeze(v)) for k, v in obj.items())
-
-        if isinstance(obj, list):
-            return tuple(self._deep_freeze(x) for x in obj)
-
-        if isinstance(obj, set):
-            return frozenset(self._deep_freeze(x) for x in obj)
-
-        return obj
-
-    def add_fields_to(
-        self,
-        fields: dict[str, Any],
-        rule: Optional["Rule"] = None,
-        merge_with_target: bool = False,
-        overwrite_target: bool = False,
-    ) -> None:
-        """
-        Add one or more fields to the target dictionary.
-
-        This method wraps the global `add_fields_to` utility function from
-        `logprep.util.helper`, allowing convenient field injection, merging,
-        and optional overwriting.
-
-        Args:
-            fields (dict): A dictionary of fields to add.
-            rule (Rule, optional): The rule context under which fields are added.
-            merge_with_target (bool): Whether to merge dictionaries recursively instead
-                of overwriting.
-            overwrite_target (bool): Whether to overwrite existing values in the target.
-
-        Returns:
-            None
-        """
-        return add_fields_to(self.data, fields, rule, merge_with_target, overwrite_target)
-
-    def get_dotted_field_value(self, dotted_field: str) -> Any:
-        """
-        Shortcut method that delegates to the global `get_dotted_field_value` helper.
-
-        Parameters
-        ----------
-        dotted_field : str
-            The dotted path of the field to retrieve.
-
-        Returns
-        -------
-        Any
-            The value at the specified dotted path, or None if not found.
-        """
-        return get_dotted_field_value(self.data, dotted_field)
-
-    def pop_dotted_field_value(self, dotted_field: str) -> FieldValue:
-        """
-        Shortcut method that delegates to the global `pop_dotted_field_value` helper.
-
-        Parameters
-        ----------
-        dotted_field : str
-            The dotted path of the field to remove.
-
-        Returns
-        -------
-        Any
-            The removed value, or None if the path did not exist.
-        """
-        return pop_dotted_field_value(self.data, dotted_field)
+        return self._errors
 
 
-class ExtraDataEvent(Event):
+@define
+class ExtraDataEvent(_BaseFailableEvent, OutputEvent):
     """
     Abstract base class for events that can contain extra data.
-
-    This class extends the basic Event functionality to include a list of
-    additional Event instances that are related to this event.
     """
 
-    __slots__ = ("outputs",)
+    data: dict[str, FieldValue] = field()
 
-    outputs: tuple[dict[str, str]]
+    output_name: str | None = field(kw_only=True)
+    output_target: str | None = field(kw_only=True)
 
-    def __init__(
-        self, data: dict[str, str], *, outputs: tuple[dict], state: EventStateType | None = None
-    ) -> None:
-        """
-        Parameters
-        ----------
-        data : dict[str, str]
-            The main data payload for the SRE event.
-        state : EventStateType
-            The state of the SRE event.
-        outputs : Iterable[str]
-            The collection of output connector names associated with the SRE event
-        """
-        self.outputs = outputs
-        state = state if state is not None else EventStateType.PROCESSED
-        super().__init__(data=data, state=state)
+    stored: bool = field(kw_only=True, default=False)
 
 
-class EventBacklog(ABC):
+@define
+class LogEvent(_BaseFailableEvent, OutputEvent, ProcessableEvent):
+    """The primary log event entity"""
+
+    data: dict[str, FieldValue] = field()
+
+    original: bytes | None = field(kw_only=True)
+    input_meta: InputMeta = field(kw_only=True)
+
+    output_name: str | None = field(kw_only=True, default=None)
+    output_target: str | None = field(kw_only=True, default=None)
+
+    extra_data: list[ExtraDataEvent] = field(kw_only=True, factory=list)
+
+    stored: bool = field(kw_only=True, default=False)
+
+
+@define
+class ErrorEvent(_BaseFailableEvent, OutputEvent):
     """
-    Abstract base class for event backlogs.
-
-    Defines the interface for managing the registration, unregistration, and retrieval of events
-    based on their processing state. Subclasses must implement the core methods. The `unregister`
-    method is automatically wrapped to prevent misuse with disallowed final states.
+    ErrorEvent represents a failed event.
     """
 
-    def __init_subclass__(cls, **kwargs: dict) -> None:
-        """
-        Automatically wraps the subclass's `unregister` method to enforce a state check.
+    data: dict[str, FieldValue] = field()
 
-        Wrapping only happens if the subclass explicitly overrides `unregister`.
+    input_meta: InputMeta | None = field(kw_only=True, default=None)
 
-        Parameters
-        ----------
-        **kwargs : dict
-            Additional keyword arguments passed to the superclass.
-        """
-        super().__init_subclass__(**kwargs)
+    stored: bool = field(kw_only=True, default=False)
 
-        if "unregister" in cls.__dict__:
-            original = cls.__dict__["unregister"]
+    output_target: None = field(kw_only=True, init=False, default=None)
+    """Use the default target of the `Output` component"""
 
-            def guarded_unregister(self, state_type: EventStateType) -> Iterable[Event]:
-                """
-                Wrapper that enforces allowed final states for `unregister`.
+    @property
+    def reason(self) -> str:
+        """Get the textual representation for the error which caused the `ErrorEvent`"""
+        return typing.cast(str, self.data["reason"])
 
-                Raises
-                ------
-                ValueError
-                    If an invalid state is passed.
-                """
+    @classmethod
+    def from_failed_event(cls, event: LogEvent) -> "ErrorEvent":
+        """Helper function to create an `ErrorEvent` from a failed `LogEvent`"""
+        reason = (
+            LogprepExceptionGroup("Error during processing", event.errors)
+            if event.errors
+            else Exception("Unknown error")
+        )
+        return cls(
+            data={
+                "@timestamp": datetime.now(timezone.utc).isoformat(),
+                "reason": str(reason),
+                # TODO shouldnt we send the raw bytes? at least handle decoding failures properly
+                "original": (
+                    event.original.decode("utf-8", errors="ignore")
+                    if event.original is not None
+                    else None
+                ),
+                "event": json.dumps(event.data),
+            },
+            input_meta=event.input_meta,
+        )
 
-                if state_type not in (EventStateType.FAILED, EventStateType.ACKED):
-                    raise ValueError(
-                        f"Invalid state_type: {state_type}, state must be in "
-                        f"{(EventStateType.FAILED, EventStateType.ACKED)}"
-                    )
-
-                return original(self, state_type)
-
-            setattr(cls, "unregister", guarded_unregister)
-
-    @abstractmethod
-    def register(self, events: Iterable[Event]) -> None:
-        """
-        Register one or more events to the backlog.
-
-        Parameters
-        ----------
-        events : Iterable[Event]
-            An iterable of event instances to be added to the backlog.
-        """
-
-    @abstractmethod
-    def unregister(self, state_type: EventStateType) -> Iterable[Event]:
-        """
-        Unregister events from the backlog with the given final state.
-
-        Parameters
-        ----------
-        state_type : EventStateType
-            Final state indicating why the events should be removed.
-            Only `FAILED` and `ACKED` are permitted.
-
-        Returns
-        -------
-        Iterable[Event]
-            Events that were unregistered from the backlog.
-
-        Raises
-        ------
-        ValueError
-            If an invalid state is passed (automatically enforced).
-        """
-
-    @abstractmethod
-    def get(self, state_type: EventStateType) -> Iterable[Event]:
-        """
-        Retrieve all events currently in the backlog that match a specific processing state.
-
-        Parameters
-        ----------
-        state_type : EventStateType
-            The processing state used to filter events.
-
-        Returns
-        -------
-        Iterable[Event]
-            All events currently in the backlog with the specified state.
-        """
+    @classmethod
+    def from_input_failure(
+        cls, cause: str | Exception, original: bytes | None, input_meta: InputMeta | None
+    ) -> "ErrorEvent":
+        """Helper function to create an `ErrorEvent` from an incomplete input event or error"""
+        return cls(
+            data={
+                "@timestamp": datetime.now(timezone.utc).isoformat(),
+                "reason": str(cause) if isinstance(cause, Exception) else cause,
+                "original": (
+                    original.decode("utf-8", errors="ignore") if original is not None else None
+                ),
+            },
+            input_meta=input_meta,
+        )

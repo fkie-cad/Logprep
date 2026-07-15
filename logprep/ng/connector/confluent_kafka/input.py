@@ -23,19 +23,23 @@ Example
         kafka_config:
             bootstrap.servers: "127.0.0.1:9092,127.0.0.1:9093"
             group.id: "cgroup"
-            enable.auto.commit: "true"
             session.timeout.ms: "6000"
             auto.offset.reset: "earliest"
+            # some entries are disallowed and will be overwritten:
+            # enable.auto.offset.store
+            # enable.auto.commit
+            # enable.partition.eof
 """
 
-# pylint: enable=line-too-long
+import concurrent
+import functools
 import logging
 import os
 import typing
-from functools import cached_property, partial
+from collections.abc import Iterator, Sequence
+from functools import partial
 from socket import getfqdn
-from types import MappingProxyType
-from typing import Union
+from types import MappingProxyType  # pylint: disable=no-name-in-module
 
 import msgspec
 from attrs import define, field, validators
@@ -44,14 +48,14 @@ from confluent_kafka import (
     OFFSET_END,
     OFFSET_INVALID,
     OFFSET_STORED,
-    Consumer,
     KafkaException,
     Message,
     TopicPartition,
 )
-from confluent_kafka.admin import AdminClient
+from confluent_kafka.aio import AIOConsumer
 
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.ng.abc.event import AcknowledgableEvent, ErrorEvent, LogEvent
 from logprep.ng.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
@@ -59,12 +63,13 @@ from logprep.ng.abc.input import (
     Input,
     InputWarning,
 )
-from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
+from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
+from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
+    OffsetCommitTracker,
+)
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
-    "enable.auto.offset.store": "false",
-    "enable.auto.commit": "true",
     "client.id": "<<hostname>>",
     "auto.offset.reset": "earliest",
     "session.timeout.ms": "6000",
@@ -133,13 +138,13 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description=(
                     "Number of ops (callbacks, events, etc) waiting in "
-                    "queue for application to serve with rd_kafka_poll()"
+                    "queue for application to serve with rd_kafka_consume()"
                 ),
                 name="confluent_kafka_input_librdkafka_replyq",
             )
         )
         """Number of ops (callbacks, events, etc) waiting in queue for application
-           to serve with rd_kafka_poll()
+           to serve with rd_kafka_consume()
         """
         librdkafka_tx: GaugeMetric = field(
             factory=lambda: GaugeMetric(
@@ -266,16 +271,28 @@ class ConfluentKafkaInput(Input):
            - Use SSL/mTLS encryption for data in transit.
            - Configure SASL or mTLS authentication for your Kafka clients.
            - Regularly rotate your Kafka credentials and secrets.
-
         """
 
-    _last_valid_record: Message | None
+        max_workers: int = field(
+            validator=validators.instance_of(int),
+            default=2,
+        )
+        """
+        The maximum number of concurrent worker tasks for message processing.
+        Should generally not exceed the number of topic partitions.
+        Defaults to 2.
+        """
 
-    __slots__ = ["_last_valid_record"]
+        consume_num_message: int = field(
+            validator=validators.instance_of(int),
+            default=200,
+        )
+        """
+        Number of messages to consume once and then yield step by step.
+        Defaults to 200.
+        """
 
-    def __init__(self, name: str, configuration: "ConfluentKafkaInput.Config") -> None:
-        super().__init__(name, configuration)
-        self._last_valid_record = None
+    __slots__ = ["_commit_tracker", "_consumer", "_executor", "_message_iter"]
 
     @property
     def config(self) -> Config:
@@ -295,49 +312,51 @@ class ConfluentKafkaInput(Input):
             "logger": logger,
             "enable.auto.offset.store": "false",
             "enable.auto.commit": "true",
+            "enable.partition.eof": "false",
             "on_commit": self._commit_callback,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
-        DEFAULTS.update({"client.id": getfqdn()})
+        fqdn = getfqdn()
+        DEFAULTS.update({"client.id": fqdn})
         DEFAULTS.update(
             {
-                "group.instance.id": f"{getfqdn().strip('.')}-"
+                "group.instance.id": f"{fqdn.strip('.')}-"
                 f"Pipeline{self.pipeline_index}-pid{os.getpid()}"
             }
         )
         return DEFAULTS | self.config.kafka_config | injected_config
 
-    @cached_property
-    def _admin(self) -> AdminClient:
-        """configures and returns the admin client
+    async def setup(self) -> None:
+        """Set the confluent kafka input connector."""
 
-        Returns
-        -------
-        AdminClient
-            confluent_kafka admin client object
-        """
-        admin_config = {"bootstrap.servers": self.config.kafka_config["bootstrap.servers"]}
-        for key, value in self.config.kafka_config.items():
-            if key.startswith(("security.", "ssl.")):
-                admin_config[key] = value
-        return AdminClient(admin_config)
+        try:
+            self._executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.config.max_workers
+            )
 
-    @cached_property
-    def _consumer(self) -> Consumer:
-        """configures and returns the consumer
+            self._consumer = AIOConsumer(self._kafka_config, executor=self._executor)
+            self._message_iter: Iterator[Message] = iter([])
 
-        Returns
-        -------
-        Consumer
-            confluent_kafka consumer object
-        """
-        return Consumer(self._kafka_config)
+            await self._consumer.subscribe(
+                [self.config.topic],
+                on_assign=self._assign_callback,
+                on_revoke=self._revoke_callback,
+                on_lost=self._lost_callback,
+            )
 
-    def _error_callback(self, error: KafkaException) -> None:
+            self._commit_tracker = OffsetCommitTracker(topic=self.config.topic)
+        except KafkaException as error:
+            raise FatalInputError.from_error(
+                self, error, "could not setup kafka consumer"
+            ) from error
+
+        await super().setup()
+
+    async def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
-        This callback is served upon calling client.poll()
+        This callback is served upon calling client.consume()
 
         Parameters
         ----------
@@ -345,10 +364,10 @@ class ConfluentKafkaInput(Input):
             the error that occurred
         """
         self.metrics.number_of_errors += 1
-        logger.error("%s: %s", self.describe(), error)
+        logger.error("%s: %s", self.description, error)
 
-    def _stats_callback(self, stats_raw: str) -> None:
-        """Callback for statistics data. This callback is triggered by poll()
+    async def _stats_callback(self, stats_raw: str) -> None:
+        """Callback for statistics data. This callback is triggered by consume()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
         Parameters
@@ -381,11 +400,153 @@ class ConfluentKafkaInput(Input):
             "assignment_size", DEFAULT_RETURN
         )
 
-    def _commit_callback(
-        self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
+    def _describe(self) -> str:
+        """Get name of Kafka endpoint and bootstrap servers"""
+        return (
+            f"{super()._describe()} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
+        )
+
+    async def _get_next_message(self, timeout: float) -> Message | None:
+        try:
+            return next(self._message_iter)
+        except StopIteration:
+            pass
+
+        try:
+            self._message_iter = iter(
+                await self._consumer.consume(
+                    num_messages=self.config.consume_num_message, timeout=timeout
+                )
+            )
+        except RuntimeError as error:
+            raise FatalInputError.from_error(self, error) from error
+
+        return next(self._message_iter, None)
+
+    async def _get_raw_event(self, timeout: float) -> tuple[bytes, ConfluentKafkaInputMeta] | None:
+        """Get next raw Message from Kafka"""
+
+        message = await self._get_next_message(timeout)
+
+        if message is None:
+            return None
+
+        if message_error := message.error():
+            raise CriticalInputError.from_message(
+                self, f"encountered kafka error: {str(message_error)}"
+            )
+
+        message_value = message.value()
+        partition = message.partition()
+        offset = message.offset()
+
+        if message_value is None or partition is None or offset is None:
+            logger.warning("Unexpected empty input message or empty metadata. Skipping")
+            return None
+
+        self.metrics.current_offsets.add_with_labels(
+            offset + 1, ConfluentKafkaInput._message_labels(self.config.topic, partition)
+        )
+
+        return message_value, ConfluentKafkaInputMeta(partition=partition, offset=offset)
+
+    @staticmethod
+    @functools.lru_cache(maxsize=64)
+    def _message_labels(topic: str, partition: int) -> dict[str, str]:
+        return {"description": f"topic: {topic} - partition: {partition}"}
+
+    async def _get_event(self, timeout: float) -> LogEvent | ErrorEvent | None:
+        """Parse the raw document from Kafka into a json"""
+
+        data = await self._get_raw_event(timeout)
+
+        if data is None:
+            return None
+
+        raw_event, metadata = data
+
+        try:
+            return LogEvent(
+                self._decode_raw_event(raw_event),
+                original=raw_event,
+                input_meta=metadata,
+            )
+        except CriticalInputParsingError as error:
+            return ErrorEvent.from_input_failure(
+                original=raw_event, input_meta=metadata, cause=error
+            )
+
+    def _decode_raw_event(self, raw_event: bytes) -> dict:
+        """Parse the raw document from Kafka into a json."""
+        try:
+            return self._decoder.decode(raw_event)
+        except msgspec.DecodeError as error:
+            raise CriticalInputParsingError.from_message(
+                self, "Input record value is not a valid json string representing an object"
+            ) from error
+
+    async def _assign_callback(
+        self, _: AIOConsumer, topic_partitions: list[TopicPartition]
+    ) -> None:
+        try:
+            committed_offsets: list[TopicPartition] = await self._consumer.committed(
+                topic_partitions
+            )
+        except KafkaException as error:
+            raise FatalInputError.from_error(self, error, "failed to get committed offsets")
+
+        for tp in topic_partitions:
+            try:
+                offset = next(p.offset for p in committed_offsets if p.partition == tp.partition)
+            except StopIteration as error:
+                raise FatalInputError.from_message(
+                    self, f"failed to get committed offset for partition {tp.partition}"
+                ) from error
+
+            if offset in SPECIAL_OFFSETS:
+                # for an empty partition, committed offset is -1001 (OFFSET_INVALID)
+                # hence we reset to 0 as the first
+                offset = 0
+
+            logger.info(
+                "%s was assigned to topic: %s | partition %s | offset %d",
+                await self._get_memberid(),
+                tp.topic,
+                tp.partition,
+                offset,
+            )
+
+            labels = ConfluentKafkaInput._message_labels(self.config.topic, tp.partition)
+            self.metrics.committed_offsets.add_with_labels(offset, labels)
+            self.metrics.current_offsets.add_with_labels(offset, labels)
+
+            self._commit_tracker.register_partition(tp.partition, offset)
+
+    async def _revoke_callback(
+        self, _: AIOConsumer, topic_partitions: list[TopicPartition]
+    ) -> None:
+        for tp in topic_partitions:
+            self.metrics.number_of_warnings += 1
+            member_id = await self._get_memberid()
+            logger.warning(
+                "%s to be revoked from topic: %s | partition %s", member_id, tp.topic, tp.partition
+            )
+            self._commit_tracker.unregister_partition(tp.partition)
+
+    async def _lost_callback(self, _: AIOConsumer, topic_partitions: list[TopicPartition]) -> None:
+        for tp in topic_partitions:
+            self.metrics.number_of_warnings += 1
+            member_id = await self._get_memberid()
+            logger.warning(
+                "%s has lost topic: %s | partition %s", member_id, tp.topic, tp.partition
+            )
+            self._commit_tracker.unregister_partition(tp.partition)
+
+    async def _commit_callback(
+        self, error: KafkaException | None, topic_partitions: list[TopicPartition]
     ) -> None:
         """Callback used to indicate success or failure of asynchronous and
-        automatic commit requests. This callback is served upon calling consumer.poll()
+        automatic commit requests. This callback is served upon calling consumer.consume()
 
         Parameters
         ----------
@@ -393,205 +554,28 @@ class ConfluentKafkaInput(Input):
             the commit error, or None on success
         topic_partitions : list[TopicPartition]
             partitions with their committed offsets or per-partition errors
-
-        Raises
-        ------
-        WarningInputError
-            if `error` is not None
         """
+
         if error is not None:
             self.metrics.commit_failures += 1
-            raise InputWarning(self, f"Could not commit offsets for {topic_partitions}: {error}")
+            raise InputWarning.from_error(self, error, "Could not commit offsets")
         self.metrics.commit_success += 1
-        for topic_partition in topic_partitions:
-            offset = topic_partition.offset
+        for tp in topic_partitions:
+            offset = tp.offset
             if offset in SPECIAL_OFFSETS:
                 offset = 0
-            labels = {
-                "description": f"topic: {self.config.topic} - "
-                f"partition: {topic_partition.partition}"
-            }
+            labels = ConfluentKafkaInput._message_labels(self.config.topic, tp.partition)
             self.metrics.committed_offsets.add_with_labels(offset, labels)
 
-    def describe(self) -> str:
-        """Get name of Kafka endpoint and bootstrap servers.
-
-        Returns
-        -------
-        kafka : str
-            Description of the ConfluentKafkaInput connector.
-        """
-        base_description = super().describe()
-        return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
-
-    def _get_raw_event(self, timeout: float) -> Message | None:  # type: ignore
-        # TODO type needs to be fixed
-        """Get next raw Message from Kafka.
-
-        Parameters
-        ----------
-        timeout : float
-           Timeout for obtaining a document from Kafka.
-
-        Returns
-        -------
-        message : Message, None
-            A document obtained from Kafka.
-
-        Raises
-        ------
-        CriticalInputError
-            Raises if an input is invalid or if it causes an error.
-        """
+    async def _get_memberid(self) -> str | None:
         try:
-            message = self._consumer.poll(timeout=timeout)
-        except RuntimeError as error:
-            raise FatalInputError(self, str(error)) from error
-        if message is None:
-            return None
-        if message.value() is None or message.partition() is None or message.offset() is None:
-            logger.warning("Unexpected empty input message or empty metadata. Skipping")
-            return None
-        kafka_error = message.error()
-        if kafka_error:
-            raise CriticalInputError(
-                self, "A confluent-kafka record contains an error code", str(kafka_error)
-            )
-        self._last_valid_record = message
-        labels = {"description": f"topic: {self.config.topic} - partition: {message.partition()}"}
-        self.metrics.current_offsets.add_with_labels(typing.cast(int, message.offset()) + 1, labels)
-
-        return message
-
-    def _get_event(self, timeout: float) -> tuple:
-        """Parse the raw document from Kafka into a json.
-
-        Parameters
-        ----------
-        timeout : float
-            Timeout for obtaining a raw document from Kafka.
-
-        Returns
-        -------
-        event_dict : dict, None
-            A parsed document obtained from Kafka.
-        raw_event : bytes, None
-            A raw document obtained from Kafka.
-        metadata: EventMetadata, None
-            The kafka metadata with specific data for this event.
-
-        Raises
-        ------
-        CriticalInputError
-            Raises if an input is invalid or if it causes an error.
-        """
-
-        message = self._get_raw_event(timeout)
-        # assert None not in (message.value(), message.partition(), message.offset())
-
-        if message is None:
-            return None, None, None
-
-        raw_event = typing.cast(bytes, message.value())
-
-        try:
-            event_dict = self._decoder.decode(raw_event.decode("utf-8"))
-        except UnicodeDecodeError as error:
-            raise CriticalInputParsingError(
-                self, "Input record value is not 'utf-8' encoded", str(raw_event)
-            ) from error
-        except msgspec.DecodeError as error:
-            raise CriticalInputParsingError(
-                self, "Input record value is not a valid json string", raw_event
-            ) from error
-
-        return (
-            event_dict,
-            raw_event,
-            ConfluentKafkaMetadata(
-                partition=typing.cast(int, message.partition()),
-                offset=typing.cast(int, message.offset()),
-            ),
-        )
-
-    @property
-    def _enable_auto_offset_store(self) -> bool:
-        return self.config.kafka_config.get("enable.auto.offset.store") == "true"
-
-    @property
-    def _enable_auto_commit(self) -> bool:
-        return self.config.kafka_config.get("enable.auto.commit") == "true"
-
-    def batch_finished_callback(self) -> None:
-        """Store offsets for last message referenced by `self._last_valid_records`.
-        Should be called after delivering the current message to the output or error queue.
-        """
-        if self._enable_auto_offset_store:
-            return
-        # in case the ConfluentKafkaInput._revoke_callback is triggered before the first message
-        # was polled
-        if not self._last_valid_record:
-            return
-        try:
-            self._consumer.store_offsets(message=self._last_valid_record)
-        except KafkaException as error:
-            raise InputWarning(self, f"{error}, {self._last_valid_record}") from error
-
-    def _assign_callback(self, _: Consumer, topic_partitions: list[TopicPartition]) -> None:
-        for topic_partition in topic_partitions:
-            offset, partition = topic_partition.offset, topic_partition.partition
-            member_id = self._get_memberid()
-            logger.info(
-                "%s was assigned to topic: %s | partition %s",
-                member_id,
-                topic_partition.topic,
-                partition,
-            )
-            if offset in SPECIAL_OFFSETS:
-                offset = 0
-
-            labels = {"description": f"topic: {self.config.topic} - partition: {partition}"}
-            self.metrics.committed_offsets.add_with_labels(offset, labels)
-            self.metrics.current_offsets.add_with_labels(offset, labels)
-
-    def _revoke_callback(self, _: Consumer, topic_partitions: list[TopicPartition]) -> None:
-
-        for topic_partition in topic_partitions:
-            self.metrics.number_of_warnings += 1
-            member_id = self._get_memberid()
-            logger.warning(
-                "%s to be revoked from topic: %s | partition %s",
-                member_id,
-                topic_partition.topic,
-                topic_partition.partition,
-            )
-        self.batch_finished_callback()
-
-    def _lost_callback(self, _: Consumer, topic_partitions: list[TopicPartition]) -> None:
-        for topic_partition in topic_partitions:
-            self.metrics.number_of_warnings += 1
-            member_id = self._get_memberid()
-            logger.warning(
-                "%s has lost topic: %s | partition %s - try to reassign",
-                member_id,
-                topic_partition.topic,
-                topic_partition.partition,
-            )
-
-    def _get_memberid(self) -> str | None:
-        member_id = None
-        try:
-            member_id = self._consumer.memberid()
+            if self._consumer is not None:
+                return self._consumer._consumer.memberid()  # pylint: disable=protected-access
         except RuntimeError as error:
             logger.error("Failed to retrieve member ID: %s", error)
-        return member_id
+        return None
 
-    def _shut_down(self) -> None:
-        """Close consumer, which also commits kafka offsets."""
-        self._consumer.close()
-        return super()._shut_down()
-
-    def health(self) -> bool:
+    async def health(self) -> bool:  # type: ignore[override]
         """Check the health of the component.
 
         Returns
@@ -600,8 +584,11 @@ class ConfluentKafkaInput(Input):
             True if the component is healthy, False otherwise.
         """
 
+        if not await super().health():
+            return False
+
         try:
-            metadata = self._admin.list_topics(timeout=self.config.health_timeout)
+            metadata = await self._consumer.list_topics(timeout=self.config.health_timeout)
             if self.config.topic not in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self.config.topic)
                 return False
@@ -609,17 +596,35 @@ class ConfluentKafkaInput(Input):
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return super().health()
+        return True
 
-    def setup(self) -> None:
-        """Set the component up."""
-        try:
-            self._consumer.subscribe(
-                [self.config.topic],
-                on_assign=self._assign_callback,
-                on_revoke=self._revoke_callback,
-                on_lost=self._lost_callback,
+    async def acknowledge(self, events: Sequence[AcknowledgableEvent]):
+        commit_offsets = list(
+            self._commit_tracker.advance_offsets(
+                typing.cast(ConfluentKafkaInputMeta, event.input_meta) for event in events
             )
-            super().setup()
-        except KafkaException as error:
-            raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
+        )
+
+        if commit_offsets:
+            try:
+                logger.debug("storing offsets for %d partitions", len(commit_offsets))
+                await self._consumer.store_offsets(offsets=commit_offsets)
+            except KafkaException as error:
+                # only a warning as the next call will generally store higher offsets
+                raise InputWarning.from_error(
+                    self,
+                    error,
+                    message=f"could not store offsets ({', '.join(map(str, commit_offsets))})",
+                ) from error
+
+    async def shut_down(self) -> None:
+        """Shut down the confluent kafka input connector and cleanup resources."""
+
+        if self._consumer is not None:
+            await self._consumer.unsubscribe()
+            await self._consumer.close()
+            self._consumer = None  # type: ignore
+        if self._executor is not None:
+            self._executor.shutdown()
+
+        await super().shut_down()

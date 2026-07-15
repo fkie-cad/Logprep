@@ -20,12 +20,12 @@ from logprep.util.pseudo.encrypter import (
 from logprep.util.pseudo.keygenerator.generate_rsa_key import generate_keys
 
 
-@pytest.fixture(name="analyst_keys", scope="module")
+@pytest.fixture(name="analyst_keys", scope="session")
 def get_analyst_keys():
     return generate_keys(key_length=1024)
 
 
-@pytest.fixture(name="depseudo_keys", scope="module")
+@pytest.fixture(name="depseudo_keys", scope="session")
 def get_depseudo_keys():
     return generate_keys(key_length=2048)
 

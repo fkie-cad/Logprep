@@ -3,6 +3,7 @@ This module contains typing related helper functions
 that are shared by different modules.
 """
 
+from collections.abc import Sequence
 from functools import _lru_cache_wrapper
 from typing import Any, Callable, TypeGuard, TypeVar
 
@@ -23,6 +24,24 @@ def is_list_of(val: list[Any], class_type: type[T]) -> TypeGuard[list[T]]:
     -------
     TypeGuard[list[T]]
         The type information that `val` is of this list type
+    """
+    return all(isinstance(obj, class_type) for obj in val)
+
+
+def is_sequence_of(val: Sequence[Any], class_type: type[T]) -> TypeGuard[Sequence[T]]:
+    """Checks and statically asserts that a sequence has a specific element type
+
+    Parameters
+    ----------
+    val : Sequence[Any]
+        The sequence to be checked
+    class_type : type[T]
+        The element type to be checked against
+
+    Returns
+    -------
+    TypeGuard[Sequence[T]]
+        The type information that `val` is of this Sequence type
     """
     return all(isinstance(obj, class_type) for obj in val)
 

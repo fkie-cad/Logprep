@@ -22,7 +22,8 @@ import responses
 from geoip2.errors import AddressNotFoundError
 
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
+from logprep.ng.processor.geoip_enricher.processor import GeoipEnricher
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
@@ -90,67 +91,67 @@ class ReaderMock(mock.MagicMock):
         return mock.MagicMock()
 
 
-class TestGeoipEnricher(BaseProcessorTestCase):
+class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
     mocks = {"geoip2.database.Reader": {"new": ReaderMock()}}
 
     CONFIG = {
-        "type": "ng_geoip_enricher",
+        "type": "geoip_enricher",
         "rules": ["tests/testdata/unit/geoip_enricher/rules"],
         "db_path": "tests/testdata/mock_external/MockGeoLite2-City.mmdb",
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    def test_geoip_data_added(self):
+    async def test_geoip_data_added(self):
         document = {"client": {"ip": "1.2.3.4"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        self.object.process(event)
+        await self.object.process(event)
 
         assert document.get("geoip")
 
-    def test_geoip_data_added_not_exists(self):
+    async def test_geoip_data_added_not_exists(self):
         document = {"client": {"ip": "127.0.0.1"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        self.object.process(event)
+        await self.object.process(event)
 
         assert document.get("geoip") is None
 
-    def test_no_geoip_data_added_if_source_field_is_none(self):
+    async def test_no_geoip_data_added_if_source_field_is_none(self):
         document = {"client": {"ip": None}}
-        event = LogEvent(document, original=b"")
-        self.object.process(event)
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.process(event)
         assert document.get("geoip") is None
 
-    def test_source_field_is_none_emits_missing_fields_warning(self):
+    async def test_source_field_is_none_emits_missing_fields_warning(self):
         document = {"client": {"ip": None}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
-        result = self.object.process(event)
+        result = await self.object.process(event)
         assert document == expected
         assert len(result.warnings) == 1
         assert re.match(r".*missing source_fields: \['client\.ip'].*", str(result.warnings[0]))
 
-    def test_nothing_to_enrich(self):
+    async def test_nothing_to_enrich(self):
         document = {"something": {"something": "1.2.3.4"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        self.object.process(event)
+        await self.object.process(event)
         assert "geoip" not in document
 
-    def test_geoip_data_added_not_valid(self):
+    async def test_geoip_data_added_not_valid(self):
         document = {"client": {"ip": "333.333.333.333"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        self.object.process(event)
+        await self.object.process(event)
 
         assert document.get("geoip") is None
 
-    def test_enrich_an_event_geoip(self):
+    async def test_enrich_an_event_geoip(self):
         document = {"client": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        self.object.process(event)
+        await self.object.process(event)
 
         geoip = document.get("geoip")
         assert isinstance(geoip, dict)
@@ -165,25 +166,25 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert geoip["properties"].get("country") == "MyCountry"
         assert geoip["properties"].get("accuracy_radius") == 1337
 
-    def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
+    async def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
-        event = LogEvent(document, original=b"")
-        result = self.object.process(event)
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(".*FieldExistsWarning.*geoip.type", str(result.warnings[0]))
 
-    def test_configured_dotted_output_field(self):
+    async def test_configured_dotted_output_field(self):
         document = {"source": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        self.object.process(event)
+        await self.object.process(event)
         assert document.get("source", {}).get("geo", {}).get("ip") is not None
 
-    def test_delete_source_field(self):
+    async def test_delete_source_field(self):
         document = {
             "client": {"ip": "8.8.8.8", "other_key": "I am here to keep client field alive"}
         }
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -193,14 +194,14 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_rule(rule_dict)
-        self.object.process(event)
+        await self._load_rule(rule_dict)
+        await self.object.process(event)
         assert "client" in document
         assert "ip" not in document.get("client")
 
-    def test_overwrite_target_field(self):
+    async def test_overwrite_target_field(self):
         document = {"client": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -210,14 +211,14 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_rule(rule_dict)
-        self.object.process(event)
+        await self._load_rule(rule_dict)
+        await self.object.process(event)
         assert "client" in document
         assert document.get("client").get("ip").get("type") is not None
 
-    def test_specify_all_target_sub_fields(self):
+    async def test_specify_all_target_sub_fields(self):
         document = {"client": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -240,8 +241,8 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_rule(rule_dict)
-        self.object.process(event)
+        await self._load_rule(rule_dict)
+        await self.object.process(event)
         expected_event = {
             "client": {
                 "custom_output": {
@@ -264,9 +265,9 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert document == expected_event
         assert document.get("client", {}).get("default_output") is None
 
-    def test_specify_some_target_sub_fields(self):
+    async def test_specify_some_target_sub_fields(self):
         document = {"client": {"ip": "8.8.8.8"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -281,8 +282,8 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_rule(rule_dict)
-        self.object.process(event)
+        await self._load_rule(rule_dict)
+        await self.object.process(event)
         expected_event = {
             "client": {
                 "custom_output": {
@@ -308,7 +309,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         }
         assert document == expected_event
 
-    def test_specify_unknown_target_sub_fields(self):
+    async def test_specify_unknown_target_sub_fields(self):
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -321,11 +322,11 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             "description": "",
         }
         with pytest.raises(ValueError, match=r"\'customize_target_subfields\' must be in"):
-            self._load_rule(rule_dict)
+            await self._load_rule(rule_dict)
 
-    def test_geoip_db_returns_only_limited_data_without_missing_coordinates(self):
+    async def test_geoip_db_returns_only_limited_data_without_missing_coordinates(self):
         document = {"client": {"ip": "13.21.21.37"}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -333,8 +334,8 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_rule(rule_dict)
-        self.object.process(event)
+        await self._load_rule(rule_dict)
+        await self.object.process(event)
         expected_event = {
             "client": {"ip": "13.21.21.37"},
             "geoip": {
@@ -349,9 +350,9 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         "source_ip",
         ["55.55.55.51", "55.55.55.52", "55.55.55.53"],
     )
-    def test_geoip_db_returns_only_limited_data_with_missing_coordinates(self, source_ip):
+    async def test_geoip_db_returns_only_limited_data_with_missing_coordinates(self, source_ip):
         document = {"client": {"ip": source_ip}}
-        event = LogEvent(document, original=b"")
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         rule_dict = {
             "filter": "client",
             "geoip_enricher": {
@@ -359,8 +360,8 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_rule(rule_dict)
-        self.object.process(event)
+        await self._load_rule(rule_dict)
+        await self.object.process(event)
         expected_event = {
             "client": {"ip": source_ip},
             "geoip": {
@@ -371,7 +372,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert document == expected_event
 
     @responses.activate
-    def test_setup_downloads_geoip_database_if_not_exits(self):
+    async def test_setup_downloads_geoip_database_if_not_exits(self):
         geoip_database_path = "http://db-path-target/db_file.mmdb"
         db_path = Path("/usr/bin/ls") if Path("/usr/bin/ls").exists() else Path("/bin/ls")
         db_path_content = db_path.read_bytes()
@@ -380,7 +381,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         config = copy.deepcopy(self.CONFIG)
         config["db_path"] = geoip_database_path
         self.object = Factory.create({"geoip_enricher": config})
-        self.object.setup()
+        await self.object.setup()
         logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
         downloaded_file = logprep_tmp_dir / f"{self.object.name}.mmdb"
         assert downloaded_file.exists()
@@ -390,7 +391,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         shutil.rmtree(logprep_tmp_dir)
 
     @responses.activate
-    def test_setup_doesnt_overwrite_already_existing_geomap_file(self):
+    async def test_setup_doesnt_overwrite_already_existing_geomap_file(self):
         mmdb_file_path = "http://db-path-target/db_file.mmdb"
         new_content = "some content"
         responses.add(responses.GET, mmdb_file_path, new_content.encode("utf8"))
@@ -405,7 +406,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         config = copy.deepcopy(self.CONFIG)
         config["db_path"] = mmdb_file_path
         self.object = Factory.create({"geoip_enricher": config})
-        self.object.setup()
+        await self.object.setup()
         assert temporary_file.exists()
         assert temporary_file.read_bytes().decode("utf8") == pre_existing_content
         assert temporary_file.read_bytes().decode("utf8") != new_content

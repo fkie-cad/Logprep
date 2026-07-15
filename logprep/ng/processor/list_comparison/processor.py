@@ -29,6 +29,7 @@ Processor Configuration
 """
 
 import typing
+from collections.abc import Sequence
 
 from attrs import define, field, validators
 
@@ -73,9 +74,14 @@ class ListComparison(Processor):
         """Provides the properly typed configuration object"""
         return typing.cast(ListComparison.Config, self._config)
 
-    def setup(self) -> None:
-        super().setup()
-        for rule in typing.cast(list[ListComparisonRule], self.rules):
+    @property
+    def rules(self) -> Sequence[ListComparisonRule]:
+        """Returns all rules"""
+        return typing.cast(Sequence[ListComparisonRule], super().rules)
+
+    async def setup(self) -> None:
+        await super().setup()
+        for rule in self.rules:
             rule.init_list_comparison(self._job_tag_for_cleanup, self.config.list_search_base_path)
 
     def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):

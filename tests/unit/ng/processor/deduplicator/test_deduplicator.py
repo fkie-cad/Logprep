@@ -2,7 +2,7 @@
 # pylint: disable=duplicate-code
 import pytest
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.event import InputMeta, LogEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 test_cases = [  # rule, event, expected
@@ -75,13 +75,13 @@ test_cases = [  # rule, event, expected
 
 class TestDeduplicator(BaseProcessorTestCase):
     CONFIG: dict = {
-        "type": "ng_deduplicator",
+        "type": "deduplicator",
         "rules": ["tests/testdata/unit/deduplicator/rules"],
     }
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
-    def test_testcases(self, rule, event, expected):
-        self._load_rule(rule)
-        log_event = LogEvent(event, original=b"test_message")
-        self.object.process(log_event)
+    async def test_testcases(self, rule, event, expected):
+        await self._load_rule(rule)
+        log_event = LogEvent(event, original=b"test_message", input_meta=InputMeta())
+        await self.object.process(log_event)
         assert log_event.data == expected

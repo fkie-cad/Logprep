@@ -152,7 +152,7 @@ class Processor(Component):
         self._result = value
 
     @property
-    def rules(self) -> list["Rule"]:
+    def rules(self) -> Sequence["Rule"]:
         """Returns all rules
 
         Returns
@@ -166,7 +166,7 @@ class Processor(Component):
         """Return metric labels."""
         return {
             "component": "processor",
-            "description": self.describe(),
+            "description": self.description,
             "type": self.config.type,
             "name": self.name,
         }
@@ -187,51 +187,43 @@ class Processor(Component):
 
         """
         self._result = ProcessorResult(processor_name=self.name, event=event)  # type: ignore
-        logger.debug("%s processing event %s", self.describe(), event)
+        logger.debug("%s processing event %s", self.description, event)
         if self._bypass_rule_tree:
             self._process_all_rules(event)
             return self.result
         self._process_rule_tree(event, self._rule_tree)
         return self.result
 
-    def _process_all_rules(self, event: dict):
+    @Metric.measure_time(self_arg=1)
+    def _process_rule(self, rule, event):
+        self._apply_rules_wrapper(event, rule)
+        rule.metrics.number_of_processed_events += 1
+        return event
 
-        @Metric.measure_time()
-        def _process_rule(rule, event):
-            self._apply_rules_wrapper(event, rule)
-            rule.metrics.number_of_processed_events += 1
-            return event
+    def _process_rule_tree_multiple_times(self, tree: RuleTree, event: dict) -> None:
+        applied_rules = set()
+        matching_rules: Iterable[Rule] = tree.get_matching_rules(event)
+        while matching_rules:
+            for rule in matching_rules:
+                self._process_rule(rule, event)
+                applied_rules.add(rule)
+            matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
+    def _process_rule_tree_once(self, tree: RuleTree, event: dict) -> None:
+        matching_rules = tree.get_matching_rules(event)
+        for rule in matching_rules:
+            self._process_rule(rule, event)
+
+    def _process_rule_tree(self, event: dict, tree: RuleTree) -> None:
+        if self.config.apply_multiple_times:
+            self._process_rule_tree_multiple_times(tree, event)
+        else:
+            self._process_rule_tree_once(tree, event)
+
+    def _process_all_rules(self, event: dict) -> None:
         for rule in self.rules:
             if rule.matches(event):
-                _process_rule(rule, event)
-
-    def _process_rule_tree(self, event: dict, tree: RuleTree):
-        applied_rules = set()
-
-        @Metric.measure_time()
-        def _process_rule(rule, event):
-            self._apply_rules_wrapper(event, rule)
-            rule.metrics.number_of_processed_events += 1
-            applied_rules.add(rule)
-            return event
-
-        def _process_rule_tree_multiple_times(tree: RuleTree, event: dict):
-            matching_rules: Iterable[Rule] = tree.get_matching_rules(event)
-            while matching_rules:
-                for rule in matching_rules:
-                    _process_rule(rule, event)
-                matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
-
-        def _process_rule_tree_once(tree: RuleTree, event: dict):
-            matching_rules = tree.get_matching_rules(event)
-            for rule in matching_rules:
-                _process_rule(rule, event)
-
-        if self.config.apply_multiple_times:
-            _process_rule_tree_multiple_times(tree, event)
-        else:
-            _process_rule_tree_once(tree, event)
+                self._process_rule(rule, event)
 
     def _apply_rules_wrapper(self, event: dict[str, FieldValue], rule: "Rule") -> None:
         try:
@@ -282,7 +274,7 @@ class Processor(Component):
             self._rule_tree.add_rule(rule)
         if logger.isEnabledFor(logging.DEBUG):
             number_rules = self._rule_tree.number_of_rules
-            logger.debug("%s loaded %s rules", self.describe(), number_rules)
+            logger.debug("%s loaded %s rules", self.description, number_rules)
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:

@@ -49,7 +49,7 @@ class PrometheusExporter:
     def __init__(self, configuration: MetricsConfig):
         logger.debug("Initializing Prometheus Exporter")
         self.configuration = configuration
-        self.server = None
+        self.server: http.ThreadingHTTPServer | None = None
         self.healthcheck_functions: Iterable[Callable] | None = None
         self._multiprocessing_prepared = False
         self.app: Callable[[Any, Any, Any], Awaitable] | None = None

@@ -45,7 +45,7 @@ class Replacer(FieldManager):
 
             value_to_replace = get_dotted_field_value(event, source_field)
             if value_to_replace is None and not rule.ignore_missing_fields:
-                error = BaseException(f"replacer: mapping field '{source_field}' does not exist")
+                error = Exception(f"replacer: mapping field '{source_field}' does not exist")
                 self._handle_warning_error(event, rule, error)
             value_to_replace = str(value_to_replace)
 

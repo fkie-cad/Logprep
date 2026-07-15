@@ -19,12 +19,12 @@ Example
 
 import logging
 import typing
+from collections.abc import Sequence
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.event import Event
+from logprep.ng.abc.event import OutputEvent
 from logprep.ng.abc.output import Output
-from logprep.ng.event.log_event import LogEvent
 
 logger = logging.getLogger("DummyOutput")
 
@@ -42,7 +42,7 @@ class DummyOutput(Output):
         """If set to True, this connector will behave completely neutral and not do anything.
         Especially counting metrics or storing events."""
 
-        exceptions: list[str] = field(
+        exceptions: list[str | None] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of((str, type(None))),
                 iterable_validator=validators.instance_of(list),
@@ -54,37 +54,43 @@ class DummyOutput(Output):
         by the output decorator.
         """
 
-        reset_on_flush: bool = field(default=False)
-        """If set to True, the stored events will be cleared when flush() is called."""
-
-    events: list[LogEvent]
-    failed_events: list[LogEvent]
+    _recorded_events: list[tuple[OutputEvent, str | None]]
+    failed_events: list[OutputEvent]
     setup_called_count: int
     shut_down_called_count: int
-    _exceptions: list
+    _exceptions: list[str | None]
 
     __slots__ = [
-        "events",
+        "_recorded_events",
         "failed_events",
         "setup_called_count",
         "shut_down_called_count",
-        "_exceptions",
+        "exceptions",
     ]
 
     def __init__(self, name: str, configuration: "DummyOutput.Config"):
         super().__init__(name, configuration)
-        self.events = []
+        self._recorded_events = []
         self.failed_events = []
         self.shut_down_called_count = 0
-        self._exceptions = configuration.exceptions
+        self.exceptions = configuration.exceptions
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast("DummyOutput.Config", self._config)
 
-    @Output._handle_errors
-    def store(self, event: LogEvent) -> None:
+    @property
+    def events(self) -> Sequence[OutputEvent]:
+        """Returns events stored in this output"""
+        return [event for (event, _) in self._recorded_events]
+
+    @property
+    def events_with_targets(self) -> Sequence[tuple[OutputEvent, str | None]]:
+        """Returns events stored and their respective target in this output"""
+        return self._recorded_events
+
+    async def _store_single(self, event: OutputEvent) -> None:
         """Store the document in the output destination.
 
         Parameters
@@ -93,26 +99,25 @@ class DummyOutput(Output):
            Processed log event that will be stored.
         """
         if self.config.do_nothing:
+            event.stored = True
             return
-        event.state.next_state()
-        if self._exceptions:
-            exception = self._exceptions.pop(0)
-            if exception is not None:
-                raise Exception(exception)  # pylint: disable=broad-exception-raised
-        self.events.append(event)
-        event.state.next_state(success=True)
-        self.metrics.number_of_processed_events += 1
+        try:
+            if self.exceptions:
+                exception = self.exceptions.pop(0)
+                if exception is not None:
+                    raise ValueError(exception)
+            self._recorded_events.append((event, event.output_target))
+            event.stored = True
+        except Exception as error:  # pylint: disable=W0718
+            event.mark_failed(error)
 
-    def store_custom(self, event: Event, target: str):
-        """Store additional data in a custom location inside the output destination."""
-        self.store(event)
+    async def _store(self, events: Sequence[OutputEvent]) -> None:
+        for event in events:
+            try:
+                await self._store_single(event)
+            except Exception as error:
+                raise error
 
-    def flush(self):
-        """Flush not implemented because it has no backlog."""
-        if self.config.reset_on_flush:
-            self.events.clear()
-        logger.debug("DummyOutput flushed %s events", len(self.events))
-
-    def shut_down(self):
+    async def shut_down(self):
         self.shut_down_called_count += 1
-        return super().shut_down()
+        return await super().shut_down()

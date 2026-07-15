@@ -84,7 +84,7 @@ class TestConfluentKafkaInput(BaseInputTestCase):
             test_error = Exception("test error")
             self.object._error_callback(test_error)
             mock_error.assert_called()
-            mock_error.assert_called_with("%s: %s", self.object.describe(), test_error)
+            mock_error.assert_called_with("%s: %s", self.object.description, test_error)
         assert self.object.metrics.number_of_errors == 1
 
     def test_stats_callback_sets_metric_objetc_attributes(self):
@@ -268,13 +268,10 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         mock_record.value.return_value = '{"not_utf-8": \xfc}'.encode("cp1252")
         with pytest.raises(
             CriticalInputParsingError,
-            match=(
-                r"Input record value is not \'utf-8\' encoded ->"
-                r" event was written to error output if configured"
-            ),
+            match=(r"Input record value is not a valid json string"),
         ) as error:
             self.object._get_event(0.001)
-        assert error.value.raw_input == "b'{\"not_utf-8\": \\xfc}'"
+        assert error.value.raw_input == b'{"not_utf-8": \xfc}'
 
     def test_setup_raises_fatal_input_error_on_invalid_config(self):
         kafka_config = {

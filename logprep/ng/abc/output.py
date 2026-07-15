@@ -2,43 +2,39 @@
 New output endpoint types are created by implementing it.
 """
 
+import typing
 from abc import abstractmethod
-from copy import deepcopy
-from typing import Any, Callable
+from collections.abc import Sequence
 
 from attrs import define, field, validators
 
-from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
-from logprep.ng.abc.event import Event
-from logprep.ng.event.event_state import EventStateType
+from logprep.ng.abc.connector import Connector
+from logprep.ng.abc.event import OutputEvent
 
 
 class OutputError(LogprepException):
     """Base class for Output related exceptions."""
 
-    def __init__(self, output: "Output", message: str) -> None:
-        output.metrics.number_of_errors += 1
-        super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
+    @classmethod
+    def from_error(
+        cls, connector: "Output", error: Exception, message: str | None = None
+    ) -> "OutputError":
+        """Generate an `OutputException` from a low level error"""
+        connector.metrics.number_of_errors += 1
+        if message is not None:
+            return cls(f"{cls.__name__} in {connector.description}: {message}: {str(error)}")
+        return cls(f"{cls.__name__} in {connector.description}: {str(error)}")
 
-
-class OutputWarning(LogprepException):
-    """Base class for Output related warnings."""
-
-    def __init__(self, output: "Output", message: str) -> None:
-        output.metrics.number_of_warnings += 1
-        super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
+    @classmethod
+    def from_message(cls, connector: "Output", message: str) -> "OutputError":
+        """Generate an `OutputException` from a message"""
+        connector.metrics.number_of_errors += 1
+        return cls(f"{cls.__name__} in {connector.description}: {message}")
 
 
 class CriticalOutputError(OutputError):
     """A significant error occurred - log and don't process the event."""
-
-    __match_args__ = ("raw_input",)
-
-    def __init__(self, output: "Output", message: str, raw_input: Any) -> None:
-        super().__init__(output, f"{message} -> event was written to error output if configured")
-        self.raw_input = deepcopy(raw_input)
-        self.message = message
 
 
 class FatalOutputError(OutputError):
@@ -62,69 +58,57 @@ class Output(Connector):
         """
 
     @property
-    def default(self):
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(Output.Config, self._config)
+
+    @property
+    def default(self) -> bool:
         """returns the default parameter"""
-        return self._config.default
+        return self.config.default
 
     @property
     def metric_labels(self) -> dict:
         """Return the metric labels for this component."""
         return {
             "component": "output",
-            "description": self.describe(),
-            "type": self._config.type,
+            "description": self.description,
+            "type": self.config.type,
             "name": self.name,
         }
 
-    def __init__(self, name: str, configuration: "Connector.Config"):
-        super().__init__(name, configuration)
-        self.input_connector = None
-
     @abstractmethod
-    def store(self, event: Event) -> None:
-        """Store the event in the output destination.
+    async def _store(self, events: Sequence[OutputEvent]) -> None:
+        """"""
+
+    async def store(self, events: Sequence[OutputEvent]) -> None:
+        """Stores the events in the output destination.
 
         Parameters
         ----------
-        event : Event
-           Processed log event that will be stored.
+        events : Sequence[Event]
+            Events to be stored.
         """
+        try:
+            # TODO ensure to retry forever for retryable errors
+            await self._store(events)
+        except Exception as error:
+            for event in events:
+                if not event.stored and not event.is_failed():
+                    event.mark_failed(error)
 
-    @abstractmethod
-    def store_custom(self, event: Event, target: str) -> None:
-        """Store the event in the output destination.
+        for event in events:
+            if not event.stored and not event.is_failed():
+                event.mark_failed(
+                    CriticalOutputError.from_message(
+                        self, "invariant broken; event neither failed nor stored after store"
+                    )
+                )
 
-        Parameters
-        ----------
-        event : Event
-           Processed log event that will be stored.
-        target : str
-            Custom target for the event.
-        """
-
-    @abstractmethod
-    def flush(self):
-        """Write the backlog to the output destination.
-        Needs to be implemented in child classes to ensure
-        that the backlog is written to the output destination.
-        """
+        # modify metrics in batches
+        self.metrics.number_of_processed_events += sum(1 for e in events if e.stored)
+        self.metrics.number_of_errors += sum(1 for e in events if e.is_failed())
 
     @staticmethod
-    def _handle_errors(func: Callable) -> Callable:
-        """Decorator to handle errors during the store process."""
-
-        def wrapper(self, *args, **kwargs):
-            event = args[0] if args else kwargs.get("event")
-            try:
-                func(self, *args, **kwargs)
-            except Exception as e:  # pylint: disable=broad-except
-                event.errors.append(e)
-                self.metrics.number_of_errors += 1
-                event.state.current_state = EventStateType.FAILED
-
-        return wrapper
-
-    def _shut_down(self) -> None:
-        """Shut down the output connector."""
-        self.flush()
-        return super()._shut_down()
+    def _handle_error(event: OutputEvent, error: Exception) -> None:
+        event.mark_failed(error)

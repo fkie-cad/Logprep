@@ -246,7 +246,7 @@ class ConfluentKafkaOutput(Output):
             the error that occurred
         """
         self.metrics.number_of_errors += 1
-        logger.error("%s: %s", self.describe(), error)
+        logger.error("%s: %s", self.description, error)
 
     def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
@@ -272,11 +272,10 @@ class ConfluentKafkaOutput(Output):
         self.metrics.librdkafka_txmsgs += stats.get("txmsgs", DEFAULT_RETURN)
         self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", DEFAULT_RETURN)
 
-    def describe(self) -> str:
+    def _describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server."""
-        base_description = super().describe()
         return (
-            f"{base_description} - Kafka Output: "
+            f"{super()._describe()} - Kafka Output: "
             f"{self.config.kafka_config.get('bootstrap.servers')}"
         )
 
@@ -340,6 +339,9 @@ class ConfluentKafkaOutput(Output):
 
     def health(self) -> bool:
         """Check the health of kafka producer."""
+        if not super().health():
+            return False
+
         try:
             metadata = self._admin.list_topics(timeout=self.config.health_timeout)
             if self.config.topic not in metadata.topics:
@@ -349,7 +351,7 @@ class ConfluentKafkaOutput(Output):
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return super().health()
+        return True
 
     def setup(self) -> None:
         """Set the component up."""

@@ -18,7 +18,7 @@ class OutputError(LogprepException):
 
     def __init__(self, output: "Output", message: str) -> None:
         output.metrics.number_of_errors += 1
-        super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
+        super().__init__(f"{self.__class__.__name__} in {output.description}: {message}")
 
 
 class OutputWarning(LogprepException):
@@ -26,7 +26,7 @@ class OutputWarning(LogprepException):
 
     def __init__(self, output: "Output", message: str) -> None:
         output.metrics.number_of_warnings += 1
-        super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
+        super().__init__(f"{self.__class__.__name__} in {output.description}: {message}")
 
 
 class CriticalOutputError(OutputError):
@@ -70,7 +70,7 @@ class Output(Connector):
         """Return the metric labels for this component."""
         return {
             "component": "output",
-            "description": self.describe(),
+            "description": self.description,
             "type": self._config.type,
             "name": self.name,
         }

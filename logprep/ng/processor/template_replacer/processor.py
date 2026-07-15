@@ -175,8 +175,8 @@ class TemplateReplacer(FieldManager):
             overwrite_target=overwrite,
         )
 
-    def setup(self) -> None:
-        super().setup()
+    async def setup(self) -> None:
+        await super().setup()
         self._target_field = self.config.pattern["target_field"]
         self._fields = self.config.pattern["fields"]
         self._initialize_replacement_mapping()

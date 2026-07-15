@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Any, ClassVar, Type
 
 from attrs import define, field, validators
 
-from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
-from logprep.ng.event.log_event import LogEvent
+from logprep.ng.abc.component import NgComponent as Component
+from logprep.ng.abc.event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.helper import (
     FieldValue,
@@ -20,11 +20,24 @@ from logprep.util.helper import (
     add_fields_to,
     get_dotted_field_value,
     has_dotted_field,
+    pop_dotted_field_value,
 )
 from logprep.util.rule_loader import RuleLoader
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
+
+
+@define
+class OutputSpec:
+    """
+    Specifies an output by name and which target (e.g. topic for kafka, index for opensearch)
+    should be addressed.
+    """
+
+    output_name: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
+    output_target: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
+
 
 logger = logging.getLogger("Processor")
 
@@ -98,12 +111,12 @@ class Processor(Component):
         """Return metric labels."""
         return {
             "component": "processor",
-            "description": self.describe(),
+            "description": self.description,
             "type": self.config.type,
             "name": self.name,
         }
 
-    def process(self, event: LogEvent) -> LogEvent:
+    async def process(self, event: LogEvent) -> LogEvent:
         """Process a log event.
 
         Parameters
@@ -118,52 +131,45 @@ class Processor(Component):
             extra data
 
         """
+        # TODO make processors async
         self._event = event
-        logger.debug("%s processing event %s", self.describe(), event)
+        logger.debug("%s processing event %s", self.description, event)
         if self._bypass_rule_tree:
             self._process_all_rules(event.data)
             return self._event
         self._process_rule_tree(event.data, self._rule_tree)
         return self._event
 
-    def _process_all_rules(self, event: dict) -> None:
+    @Metric.measure_time(self_arg=1)
+    def _process_rule(self, rule, event):
+        self._apply_rules_wrapper(event, rule)
+        rule.metrics.number_of_processed_events += 1
+        return event
 
-        @Metric.measure_time()
-        def _process_rule(rule, event):
-            self._apply_rules_wrapper(event, rule)
-            rule.metrics.number_of_processed_events += 1
-            return event
+    def _process_rule_tree_multiple_times(self, tree: RuleTree, event: dict) -> None:
+        applied_rules = set()
+        matching_rules: Iterable[Rule] = tree.get_matching_rules(event)
+        while matching_rules:
+            for rule in matching_rules:
+                self._process_rule(rule, event)
+                applied_rules.add(rule)
+            matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
-        for rule in self.rules:
-            if rule.matches(event):
-                _process_rule(rule, event)
+    def _process_rule_tree_once(self, tree: RuleTree, event: dict) -> None:
+        matching_rules = tree.get_matching_rules(event)
+        for rule in matching_rules:
+            self._process_rule(rule, event)
 
     def _process_rule_tree(self, event: dict, tree: RuleTree) -> None:
-        applied_rules = set()
-
-        @Metric.measure_time()
-        def _process_rule(rule, event):
-            self._apply_rules_wrapper(event, rule)
-            rule.metrics.number_of_processed_events += 1
-            applied_rules.add(rule)
-            return event
-
-        def _process_rule_tree_multiple_times(tree: RuleTree, event: dict) -> None:
-            matching_rules: Iterable[Rule] = tree.get_matching_rules(event)
-            while matching_rules:
-                for rule in matching_rules:
-                    _process_rule(rule, event)
-                matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
-
-        def _process_rule_tree_once(tree: RuleTree, event: dict) -> None:
-            matching_rules = tree.get_matching_rules(event)
-            for rule in matching_rules:
-                _process_rule(rule, event)
-
         if self.config.apply_multiple_times:
-            _process_rule_tree_multiple_times(tree, event)
+            self._process_rule_tree_multiple_times(tree, event)
         else:
-            _process_rule_tree_once(tree, event)
+            self._process_rule_tree_once(tree, event)
+
+    def _process_all_rules(self, event: dict) -> None:
+        for rule in self.rules:
+            if rule.matches(event):
+                self._process_rule(rule, event)
 
     def _apply_rules_wrapper(self, event: dict[str, FieldValue], rule: "Rule") -> None:
         try:
@@ -178,16 +184,16 @@ class Processor(Component):
         except ProcessingCriticalError as error:
             if self._event is None:
                 raise error
-            self._event.errors.append(error)  # is needed to prevent wrapping it in itself
+            self._event.mark_failed(error)  # is needed to prevent wrapping it in itself
         except Exception as error:  # pylint: disable=broad-except
             if self._event is None:
                 raise error
-            self._event.errors.append(ProcessingCriticalError(str(error), rule))
+            self._event.mark_failed(ProcessingCriticalError(str(error), rule))
         if not hasattr(rule, "delete_source_fields"):
             return
         if getattr(rule, "delete_source_fields", False):
             for dotted_field in getattr(rule, "source_fields", []):
-                self._event.pop_dotted_field_value(dotted_field)
+                pop_dotted_field_value(self._event.data, dotted_field)
 
     @abstractmethod
     def _apply_rules(self, event: dict, rule: "Rule"): ...  # pragma: no cover
@@ -212,7 +218,7 @@ class Processor(Component):
             self._rule_tree.add_rule(rule)
         if logger.isEnabledFor(logging.DEBUG):
             number_rules = self._rule_tree.number_of_rules
-            logger.debug("%s loaded %s rules", self.describe(), number_rules)
+            logger.debug("%s loaded %s rules", self.description, number_rules)
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
@@ -265,7 +271,10 @@ class Processor(Component):
                 overwrite_target=getattr(rule, "overwrite_target", False),
             )
 
-    def setup(self) -> None:
-        super().setup()
+    async def setup(self) -> None:
+        """Set up the processor."""
+
+        await super().setup()
+
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup

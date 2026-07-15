@@ -50,11 +50,11 @@ spec:
             - name: http-input
               containerPort: {{ .Values.input.uvicorn_config.port }}
             {{- end }}
-          command:
-            - logprep
+          command: {{ .Values.command }}
+          args:
             - run
-            {{- range $key, $value := .Values.configurations }}
-            - {{ $value.name }}
+            {{- range .Values.configurations }}
+            - {{ .name }}
             {{- end }}
             - input-config.yaml
             - output-config.yaml
@@ -72,8 +72,10 @@ spec:
             - name: LOGPREP_CREDENTIALS_FILE
               value: "/home/logprep/credentials/{{ .Values.secrets.credentials.name }}"
             {{- end }}
+            {{- if ne (lower (trim .Values.command)) "logprep-ng" }}
             - name: PROMETHEUS_MULTIPROC_DIR
               value: /prometheus
+            {{ end }}
             {{- if .Values.secrets.certificates }}
             - name: REQUESTS_CA_BUNDLE
               value: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
@@ -82,23 +84,26 @@ spec:
             {{- toYaml .Values.environment  | nindent 12 }}
             {{- end }}
           volumeMounts:
+
             - name: logprep-temp
               mountPath: /tmp
+            {{- if ne (lower (trim .Values.command)) "logprep-ng" }}
             - name: prometheus-multiproc
               mountPath: /prometheus
+            {{- end }}
             - name: logprep-cache-dir
               mountPath: /home/logprep/.cache
-            {{- range $key, $value := .Values.configurations }}
-            {{- if $value.data }}
+            {{- range .Values.configurations }}
+            {{- if .data }}
             - name: configurations
-              mountPath: /home/logprep/{{ $value.name }}
-              subPath: {{ $value.name }}
+              mountPath: /home/logprep/{{ .name }}
+              subPath: {{ .name }}
             {{- end }}
             {{- end }}
-            {{- range $key, $value := .Values.artifacts }}
+            {{- range .Values.artifacts }}
             - name: artifacts
-              mountPath: /home/logprep/{{ if $value.path }}{{ $value.path }}/{{ end }}{{ $value.name }}
-              subPath: {{ $value.name }}
+              mountPath: /home/logprep/{{ if .path }}{{ .path }}/{{ end }}{{ .name }}
+              subPath: {{ .name }}
             {{- end }}
             - name: exporter-config
               mountPath: /home/logprep/exporter-config.yaml
@@ -148,9 +153,11 @@ spec:
         - name: logprep-temp
           emptyDir:
             medium: "Memory"
+        {{- if ne (lower (trim .Values.command)) "logprep-ng" }}
         - name: prometheus-multiproc
           emptyDir:
             medium: "Memory"
+        {{- end }}
         - name: logprep-cache-dir
           emptyDir:
             medium: "Memory"

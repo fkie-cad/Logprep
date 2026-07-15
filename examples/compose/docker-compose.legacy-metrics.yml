@@ -1,0 +1,6 @@
+services:
+  logprep:
+    environment:
+      PROMETHEUS_MULTIPROC_DIR: /tmp/logprep/prometheus_multiproc
+    tmpfs:
+      - /tmp/logprep/prometheus_multiproc:mode=777

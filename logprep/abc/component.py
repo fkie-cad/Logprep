@@ -48,8 +48,8 @@ class Component(ABC):
         _labels: dict
 
         def __attrs_post_init__(self):
-            for attribute in asdict(self):
-                attribute = getattr(self, attribute)
+            for attr_name in asdict(self):
+                attribute = getattr(self, attr_name)
                 if isinstance(attribute, Metric):
                     attribute.labels = self._labels
                     attribute.init_tracker()
@@ -77,7 +77,7 @@ class Component(ABC):
         """Labels for the metrics"""
         return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
 
-    def __init__(self, name: str, configuration: "Config", pipeline_index: int | None = None):
+    def __init__(self, name: str, configuration: Config, pipeline_index: int | None = None):
         self._config = configuration
         self.name = name
         self.pipeline_index = pipeline_index
@@ -92,18 +92,17 @@ class Component(ABC):
     def __repr__(self):
         return camel_to_snake(self.__class__.__name__)
 
-    def describe(self) -> str:
-        """Provide a brief name-like description of the connector.
-
-        The description is indicating its type _and_ the name provided when creating it.
-
-        Examples
-        --------
-
-        >>> ConfluentKafkaInput(name)
-
-        """
+    def _describe(self) -> str:
         return f"{self.__class__.__name__} ({self.name})"
+
+    @cached_property
+    def description(self) -> str:
+        """
+        Provide a brief name-like description of the connector.
+        The description is indicating its type _and_ the name provided when creating it.
+        For instance: "ConfluentKafkaInput(name)"
+        """
+        return self._describe()
 
     def setup(self):
         """Set the component up."""
@@ -166,6 +165,9 @@ class Component(ABC):
 
         """
         logger.debug("Checking health of %s", self.name)
+        if self._is_shut_down:
+            return False
+
         return True
 
     def _schedule_task(self, task: Callable, seconds: int, *args, **kwargs) -> None:

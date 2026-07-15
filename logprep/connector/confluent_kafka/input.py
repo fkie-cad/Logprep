@@ -344,7 +344,7 @@ class ConfluentKafkaInput(Input):
             the error that occurred
         """
         self.metrics.number_of_errors += 1
-        logger.error("%s: %s", self.describe(), error)
+        logger.error("%s: %s", self.description, error)
 
     def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
@@ -412,7 +412,7 @@ class ConfluentKafkaInput(Input):
             }
             self.metrics.committed_offsets.add_with_labels(offset, labels)
 
-    def describe(self) -> str:
+    def _describe(self) -> str:
         """Get name of Kafka endpoint and bootstrap servers.
 
         Returns
@@ -420,8 +420,9 @@ class ConfluentKafkaInput(Input):
         kafka : str
             Description of the ConfluentKafkaInput connector.
         """
-        base_description = super().describe()
-        return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
+        return (
+            f"{super()._describe()} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
+        )
 
     def _get_raw_event(self, timeout: float) -> bytes | None:
         """Get next raw Message from Kafka.
@@ -481,11 +482,7 @@ class ConfluentKafkaInput(Input):
         if raw_event is None:
             return None, None
         try:
-            event_dict = self._decoder.decode(raw_event.decode("utf-8"))
-        except UnicodeDecodeError as error:
-            raise CriticalInputParsingError(
-                self, "Input record value is not 'utf-8' encoded", str(raw_event)
-            ) from error
+            event_dict = self._decoder.decode(raw_event)
         except msgspec.DecodeError as error:
             raise CriticalInputParsingError(
                 self, "Input record value is not a valid json string", raw_event
@@ -577,7 +574,8 @@ class ConfluentKafkaInput(Input):
         bool
             True if the component is healthy, False otherwise.
         """
-
+        if not super().health():
+            return False
         try:
             metadata = self._admin.list_topics(timeout=self.config.health_timeout)
             if self.config.topic not in metadata.topics:
@@ -587,7 +585,8 @@ class ConfluentKafkaInput(Input):
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return super().health()
+
+        return True
 
     def setup(self) -> None:
         """Set the component up."""

@@ -15,6 +15,7 @@ def timeout(seconds=100, error_message=os.strerror(errno.ETIME)):
 
         @wraps(func)  # nosemgrep
         def wrapper(*args, **kwargs):
+            # TODO not well suited for ng
             signal.signal(signal.SIGALRM, _handle_timeout)
             signal.alarm(seconds)
             try:

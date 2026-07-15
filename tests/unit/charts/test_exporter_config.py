@@ -91,52 +91,57 @@ class TestExporterConfig(TestBaseChartTest):
         container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "exporter-config"][0]
-        assert volume_mount["subPath"] in " ".join(container["command"])
+        assert volume_mount["subPath"] in " ".join(container["args"])
 
     def test_exporter_config_is_mounted_if_exporter_not_enabled(self):
         self.manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
         container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "exporter-config"][0]
-        assert volume_mount["subPath"] in " ".join(container["command"])
+        assert volume_mount["subPath"] in " ".join(container["args"])
         volumes = self.deployment["spec.template.spec.volumes"]
         volume = [vol for vol in volumes if vol["name"] == "exporter-config"]
         assert volume
         assert volume[0]["configMap"]["name"] == "logprep-logprep-exporter"
 
     @pytest.mark.parametrize(
-        "exporter_config, expected",
+        ("logprep_values", "expected"),
         [
-            ({"exporter": {"enabled": True}}, True),
-            ({"exporter": {"enabled": False}}, True),
+            pytest.param({"command": "logprep", "exporter": {"enabled": True}}, True, id="legacy"),
+            pytest.param(
+                {"command": "logprep", "exporter": {"enabled": False}},
+                True,
+                id="legacy-exporter-disabled",
+            ),
+            pytest.param({"command": "logprep-ng", "exporter": {"enabled": True}}, False, id="ng"),
+            pytest.param(
+                {"command": "LOGPREP-NG", "exporter": {"enabled": True}},
+                False,
+                id="ng-case-insensitive",
+            ),
         ],
     )
-    def test_prometheus_multiproc_environment_variable(self, exporter_config, expected):
-        self.manifests = self.render_chart("logprep", exporter_config)
-        env = self.deployment["spec.template.spec.containers.0.env"]
-        if env:
-            for env_var in env:
-                if env_var["name"] == "PROMETHEUS_MULTIPROC_DIR":
-                    assert expected
-                    break
-            else:
-                assert not expected, "PROMETHEUS_MULTIPROC_DIR not found"
-        else:
-            assert not expected
+    def test_prometheus_multiproc_environment_variable(self, logprep_values, expected):
+        self.manifests = self.render_chart("logprep", logprep_values)
+        env = self.deployment["spec.template.spec.containers.0.env"] or []
+
+        assert any(var["name"] == "PROMETHEUS_MULTIPROC_DIR" for var in env) == expected
 
     @pytest.mark.parametrize(
-        "exporter_config, expected",
+        ("command", "expected"),
         [
-            ({"exporter": {"enabled": True}}, True),
-            ({"exporter": {"enabled": False}}, True),
+            pytest.param("logprep", True, id="legacy"),
+            pytest.param("logprep-ng", False, id="ng"),
+            pytest.param("LOGPREP-NG", False, id="ng-case-insensitive"),
         ],
     )
-    def test_prometheus_multiproc_environment_volume(self, exporter_config, expected):
-        self.manifests = self.render_chart("logprep", exporter_config)
-        volume_mount = self.deployment["spec.template.spec.containers.0.volumeMounts.1"]
-        assert (volume_mount["name"] == "prometheus-multiproc") == expected
-        volumes = self.deployment["spec.template.spec.volumes.1"]
-        assert (volumes["name"] == "prometheus-multiproc") == expected
+    def test_prometheus_multiproc_environment_volume(self, command, expected):
+        self.manifests = self.render_chart("logprep", {"command": command})
+        volume_mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
+        volumes = self.deployment["spec.template.spec.volumes"]
+
+        assert any(mount["name"] == "prometheus-multiproc" for mount in volume_mounts) == expected
+        assert any(volume["name"] == "prometheus-multiproc" for volume in volumes) == expected
 
     @pytest.mark.parametrize(
         "exporter_config, expected",

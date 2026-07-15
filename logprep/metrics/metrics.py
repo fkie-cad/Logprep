@@ -115,6 +115,7 @@ Processor Specific Metrics
    :inherited-members:
 """
 
+import functools
 import os
 import time
 import typing
@@ -123,7 +124,7 @@ from typing import Any
 
 from _socket import gethostname
 from attrs import define, field, validators
-from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge, Histogram
 from prometheus_client.metrics import MetricWrapperBase
 
 from logprep.util.helper import _add_field_to_silent_fail
@@ -145,10 +146,23 @@ class Metric(ABC):
         ],
         factory=dict,
     )
-    _registry: CollectorRegistry = field(default=None)
     _prefix: str = field(default="logprep_")
     inject_label_values: bool = field(default=True)
     _tracker: MetricWrapperBase = field(init=False, default=None)
+    _registry: CollectorRegistry | None = field(default=None)
+
+    def __attrs_post_init__(self):
+        if self._registry is not None:
+            return
+
+        # When this environment variable is set, the prometheus_client will automatically run in multiprocessing mode
+        # In that mode it is not allowed to set a Registry specifically.
+        # For the non multiprocessing mode, we need to set a Registry otherwise our custom metrics never get
+        # registered and then subsequently cannot be exported
+        if os.environ.get("PROMETHEUS_MULTIPROC_DIR", "") != "":
+            self._registry = None
+        else:
+            self._registry = REGISTRY
 
     @property
     @abstractmethod
@@ -171,7 +185,9 @@ class Metric(ABC):
             self._tracker = self._init_tracker()
         except ValueError as error:
             # pylint: disable=protected-access
-            tracker = self._registry._names_to_collectors.get(self.fullname)
+            tracker = None
+            if self._registry:
+                tracker = self._registry._names_to_collectors.get(self.fullname)
             # pylint: enable=protected-access
             if tracker is not None:
                 if not isinstance(tracker, self.collector_type):
@@ -190,17 +206,20 @@ class Metric(ABC):
     def _init_tracker(self) -> MetricWrapperBase:
         """Create the concrete prometheus metric object"""
 
+    # TODO refactor measure_time for ng reducing implicit logic relying on hasattr
     @staticmethod
-    def measure_time(metric_name: str = "processing_time_per_event"):
+    def measure_time(metric_name: str = "processing_time_per_event", self_arg: int = 0):
         """Decorate function to measure execution time for function and add results to event."""
 
         if not os.environ.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
 
             def without_append(func):
-                def inner(self, *args, **kwargs):  # nosemgrep
+                @functools.wraps(func)
+                def inner(*args, **kwargs):  # nosemgrep
+                    self = args[self_arg]
                     metric = getattr(self.metrics, metric_name)
                     with metric.tracker.labels(**metric.labels).time():
-                        result = func(self, *args, **kwargs)
+                        result = func(*args, **kwargs)
                     return result
 
                 return inner
@@ -208,15 +227,17 @@ class Metric(ABC):
             return without_append
 
         def with_append(func):
-            def inner(self, *args, **kwargs):  # nosemgrep
+            @functools.wraps(func)
+            def inner(*args, **kwargs):  # nosemgrep
+                self = args[self_arg]
                 metric = getattr(self.metrics, metric_name)
                 begin = time.perf_counter()
-                result = func(self, *args, **kwargs)
+                result = func(*args, **kwargs)
                 duration = time.perf_counter() - begin
                 metric += duration
 
                 if hasattr(self, "rule_type"):
-                    event = args[0]
+                    event = args[self_arg + 1]
                     if event:
                         _add_field_to_silent_fail(
                             event=event,
@@ -224,7 +245,63 @@ class Metric(ABC):
                             rule=None,
                         )
                 if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
-                    event = args[0]
+                    event = args[self_arg + 1]
+                    if event:
+                        _add_field_to_silent_fail(
+                            event=event, field=("processing_times.pipeline", duration), rule=None
+                        )
+                        _add_field_to_silent_fail(
+                            event=event,
+                            field=("processing_times.hostname", gethostname()),
+                            rule=None,
+                        )
+                return result
+
+            return inner
+
+        return with_append
+
+    @staticmethod
+    def measure_time_async(metric_name: str = "processing_time_per_event", self_arg: int = 0):
+        """Decorate function to measure execution time for function and add results to event."""
+
+        if not os.environ.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
+
+            def without_append(func):
+                @functools.wraps(func)
+                async def inner(*args, **kwargs):  # nosemgrep
+                    self = args[self_arg]
+                    metric = getattr(self.metrics, metric_name)
+                    with metric.tracker.labels(**metric.labels).time():
+                        # TODO does this make sense for async functions?!
+                        result = await func(*args, **kwargs)
+                    return result
+
+                return inner
+
+            return without_append
+
+        def with_append(func):
+            @functools.wraps(func)
+            async def inner(*args, **kwargs):  # nosemgrep
+                self = args[self_arg]
+                metric = getattr(self.metrics, metric_name)
+                begin = time.perf_counter()
+                # TODO does this make sense for async functions?!
+                result = await func(*args, **kwargs)
+                duration = time.perf_counter() - begin
+                metric += duration
+
+                if hasattr(self, "rule_type"):
+                    event = args[self_arg + 1]
+                    if event:
+                        _add_field_to_silent_fail(
+                            event=event,
+                            field=(f"processing_times.{self.rule_type}", duration),
+                            rule=None,
+                        )
+                if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
+                    event = args[self_arg + 1]
                     if event:
                         _add_field_to_silent_fail(
                             event=event, field=("processing_times.pipeline", duration), rule=None

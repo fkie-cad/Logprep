@@ -12,6 +12,7 @@ image:
   repository: fkie-cad/logprep
   tag: py3.11-stable
   pullPolicy: Always
+command: "logprep"
 # The pod resources
 resources:
   limits:

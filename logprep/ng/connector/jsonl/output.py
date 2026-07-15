@@ -19,10 +19,12 @@ Example
 """
 
 import json
+import typing
+from collections.abc import Sequence
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.event import Event
+from logprep.ng.abc.event import OutputEvent
 from logprep.ng.abc.output import Output
 
 
@@ -61,11 +63,16 @@ class JsonlOutput(Output):
         self.events = []
         self.failed_events = []
 
-    def setup(self):
-        super().setup()
-        open(self._config.output_file, "a+", encoding="utf8").close()
-        if self._config.output_file_custom:
-            open(self._config.output_file_custom, "a+", encoding="utf8").close()
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(JsonlOutput.Config, self._config)
+
+    async def setup(self):
+        await super().setup()
+        open(self.config.output_file, "a+", encoding="utf8").close()
+        if self.config.output_file_custom:
+            open(self.config.output_file_custom, "a+", encoding="utf8").close()
 
     @staticmethod
     def _write_json(filepath: str, line: dict):
@@ -73,26 +80,19 @@ class JsonlOutput(Output):
         with open(filepath, "a+", encoding="utf8") as file:
             file.write(f"{json.dumps(line)}\n")
 
-    @Output._handle_errors
-    def store(self, event: Event) -> None:
+    def _store_single(self, event: OutputEvent) -> None:
         """Store the event in the output destination."""
-        event.state.next_state()
-        self.events.append(event.data)
-        JsonlOutput._write_json(self._config.output_file, event.data)
-        self.metrics.number_of_processed_events += 1
-        event.state.next_state(success=True)
+        document = event.data if event.output_target is None else {event.output_target: event.data}
+        events_file = (
+            self.config.output_file
+            if event.output_target is None
+            else self.config.output_file_custom
+        )
 
-    @Output._handle_errors
-    def store_custom(self, event: Event, target: str) -> None:
-        """Store the event in the output destination with a custom target."""
-        event.state.next_state()
-        document = {target: event.data}
         self.events.append(document)
+        JsonlOutput._write_json(events_file, document)
+        event.stored = True
 
-        if self._config.output_file_custom:
-            JsonlOutput._write_json(self._config.output_file_custom, document)
-        self.metrics.number_of_processed_events += 1
-        event.state.next_state(success=True)
-
-    def flush(self):
-        """Flush is not implemented because it has no backlog."""
+    async def _store(self, events: Sequence[OutputEvent]) -> None:
+        for event in events:
+            self._store_single(event)

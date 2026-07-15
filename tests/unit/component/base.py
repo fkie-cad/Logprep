@@ -53,7 +53,7 @@ class BaseComponentTestCase(ABC):
         assert isinstance(self.object.__slots__, Iterable)
 
     def test_describe(self):
-        describe_string = self.object.describe()
+        describe_string = self.object.description
         expected_base_description = f"{self.object.__class__.__name__} (Test Instance Name)"
         assert describe_string.startswith(expected_base_description)
 
@@ -133,7 +133,7 @@ class BaseComponentTestCase(ABC):
         self.object.setup()
         mock_getmembers.assert_called_with(self.object)
 
-    @pytest.fixture(scope="function")
+    @pytest.fixture()
     def component_scheduler(self):
         with mock.patch.object(Component, "_scheduler", schedule.Scheduler()) as scheduler:
             yield scheduler
@@ -181,3 +181,7 @@ class BaseComponentTestCase(ABC):
 
     def test_health_returns_bool(self):
         assert isinstance(self.object.health(), bool)
+
+    def test_health_returns_false_after_shutdown(self):
+        self.object.shut_down()
+        assert self.object.health() is False

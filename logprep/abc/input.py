@@ -27,11 +27,13 @@ from logprep.util.helper import (
     FieldValue,
     Missing,
     add_fields_to,
+    field_list_to_dotted_field,
     get_dotted_field_list,
     get_dotted_field_value,
     get_dotted_field_value_with_missing,
+    get_field_value,
 )
-from logprep.util.input_common import (
+from logprep.util.preprocessor import (
     FullEventConfig,
     HmacConfig,
     PreprocessingConfig,
@@ -45,7 +47,7 @@ class InputError(LogprepException):
 
     def __init__(self, input_connector: "Input", message: str) -> None:
         input_connector.metrics.number_of_errors += 1
-        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
+        super().__init__(f"{self.__class__.__name__} in {input_connector.description}: {message}")
 
 
 class CriticalInputError(InputError):
@@ -72,7 +74,7 @@ class InputWarning(LogprepException):
 
     def __init__(self, input_connector: "Input", message: str) -> None:
         input_connector.metrics.number_of_warnings += 1
-        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
+        super().__init__(f"{self.__class__.__name__} in {input_connector.description}: {message}")
 
 
 class SourceDisconnectedWarning(InputWarning):
@@ -145,7 +147,7 @@ class Input(Connector):
         """Return the metric labels for this component."""
         return {
             "component": "input",
-            "description": self.describe(),
+            "description": self.description,
             "type": self.config.type,
             "name": self.name,
         }
@@ -268,12 +270,17 @@ class Input(Connector):
             if len(get_dotted_field_list(target)) == 1:
                 raise error
             original_target = target
-            target_value = get_dotted_field_value(event, target)
-            while target_value is None:
-                target, _, _ = target.rpartition(".")
-                target_value = get_dotted_field_value(event, target)
+
+            target_fields = list(get_dotted_field_list(target))
+            target_value = get_field_value(event, target_fields)
+            while target_value is MISSING:
+                target_fields.pop()
+                target_value = get_field_value(event, target_fields)
+
             add_fields_to(event, {original_target: time}, overwrite_target=True)
-            add_fields_to(event, {f"{target}.@original": target_value})
+            add_fields_to(
+                event, {field_list_to_dotted_field([*target_fields, "@original"]): target_value}
+            )
             assert True
 
     def _write_full_event_to_target_field(
@@ -283,7 +290,7 @@ class Input(Connector):
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
         if target.format == "dict":
-            complete_event = self._decoder.decode(raw_event.decode("utf-8"))
+            complete_event = self._decoder.decode(raw_event)
         else:
             complete_event = json.dumps(raw_event.decode("utf-8"))
 

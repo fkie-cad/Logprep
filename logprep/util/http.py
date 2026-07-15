@@ -14,8 +14,10 @@ from logprep.util.defaults import DEFAULT_LOG_CONFIG
 
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
-    parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
+    parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "loop"]
 ]
+
+logger = logging.getLogger("Logprep HTTPServer")
 
 
 class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes

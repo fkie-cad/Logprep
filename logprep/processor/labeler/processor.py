@@ -24,11 +24,13 @@ Processor Configuration
 .. automodule:: logprep.processor.labeler.rule
 """
 
-from typing import Optional
+import typing
+from collections.abc import Iterable, Sequence
 
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
+from logprep.processor.base.rule import Rule
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
 from logprep.util.helper import add_fields_to, get_dotted_field_value
@@ -58,9 +60,7 @@ class Labeler(Processor):
            authenticity and integrity of the loaded values.
 
         """
-        include_parent_labels: Optional[bool] = field(
-            default=False, validator=validators.optional(validator=validators.instance_of(bool))
-        )
+        include_parent_labels: bool = field(default=False, validator=validators.instance_of(bool))
         """If the option is deactivated only labels defined in a rule will be activated.
         Otherwise, also allowed labels in the path to the *root* of the corresponding category
         of a label will be added.
@@ -73,9 +73,19 @@ class Labeler(Processor):
 
     rule_class = LabelerRule
 
-    def __init__(self, name: str, configuration: Processor.Config):
+    def __init__(self, name: str, configuration: "Labeler.Config"):
         self._schema = LabelingSchema.create_from_file(configuration.schema)
         super().__init__(name, configuration=configuration)
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(Labeler.Config, self._config)
+
+    @property
+    def rules(self) -> Sequence[LabelerRule]:
+        """Returns all rules"""
+        return typing.cast(Sequence[LabelerRule], super().rules)
 
     def setup(self):
         super().setup()
@@ -84,13 +94,14 @@ class Labeler(Processor):
                 rule.add_parent_labels_from_schema(self._schema)
             rule.conforms_to_schema(self._schema)
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
         """Applies the rule to the current event"""
-        fields = {key: value for key, value in rule.prefixed_label.items()}
-        add_fields_to(event, fields, rule=rule, merge_with_target=True)
-        # convert sets into sorted lists
+        rule = typing.cast(LabelerRule, rule)
+        add_fields_to(event, rule.prefixed_label, rule=rule, merge_with_target=True)
+        # we have already added (merged) the prefixed_labels with list values
+        # now we extract them to make them unique and sorted
         fields = {
-            key: sorted(set(get_dotted_field_value(event, key)))
+            key: sorted(set(typing.cast(Iterable, get_dotted_field_value(event, key))))
             for key, _ in rule.prefixed_label.items()
         }
         add_fields_to(event, fields, rule=rule, overwrite_target=True)

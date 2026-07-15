@@ -37,7 +37,7 @@ in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
 logger = logging.getLogger()
 
 
-@pytest.fixture(name="config_path", scope="function")
+@pytest.fixture(name="config_path")
 def fixture_config_path(tmp_path: Path) -> Path:
     config_path = tmp_path / uuid.uuid4().hex
     configuration = Configuration.from_sources([path_to_config])

@@ -40,10 +40,11 @@ Example
 
 import logging
 import re
+import typing
 from collections import defaultdict
 from functools import cached_property
 from time import time
-from typing import Any, DefaultDict, Optional
+from typing import TYPE_CHECKING, Any, DefaultDict, Optional
 from uuid import uuid4
 
 import boto3
@@ -60,6 +61,9 @@ from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import CounterMetric, Metric
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
+
+if TYPE_CHECKING:
+    from boto3.resources.factory import ServiceResource
 
 
 def _handle_s3_error(func):
@@ -109,7 +113,7 @@ class S3Output(Output):
         """Field with value to use as prefix for the document."""
         default_prefix: str = field(validator=validators.instance_of(str))
         """Default prefix if no prefix found in the document."""
-        base_prefix: Optional[str] = field(validator=validators.instance_of(str), default="")
+        base_prefix: str = field(validator=validators.instance_of(str), default="")
         """base_prefix prefix (optional)."""
         message_backlog_size: int = field(validator=validators.instance_of(int), default=500)
         """Backlog size to collect messages before sending a batch (default is 500)"""
@@ -117,31 +121,29 @@ class S3Output(Output):
         """Timeout for the AWS s3 connection (default is 500ms)"""
         max_retries: int = field(validator=validators.instance_of(int), default=0)
         """Maximum retry attempts to connect to AWS s3 (default is 0)"""
-        aws_access_key_id: Optional[str] = field(
+        aws_access_key_id: str | None = field(
             validator=validators.optional(validators.instance_of(str)), default=None
         )
         """The accees key ID for authentication (optional)."""
-        aws_secret_access_key: Optional[str] = field(
+        aws_secret_access_key: str | None = field(
             validator=validators.optional(validators.instance_of(str)), default=None
         )
         """The secret used for authentication (optional)."""
-        region_name: Optional[str] = field(
+        region_name: str | None = field(
             validator=validators.optional(validators.instance_of(str)), default=None
         )
         """Region name for s3 (optional)."""
-        ca_cert: Optional[str] = field(
+        ca_cert: str | None = field(
             validator=validators.optional(validators.instance_of(str)), default=None
         )
         """The path to a SSL ca certificate to verify the ssl context (optional)"""
         use_ssl: Optional[bool] = field(validator=validators.instance_of(bool), default=True)
         """Use SSL or not. Is set to true by default (optional)"""
-        call_input_callback: Optional[bool] = field(
-            validator=validators.instance_of(bool), default=True
-        )
+        call_input_callback: bool = field(validator=validators.instance_of(bool), default=True)
         """The input callback is called after the maximum backlog size has been reached
         if this is set to True (optional)"""
-        flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) Timeout after :code:`message_backlog` is flushed if 
+        flush_timeout: int = field(validator=validators.instance_of(int), default=60)
+        """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
 
     @define(kw_only=True)
@@ -165,24 +167,29 @@ class S3Output(Output):
     def __init__(self, name: str, configuration: "S3Output.Config"):
         super().__init__(name, configuration)
         self._message_backlog = defaultdict(list)
-        self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
+        self._base_prefix = f"{self.config.base_prefix}/" if self.config.base_prefix else ""
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(S3Output.Config, self._config)
 
     @cached_property
-    def _s3_resource(self) -> boto3.resources.factory.ServiceResource:
+    def _s3_resource(self) -> "ServiceResource":
         session = boto3.Session(
-            aws_access_key_id=self._config.aws_access_key_id,
-            aws_secret_access_key=self._config.aws_secret_access_key,
-            region_name=self._config.region_name,
+            aws_access_key_id=self.config.aws_access_key_id,
+            aws_secret_access_key=self.config.aws_secret_access_key,
+            region_name=self.config.region_name,
         )
         config = boto3.session.Config(
-            connect_timeout=self._config.connect_timeout,
-            retries={"max_attempts": self._config.max_retries},
+            connect_timeout=self.config.connect_timeout,
+            retries={"max_attempts": self.config.max_retries},
         )
         return session.resource(
             "s3",
-            endpoint_url=f"{self._config.endpoint_url}",
-            verify=self._config.ca_cert,
-            use_ssl=self._config.use_ssl,
+            endpoint_url=f"{self.config.endpoint_url}",
+            verify=self.config.ca_cert,
+            use_ssl=self.config.use_ssl,
             config=config,
         )
 
@@ -194,7 +201,7 @@ class S3Output(Output):
     def _replace_pattern(self) -> re.Pattern[str]:
         return re.compile(r"%{\S+?}")
 
-    def describe(self) -> str:
+    def _describe(self) -> str:
         """Get name of s3 endpoint with the host.
 
         Returns
@@ -203,16 +210,15 @@ class S3Output(Output):
             Acts as output connector for AWS s3.
 
         """
-        base_description = super().describe()
-        return f"{base_description} - S3 Output: {self._config.endpoint_url}"
+        return f"{super()._describe()} - S3 Output: {self.config.endpoint_url}"
 
     @_handle_s3_error
     def setup(self) -> None:
         super().setup()
-        flush_timeout = self._config.flush_timeout
+        flush_timeout = self.config.flush_timeout
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
 
-        _ = self._s3_resource.meta.client.head_bucket(Bucket=self._config.bucket)
+        _ = self._s3_resource.meta.client.head_bucket(Bucket=self.config.bucket)  # type: ignore
 
     def store(self, document: dict) -> None:
         """Store a document into s3 bucket.
@@ -223,12 +229,16 @@ class S3Output(Output):
            Document to store.
         """
         self.metrics.number_of_processed_events += 1
-        prefix_value = get_dotted_field_value(document, self._config.prefix_field)
+        prefix_value = get_dotted_field_value(document, self.config.prefix_field)
         if prefix_value is None:
             document = self._build_no_prefix_document(
-                document, f"Prefix field '{self._config.prefix_field}' empty or missing in document"
+                document, f"Prefix field '{self.config.prefix_field}' empty or missing in document"
             )
-            prefix_value = self._config.default_prefix
+            prefix_value = self.config.default_prefix
+        if not isinstance(prefix_value, str):
+            raise ValueError(
+                f"encountered non-string value to store (type {type(prefix_value)}): {prefix_value}"
+            )
         self._add_to_backlog(document, prefix_value)
         self._write_to_s3_resource()
 
@@ -263,7 +273,7 @@ class S3Output(Output):
     @Metric.measure_time()
     def _write_to_s3_resource(self) -> None:
         """Writes a document into s3 bucket using given prefix."""
-        if self._backlog_size >= self._config.message_backlog_size:
+        if self._backlog_size >= self.config.message_backlog_size:
             self._write_backlog()
 
     def _add_to_backlog(self, document: dict, prefix: str) -> None:
@@ -288,13 +298,13 @@ class S3Output(Output):
             self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
         self._message_backlog.clear()
 
-        if not self._config.call_input_callback:
+        if not self.config.call_input_callback:
             return
 
     @_handle_s3_error
     def _write_document_batch(self, document_batch: dict, identifier: str) -> None:
-        logger.debug('Writing "%s" to s3 bucket "%s"', identifier, self._config.bucket)
-        s3_obj = self._s3_resource.Object(self._config.bucket, identifier)
+        logger.debug('Writing "%s" to s3 bucket "%s"', identifier, self.config.bucket)
+        s3_obj = self._s3_resource.Object(self.config.bucket, identifier)  # type: ignore
         s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
         self.metrics.number_of_successful_writes += len(document_batch)
 

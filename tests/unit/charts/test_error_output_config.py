@@ -71,7 +71,7 @@ class TestErrorOutputConfig(TestBaseChartTest):
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "error-output-config"][
             0
         ]
-        assert volume_mount["subPath"] in " ".join(container["command"])
+        assert volume_mount["subPath"] in " ".join(container["args"])
 
     def test_error_output_is_not_rendered_if_no_error_output(self):
         self.manifests = self.render_chart("logprep", {"error_output": {}})
