@@ -309,6 +309,28 @@ test_cases = [
     ),
     pytest.param(
         {
+            "filter": "m1 AND m2",
+            "grokker": {
+                "mapping": {
+                    "m1": "User\\s+(?<user.name1>.*)@%{IP:source.ip1}\\s+logged.*(in as (?<user_agent.original1>\\S+)$)?(user\\s+agent:\\s+(?<user_agent.original1>.*)\\))?",
+                    "m2": "User\\s+(?<user.name2>.*)@%{IP:source.ip2}\\s+logged.*(in as (?<user_agent.original2>\\S+)$)?(user\\s+agent:\\s+(?<user_agent.original2>.*)\\))?",
+                }
+            },
+        },
+        {
+            "m1": "User abc-vvvvv-bbb-xyz123@123.123.123.123 logged in as Rust/11.22.33",
+            "m2": "User root@127.0.0.1 logged out (login time: Wednesday, 15 July, 2026 06:38:32 AM, number of API invocations: 7, user agent: abcdef 1.1.1.1.1 internal Python/3.22.44 (xxx; 8.8.8; x86_64))",
+        },
+        {
+            "m1": "User abc-vvvvv-bbb-xyz123@123.123.123.123 logged in as Rust/11.22.33",
+            "m2": "User root@127.0.0.1 logged out (login time: Wednesday, 15 July, 2026 06:38:32 AM, number of API invocations: 7, user agent: abcdef 1.1.1.1.1 internal Python/3.22.44 (xxx; 8.8.8; x86_64))",
+            "source": {"ip1": "123.123.123.123", "ip2": "127.0.0.1"},
+            "user": {"name1": "abc-vvvvv-bbb-xyz123", "name2": "root"},
+        },
+        id="DEBUG",
+    ),
+    pytest.param(
+        {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
                 "mapping": {
