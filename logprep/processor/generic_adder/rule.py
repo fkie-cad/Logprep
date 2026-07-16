@@ -87,9 +87,47 @@ import typing
 
 from attrs import define, field, validators
 
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import GetterFactory, RefreshableGetter
+from logprep.util.converters import convert_from_dict
+from logprep.util.dotted_template import DottedTemplate
+from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetter
+from logprep.util.helper import FieldValue, get_dotted_field_value
+
+
+@define(kw_only=True, frozen=True)
+class AddFromUrlConfig:
+    url: str = field(
+        validator=[validators.instance_of(str), validators.matches_re(r"^https?://.+")]
+    )
+
+    target_field: str | None = field(
+        default=None, validator=validators.optional(validators.instance_of(str))
+    )
+
+    target_field_mapping: dict[str, str] | None = field(
+        validator=validators.optional(
+            validators.deep_mapping(
+                key_validator=validators.instance_of(str),
+                value_validator=validators.instance_of(str),
+            )
+        ),
+        default=None,
+    )
+
+    def __attrs_post_init__(self) -> None:
+        if not self.target_field and not self.target_field_mapping:
+            raise ValueError("add_from_url requires target_field or target_field_mapping")
+
+
+def _convert_add_from_url(
+    value: AddFromUrlConfig | dict | None,
+) -> AddFromUrlConfig | None:
+    if value is None:
+        return None
+
+    return convert_from_dict(AddFromUrlConfig, value)
 
 
 class GenericAdderRule(FieldManagerRule):
@@ -113,13 +151,15 @@ class GenericAdderRule(FieldManagerRule):
         """Contains a dictionary of field names and values that should be added.
         If dot notation is being used, then all fields on the path are being
         automatically created."""
-        add_from_file: list = field(
-            validator=[
-                validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of(str)),
-            ],
-            converter=lambda x: x if isinstance(x, list) else [x],
-            factory=list,
+        add_from_file: list | None = field(
+            validator=validators.optional(
+                validators.deep_iterable(
+                    iterable_validator=validators.instance_of(list),
+                    member_validator=validators.instance_of(str),
+                )
+            ),
+            converter=lambda x: x if x is None or isinstance(x, list) else [x],
+            default=None,
             eq=False,
         )
         """Contains the path or url to YML file that contains a dictionary of field names
@@ -141,6 +181,19 @@ class GenericAdderRule(FieldManagerRule):
            authenticity and integrity of the loaded values.
 
         """
+
+        add_from_url: AddFromUrlConfig | None = field(
+            default=None,
+            validator=validators.optional(
+                validators.instance_of(AddFromUrlConfig)
+                # validators.deep_iterable(
+                #     iterable_validator=validators.instance_of(list),
+                #     member_validator=validators.instance_of(AddFromUrlConfig),
+                # )
+            ),
+            converter=_convert_add_from_url,
+        )
+
         only_first_existing_file: bool = field(
             validator=validators.instance_of(bool), default=False, eq=False
         )
@@ -160,6 +213,37 @@ class GenericAdderRule(FieldManagerRule):
         def __attrs_post_init__(self):
             self._base_add = copy.deepcopy(self.add)
 
+            if (
+                self.add_from_file is not None or self.add is not None
+            ) and self.add_from_url is not None:
+                raise ValueError(
+                    "only one of add_from_file + add or add_from_url is allowed per GenericAdder rule"
+                )
+
+            if not self.add and self.add_from_file is None and self.add_from_url is None:
+                raise ValueError(
+                    "one of add, add_from_file or add_from_url is neccessary per GenericAdder rule"
+                )
+
+            if (
+                self.add_from_url is not None
+                and self.add_from_url.target_field is not None
+                and self.add_from_url.target_field_mapping is not None
+            ):
+                raise ValueError(
+                    "only one of target_field or target_field_mapping is allowed per GenericAdder rule"
+                )
+
+            if (
+                self.add_from_url is not None
+                and self.add_from_url.target_field is None
+                and self.add_from_url.target_field_mapping is None
+            ):
+                raise ValueError(
+                    "one of target_field or target_field_mapping is neccessary per GenericAdder rule"
+                )
+
+            # Eagerly loaded from file
             if self.add_from_file:
                 for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
                     getter = GetterFactory.from_string(add_file)
@@ -173,6 +257,7 @@ class GenericAdderRule(FieldManagerRule):
         def _add_from_path(self):
             """Reads add fields from file"""
             missing_files = []
+            assert self.add_from_file is not None
             for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
                 try:
                     add_dict = GetterFactory.from_string(add_file).get_yaml()
@@ -195,8 +280,80 @@ class GenericAdderRule(FieldManagerRule):
                     f"The following required files do not exist: '{missing_files}'"
                 )
 
-    @property
-    def add(self) -> dict:
+    def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
+        super().__init__(filter_rule, config, processor_name)
+        self._dynamic_content: dict[str, FieldValue] = {}
+        self._callback_tag = ""
+
+    def set_job_tag(self, job_tag: str) -> None:
+        self._callback_tag = job_tag
+
+    def _dynamic_add_from_url(self, event: dict) -> dict[str, FieldValue]:
+        config = typing.cast(GenericAdderRule.Config, self._config)
+
+        assert config.add_from_url
+
+        dynamic_path_template = DottedTemplate(config.add_from_url.url)
+        key_val = {
+            identifier: get_dotted_field_value(event, identifier)
+            for identifier in dynamic_path_template.get_identifiers()
+        }
+        for identifier, val in key_val.items():
+            if val is None:
+                raise ValueError(
+                    f"missing event field {identifier!r} for dynamic list comparison path"
+                )
+            if not isinstance(val, (str, int)):
+                raise ValueError(
+                    f"value for list comparison field {identifier!r} is not a scalar value"
+                )
+            pass
+
+        dynamic_resolved = dynamic_path_template.substitute(key_val)
+        content: FieldValue | None = None
+        if dynamic_resolved not in self._dynamic_content:
+            http_getter = GetterFactory.from_string(dynamic_resolved)
+            assert isinstance(http_getter, HttpGetter)
+
+            http_getter.keep_alive()
+
+            content = http_getter.get_collection()
+            self._dynamic_content[dynamic_resolved] = content
+
+            # Get tag here
+            # Add update callback
+            # Add cleanup callback
+        else:
+            RefreshableGetter.keep_alive_for_target(dynamic_resolved)
+            content = self._dynamic_content[dynamic_resolved]
+
+        items_to_add: dict[str, FieldValue] = {}
+
+        if config.add_from_url.target_field:
+            items_to_add[config.add_from_url.target_field] = content
+        else:
+            assert config.add_from_url.target_field_mapping is not None
+
+            # TODO: Check this differently, what should this be?
+            assert isinstance(content, dict)
+            for (
+                mapping_source_field,
+                mapping_target_field,
+            ) in config.add_from_url.target_field_mapping.items():
+                # what should happen with missing fields? Right now None is skipped
+                # change this to get_dotted_field_value_with_missing
+                items_to_add[mapping_target_field] = get_dotted_field_value(
+                    content, mapping_source_field
+                )
+
+        return items_to_add
+
+    def add(self, event: dict) -> dict:
         """Returns the fields to add"""
         config = typing.cast(GenericAdderRule.Config, self._config)
-        return config.add
+
+        if config.add_from_file is not None:
+            return config.add
+
+        assert config.add_from_url is not None
+        return self._dynamic_add_from_url(event)
