@@ -33,8 +33,42 @@ A speaking example:
    :inherited-members:
    :no-undoc-members:
 
-Following a list with example calculation expressions, where all factors and the operators can be
-retrieved from a field with the schema :code:`${your.dotted.field}`:
+The calculator supports the following arithmetic operators:
+
+* :code:`+` addition
+* :code:`-` subtraction
+* :code:`*` multiplication
+* :code:`/` division
+* :code:`^` exponentiation
+
+The calculator supports the following comparison operators:
+
+* :code:`>` greater than
+* :code:`<` less than
+* :code:`>=` greater than or equal
+* :code:`<=` less than or equal
+* :code:`==` equal
+* :code:`!=` not equal
+
+Comparison expressions return either :code:`True` or :code:`False`. Arithmetic expressions on both
+sides of a comparison are evaluated before the comparison itself.
+
+Only one comparison operator is allowed per expression. Chained comparisons such as
+:code:`1 < 2 < 3` or :code:`1 < 2 == 2` are not supported.
+
+The result of a comparison cannot be used as an operand for another arithmetic or comparison
+operation.
+
+.. warning::
+
+The operators :code:`==` and :code:`!=` perform exact comparisons. Avoid using them to compare
+calculated floating-point values, because many decimal values cannot be represented exactly as
+binary floating-point numbers.
+
+For example, :code:`0.1 + 0.2 == 0.3` may evaluate to :code:`False`.
+
+Following is a list of example calculation expressions. All factors and operators can be retrieved
+from a field using the schema :code:`${your.dotted.field}`:
 
 * :code:`9` => :code:`9`
 * :code:`-9` => :code:`-9`
@@ -82,6 +116,21 @@ retrieved from a field with the schema :code:`${your.dotted.field}`:
 * :code:`multiply(3, 7)` => :code:`21`
 * :code:`all(1,1,1)` => :code:`True`
 * :code:`all(1,1,1,1,1,0)` => :code:`False`
+* :code:`2 > 1` => :code:`True`
+* :code:`2 > 2` => :code:`False`
+* :code:`1 < 2` => :code:`True`
+* :code:`1 < 1` => :code:`False`
+* :code:`2 >= 2` => :code:`True`
+* :code:`2 >= 3` => :code:`False`
+* :code:`1 <= 1` => :code:`True`
+* :code:`2 <= 1` => :code:`False`
+* :code:`1 == 1` => :code:`True`
+* :code:`1 == 2` => :code:`False`
+* :code:`1 != 2` => :code:`True`
+* :code:`1 != 1` => :code:`False`
+* :code:`1 + 2 < 4` => :code:`True`
+* :code:`2 * 3 == 6` => :code:`True`
+* :code:`2 ^ 3 >= 8` => :code:`True`
 
 The calc expression is not whitespace sensitive.
 

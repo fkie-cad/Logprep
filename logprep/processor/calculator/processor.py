@@ -80,6 +80,9 @@ class Calculator(FieldManager):
                     + f"{error.args[0]}"
                 ]
                 self._handle_warning_error(event, rule, error)
+            finally:
+                # always clear the expression stack so the shared BNF instance can be safely reused.
+                self.bnf.exprStack.clear()
             return None
 
         return calculate(event, rule, expression)

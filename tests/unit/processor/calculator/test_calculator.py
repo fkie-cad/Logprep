@@ -4,11 +4,180 @@ import math
 import re
 
 import pytest
+from pyparsing import ParseException
 
 from logprep.processor.calculator.fourFn import BNF
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "2>1",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": True},
+        id="compare is greater than (>)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "2>2",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": False},
+        id="compare is not greater than (>)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "2>=2",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": True},
+        id="compare is greater equal (>=)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "2>=3",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": False},
+        id="compare is not greater equal (>=)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "1<2",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": True},
+        id="compare is less than (<)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "1<1",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": False},
+        id="compare is not less than (<)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "1<=1",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": True},
+        id="compare is less equal (<=)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "2<=1",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": False},
+        id="compare is not less equal (<=)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "1==1",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": True},
+        id="compare is equal (==)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "1==2",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": False},
+        id="compare is not equal (==)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "1!=2",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": True},
+        id="compare is unequal (!=)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "1!=1",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": False},
+        id="compare is not unequal (!=)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "1 + 2 < 4",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": True},
+        id="compare arithmetical less than (x+y < Z)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "2 ^ 3 > 4",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": True},
+        id="compare expo greater than (x^y > Z)",
+    ),
     pytest.param(
         {
             "filter": "message",
@@ -459,3 +628,115 @@ class TestCalculator(BaseProcessorTestCase):
         _ = bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
         result = bnf.evaluate_stack()
         assert result == expected
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "1 < 2 < 3",
+            "1 < 2 == 2",
+        ],
+    )
+    def test_fourfn_rejects_chained_comparisons(self, expression):
+        bnf = BNF()
+
+        with pytest.raises(ParseException):
+            bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "(1 < 2) + 1",
+            "1 + (1 < 2)",
+            "-(1 < 2)",
+            "(1 < 2) == (2 < 3)",
+            "all(1, 1) * 2",
+        ],
+    )
+    def test_fourfn_rejects_boolean_operands(self, expression):
+        bnf = BNF()
+        bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
+
+        with pytest.raises(
+            Exception,
+            match="boolean values cannot be used as operands",
+        ):
+            bnf.evaluate_stack()
+
+    def test_fourfn_builds_expected_postfix_stack(self):
+        """
+        Ensure that expressions are converted into the expected execution order.
+
+        The test protects the existing postfix stack structure so that future parser
+        changes do not alter the evaluation order unintentionally. Intentional changes
+        to the order must also update this test.
+        """
+        bnf = BNF()
+        expression = "round((PI + 2) * 3 ^ 2 ^ 2 / 4 - -5, 2) >= multiply(2, 3) + E"
+
+        bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
+
+        assert bnf.exprStack == [
+            "PI",
+            "2",
+            "+",
+            "3",
+            "2",
+            "2",
+            "^",
+            "^",
+            "*",
+            "4",
+            "/",
+            "5",
+            "unary -",
+            "-",
+            "2",
+            ("round", 2),
+            "2",
+            "3",
+            ("multiply", 2),
+            "E",
+            "+",
+            ">=",
+        ]
+
+    @pytest.mark.parametrize(
+        "failing_expression",
+        [
+            pytest.param("1 +", id="parse error"),
+            pytest.param("1 / 0", id="evaluation error"),
+        ],
+    )
+    def test_calculator_clears_expression_stack_after_failure(
+        self,
+        failing_expression,
+    ):
+        rule = {
+            "filter": "field1",
+            "calculator": {
+                "calc": "${field1}",
+                "target_field": "result",
+            },
+        }
+        self._load_rule(rule)
+
+        bnf = self.object.bnf
+        failing_event = {"field1": failing_expression}
+
+        result = self.object.process(failing_event)
+
+        assert len(result.warnings) == 1
+        assert self.object.bnf is bnf
+        assert bnf.exprStack == []
+
+        valid_event = {"field1": "2 + 3"}
+
+        result = self.object.process(valid_event)
+
+        assert result.warnings == []
+        assert valid_event == {
+            "field1": "2 + 3",
+            "result": 5,
+        }
+        assert self.object.bnf is bnf
+        assert bnf.exprStack == []
