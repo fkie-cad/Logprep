@@ -1,7 +1,7 @@
 ## Upcoming Changes
 ### Breaking
 
-## Features
+### Features
 * calculator: add support for >, <, >=, <=, ==, and != comparisons with arithmetic expressions on both sides
 
 ### Improvements
