@@ -37,8 +37,14 @@ class GenericAdder(Processor):
 
     rule_class = GenericAdderRule
 
+    def setup(self):
+        super().setup()
+        for rule in self.rules:
+            rule = typing.cast(GenericAdderRule, rule)
+            rule.set_job_tag(self._job_tag_for_cleanup)
+
     def _apply_rules(self, event: dict, rule: Rule):
         rule = typing.cast(GenericAdderRule, rule)
-        items_to_add = rule.add
+        items_to_add = rule.add(event)
         if items_to_add:
             add_fields_to(event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target)

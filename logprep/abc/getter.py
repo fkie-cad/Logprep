@@ -114,9 +114,17 @@ class Getter(ABC):
         content = self._resolve_content(raw)
         return self._parse_json(content)
 
-    def get_collection(self) -> dict | list:
+    def get_collection(self, content_field: str | None = None) -> dict | list:
         """Gets and parses the raw content to yaml or json"""
         content = self._resolve_content_by_content_type()
+
+        if isinstance(content, dict) and content_field is not None:
+            content = content[content_field]
+        elif content_field is not None:
+            raise ValueError(
+                "Expected mapping type, like json object when content_field is set, got %s.",
+                type(content),
+            )
 
         if isinstance(content, str):
             content = self._parse_yaml_or_json(content)
