@@ -56,16 +56,20 @@ sides of a comparison are evaluated before the comparison itself.
 Only one comparison operator is allowed per expression. Chained comparisons such as
 :code:`1 < 2 < 3` or :code:`1 < 2 == 2` are not supported.
 
-The result of a comparison cannot be used as an operand for another arithmetic or comparison
-operation.
+Boolean values are final results and cannot be reused as operands in arithmetic or comparison
+operations. Unary negation of boolean values is also not supported. This applies to boolean values
+returned by comparisons as well as boolean-returning functions such as :code:`all`.
+
+For example, expressions such as :code:`(1 < 2) + 1`, :code:`(1 < 2) == (2 < 3)`,
+:code:`-(1 < 2)`, and :code:`all(1, 1) * 2` are not supported.
 
 .. warning::
 
-The operators :code:`==` and :code:`!=` perform exact comparisons. Avoid using them to compare
-calculated floating-point values, because many decimal values cannot be represented exactly as
-binary floating-point numbers.
+   The operators :code:`==` and :code:`!=` perform exact comparisons. Avoid using them to compare
+   calculated floating-point values, because many decimal values cannot be represented exactly as
+   binary floating-point numbers.
 
-For example, :code:`0.1 + 0.2 == 0.3` may evaluate to :code:`False`.
+   For example, :code:`0.1 + 0.2 == 0.3` may evaluate to :code:`False`.
 
 Following is a list of example calculation expressions. All factors and operators can be retrieved
 from a field using the schema :code:`${your.dotted.field}`:
