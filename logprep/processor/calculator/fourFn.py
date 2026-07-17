@@ -203,14 +203,3 @@ class BNF(Forward):
                 return float(op)
             except ValueError:
                 return op
-
-    def parse_and_evaluate(self, expression: str, parse_all: bool = False, **kwargs):
-        """Parse and evaluate an expression while ensuring the stack is always cleared."""
-
-        self.exprStack.clear()
-
-        try:
-            self.parse_string(expression, parse_all=parse_all, **kwargs)
-            return self.evaluate_stack()
-        finally:
-            self.exprStack.clear()
