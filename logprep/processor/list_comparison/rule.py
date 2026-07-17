@@ -155,7 +155,7 @@ class ListComparisonRule(FieldManagerRule):
         self._callback_tag = ""
         self._is_dynamic_http = False
         self._dynamic_templates: tuple[DottedTemplate, ...] = ()
-        self._dynamic_identifiers: tuple[str, ...] = ()
+        self._all_dynamic_identifiers: tuple[str, ...] = ()
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if self._config.list_search_base_path:
@@ -196,29 +196,31 @@ class ListComparisonRule(FieldManagerRule):
             )
 
             base_template = DottedTemplate(self._config.list_search_base_path)
-
-            # Check if this is a static (eagerly loaded) or dynamic (lazily loaded) list_comparison
-            if any(
-                identifier not in [*os.environ, "LOGPREP_LIST"]
-                for identifier in base_template.get_identifiers()
-            ):
-                self._is_dynamic_http = True
-                self._dynamic_templates = tuple(
+            resolved_templates = tuple(
+                DottedTemplate(
                     DottedTemplate(
                         base_template.safe_substitute({**os.environ, "LOGPREP_LIST": list_path})
-                    )
-                    for list_path in self._config.list_file_paths
+                    ).safe_substitute(os.environ)
                 )
-                self._dynamic_identifiers = tuple(
-                    dict.fromkeys(
-                        identifier
-                        for template in self._dynamic_templates
-                        for identifier in template.get_identifiers()
-                    )
+                for list_path in self._config.list_file_paths
+            )
+
+            dynamic_identifiers = tuple(
+                dict.fromkeys(
+                    identifier
+                    for template in resolved_templates
+                    for identifier in template.get_identifiers()
                 )
+            )
+
+            # Check if this is a static (eagerly loaded) or dynamic (lazily loaded) list_comparison
+            if dynamic_identifiers:
+                self._is_dynamic_http = True
+                self._dynamic_templates = resolved_templates
+                self._all_dynamic_identifiers = dynamic_identifiers
                 return
 
-            self._init_static_http_list_comparison()
+            self._init_static_http_list_comparison(resolved_templates)
 
     def _update_compare_sets_via_http(
         self, http_getter: HttpGetter, fully_resolved_uri: str, *, mark_rule_failed: bool = True
@@ -258,14 +260,9 @@ class ListComparisonRule(FieldManagerRule):
             filename = os.path.basename(list_path)
             self._compare_sets.update({filename: set(file_elements)})
 
-    def _init_static_http_list_comparison(self) -> None:
-        assert self._config.list_search_base_path
-
-        for list_path in self._config.list_file_paths:
-            resolved = DottedTemplate(self._config.list_search_base_path).substitute(
-                {**os.environ, **{"LOGPREP_LIST": list_path}}
-            )
-            self._load_http_compare_set(resolved)
+    def _init_static_http_list_comparison(self, templates: tuple[DottedTemplate, ...]) -> None:
+        for template in templates:
+            self._load_http_compare_set(template.substitute({}))
 
     def _load_http_compare_set(
         self, resolved_uri: str, *, dynamic: bool = False
@@ -330,7 +327,7 @@ class ListComparisonRule(FieldManagerRule):
 
         key_val = {
             identifier: get_dotted_field_value(event, identifier)
-            for identifier in self._dynamic_identifiers
+            for identifier in self._all_dynamic_identifiers
         }
 
         for identifier, val in key_val.items():

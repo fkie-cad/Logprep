@@ -565,6 +565,133 @@ Heinz
         assert responses.calls[0].request.url == url
 
     @pytest.mark.parametrize(
+        "list_path, environment",
+        [
+            pytest.param("${tenant.id}/bad_users.list", {}, id="event-field"),
+            pytest.param(
+                "${LIST_TENANT}/${tenant.id}/bad_users.list",
+                {"LIST_TENANT": "customers"},
+                id="environment-and-event-field",
+            ),
+        ],
+    )
+    @responses.activate
+    def test_list_comparison_resolves_dynamic_template_in_list_file_path(
+        self, list_path, environment
+    ):
+        document = {"tenant": {"id": "acme"}, "user": "Foo"}
+        path_prefix = "customers/" if environment else ""
+        url = f"http://localhost/{path_prefix}acme/bad_users.list"
+        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_path],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost/${LOGPREP_LIST}",
+        }
+
+        HttpGetter._shared.clear()
+
+        with mock.patch.dict("os.environ", environment):
+            processor = Factory.create({"custom_lister": config})
+            rule = processor.rule_class.create_from_dict(rule_dict)
+            processor._rule_tree.add_rule(rule)
+            processor.setup()
+
+            assert rule.compare_sets == {}
+            assert len(responses.calls) == 0
+
+            processor.process(document)
+
+        assert document["user_results"] == {"in_list": [url]}
+        assert rule.compare_sets == {url: {"Foo", "Bar"}}
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == url
+
+    @responses.activate
+    def test_list_comparison_resolves_environment_template_in_list_file_path_during_setup(self):
+        url = "http://localhost/acme/bad_users.list"
+        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["${LIST_TENANT}/bad_users.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost/${LOGPREP_LIST}",
+        }
+
+        HttpGetter._shared.clear()
+
+        with mock.patch.dict("os.environ", {"LIST_TENANT": "acme"}):
+            processor = Factory.create({"custom_lister": config})
+            rule = processor.rule_class.create_from_dict(rule_dict)
+            processor._rule_tree.add_rule(rule)
+            processor.setup()
+
+        assert rule.compare_sets == {url: {"Foo", "Bar"}}
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == url
+
+    @responses.activate
+    def test_list_comparison_loads_static_and_dynamic_list_file_paths_lazily(self):
+        document = {"tenant": {"id": "acme"}, "user": "Foo"}
+        static_url = "http://localhost/common.list"
+        dynamic_url = "http://localhost/acme/bad_users.list"
+        responses.add(responses.GET, url=static_url, body="Foo\n", status=200)
+        responses.add(responses.GET, url=dynamic_url, body="Foo\nBar\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["common.list", "${tenant.id}/bad_users.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost/${LOGPREP_LIST}",
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        assert rule.compare_sets == {}
+        assert len(responses.calls) == 0
+
+        processor.process(document)
+
+        assert document["user_results"] == {"in_list": [static_url, dynamic_url]}
+        assert rule.compare_sets == {
+            static_url: {"Foo"},
+            dynamic_url: {"Foo", "Bar"},
+        }
+        assert len(responses.calls) == 2
+
+    @pytest.mark.parametrize(
         "document, url_template",
         [
             pytest.param(
