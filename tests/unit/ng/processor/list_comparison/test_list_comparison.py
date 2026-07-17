@@ -426,6 +426,117 @@ Heinz
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
+    @pytest.mark.parametrize(
+        "document, url_template",
+        [
+            pytest.param(
+                {"tenant": {"id": "acme"}, "user": "Foo"},
+                "http://localhost/${tenant.id}/${LOGPREP_LIST}",
+                id="nested-field",
+            ),
+            pytest.param(
+                {"tenants": ["acme"], "user": "Foo"},
+                "http://localhost/${tenants.0}/${LOGPREP_LIST}",
+                id="list-index",
+            ),
+            pytest.param(
+                {"tenants": ["beta", "acme"], "user": "Foo"},
+                "http://localhost/${tenants.-1}/${LOGPREP_LIST}",
+                id="negative-list-index",
+            ),
+            pytest.param(
+                {"tenant.id": "acme", "user": "Foo"},
+                r"http://localhost/${tenant\.id}/${LOGPREP_LIST}",
+                id="escaped-dot",
+            ),
+            pytest.param(
+                {r"tenant\.id": "acme", "user": "Foo"},
+                r"http://localhost/${tenant\\\.id}/${LOGPREP_LIST}",
+                id="escaped-backslash-and-dot",
+            ),
+        ],
+    )
+    @responses.activate
+    def test_list_comparison_resolves_dynamic_http_template_with_field_syntax(
+        self, document, url_template
+    ):
+        log_event = LogEvent(document, original=b"")
+        list_name = "bad_users.list"
+        url = "http://localhost/acme/bad_users.list"
+
+        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "ng_list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        assert rule.compare_sets == {}
+        assert len(responses.calls) == 0
+
+        processor.process(log_event)
+
+        assert document["user_results"] == {"in_list": [url]}
+        assert rule.compare_sets == {url: {"Foo", "Bar"}}
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == url
+
+    @responses.activate
+    def test_list_comparison_dynamic_http_template_rejects_non_scalar_slice_value(self):
+        document = {"tenants": ["acme", "beta"], "user": "Foo"}
+        log_event = LogEvent(document, original=b"")
+        expected = {
+            **document,
+            "tags": ["_list_comparison_failure"],
+        }
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "ng_list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost/${tenants.0:2}/${LOGPREP_LIST}",
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        result = processor.process(log_event)
+
+        assert document == expected
+        assert len(result.warnings) == 1
+        assert "value for list comparison field 'tenants.0:2' is not a scalar value" in str(
+            result.warnings[0]
+        )
+        assert len(responses.calls) == 0
+
     @responses.activate
     async def test_list_comparison_reuses_dynamic_http_compare_set_and_signals_activity(self):
         first_document = {"tenant": "acme", "user": "Foo"}

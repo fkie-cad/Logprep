@@ -43,13 +43,13 @@ target field :code:`List_comparison.example`.
 
 import logging
 import os.path
-from string import Template
 
 from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.util.dotted_template import DottedTemplate
 from logprep.util.getter import (
     GetterFactory,
     HttpGetter,
@@ -153,6 +153,9 @@ class ListComparisonRule(FieldManagerRule):
         self._config: ListComparisonRule.Config = self._config
         self._compare_sets = {}
         self._callback_tag = ""
+        self._is_dynamic_http = False
+        self._dynamic_templates: tuple[DottedTemplate, ...] = ()
+        self._dynamic_identifiers: tuple[str, ...] = ()
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if self._config.list_search_base_path:
@@ -192,11 +195,27 @@ class ListComparisonRule(FieldManagerRule):
                 else self._config.list_search_base_path
             )
 
+            base_template = DottedTemplate(self._config.list_search_base_path)
+
             # Check if this is a static (eagerly loaded) or dynamic (lazily loaded) list_comparison
             if any(
                 identifier not in [*os.environ, "LOGPREP_LIST"]
-                for identifier in Template(self._config.list_search_base_path).get_identifiers()
+                for identifier in base_template.get_identifiers()
             ):
+                self._is_dynamic_http = True
+                self._dynamic_templates = tuple(
+                    DottedTemplate(
+                        base_template.safe_substitute({**os.environ, "LOGPREP_LIST": list_path})
+                    )
+                    for list_path in self._config.list_file_paths
+                )
+                self._dynamic_identifiers = tuple(
+                    dict.fromkeys(
+                        identifier
+                        for template in self._dynamic_templates
+                        for identifier in template.get_identifiers()
+                    )
+                )
                 return
 
             self._init_static_http_list_comparison()
@@ -243,7 +262,7 @@ class ListComparisonRule(FieldManagerRule):
         assert self._config.list_search_base_path
 
         for list_path in self._config.list_file_paths:
-            resolved = Template(self._config.list_search_base_path).substitute(
+            resolved = DottedTemplate(self._config.list_search_base_path).substitute(
                 {**os.environ, **{"LOGPREP_LIST": list_path}}
             )
             self._load_http_compare_set(resolved)
@@ -300,35 +319,32 @@ class ListComparisonRule(FieldManagerRule):
             Re-raises the stored data loading error if a dynamic HTTP(S) list cannot be
             loaded, so the processor can apply the rule's failure tags.
         """
+        if not self._is_dynamic_http:
+            return self._compare_sets
+
         compare_sets_result: dict[str, set] = {}
         assert self._config.list_search_base_path
 
         if not self._config.list_search_base_path.startswith("http"):
             return self._compare_sets
 
-        for list_path in self._config.list_file_paths:
-            list_search_base_path_resolved = Template(
-                self._config.list_search_base_path
-            ).safe_substitute({**os.environ, **{"LOGPREP_LIST": list_path}})
+        key_val = {
+            identifier: get_dotted_field_value(event, identifier)
+            for identifier in self._dynamic_identifiers
+        }
 
-            resolved_tmpl = Template(list_search_base_path_resolved)
+        for identifier, val in key_val.items():
+            if val is None:
+                raise ValueError(
+                    f"missing event field {identifier!r} for dynamic list comparison path"
+                )
+            if not isinstance(val, (str, int)):
+                raise ValueError(
+                    f"value for list comparison field {identifier!r} is not a scalar value"
+                )
 
-            key_val = {
-                identifier: get_dotted_field_value(event, identifier)
-                for identifier in resolved_tmpl.get_identifiers()
-            }
-            for identifier, val in key_val.items():
-                if val is None:
-                    raise ValueError(
-                        f"missing event field {identifier!r} for dynamic list comparison path"
-                    )
-                if not isinstance(val, (str, int)):
-                    raise ValueError(
-                        f"value for list comparison field {identifier!r} is not a scalar value"
-                    )
-                pass
-
-            dynamic_resolved = resolved_tmpl.substitute(key_val)
+        for tmpl in self._dynamic_templates:
+            dynamic_resolved = tmpl.substitute(key_val)
 
             if dynamic_resolved in self._compare_sets:
                 RefreshableGetter.keep_alive_for_target(dynamic_resolved)
@@ -339,7 +355,7 @@ class ListComparisonRule(FieldManagerRule):
             compare_set = self._load_http_compare_set(dynamic_resolved, dynamic=True)
             assert compare_set is not None
 
-            compare_sets_result.update({dynamic_resolved: compare_set})
+            compare_sets_result[dynamic_resolved] = compare_set
 
         return compare_sets_result
 
