@@ -1,6 +1,6 @@
 import pytest
 
-from logprep.util.dotted_template import DottedTemplate
+from logprep.util.helper import DottedTemplate
 
 
 @pytest.mark.parametrize(

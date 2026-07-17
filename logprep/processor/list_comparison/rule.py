@@ -49,13 +49,12 @@ from attrs import define, field, validators
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.dotted_template import DottedTemplate
 from logprep.util.getter import (
     GetterFactory,
     HttpGetter,
     RefreshableGetter,
 )
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import DottedTemplate, get_dotted_field_value
 
 logger = logging.getLogger()
 
