@@ -460,7 +460,7 @@ Heinz
     def test_list_comparison_resolves_dynamic_http_template_with_field_syntax(
         self, document, url_template
     ):
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         list_name = "bad_users.list"
         url = "http://localhost/acme/bad_users.list"
 
@@ -501,7 +501,7 @@ Heinz
     @responses.activate
     def test_list_comparison_dynamic_http_template_rejects_non_scalar_slice_value(self):
         document = {"tenants": ["acme", "beta"], "user": "Foo"}
-        log_event = LogEvent(document, original=b"")
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             **document,
             "tags": ["_list_comparison_failure"],
