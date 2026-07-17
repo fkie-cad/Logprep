@@ -101,7 +101,6 @@ Authentication Process:
 
 import json
 import logging
-import os
 from base64 import b64encode
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -117,6 +116,7 @@ from urllib3 import Retry
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from logprep.util.environ import ENV_VARS
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -152,7 +152,7 @@ class CredentialsFactory:
             Credentials object representing the correct authorization method
 
         """
-        credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+        credentials_file_path = ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
         if credentials_file_path is None:
             return None
         credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
@@ -180,7 +180,7 @@ class CredentialsFactory:
             Credentials object representing the correct authorization method
 
         """
-        credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+        credentials_file_path = ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
         if credentials_file_path is None:
             return None
         credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))

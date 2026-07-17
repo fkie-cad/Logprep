@@ -10,6 +10,7 @@ from prometheus_client import REGISTRY, make_asgi_app, multiprocess
 from logprep.util import http
 from logprep.util.configuration import MetricsConfig
 from logprep.util.defaults import DEFAULT_HEALTH_STATE
+from logprep.util.environ import ENV_VARS
 
 logger = getLogger("Exporter")
 
@@ -66,7 +67,7 @@ class PrometheusExporter:
 
     def cleanup_prometheus_multiprocess_dir(self):
         """removes the prometheus multiprocessing directory"""
-        multiprocess_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+        multiprocess_dir = ENV_VARS.get("PROMETHEUS_MULTIPROC_DIR")
         if not multiprocess_dir:
             return
         for root, dirs, files in os.walk(multiprocess_dir):

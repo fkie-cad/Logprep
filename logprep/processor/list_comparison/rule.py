@@ -49,6 +49,7 @@ from attrs import define, field, validators
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.util.environ import ENV_VARS
 from logprep.util.getter import (
     GetterFactory,
     HttpGetter,
@@ -198,8 +199,8 @@ class ListComparisonRule(FieldManagerRule):
             resolved_templates = tuple(
                 DottedTemplate(
                     DottedTemplate(
-                        base_template.safe_substitute({**os.environ, "LOGPREP_LIST": list_path})
-                    ).safe_substitute(os.environ)
+                        base_template.safe_substitute({**ENV_VARS, "LOGPREP_LIST": list_path})
+                    ).safe_substitute(ENV_VARS)
                 )
                 for list_path in self._config.list_file_paths
             )

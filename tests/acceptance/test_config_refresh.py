@@ -25,7 +25,7 @@ def get_config():
         "profile_pipelines": False,
         "config_refresh_interval": 5,
         "metrics": {"enabled": False},
-        "logger": {"level": "DEBUG"},
+        "logger": {"level": "INFO"},
         "pipeline": [],
         "input": {
             "file_input": {

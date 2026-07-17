@@ -12,6 +12,7 @@ from prometheus_client import CollectorRegistry
 from logprep.metrics.exporter import PrometheusExporter, make_patched_asgi_app
 from logprep.util import http
 from logprep.util.configuration import MetricsConfig
+from tests.conftest import mock_env
 
 
 @mock.patch(
@@ -50,7 +51,7 @@ class TestPrometheusExporter:
         test_file.touch()
         assert os.path.isfile(test_file)
         assert os.path.isdir(subdir)
-        with mock.patch("os.environ", {"PROMETHEUS_MULTIPROC_DIR": tmp_path}):
+        with mock_env({"PROMETHEUS_MULTIPROC_DIR": tmp_path}):
             exporter = PrometheusExporter(self.metrics_config)
             exporter.cleanup_prometheus_multiprocess_dir()
         assert not os.path.isfile(test_file)
@@ -66,7 +67,7 @@ class TestPrometheusExporter:
         test_file.touch()
         assert os.path.isfile(test_file)
         assert os.path.isdir(subdir)
-        with mock.patch("os.environ", {"SOME_OTHER_ENV": tmp_path}):
+        with mock_env({"SOME_OTHER_ENV": tmp_path}):
             exporter = PrometheusExporter(self.metrics_config)
             exporter.cleanup_prometheus_multiprocess_dir()
         assert os.path.isfile(test_file)

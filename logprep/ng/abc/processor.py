@@ -1,7 +1,6 @@
 """Abstract module for processors"""
 
 import logging
-import os
 import typing
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
@@ -14,6 +13,7 @@ from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
 from logprep.ng.abc.event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.util.environ import ENV_VARS
 from logprep.util.helper import (
     FieldValue,
     add_and_overwrite,
@@ -87,7 +87,7 @@ class Processor(Component):
         self._rule_tree = RuleTree(config=self.config.tree_config)
         self.load_rules(rules_targets=self.config.rules)
         self._bypass_rule_tree = False
-        if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
+        if ENV_VARS.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
             logger.debug("Bypassing rule tree for processor %s", self.name)
 

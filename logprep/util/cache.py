@@ -1,9 +1,8 @@
 """Module for caching items and checking if they need to be stored (again)."""
 
-from typing import Union
-
 import datetime
 from collections import OrderedDict
+from typing import Union
 
 
 class Cache(OrderedDict):

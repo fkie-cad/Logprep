@@ -2,14 +2,14 @@
 # pylint: disable=protected-access
 import json
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import responses
 
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter
+from logprep.util.getter import HttpGetter, RefreshableGetter
+from tests.conftest import mock_env
 
 
 @pytest.fixture(name="rule_definition")
@@ -138,13 +138,12 @@ class TestGenericAdderRule:
         responses.add(responses.GET, url, json=from_http_2)
         responses.add(responses.GET, url, json=from_http_3)
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
-        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
-        with patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
             rule = GenericAdderRule.create_from_dict(rule_definition)
             assert rule.add == expected_1

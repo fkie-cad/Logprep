@@ -26,6 +26,7 @@ from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.connector.http.input import HttpInput
 from logprep.ng.util.workflow.worker import SizeLimitedQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from tests.conftest import mock_env
 from tests.unit.ng.connector.base import BaseInputTestCase
 
 
@@ -382,9 +383,9 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
 
     async def test_endpoint_returns_401_if_authorization_not_provided(self, credentials_file_path):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = self._create_test_instance()
             await new_connector.setup()
             async with testing.ASGIConductor(new_connector.app) as client:
@@ -392,9 +393,9 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
                 assert resp.status_code == 401
 
     async def test_endpoint_returns_401_on_wrong_authorization(self, credentials_file_path):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = self._create_test_instance()
             await new_connector.setup()
             headers = {"Authorization": _basic_auth_str("wrong", "credentials")}
@@ -405,9 +406,9 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
     async def test_endpoint_returns_200_on_correct_authorization_with_password_from_file(
         self, credentials_file_path
     ):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = self._create_test_instance()
             await new_connector.setup()
             headers = {"Authorization": _basic_auth_str("user", "file_password")}
@@ -418,9 +419,9 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
     async def test_endpoint_returns_200_on_correct_authorization_for_subpath_and_both_credentials(
         self, credentials_file_path
     ):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = self._create_test_instance()
             await new_connector.setup()
 
@@ -437,9 +438,9 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
     async def test_endpoint_returns_401_on_wrong_authorization_with_second_credential(
         self, credentials_file_path
     ):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = self._create_test_instance()
             await new_connector.setup()
 
@@ -451,9 +452,9 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
     async def test_endpoint_returns_200_on_correct_authorization_with_password_within_credentials_file(
         self, credentials_file_path
     ):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = self._create_test_instance()
             await new_connector.setup()
             headers = {"Authorization": _basic_auth_str("user", "secret_password")}
@@ -464,9 +465,9 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
     async def test_endpoint_returns_200_on_correct_authorization_for_subpath(
         self, credentials_file_path
     ):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = self._create_test_instance()
             await new_connector.setup()
             headers = {"Authorization": _basic_auth_str("user", "password")}

@@ -24,7 +24,7 @@ from logprep.processor.base.exceptions import (
 )
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
-from logprep.util.getter import HttpGetter, RefreshableGetterError
+from logprep.util.getter import RefreshableGetter, RefreshableGetterError
 from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -78,6 +78,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def _load_rule(self, rule: dict | Rule):
         assert isinstance(self.object, Processor)
         self.object._rule_tree = RuleTree()
+        assert self.object.rule_class, "a rule_class should never be none for concrete processors"
         rule = self.object.rule_class.create_from_dict(rule) if isinstance(rule, dict) else rule
         self.object._rule_tree.add_rule(rule)
 
@@ -238,7 +239,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
         with pytest.raises(RefreshableGetterError, match="404"):
             Factory.create({"test instance": config})
 

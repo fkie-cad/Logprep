@@ -22,6 +22,7 @@ from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.framework.pipeline_manager import ThrottlingQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from tests.conftest import mock_env
 from tests.unit.connector.base import BaseInputTestCase
 
 
@@ -481,9 +482,9 @@ class TestHttpConnector(BaseInputTestCase):
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
 
     def test_endpoint_returns_401_if_authorization_not_provided(self, credentials_file_path):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
@@ -492,9 +493,9 @@ class TestHttpConnector(BaseInputTestCase):
             assert resp.status_code == 401
 
     def test_endpoint_returns_401_on_wrong_authorization(self, credentials_file_path):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
@@ -506,9 +507,9 @@ class TestHttpConnector(BaseInputTestCase):
     def test_endpoint_returns_200_on_correct_authorization_with_password_from_file(
         self, credentials_file_path
     ):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = Factory.create({"test connector": self.CONFIG})
             assert isinstance(new_connector, HttpInput)
             new_connector.pipeline_index = 1
@@ -522,9 +523,9 @@ class TestHttpConnector(BaseInputTestCase):
     def test_endpoint_returns_200_on_correct_authorization_with_password_within_credentials_file(
         self, credentials_file_path
     ):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
@@ -534,9 +535,9 @@ class TestHttpConnector(BaseInputTestCase):
             assert resp.status_code == 200
 
     def test_endpoint_returns_200_on_correct_authorization_for_subpath(self, credentials_file_path):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
@@ -548,9 +549,9 @@ class TestHttpConnector(BaseInputTestCase):
     def test_endpoint_returns_200_on_correct_authorization_for_subpath_and_both_credentials(
         self, credentials_file_path
     ):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = Factory.create({"test connector": self.CONFIG})
             assert isinstance(new_connector, HttpInput)
             new_connector.pipeline_index = 1
@@ -569,9 +570,9 @@ class TestHttpConnector(BaseInputTestCase):
     def test_endpoint_returns_401_on_wrong_authorization_with_second_credential(
         self, credentials_file_path
     ):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        env_vars = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env(env_vars):
             new_connector = Factory.create({"test connector": self.CONFIG})
             assert isinstance(new_connector, HttpInput)
             new_connector.pipeline_index = 1

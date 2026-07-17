@@ -5,7 +5,6 @@
 import json
 from collections import OrderedDict
 from copy import deepcopy
-from unittest.mock import patch
 
 import pytest
 import responses
@@ -15,7 +14,8 @@ from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter
+from logprep.util.getter import HttpGetter, RefreshableGetter
+from tests.conftest import mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 resolve_value_variants = [
@@ -689,13 +689,12 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         responses.add(responses.GET, url, json={"ab": {"new1": "1"}})
         responses.add(responses.GET, url, json={"ab": {"new1": "1", "new2": "2"}})
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
-        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
-        with patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
             await self._load_rule(rule)
 

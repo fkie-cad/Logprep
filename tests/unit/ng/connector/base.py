@@ -9,7 +9,6 @@
 
 import base64
 import json
-import os
 import re
 import typing
 import zlib
@@ -26,6 +25,7 @@ from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.util.helper import FieldValue, get_dotted_field_value
 from logprep.util.time import TimeParser
+from tests.conftest import mock_env
 from tests.unit.ng.component.base import BaseComponentTestCase
 
 ConnectorTypeT = typing.TypeVar("ConnectorTypeT", bound=Connector)
@@ -641,14 +641,17 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
                 },
             }
         }
+        env_vars = {
+            "TEST_ENV_VARIABLE_FOO": "test_value_foo",
+            "TEST_ENV_VARIABLE_BAR": "test_value_bar",
+        }
         self.object = self._create_test_instance(config_patch=preprocessing_config)
 
-        os.environ["TEST_ENV_VARIABLE_FOO"] = "test_value_foo"
-        os.environ["TEST_ENV_VARIABLE_BAR"] = "test_value_bar"
         self.object._get_event = mock.AsyncMock(
             return_value=self._create_log_event({"any": "content"}, b'{"any":"content"}')
         )
-        result = await self.object.get_next(0.01)
+        with mock_env(env_vars):
+            result = await self.object.get_next(0.01)
         assert result.data == {
             "any": "content",
             "enriched_field1": "test_value_foo",

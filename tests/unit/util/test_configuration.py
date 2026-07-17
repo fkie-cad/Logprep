@@ -26,6 +26,7 @@ from logprep.util.configuration import (
 )
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from logprep.util.getter import FileGetter, GetterNotFoundError
+from tests.conftest import mock_env
 from tests.testdata.metadata import (
     path_to_config,
     path_to_invalid_config,
@@ -120,7 +121,7 @@ output:
         type: dummy_output
 {attribute}: {second_value}
 """)
-        with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmp_path)}):
+        with mock_env({"PROMETHEUS_MULTIPROC_DIR": str(tmp_path)}):
             config = Configuration.from_sources([str(first_config), str(second_config)])
             attribute_from_test = getattr(config, attribute)
             if hasattr(attribute_from_test, "__attrs_attrs__"):
@@ -519,8 +520,7 @@ pipeline:
         with pytest.raises(InvalidConfigurationError, match=expected_msg):
             Configuration.from_sources((str(test_config_path),))
 
-    patch = mock.patch(
-        "os.environ",
+    patch = mock_env(
         {
             "LOGPREP_VERSION": "1",
             "LOGPREP_PROCESS_COUNT": "16",
@@ -1120,7 +1120,7 @@ output:
             mock_run_pending.assert_called_once()
 
     def test_config_with_missing_environment_error(self):
-        with mock.patch("os.environ", {"PROMETHEUS_MULTIPROC_DIR": "DOES/NOT/EXIST"}):
+        with mock_env({"PROMETHEUS_MULTIPROC_DIR": "DOES/NOT/EXIST"}):
             with pytest.raises(
                 InvalidConfigurationError,
                 match=r"'DOES\/NOT\/EXIST' does not exist",
@@ -1240,7 +1240,7 @@ output:
     ):
         config = Configuration.from_sources([str(config_path)])
         config.metrics = MetricsConfig(enabled=True, port=4242)
-        with mock.patch("os.environ", {}):
+        with mock_env({}):
             with pytest.raises(
                 InvalidConfigurationError,
                 match="Metrics enabled but PROMETHEUS_MULTIPROC_DIR is not set",
@@ -1303,8 +1303,7 @@ endpoints:
         username: test_user
         password: myverysecretpassword
 """)
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}):
             with pytest.raises(
                 InvalidConfigurationError,
                 match="Invalid credentials file.* unexpected keyword argument",
@@ -1337,9 +1336,7 @@ output:
   console:
     type: console_output
 """)
-        with mock.patch.dict(
-            "os.environ", {"PROMETHEUS_MULTIPROC_DIR": str(prometheus_multiproc_dir)}
-        ):
+        with mock_env({"PROMETHEUS_MULTIPROC_DIR": str(prometheus_multiproc_dir)}):
             config1 = Configuration.from_sources(
                 [str(input_config), str(output_config), str(exporter_config)]
             )

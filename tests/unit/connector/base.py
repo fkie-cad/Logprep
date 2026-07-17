@@ -4,7 +4,6 @@
 # pylint: disable=unnecessary-dunder-call
 import base64
 import json
-import os
 import re
 import zlib
 from copy import deepcopy
@@ -19,6 +18,7 @@ from logprep.abc.output import Output
 from logprep.factory import Factory
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
+from tests.conftest import mock_env
 from tests.unit.component.base import BaseComponentTestCase
 
 
@@ -609,9 +609,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector_config.update(preprocessing_config)
         connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
-        os.environ["TEST_ENV_VARIABLE"] = "test_value"
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
-        result = connector.get_next(0.01)
+        with mock_env({"TEST_ENV_VARIABLE": "test_value"}):
+            result = connector.get_next(0.01)
         assert result == {"any": "content", "enriched_field": "test_value"}
 
     def test_preprocessing_enriches_by_multiple_env_variables(self):
@@ -623,14 +623,18 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 },
             }
         }
+        env_vars = {
+            "TEST_ENV_VARIABLE_FOO": "test_value_foo",
+            "TEST_ENV_VARIABLE_BAR": "test_value_bar",
+        }
+
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
         connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
-        os.environ["TEST_ENV_VARIABLE_FOO"] = "test_value_foo"
-        os.environ["TEST_ENV_VARIABLE_BAR"] = "test_value_bar"
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
-        result = connector.get_next(0.01)
+        with mock_env(env_vars):
+            result = connector.get_next(0.01)
         assert result == {
             "any": "content",
             "enriched_field1": "test_value_foo",

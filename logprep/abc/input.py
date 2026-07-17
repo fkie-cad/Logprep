@@ -5,7 +5,6 @@ New input endpoint types are created by implementing it.
 import base64
 import hashlib
 import json
-import os
 import typing
 import zlib
 from abc import abstractmethod
@@ -22,6 +21,7 @@ from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.converters import convert_from_dict
+from logprep.util.environ import ENV_VARS
 from logprep.util.helper import (
     MISSING,
     FieldValue,
@@ -257,8 +257,7 @@ class Input(Connector):
     def _add_env_enrichment_to_event(self, event: dict, enrichments: dict) -> None:
         """Add the env enrichment information to the event"""
         fields = {
-            target: os.environ.get(variable_name, "")
-            for target, variable_name in enrichments.items()
+            target: ENV_VARS.get(variable_name, "") for target, variable_name in enrichments.items()
         }
         add_fields_to(event, fields)
 

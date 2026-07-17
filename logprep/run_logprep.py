@@ -3,7 +3,6 @@
 
 import logging
 import logging.config
-import os
 import signal
 import sys
 import warnings
@@ -18,6 +17,7 @@ from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.context_managers import disable_loggers, logqueue_listener
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
+from logprep.util.environ import ENV_VARS
 from logprep.util.helper import get_versions_string
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.util.rule_dry_runner import DryRunner
@@ -95,7 +95,7 @@ def run(configs: tuple[str], version=None) -> None:
         sys.exit(error.code)
     # pylint: disable=broad-except
     except Exception as error:
-        if os.environ.get("DEBUG", False):
+        if ENV_VARS.get("DEBUG", False):
             logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
         else:
             logger.critical(f"A critical error occurred: {error}")

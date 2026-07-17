@@ -1,16 +1,15 @@
 """Module for getter interface"""
 
+import itertools
 import json
 import logging
-import os
-import re
 from abc import ABC, abstractmethod
-from copy import deepcopy
-from string import Template
-from typing import TypeAlias
+from typing import Iterable, TypeAlias
 
 from attrs import define, field, validators
 from ruamel.yaml import YAML, YAMLError
+
+from logprep.util.environ import ENV_VARS, EnvTemplate
 
 logger = logging.getLogger("Getter")
 yaml = YAML(typ="safe", pure=True)
@@ -30,37 +29,24 @@ ContentType: TypeAlias = str
 class Getter(ABC):
     """Abstract base class describing the getter interface and providing of a factory method."""
 
-    class EnvTemplate(Template):
-        """Template class for uppercase only template variables"""
-
-        pattern = r"""
-            \$(?:
-                (?P<escaped>\$\$\$)|
-                (?P<named>(?!LOGPREP_LIST)(?=LOGPREP_|CI_|GITHUB_|PYTEST_)[_A-Z0-9]*)|
-                {(?P<braced>(?!LOGPREP_LIST)(?=LOGPREP_|CI_|GITHUB_|PYTEST_)[_A-Z0-9]*)}|
-                (?P<invalid>)
-            )
-        """  # type: ignore[assignment]
-
-        flags = re.VERBOSE
-
     protocol: str = field(validator=validators.instance_of(str))
     """Indicates the protocol for the factory to chose a matching getter."""
     target: str = field(validator=validators.instance_of(str))
     """The target which holds the content to return by get method."""
 
-    missing_env_vars: list = field(
+    missing_env_vars: Iterable[str] = field(
         validator=[
-            validators.instance_of(list),
+            validators.instance_of((list, set)),
             validators.deep_iterable(member_validator=validators.instance_of(str)),
         ],
-        factory=list,
+        factory=set,
         repr=False,
     )
     """used variables in content but not set in environment"""
 
     @property
     def uri(self) -> str:
+        """Full-length URI of the getter target, including the protocol"""
         return f"{self.protocol}://{self.target}"
 
     def get(self) -> str:
@@ -70,30 +56,28 @@ class Getter(ABC):
 
     def _resolve_content(self, raw_content: bytes) -> str:
         content = raw_content.decode("utf8")
-        template = self.EnvTemplate(content)
-        kwargs = self._get_kwargs(template, content)
-        return template.safe_substitute(**kwargs)
+        template = EnvTemplate(content)
+        resolved_content = template.safe_substitute(self._get_kwargs(template, content))
+        logger.debug("resolved environment placeholders in content: %s", resolved_content)
+        return resolved_content
 
-    def _get_kwargs(self, template, content):
-        used_env_vars = list(self._get_used_env_vars(content, template))
-        self.missing_env_vars = [env_var for env_var in used_env_vars if env_var not in os.environ]
-        defaults_for_missing = {missing_key: "" for missing_key in self.missing_env_vars}
-        kwargs = deepcopy(os.environ)
-        kwargs |= defaults_for_missing
-        return kwargs
+    def _get_kwargs(self, template: EnvTemplate, content: str):
+        used_env_vars = self._get_used_env_vars(template, content)
+        self.missing_env_vars = used_env_vars.difference(ENV_VARS.keys())
+        return ENV_VARS | {missing_key: "" for missing_key in self.missing_env_vars}
 
-    def _get_used_env_vars(self, content, template):
-        found_variables = template.pattern.findall(
-            content
-        )  # returns a list of tuples in form (escaped, named, braced, invalid)
+    def _get_used_env_vars(self, template: EnvTemplate, content: str) -> set[str]:
+        # returns a list of tuples in form (escaped, named, braced, invalid)
+        found_variables = template.compiled_pattern.findall(content)
         used_named_env_vars = map(lambda x: x[1], found_variables)
         used_braced_env_vars = map(lambda x: x[2], found_variables)
-        return (item for item in {*used_named_env_vars, *used_braced_env_vars} if item)
+        return {item for item in itertools.chain(used_named_env_vars, used_braced_env_vars) if item}
 
     def _resolve_content_by_content_type(self) -> dict | list | str:
         """Get content with enriched environment variables parsed based on content type."""
 
         raw, content_type = self._get_raw()
+        # TODO make resolving env variables optional, especially for user-defiend pure data payloads
         content = self._resolve_content(raw)
 
         match content_type:
@@ -113,7 +97,11 @@ class Getter(ABC):
 
         Note: if parsed_yaml is empty, an empty dict will be returned."""
 
-        parsed_yaml = list(yaml.load_all(content))
+        try:
+            parsed_yaml = list(yaml.load_all(content))
+        except YAMLError:
+            logger.warning("getter failed to deserialize yaml: %s", content, exc_info=True)
+            raise
         if not parsed_yaml:
             return {}
         if len(parsed_yaml) > 1:
@@ -129,7 +117,11 @@ class Getter(ABC):
     @staticmethod
     def _parse_json(content: str) -> dict | list:
         """Parse content to json"""
-        return json.loads(content)
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            logger.warning("getter failed to deserialize json: %s", content, exc_info=True)
+            raise
 
     def get_json(self) -> dict | list:
         """Gets and parses the raw content as json"""
@@ -151,6 +143,7 @@ class Getter(ABC):
         try:
             return self._parse_yaml(content)
         except YAMLError:
+            logger.debug("parsing yaml failed, falling back to json for content: %s", content)
             return self._parse_json(content)
 
     def get_dict(self) -> dict:
@@ -174,8 +167,7 @@ class Getter(ABC):
             content = content[content_field]
         elif content_field is not None:
             raise ValueError(
-                "Expected mapping type, like json object when content_field is set, got %s.",
-                type(content),
+                f"Expected mapping type when content_field is set, got {type(content)}."
             )
 
         if isinstance(content, str):
