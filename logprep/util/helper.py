@@ -10,6 +10,7 @@ from enum import Enum, auto
 from functools import lru_cache, partial, reduce
 from importlib.metadata import version
 from os import remove
+from string import Template
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -58,6 +59,10 @@ FieldValue: TypeAlias = Union[
 FieldRef: TypeAlias = str
 
 T = TypeVar("T")
+
+
+class DottedTemplate(Template):
+    braceidpattern = r"(?a:(?:\\.|[^.$\\{}])+(?:\.(?:\\.|[^.$\\{}])+)*)"
 
 
 def _add_and_overwrite_key(event: dict[str, FieldValue], key: str) -> dict[str, FieldValue]:

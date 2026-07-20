@@ -128,7 +128,7 @@ class ListComparison(Processor):
         Dynamic list loading errors are converted to ``ProcessingWarning`` so the rule's
         failure tags are applied instead of producing a normal ``not_in_list`` result.
         """
-        list_matches = []
+        list_matches: list[str] = []
         try:
             dynamic_set = rule.get_dynamic_set(event)
         except Exception as error:

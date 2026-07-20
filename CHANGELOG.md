@@ -35,10 +35,12 @@
 * ng: use `OutputSpec` instead of `list[dict]` to specify desired output targets for extra events
 * ng: drop "ng_" prefix completely and use a setting in the global registry to activate ng
 * ng: decouple console logging via queue/listener in separate thread
+* improve `list_comparison` performance
 
 ### Bugfix
 * fix `dissector` not dissecting multiline strings
 * fix `grokker` dropping matches on duplicate named capture groups
+* fix `list_comparison` to actually work with dotted field notation
 
 ## 19.4.1
 
