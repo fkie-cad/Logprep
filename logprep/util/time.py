@@ -136,10 +136,10 @@ class TimeParser:
     def _normalize_unix_timestamp(timestamp: str) -> int | float:
         """Normalize the input timestamp string to unix timestamp in seconds.
 
-        Unix timestamps are assumed to be in seconds if the timestamp has 10 digits
-        or fewer before the decimal point, since seconds with more than 10 digits
-        would be far into the future. Supported timestamp lengths before the decimal
-        point are seconds, milliseconds, microseconds, and nanoseconds.
+        The timestamp precision is inferred from the number of digits before the
+        decimal point. Timestamps with 10 digits or fewer are interpreted as seconds.
+        Supported longer timestamp lengths are interpreted as milliseconds,
+        microseconds, or nanoseconds and are scaled down to seconds.
 
         Timestamp strings with a decimal point are parsed as float so fractional
         seconds are preserved. The digit-count heuristic is applied to the integer
