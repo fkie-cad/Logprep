@@ -5,22 +5,31 @@ restart_count: 2
 config_refresh_interval: 300
 error_backlog_size: 1500000
 logger:
-  level: DEBUG
+  level: WARNING
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
-    "py.warnings": {"level": "ERROR"}
-    "Runner": {"level": "DEBUG"}
-    "Processor": {"level": "ERROR"}
-    "Exporter": {"level": "ERROR"}
-    "uvicorn": {"level": "ERROR"}
-    "uvicorn.access": {"level": "ERROR"}
-    "OpenSearchOutput": {"level": "ERROR"}
-    "KafkaOutput": {"level": "ERROR"}
-    "Input": {"level": "ERROR"}
-    "Worker": {"level": "ERROR"}
-    "async_helpers": {"level": "ERROR"}
-    "KafkaOffsetTracker": {"level": "ERROR"}
+    "Config": {"level": "WARNING"}
+    "Credentials": {"level": "WARNING"}
+    "Compoonent": {"level": "WARNING"}
+    "Input": {"level": "WARNING"}
+    "Output": {"level": "WARNING"}
+    "Processor": {"level": "WARNING"}
+    "Rule": {"level": "WARNING"}
+    "Runner": {"level": "WARNING"}
+    "Exporter": {"level": "WARNING"}
+    "uvicorn": {"level": "WARNING"}
+    "uvicorn.access": {"level": "WARNING"}
+    "OpenSearchOutput": {"level": "WARNING"}
+    "KafkaOutput": {"level": "WARNING"}
+    "Worker": {"level": "WARNING"}
+    "PipelineManager": {"level": "DEBUG"}
+    "async_helpers": {"level": "WARNING"}
+    "config_refresh": {"level": "WARNING"}
+    "Queue": {"level": "WARNING"}
+    "KafkaOffsetTracker": {"level": "WARNING"}
+    "Getter": {"level": "WARNING"}
+    "RefreshableGetter": {"level": "WARNING"}
 metrics:
   enabled: true
   port: 8001

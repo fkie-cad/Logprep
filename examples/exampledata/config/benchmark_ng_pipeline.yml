@@ -9,16 +9,7 @@ logger:
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
-    "py.warnings": {"level": "ERROR"}
-    "Runner": {"level": "INFO"}
-    "Processor": {"level": "ERROR"}
-    "Exporter": {"level": "ERROR"}
-    "uvicorn": {"level": "ERROR"}
-    "uvicorn.access": {"level": "ERROR"}
-    "OpenSearchOutput": {"level": "ERROR"}
-    "KafkaOutput": {"level": "ERROR"}
-    "Input": {"level": "ERROR"}
-    "KafkaOffsetTracker": {"level": "ERROR"}
+    Runner: {"level": "INFO"}
 metrics:
   enabled: true
   port: 8001
