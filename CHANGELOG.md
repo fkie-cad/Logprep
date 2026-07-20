@@ -39,6 +39,7 @@
 ### Bugfix
 * fix `dissector` not dissecting multiline strings
 * fix `grokker` dropping matches on duplicate named capture groups
+* fix `list_comparison` to actually work with dotted field notation, and improve performance
 
 ## 19.4.1
 
