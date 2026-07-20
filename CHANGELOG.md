@@ -38,6 +38,34 @@
 * ng: decouple console logging via queue/listener in separate thread
 
 ### Bugfix
+* fix `dissector` not dissecting multiline strings
+* fix `grokker` dropping matches on duplicate named capture groups
+
+## 19.4.1
+
+### Breaking
+
+### Features
+* add support for `dict` in `generic_adder`
+
+### Improvements
+* fix Pyparsing deprecation warnings
+
+### Bugfix
+* fix `add_fields_to` injecting identical objects instead of copies
+* fix `generic_adder` accumulating state by inserting identical objects in events
+
+## 19.4.0
+### Breaking
+
+### Features
+* allow `list_comparison` and `network_comparison` to use dynamic values from event to resolve list uris
+
+### Improvements
+
+### Bugfix
+* make `list_search_base_path` actually optional and correctly overrideable by rule config
+* add missing documentation for the `network_comparison` processor
 
 ## 19.3.0
 ### Breaking
