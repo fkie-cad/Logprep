@@ -43,7 +43,9 @@
 * ng: implement circuit breaker utility to protect downstream systems
 * ng: enable opensearch output to retry on transport- and item-level failures + circuit breaker
 * ng: add metrics for opensearch output
-
+* improve env var access performance by using a cached snapshot
+* getter: add debug logs
+* improve robustness of compose tests
 
 ### Bugfix
 * fix `dissector` not dissecting multiline strings
