@@ -315,14 +315,13 @@ class ListComparisonRule(FieldManagerRule):
             Re-raises the stored data loading error if a dynamic HTTP(S) list cannot be
             loaded, so the processor can apply the rule's failure tags.
         """
-        if not self._is_dynamic_http:
+
+        assert self._config.list_search_base_path
+
+        if not self._is_dynamic_http or not self._config.list_search_base_path.startswith("http"):
             return self._compare_sets
 
         compare_sets_result: dict[str, set] = {}
-        assert self._config.list_search_base_path
-
-        if not self._config.list_search_base_path.startswith("http"):
-            return self._compare_sets
 
         key_val = {
             identifier: get_dotted_field_value(event, identifier)
