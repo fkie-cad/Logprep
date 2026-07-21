@@ -13,13 +13,6 @@ from logprep.util.environ import ENV_VARS, EnvTemplate
 logger = logging.getLogger("Getter")
 yaml = YAML(typ="safe", pure=True)
 
-BLOCKLIST_VARIABLE_NAMES = [
-    "",
-    " ",
-    "LOGPREP_LIST",  # used by list_comparison processor
-]
-
-VALID_PREFIXES = ["LOGPREP_", "CI_", "GITHUB_", "PYTEST_"]
 
 ContentType: TypeAlias = str
 
@@ -142,7 +135,7 @@ class Getter(ABC):
         """Gets dict and fails otherwise"""
         result = self.get_collection()
         if not isinstance(result, dict):
-            raise ValueError("Value is not a dictionary")
+            raise ValueError(f"Expected a dict, got {type(result)}")
         return result
 
     @staticmethod
@@ -159,7 +152,7 @@ class Getter(ABC):
             content = content[content_field]
         elif content_field is not None:
             raise ValueError(
-                f"Expected mapping type when content_field is set, got {type(content)}."
+                f"Expected mapping type when content_field is set, got {type(content)}"
             )
 
         if isinstance(content, str):

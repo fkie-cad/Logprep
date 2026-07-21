@@ -1453,7 +1453,8 @@ class TestHttpGetter:
 
     @mock.patch("logprep.util.getter.HttpGetter._get_from_target", return_value=(b"", None, False))
     def test_update_cache_raises_error_if_empty(self, _):
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
+        http_getter = GetterFactory.from_string("http://something")
+        assert isinstance(http_getter, RefreshableGetter)
         http_getter.cache = None
         with pytest.raises(ValueError, match="HttpGetter cache is empty"):
             http_getter._update_cache()
@@ -1467,19 +1468,19 @@ class TestHttpGetter:
             "{}",
         )
 
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
+        http_getter = GetterFactory.from_string("http://something")
         http_getter.get_collection()
         mock_parse_yaml.assert_called_once()
 
     @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a dict")
     def test_get_dict_raises_exception_if_result_not_dict(self, _):
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
-        with pytest.raises(ValueError, match="Value is not a dictionary"):
+        http_getter = GetterFactory.from_string("http://something")
+        with pytest.raises(ValueError, match="Expected a dict"):
             http_getter.get_dict()
 
     @mock.patch("logprep.abc.getter.Getter.get_collection", return_value={"something": "foo"})
     def test_get_dict_returns_if_result_is_dict(self, _):
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
+        http_getter = GetterFactory.from_string("http://something")
         assert http_getter.get_dict() == {"something": "foo"}
 
     @responses.activate
@@ -1491,7 +1492,7 @@ class TestHttpGetter:
             content_type="application/json",
         )
 
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
+        http_getter = GetterFactory.from_string("http://something")
         assert http_getter.get_list() == ["something"]
 
     @responses.activate
@@ -1507,7 +1508,7 @@ class TestHttpGetter:
             "logprep.abc.getter.Getter._resolve_content_by_content_type",
             return_value=None,
         ):
-            http_getter: HttpGetter = GetterFactory.from_string("http://something")
+            http_getter = GetterFactory.from_string("http://something")
 
             with pytest.raises(ValueError, match="Content is not a list"):
                 http_getter.get_list()
@@ -1520,7 +1521,7 @@ class TestHttpGetter:
 
     def test_refresh_interval_for_getter_file_config_always_zero(self, tmp_path):
         target = "something"
-        http_getter: HttpGetter = GetterFactory.from_string(f"http://{target}")
+        http_getter = GetterFactory.from_string(f"http://{target}")
 
         getter_file_content = {target: {"refresh_interval": 10}}
 
@@ -1542,7 +1543,7 @@ class TestHttpGetter:
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
-            http_getter: HttpGetter = GetterFactory.from_string(f"http://{target}")
+            http_getter = GetterFactory.from_string(f"http://{target}")
             with pytest.raises(RefreshableGetterError, match="Test"):
                 http_getter.get_raw()
 
@@ -1552,7 +1553,7 @@ class TestHttpGetter:
     def test_get_raw_without_interval_logs_warning_on_error_with_empty_cache(self, _, caplog):
         caplog.set_level("WARNING")
         target = "something"
-        http_getter: HttpGetter = GetterFactory.from_string(f"http://{target}")
+        http_getter = GetterFactory.from_string(f"http://{target}")
         http_getter.cache = "something"
         http_getter.get_raw()
         assert re.search(r"Not updating .+ cache with URI .+", caplog.text)
@@ -1561,7 +1562,7 @@ class TestHttpGetter:
     def test_get_raw_without_interval_logs_warning_on_empty_cache(self, _):
         target = "something"
         url = f"http://{target}"
-        http_getter: HttpGetter = GetterFactory.from_string(url)
+        http_getter = GetterFactory.from_string(url)
         with pytest.raises(ValueError, match=f"Cache is empty for HttpGetter with URI '{url}'"):
             http_getter.get_raw()
 
@@ -1571,7 +1572,8 @@ class TestHttpGetter:
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps({target: {"default_return_value": "something"}}))
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
-            http_getter: HttpGetter = GetterFactory.from_string(url)
+            http_getter = GetterFactory.from_string(url)
+            assert isinstance(http_getter, RefreshableGetter)
             assert http_getter._get_default_return_value() == b"something"
             http_getter.protocol = "file"
             http_getter.target = str(http_getter_conf)
@@ -1621,8 +1623,8 @@ class TestHttpGetter:
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
-            http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
-            http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
+            http_getter_1 = GetterFactory.from_string(url_1)
+            http_getter_2 = GetterFactory.from_string(url_2)
         with mock.patch.object(http_getter_1.scheduler, "run_pending") as mock_run_pending:
             mock_run_pending.assert_not_called()
             refresh_getters()
@@ -1687,7 +1689,7 @@ class TestHttpGetter:
             content_type=content_type,
         )
 
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
+        http_getter = GetterFactory.from_string("http://something")
         assert http_getter._resolve_content_by_content_type() == expected
 
     def test_http_getter_uri_does_not_duplicate_protocol(self):
@@ -1713,8 +1715,7 @@ class TestHttpGetter:
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
 
-        moch_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
-        with mock_env(moch_env):
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             http_getter = GetterFactory.from_string(url)
 
         assert isinstance(http_getter, HttpGetter)
