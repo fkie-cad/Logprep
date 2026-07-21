@@ -303,8 +303,8 @@ test_cases = [  # testcase, rule, event, expected
             "comp\\lex.field": "value",
             "comp\\lex.nested": {"field": 42},
             "nested": {"comp\\lex.field": 1337},
-            "\\u\\0\\1\\x\y": 1338,  # pylint: disable=anomalous-backslash-in-string
-            "\\u\\0\\1\\x\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
+            "\\u\\0\\1\\x\\y": 1338,  # pylint: disable=anomalous-backslash-in-string
+            "\\u\\0\\1\\x\\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
         },
         id="Add from rule definition with escaping",
     ),
@@ -454,7 +454,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         event = {}
         instance.process(event)
 
-        rule_add = instance.rules[0].add
+        rule_add = instance.rules[0].add({})
 
         assert event["some_list_field"] == ["some_value"]
         assert event["some_list_field"] is not rule_add["some_list_field"], "only copies in events"

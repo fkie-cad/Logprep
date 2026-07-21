@@ -101,7 +101,7 @@ class TestGenericAdderRule:
             "generic_adder": {"add": {"added_bool_field": True}},
         }
         rule = GenericAdderRule.create_from_dict(rule_definition)
-        assert isinstance(rule.add.get("added_bool_field"), bool)
+        assert isinstance(rule.add({}).get("added_bool_field"), bool)
 
     @responses.activate
     def test_rule_callback_updates_additions_and_preserves_original_add(self, tmp_path):
@@ -146,11 +146,11 @@ class TestGenericAdderRule:
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
             rule = GenericAdderRule.create_from_dict(rule_definition)
-            assert rule.add == expected_1
+            assert rule.add({}) == expected_1
             HttpGetter.refresh()
-            assert rule.add == expected_1
+            assert rule.add({}) == expected_1
             scheduler.run_all()
-            assert rule.add == expected_2
-            assert rule.add == expected_2
+            assert rule.add({}) == expected_2
+            assert rule.add({}) == expected_2
             scheduler.run_all()
-            assert rule.add == expected_3
+            assert rule.add({}) == expected_3

@@ -39,6 +39,6 @@ class GenericAdder(Processor):
 
     def _apply_rules(self, event: dict, rule: Rule) -> None:
         rule = typing.cast(GenericAdderRule, rule)
-        items_to_add = rule.add
+        items_to_add = rule.add(event)
         if items_to_add:
             add_fields_to(event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target)

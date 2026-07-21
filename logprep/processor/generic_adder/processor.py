@@ -41,7 +41,7 @@ class GenericAdder(Processor):
         super().setup()
         for rule in self.rules:
             rule = typing.cast(GenericAdderRule, rule)
-            rule.set_job_tag(self._job_tag_for_cleanup)
+            rule.init_generic_adder(self._job_tag_for_cleanup)
 
     def _apply_rules(self, event: dict, rule: Rule):
         rule = typing.cast(GenericAdderRule, rule)
