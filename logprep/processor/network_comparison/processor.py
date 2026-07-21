@@ -27,12 +27,12 @@ Processor Configuration
 .. automodule:: logprep.processor.network_comparison.rule
 """
 
-import typing
+from collections.abc import Iterable
 from ipaddress import ip_address
 
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.base.rule import Rule
 from logprep.processor.list_comparison.processor import ListComparison
+from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.processor.network_comparison.rule import NetworkComparisonRule
 
 
@@ -42,35 +42,30 @@ class NetworkComparison(ListComparison):
     rule_class = NetworkComparisonRule
 
     def _get_lists_matching_with_values(
-        self, rule: Rule, value_list: list, event: dict
-    ) -> tuple[list, dict]:
-        """Return matching network-list identifiers and the evaluated compare sets.
+        self, rule: ListComparisonRule, value_list: list, event: dict
+    ) -> tuple[list[str], Iterable[str]]:
+        """Return matching network-list identifiers and the evaluated compare set names.
 
         Invalid event values are reported as warnings and skipped. Dynamic list loading
         errors are converted to ``ProcessingWarning`` so the rule's failure tags are
         applied.
         """
-        rule = typing.cast(NetworkComparisonRule, rule)
-        list_matches: list = []
         try:
-            dynamic_set = rule.get_dynamic_set(event)
+            compare_sets = rule.get_compare_sets(event)
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error
 
+        event_ips = []
         for value in value_list:
             try:
-                ip_address_object = ip_address(value)
+                event_ips.append(ip_address(value))
             except ValueError as error:
                 self._handle_warning_error(event, rule, error)
-                continue
 
-            for compare_list, networks in dynamic_set.items():
-                if compare_list in list_matches:
-                    continue
+        matches = [
+            set_name
+            for set_name, set_values in compare_sets.items()
+            if any(ip in network for network in set_values for ip in event_ips)
+        ]
 
-                for network in networks:
-                    if ip_address_object in network:
-                        list_matches.append(compare_list)
-                        break
-
-        return list_matches, dynamic_set
+        return matches, compare_sets.keys()

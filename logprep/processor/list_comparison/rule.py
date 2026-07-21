@@ -160,7 +160,7 @@ class ListComparisonRule(FieldManagerRule):
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if self._config.list_search_base_path:
             return self._config.list_search_base_path
-        elif list_search_base_path:
+        if list_search_base_path:
             self._config.list_search_base_path = list_search_base_path
             return list_search_base_path
 
@@ -233,8 +233,7 @@ class ListComparisonRule(FieldManagerRule):
             if mark_rule_failed:
                 self.mark_failed(error=ex)
                 return None
-            else:
-                raise ex
+            raise ex
         else:
             self.clear_failed()
             return self._compare_sets[fully_resolved_uri]
@@ -301,7 +300,7 @@ class ListComparisonRule(FieldManagerRule):
         self._compare_sets.pop(resolved_uri, None)
         logger.debug("Deleted compare set for %s after cleanup", resolved_uri)
 
-    def get_dynamic_set(self, event: dict) -> dict[str, set]:
+    def get_compare_sets(self, event: dict) -> dict[str, set]:
         """Return the compare sets relevant for the current event.
 
         For local and static lists, this returns the already initialized compare sets.
