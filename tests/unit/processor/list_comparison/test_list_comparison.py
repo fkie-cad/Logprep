@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import json
+import re
 import time
 from pathlib import Path
 from string import Template
@@ -32,7 +33,7 @@ def _get_static_set_entries(rule: ListComparisonRule, name: str) -> set[str] | N
 
 
 def _get_first_dynamic_set_entries(
-    rule: ListComparisonRule, name: str, uri: str | None
+    rule: ListComparisonRule, name: str, uri: str | None = None
 ) -> set[str] | None:
     dynamic_set = next(cs for cs in rule._dynamic_sets if cs.name == name)
     if uri is None:
@@ -40,8 +41,179 @@ def _get_first_dynamic_set_entries(
     return dynamic_set.uri_to_content[uri]
 
 
-def _get_first_dynamic_set_entries(rule: ListComparisonRule, name: str) -> set[str] | None:
-    return _get_first_dynamic_set_entries(rule, name, None)
+test_cases = [  # rule, event, expected
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+        },
+        {"user": "Franz"},
+        {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}},
+        id="single value is found in the list",
+    ),
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+        },
+        {"user": "Charlotte"},
+        {"user": "Charlotte", "user_results": {"not_in_list": ["user_list.txt"]}},
+        id="single value is not found in the list",
+    ),
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+        },
+        {"user": "# This is a doc string for testing"},
+        {
+            "user": "# This is a doc string for testing",
+            "user_results": {"not_in_list": ["user_list.txt"]},
+        },
+        id="comment lines in the list are ignored",
+    ),
+    pytest.param(
+        {
+            "filter": "system",
+            "list_comparison": {
+                "source_fields": ["system"],
+                "target_field": "results",
+                "list_file_paths": ["../lists/user_list.txt", "../lists/system_list.txt"],
+            },
+        },
+        {"system": "Alpha"},
+        {"system": "Alpha", "results": {"in_list": ["system_list.txt"]}},
+        id="value is found in one of two lists",
+    ),
+    pytest.param(
+        {
+            "filter": "system",
+            "list_comparison": {
+                "source_fields": ["system"],
+                "target_field": "results",
+                "list_file_paths": ["../lists/user_list.txt", "../lists/system_list.txt"],
+            },
+        },
+        {"system": "Gamma"},
+        {"system": "Gamma", "results": {"not_in_list": ["user_list.txt", "system_list.txt"]}},
+        id="value is found in neither of two lists",
+    ),
+    pytest.param(
+        {
+            "filter": "channel",
+            "list_comparison": {
+                "source_fields": ["channel.type"],
+                "target_field": "channel_results",
+                "list_file_paths": ["../lists/user_list.txt", "../lists/system_list.txt"],
+            },
+        },
+        {"channel": {"type": "fast"}},
+        {
+            "channel": {"type": "fast"},
+            "channel_results": {"not_in_list": ["user_list.txt", "system_list.txt"]},
+        },
+        id="dotted source subfield is resolved",
+    ),
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "dotted.user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+        },
+        {"user": "Franz", "dotted": {"user_results": {"in_list": ["already_present"]}}},
+        {
+            "user": "Franz",
+            "dotted": {"user_results": {"in_list": ["already_present", "user_list.txt"]}},
+        },
+        id="existing in_list target field is extended",
+    ),
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+                "delete_source_fields": True,
+            },
+        },
+        {"user": "Franz"},
+        {"user_results": {"in_list": ["user_list.txt"]}},
+        id="source field is deleted when configured",
+    ),
+]
+
+
+failure_test_cases = [  # rule, event, expected, error_message
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "dotted.user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+        },
+        {"dot_channel": "test", "user": "Franz", "dotted": "dotted_Franz"},
+        {
+            "dot_channel": "test",
+            "user": "Franz",
+            "dotted": "dotted_Franz",
+            "tags": ["_list_comparison_failure"],
+        },
+        r"FieldExistsWarning.*could not be extended: dotted.user_results",
+        id="target parent field exists as string and cannot be extended",
+    ),
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "dotted.user_results.do_not_look_here",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+        },
+        {"dot_channel": "test", "user": "Franz", "dotted": {"user_results": ["do_not_look_here"]}},
+        {
+            "dot_channel": "test",
+            "user": "Franz",
+            "dotted": {"user_results": ["do_not_look_here"]},
+            "tags": ["_list_comparison_failure"],
+        },
+        r"FieldExistsWarning.*could not be extended: dotted.user_results.do_not_look_here",
+        id="intermediate target field has wrong type",
+    ),
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user",
+                "list_file_paths": ["../lists/user_list.txt"],
+                "overwrite_target": True,
+            },
+        },
+        {"user": "Franz"},
+        {"user": "Franz", "tags": ["_list_comparison_failure"]},
+        r"FieldExistsWarning.*could not be extended: user",
+        id="overwrite target fails when target equals source",
+    ),
+]
 
 
 class TestListComparison(BaseProcessorTestCase):
@@ -56,11 +228,21 @@ class TestListComparison(BaseProcessorTestCase):
         super().setup_method()
         self.object.setup()
 
-    def test_element_in_list(self):
-        document = {"user": "Franz"}
-        expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
-        self.object.process(document)
-        assert document == expected
+    @pytest.mark.parametrize("rule, event, expected", test_cases)
+    def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
+        self._load_rule(rule)
+        self.object.setup()
+        self.object.process(event)
+        assert event == expected
+
+    @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
+    def test_testcases_failure_handling(self, rule, event, expected, error_message):
+        self._load_rule(rule)
+        self.object.setup()
+        result = self.object.process(event)
+        assert len(result.warnings) == 1
+        assert re.match(rf".*{error_message}", str(result.warnings[0]))
+        assert event == expected
 
     def test_list_comparison_uses_rule_level_list_search_base_path_without_processor_base_path(
         self,

@@ -7,13 +7,15 @@ comparison lists loaded from local files or HTTP(S) targets. HTTP base paths may
 be static or templated with environment variables and event fields for dynamic,
 lazy list loading.
 
+A :code:`list_search_base_path` can be specified on the processor level, which is used if the
+individual rules do not define it on their own. Rule-level configuration takes precedence.
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
-    - listcomparisonname:
+    - some_processor_name:
         type: list_comparison
         rules:
             - tests/testdata/rules/rules
