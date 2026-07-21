@@ -2,8 +2,12 @@
 ### Breaking
 
 ### Features
+* calculator: add support for >, <, >=, <=, ==, and != comparisons with arithmetic expressions on both sides
 
 ### Improvements
+* calculator: add clean expression-stack teardown after parsing or evaluation to safely reuse the shared BNF parser
+* calculator: refactor the expression grammar into explicit power, multiplicative, additive, and comparison precedence levels
+* calculator: extend documentation and tests for comparison semantics, chained comparisons, boolean operands, floating-point equality, postfix evaluation order, and parser reuse after failures
 * add launch configurations for ng and advanced debugging
 * preprocessor: move configs and partially (ng) logic in dedicated modules
 * partially use [msgspec.json.Decoder.type](https://github.com/fkie-cad/Logprep/pull/955) for type validation

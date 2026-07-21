@@ -69,7 +69,7 @@ class Calculator(FieldManager):
         @timeout(seconds=rule.timeout)
         def calculate(event, rule, expression):
             try:
-                _ = self.bnf.parseString(expression, parseAll=True)
+                _ = self.bnf.parse_string(expression, parse_all=True)
                 return self.bnf.evaluate_stack()
             except (ParseException, ParseSyntaxException) as error:
                 error.msg = f"({self.name}): expression '{error.line}' could not be parsed"
@@ -80,6 +80,9 @@ class Calculator(FieldManager):
                     + f"{error.args[0]}"
                 ]
                 self._handle_warning_error(event, rule, error)
+            finally:
+                # always clear the expression stack so the shared BNF instance can be safely reused.
+                self.bnf.exprStack.clear()
             return None
 
         return calculate(event, rule, expression)
