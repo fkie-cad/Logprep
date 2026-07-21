@@ -2,33 +2,74 @@
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^
 
-The list comparison enricher requires the additional field :code:`list_comparison`.
-The mandatory keys under :code:`list_comparison` are :code:`source_fields`
-(as list with one element) and :code:`target_field`. Former
-is used to identify the field which is to be checked against the provided lists.
-And the latter is used to define the parent field where the results should
-be written to. Both fields can be dotted subfields.
+Processor-specific rule configuration is done using the mandatory field :code:`list_comparison`.
 
-Additionally, a list or array of lists can be provided underneath the
-required field :code:`list_file_paths`.
+The fields :code:`source_fields` and :code:`target_field` are used to define which field value
+flows into the comparison and where the results flows to, respectively.
+The processor is able to handle multiple lists and checks if the values referenced by
+:code:`source_fields` have any intersection.
+
+The lists used for the comparison are specified using a combination of :code:`list_search_base_path`
+and :code:`list_paths` or :code:`list_file_paths`.
+:code:`list_search_base_path` can be specified on the processor- and/or the rule-level, whereas the
+rule-level takes precedence if both are set.
+
+The actual list URIs to collect data from are derived in different ways for files and HTTP(s) paths:
+
+For **file paths**, absolute paths in :code:`list_paths` or :code:`list_file_paths` are kept as-is.
+Relative paths are transformed to absolute paths by using :code:`list_search_base_path` as a prefix.
+A forward-slash is appended to :code:`list_search_base_path` before joining (if it has none).
+The identifying name for each list is either taken from the key of :code:`list_paths` (if specified)
+or it is derived from the basename of each path.
+
+For **HTTP(s) paths**, :code:`list_search_base_path` has to carry a `${LOGPREP_LIST}` placeholder
+which is used to inject the sub-paths from :code:`list_paths` or :code:`list_file_paths` literally.
+Also, environment variables are interpolated in the process, for instance if the data source for the
+lists is an API, for which domain/host/port etc. are supplied via the environment.
+Environment variables are limited to TODO insert link to relevant docs here here.
+Additionally, field values can be injected into the paths using the same notation and
+(potentially dotted) field references.
+A URI with field references is considered *dynamic* and has considerable performance implications,
+as every new concrete path needs to be fetched ad-hoc during event processing.
+Caching and cache timeouts are used to balance performance and memory demands.
+
+Results of the list comparison are writting to :code:`target_field`.
+If there was any intersection between :code:`source_fields` and any list, a sub-field called
+`"in_list"` is populated, which in turn holds a list of all matching list names.
+If there was no intersection, `"not_in_list"` is populated instead with all list names which
+were tested in the comparison.
+Do note that there is always only one of both responses.
 
 In the following example, the field :code:`user_agent` will be checked against the provided list
-(:code:`priviliged_users.txt`).
+(:code:`/lists/users/privileged.txt`).
 Assuming that the value :code:`non_privileged_user` will match the provided list,
 the result of the list comparison (:code:`in_list`) will be added to the
-target field :code:`List_comparison.example`.
+target field :code:`compare_result`.
 
 ..  code-block:: yaml
     :linenos:
-    :caption: Example Rule to compare a single field against a provided list.
+    :caption: Example rule to compare a field against a provided file list.
 
     filter: 'user_agent'
     list_comparison:
         source_fields: ['user_agent']
-        target_field: 'List_comparison.example'
+        target_field: 'compare_result'
         list_file_paths:
-            - lists/privileged_users.txt
-    description: '...'
+            - users/privileged.txt
+        list_search_base_path: /lists
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule to compare a field against remotely served lists.
+
+    filter: 'user_agent'
+    list_comparison:
+        source_fields: ['user.id']
+        target_field: 'user.classification'
+        list_paths:
+            BLOCKLIST: users/blocked
+            PRIVILEGED: users/privileged
+        list_search_base_path: https://${LOGPREP_LIST_HOST}/api/${LOGPREP_LIST}
 
 .. note::
 
@@ -45,7 +86,7 @@ import functools
 import logging
 import os.path
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 from enum import Enum, auto
 from string import Template
 from typing import TypeAlias
@@ -236,6 +277,8 @@ class ListComparisonRule(FieldManagerRule):
         def __attrs_post_init__(self):
             if self.list_file_paths and self.list_paths:
                 raise ValueError("`list_file_paths` and `list_paths` must not both be specified")
+            if not self.list_file_paths or not self.list_paths:
+                raise ValueError("one of `list_file_paths` or `list_paths` needs to be specified")
 
         @functools.cached_property
         def named_paths(self) -> dict[ListName, str]:
@@ -323,12 +366,12 @@ class ListComparisonRule(FieldManagerRule):
 
     def _update_compare_sets_via_http(self, getter: Getter, compare_set: _CompareSet):
         try:
-            content = getter.get_list(content_field=self._config.content_field)
-            file_elements = set(elem for elem in content if not elem.startswith("#"))
-            compare_set.update_content(getter.target, file_elements)
+            content = self._get_list_contents_from_getter(getter)
+            compare_set.update_content(getter.target, content)
         except Exception as ex:
             if isinstance(compare_set, _StaticCompareSet):
                 self._mark_failed(compare_set, error=ex)
+                return
             raise ex
         else:
             # TODO ugly check in hot path, better idea?
@@ -352,25 +395,32 @@ class ListComparisonRule(FieldManagerRule):
             self._recompute_failure_state()
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
-        content_field = self._config.content_field
-        absolute_list_paths = [
-            list_path for list_path in self._config.list_file_paths if list_path.startswith("/")
-        ]
         if not list_search_base_path.endswith("/"):
             list_search_base_path = list_search_base_path + "/"
-        converted_absolute_list_paths = [
-            list_search_base_path + list_path
-            for list_path in self._config.list_file_paths
-            if not list_path.startswith("/")
+
+        absolute_paths = [
+            path if path.startswith("/") else list_search_base_path + path
+            for path in self._config.named_paths.values()
         ]
-        list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
-        for list_path in list_paths:
-            compare_elements = GetterFactory.from_string(list_path).get_list(
-                content_field=content_field
-            )
-            file_elements = (elem for elem in compare_elements if not elem.startswith("#"))
-            filename = os.path.basename(list_path)
-            self._static_sets.append(_StaticCompareSet(name=filename, content=set(file_elements)))
+
+        list_names: Iterable[str] = self._config.named_paths.keys()
+        if self._config.list_file_paths:
+            list_names = [os.path.basename(path) for path in absolute_paths]
+
+        for list_name, list_path in zip(list_names, absolute_paths):
+            content = self._get_list_contents_from_getter(GetterFactory.from_string(list_path))
+            self._static_sets.append(_StaticCompareSet(name=list_name, content=content))
+
+    def _transform_and_filter_list_element(self, elem: str) -> str | None:
+        return elem if not elem.startswith("#") else None
+
+    def _get_list_contents_from_getter(self, getter: Getter) -> set:
+        raw_list = getter.get_list(content_field=self._config.content_field)
+        return {
+            elem
+            for elem in map(self._transform_and_filter_list_element, raw_list)
+            if elem is not None
+        }
 
     def _load_and_refresh_uri(self, compare_set: _CompareSet, uri: str):
         getter = GetterFactory.from_string(uri)
