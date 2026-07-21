@@ -86,7 +86,7 @@ import functools
 import logging
 import os.path
 from abc import ABC, abstractmethod
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Sequence
 from enum import Enum, auto
 from string import Template
 from typing import TypeAlias
@@ -277,18 +277,8 @@ class ListComparisonRule(FieldManagerRule):
         def __attrs_post_init__(self):
             if self.list_file_paths and self.list_paths:
                 raise ValueError("`list_file_paths` and `list_paths` must not both be specified")
-            if not self.list_file_paths or not self.list_paths:
+            if not self.list_file_paths and not self.list_paths:
                 raise ValueError("one of `list_file_paths` or `list_paths` needs to be specified")
-
-        @functools.cached_property
-        def named_paths(self) -> dict[ListName, str]:
-            """
-            Adapter property unifying access to legacy `list_file_paths` and `list_paths`
-            """
-            if self.list_paths:
-                return self.list_paths
-            # legacy: path name is the path itself
-            return {path: path for path in self.list_file_paths}
 
     def __init__(
         self,
@@ -299,10 +289,10 @@ class ListComparisonRule(FieldManagerRule):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._callback_tag = ""
-        self.compare_set_names = self._config.named_paths.keys()
         self._static_sets: list[_StaticCompareSet] = []
         self._dynamic_sets: list[_DynamicCompareSet] = []
         self._all_dynamic_identifiers: tuple[str, ...] = ()
+        self.compare_set_names: Sequence[str] = []
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if self._config.list_search_base_path:
@@ -318,7 +308,7 @@ class ListComparisonRule(FieldManagerRule):
     def init_list_comparison(
         self,
         callback_tag: str,
-        list_search_base_path: str | None = None,
+        base_path: str | None = None,
     ):
         """Initialize comparison lists for this rule.
 
@@ -331,29 +321,16 @@ class ListComparisonRule(FieldManagerRule):
         InvalidConfigurationError
             If neither the rule nor the processor provides ``list_search_base_path``.
         """
-        list_search_base_path = self._get_list_search_base_path(list_search_base_path)
+        base_path = self._get_list_search_base_path(base_path)
         self._callback_tag = callback_tag
 
-        if not list_search_base_path.startswith("http"):
-            self._init_list_comparison_from_local_file(list_search_base_path)
+        list_paths = list(self._config.list_paths.values()) or self._config.list_file_paths
+        list_names = list(self._config.list_paths.keys()) or None
+
+        if not base_path.startswith("http"):
+            self._init_list_comparison_from_local_file(base_path, list_paths, list_names)
         else:
-            base_template = Template(list_search_base_path)
-            all_dynamic_identifiers: set[str] = set()
-
-            for name, list_path in self._config.named_paths.items():
-                full_path = base_template.safe_substitute(LOGPREP_LIST=list_path)
-                full_path_with_env = Template(full_path).safe_substitute(ENV_VARS)
-
-                dynamic_template = DottedTemplate(full_path_with_env)
-                dynamic_identifiers = dynamic_template.get_identifiers()
-
-                if dynamic_identifiers:
-                    self._add_dynamic_compare_set(name=name, uri_template=dynamic_template)
-                    all_dynamic_identifiers = all_dynamic_identifiers.union(dynamic_identifiers)
-                else:
-                    self._add_static_compare_set(name=name, path=full_path_with_env)
-
-            self._all_dynamic_identifiers = tuple(all_dynamic_identifiers)
+            self._init_list_comparison_from_http(base_path, list_paths, list_names)
 
     def _add_static_compare_set(self, name: ListName, path: str):
         compare_set = _StaticCompareSet(name=name, content=set())
@@ -381,7 +358,10 @@ class ListComparisonRule(FieldManagerRule):
     def _recompute_failure_state(self):
         errors = [cs.error for cs in self._static_sets if cs.error]
         if errors:
-            self.mark_failed(ExceptionGroup("rule failed due to list data retrieval", errors))
+            if len(errors) == 1:
+                self.mark_failed(errors[0])
+            else:
+                self.mark_failed(ExceptionGroup("rule failed due to list data retrieval", errors))
         else:
             self.clear_failed()
 
@@ -394,22 +374,47 @@ class ListComparisonRule(FieldManagerRule):
             compare_set.error = None
             self._recompute_failure_state()
 
-    def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
-        if not list_search_base_path.endswith("/"):
-            list_search_base_path = list_search_base_path + "/"
+    def _init_list_comparison_from_local_file(
+        self, base_path: str, list_paths: Sequence[str], list_names: Sequence[str] | None
+    ):
+        if not base_path.endswith("/"):
+            base_path = base_path + "/"
 
-        absolute_paths = [
-            path if path.startswith("/") else list_search_base_path + path
-            for path in self._config.named_paths.values()
-        ]
+        absolute_paths = [path if path.startswith("/") else base_path + path for path in list_paths]
 
-        list_names: Iterable[str] = self._config.named_paths.keys()
-        if self._config.list_file_paths:
+        if list_names is None:
             list_names = [os.path.basename(path) for path in absolute_paths]
 
         for list_name, list_path in zip(list_names, absolute_paths):
             content = self._get_list_contents_from_getter(GetterFactory.from_string(list_path))
             self._static_sets.append(_StaticCompareSet(name=list_name, content=content))
+
+        self.compare_set_names = list_names
+
+    def _init_list_comparison_from_http(
+        self, base_path: str, list_paths: Sequence[str], list_names: Sequence[str] | None
+    ):
+        base_template = Template(base_path)
+        all_dynamic_identifiers: set[str] = set()
+
+        if list_names is None:
+            list_names = list_paths
+
+        for name, list_path in zip(list_names, list_paths):
+            full_path = base_template.safe_substitute(LOGPREP_LIST=list_path)
+            full_path_with_env = Template(full_path).safe_substitute(ENV_VARS)
+
+            dynamic_template = DottedTemplate(full_path_with_env)
+            dynamic_identifiers = dynamic_template.get_identifiers()
+
+            if dynamic_identifiers:
+                self._add_dynamic_compare_set(name=name, uri_template=dynamic_template)
+                all_dynamic_identifiers = all_dynamic_identifiers.union(dynamic_identifiers)
+            else:
+                self._add_static_compare_set(name=name, path=full_path_with_env)
+
+        self._all_dynamic_identifiers = tuple(all_dynamic_identifiers)
+        self.compare_set_names = list_names
 
     def _transform_and_filter_list_element(self, elem: str) -> str | None:
         return elem if not elem.startswith("#") else None

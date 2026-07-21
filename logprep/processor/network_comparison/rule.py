@@ -48,7 +48,7 @@ from ipaddress import ip_network
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.processor.list_comparison.rule import ListComparisonRule
+from logprep.processor.list_comparison.rule import ListComparisonRule, ListName
 
 # def _fix_inherited_pydoc(cls, fields):
 #     cls.__doc__ = cls.bases[0].__doc__.replace("ListComparisonRule", "NetworkComparisonRule")
@@ -65,7 +65,8 @@ class NetworkComparisonRule(ListComparisonRule):
         """RuleConfig for NetworkComparisonRule"""
 
         list_file_paths: list[str] = field(
-            validator=validators.deep_iterable(member_validator=validators.instance_of(str))
+            validator=validators.deep_iterable(member_validator=validators.instance_of(str)),
+            factory=list,
         )
         """List of files. For string format see :ref:`getters`.
 
@@ -83,12 +84,59 @@ class NetworkComparisonRule(ListComparisonRule):
            authenticity and integrity of the loaded values.
 
         """
-        list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
-        """Base Path from where to find relative files from :code:`list_file_paths`.
-        You can also pass a template with keys from environment,
-        e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
-        will be filled by this processor. """
-        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
+
+        list_paths: dict[ListName, str] = field(
+            validator=validators.deep_mapping(
+                key_validator=validators.instance_of(ListName),
+                value_validator=validators.instance_of(str),
+                mapping_validator=validators.instance_of(dict),
+            ),
+            factory=dict,
+        )
+        """
+        Mapping for configuring list paths with representative names.
+        Keys represent the names on which results will be reported.
+        Values represent the paths which populates `${LOGPREP_LIST}`.
+
+        Example:
+
+        ..  code-block:: yaml
+
+            list_paths:
+                BLACKLISTED_HOSTS: blacklists/malicious_hosts
+            list_search_base_path: http://example.tld/api/${LOGPREP_LIST}
+
+
+        .. security-best-practice::
+           :title: Processor - Network Comparison list file paths Memory Consumption
+
+           Be aware that all values of the remote files were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - Network Comparison list file paths Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
+        """
+
+        list_search_base_path: str | None = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
+        )
+        """
+        Base path used to resolve this rule's relative ``list_file_paths``.
+
+        If unset, the processor-level ``list_search_base_path`` is used. A base path must
+        be configured either on the rule or on the processor.
+
+        The value may use getter syntax and ``string.Template`` placeholders.
+        Environment variables and ``${LOGPREP_LIST}`` are resolved during setup. For
+        HTTP(S) paths, unresolved placeholders are resolved from event fields during
+        processing.
+        """
+        mapping: dict = field(default={}, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         content_field: str | None = field(
             validator=validators.optional(validators.instance_of(str)),
@@ -128,6 +176,12 @@ class NetworkComparisonRule(ListComparisonRule):
                 ``content_field: "content"``
                     Reads the list from the ``"content"`` key of the JSON object.
         """
+
+        def __attrs_post_init__(self):
+            if self.list_file_paths and self.list_paths:
+                raise ValueError("`list_file_paths` and `list_paths` must not both be specified")
+            if not self.list_file_paths and not self.list_paths:
+                raise ValueError("one of `list_file_paths` or `list_paths` needs to be specified")
 
     def _transform_and_filter_list_element(self, elem):
         elem = super()._transform_and_filter_list_element(elem)
