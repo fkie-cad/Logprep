@@ -139,7 +139,7 @@ class ListComparison(Processor):
         failure tags are applied instead of producing a normal ``not_in_list`` result.
         """
         try:
-            compare_sets = rule.get_compare_sets(event)
+            compare_sets = rule.iter_compare_sets(event)
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error
 

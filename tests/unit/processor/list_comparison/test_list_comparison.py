@@ -11,6 +11,7 @@ import responses
 
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
+from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
     HttpGetter,
@@ -23,6 +24,24 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 NOT_SET = object()
 """A sentinel object to indicate that a value has not been provided."""
+
+
+def _get_static_set_entries(rule: ListComparisonRule, name: str) -> set[str] | None:
+    static_set = next(cs for cs in rule._static_sets if cs.name == name)
+    return static_set.content
+
+
+def _get_first_dynamic_set_entries(
+    rule: ListComparisonRule, name: str, uri: str | None
+) -> set[str] | None:
+    dynamic_set = next(cs for cs in rule._dynamic_sets if cs.name == name)
+    if uri is None:
+        return next(iter(dynamic_set.uri_to_content.values()), None)
+    return dynamic_set.uri_to_content[uri]
+
+
+def _get_first_dynamic_set_entries(rule: ListComparisonRule, name: str) -> set[str] | None:
+    return _get_first_dynamic_set_entries(rule, name, None)
 
 
 class TestListComparison(BaseProcessorTestCase):
@@ -56,7 +75,6 @@ class TestListComparison(BaseProcessorTestCase):
                 "list_search_base_path": self.CONFIG["list_search_base_path"],
                 "list_file_paths": ["../lists/user_list.txt"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -146,7 +164,6 @@ class TestListComparison(BaseProcessorTestCase):
                 "target_field": "dotted.user_results",
                 "list_file_paths": ["../lists/user_list.txt"],
             },
-            "description": "",
         }
         self._load_rule(rule_dict)
         self.object.setup()
@@ -169,7 +186,6 @@ class TestListComparison(BaseProcessorTestCase):
                 "target_field": "dotted.user_results",
                 "list_file_paths": ["../lists/user_list.txt"],
             },
-            "description": "",
         }
         self._load_rule(rule_dict)
         self.object.setup()
@@ -197,7 +213,6 @@ class TestListComparison(BaseProcessorTestCase):
                 "target_field": "dotted.user_results",
                 "list_file_paths": ["../lists/user_list.txt"],
             },
-            "description": "",
         }
         self._load_rule(rule_dict)
         self.object.setup()
@@ -226,7 +241,6 @@ class TestListComparison(BaseProcessorTestCase):
                 "target_field": "dotted.user_results.do_not_look_here",
                 "list_file_paths": ["../lists/user_list.txt"],
             },
-            "description": "",
         }
         self._load_rule(rule_dict)
         self.object.setup()
@@ -263,7 +277,6 @@ class TestListComparison(BaseProcessorTestCase):
                 "list_file_paths": ["../lists/user_list.txt"],
                 "delete_source_fields": True,
             },
-            "description": "",
         }
         expected = {"user_results": {"in_list": ["user_list.txt"]}}
         self._load_rule(rule_dict)
@@ -282,7 +295,6 @@ class TestListComparison(BaseProcessorTestCase):
                 "list_file_paths": ["../lists/user_list.txt"],
                 "overwrite_target": True,
             },
-            "description": "",
         }
         self._load_rule(rule_dict)
         self.object.setup()
@@ -309,7 +321,6 @@ Hans
                 "target_field": "user_results",
                 "list_file_paths": ["bad_users.list"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -323,7 +334,11 @@ Hans
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         processor.setup()
-        assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
+        assert _get_static_set_entries(processor.rules[0], "bad_users.list") == {
+            "Franz",
+            "Heinz",
+            "Hans",
+        }
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -353,7 +368,6 @@ Hans
                 "target_field": "user_results",
                 "list_file_paths": ["bad_users.list"],
             },
-            "description": "",
         }
 
         if content_field is not NOT_SET:
@@ -371,7 +385,11 @@ Hans
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         processor.setup()
-        assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
+        assert _get_static_set_entries(processor.rules[0], "bad_users.list") == {
+            "Franz",
+            "Heinz",
+            "Hans",
+        }
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -401,7 +419,6 @@ Hans
                 "target_field": "user_results",
                 "list_file_paths": [file_name],
             },
-            "description": "",
         }
 
         if content_field is not NOT_SET:
@@ -419,7 +436,11 @@ Hans
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         processor.setup()
-        assert processor.rules[0].compare_sets == {"file.json": {"Franz", "Heinz", "Hans"}}
+        assert _get_static_set_entries(processor.rules[0], "file.json") == {
+            "Franz",
+            "Heinz",
+            "Hans",
+        }
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -449,7 +470,6 @@ Hans
                 "list_file_paths": [file_name],
                 "content_field": content_field,
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -492,7 +512,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": ["bad_users.list"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -510,10 +529,16 @@ Heinz
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)
             processor.setup()
-            assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
-            assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz", "Hans"}}
+            assert _get_static_set_entries(processor.rules[0], "bad_users.list") == {
+                "Franz",
+                "Heinz",
+                "Hans",
+            }
             HttpGetter(target=url, protocol="http").scheduler.run_all()
-            assert processor.rules[0].compare_sets == {url: {"Franz", "Heinz"}}
+            assert _get_static_set_entries(processor.rules[0], "bad_users.list") == {
+                "Franz",
+                "Heinz",
+            }
 
     @responses.activate
     def test_list_comparison_resolves_dynamic_http_template_from_event(self):
@@ -524,7 +549,7 @@ Heinz
         expected = {
             "tenant": "acme",
             "user": "Foo",
-            "user_results": {"in_list": [url]},
+            "user_results": {"in_list": [list_name]},
         }
 
         responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
@@ -536,7 +561,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -551,13 +575,13 @@ Heinz
         processor._rule_tree.add_rule(rule)
 
         processor.setup()
-        assert rule.compare_sets == {}
+        assert _get_first_dynamic_set_entries(rule, list_name) is None
         assert len(responses.calls) == 0
 
         processor.process(document)
 
         assert document == expected
-        assert rule.compare_sets == {url: {"Foo", "Bar"}}
+        assert _get_first_dynamic_set_entries(rule, list_name) == {"Foo", "Bar"}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
@@ -588,7 +612,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_path],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -604,13 +627,13 @@ Heinz
             processor._rule_tree.add_rule(rule)
             processor.setup()
 
-            assert rule.compare_sets == {}
+            assert _get_first_dynamic_set_entries(rule, list_path) is None
             assert len(responses.calls) == 0
 
             processor.process(document)
 
         assert document["user_results"] == {"in_list": [url]}
-        assert rule.compare_sets == {url: {"Foo", "Bar"}}
+        assert _get_first_dynamic_set_entries(rule, url) == {"Foo", "Bar"}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
@@ -626,7 +649,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": ["${LIST_TENANT}/bad_users.list"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -642,7 +664,7 @@ Heinz
             processor._rule_tree.add_rule(rule)
             processor.setup()
 
-        assert rule.compare_sets == {url: {"Foo", "Bar"}}
+        assert _get_first_dynamic_set_entries(rule, url) == {"Foo", "Bar"}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
@@ -661,7 +683,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": ["common.list", "${tenant.id}/bad_users.list"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -676,7 +697,7 @@ Heinz
         processor._rule_tree.add_rule(rule)
         processor.setup()
 
-        assert rule.compare_sets == {}
+        assert _get_first_dynamic_set_entries(rule, list_name) is None
         assert len(responses.calls) == 0
 
         processor.process(document)
@@ -734,7 +755,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -749,13 +769,13 @@ Heinz
         processor._rule_tree.add_rule(rule)
         processor.setup()
 
-        assert rule.compare_sets == {}
+        assert _get_first_dynamic_set_entries(rule, list_name) is None
         assert len(responses.calls) == 0
 
         processor.process(document)
 
         assert document["user_results"] == {"in_list": [url]}
-        assert rule.compare_sets == {url: {"Foo", "Bar"}}
+        assert _get_first_dynamic_set_entries(rule, url) == {"Foo", "Bar"}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
@@ -773,7 +793,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": ["bad_users.list"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -814,7 +833,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -864,7 +882,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -910,7 +927,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -928,7 +944,7 @@ Heinz
         processor.process(document)
 
         assert document == expected
-        assert rule.compare_sets == {url: set()}
+        assert _get_first_dynamic_set_entries(rule, url) == set()
 
     @responses.activate
     def test_list_comparison_dynamic_http_template_rejects_non_scalar_event_values(self):
@@ -945,7 +961,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": ["bad_users.list"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -984,7 +999,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": ["bad_users.list"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -1037,7 +1051,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": ["bad_users.list"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -1066,7 +1079,7 @@ Heinz
 
         assert successful_document == expected_successful_document
         assert rule.data_error is None
-        assert rule.compare_sets == {successful_url: {"Foo"}}
+        assert _get_first_dynamic_set_entries(rule, successful_url) == {"Foo"}
 
     @responses.activate
     def test_list_comparison_removes_timed_out_dynamic_compare_set(self):
@@ -1084,7 +1097,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -1102,7 +1114,7 @@ Heinz
         with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
             processor.process(document)
 
-        assert rule.compare_sets == {url: {"Foo"}}
+        assert _get_first_dynamic_set_entries(rule, url) == {"Foo"}
         assert url in HttpGetter._target_to_data_caches
 
         with mock.patch("logprep.util.getter.time.monotonic", return_value=161.1):
@@ -1132,7 +1144,6 @@ Heinz
                     "../lists/user_list.txt",
                 ],
             },
-            "description": "",
         }
         self._load_rule(rule_dict)
         self.object.setup()
@@ -1160,7 +1171,6 @@ Heinz
                 "target_field": "system_results",
                 "list_file_paths": ["../lists/system_list.txt"],
             },
-            "description": "",
         }
         config = {
             "type": "list_comparison",
@@ -1207,7 +1217,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
 
         config = {
@@ -1257,7 +1266,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
 
         config = {
@@ -1310,7 +1318,7 @@ Heinz
         assert document == expected
         assert len(responses.calls) == retries.total + 1
         assert responses.calls[0].request.url == url
-        assert rule.compare_sets == {}
+        assert _get_first_dynamic_set_entries(rule, list_name) is None
 
     @responses.activate
     def test_list_comparison_recovers_after_failed_http_getter_setup(
@@ -1338,7 +1346,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
 
         config = {
@@ -1359,7 +1366,7 @@ Heinz
         data_error = rule.data_error
         assert isinstance(data_error, RefreshableGetterError)
         assert document == expected_failed_document
-        assert rule.compare_sets == {}
+        assert _get_first_dynamic_set_entries(rule, list_name) is None
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500
 
@@ -1388,7 +1395,7 @@ Heinz
 
         assert rule.data_error is None
         assert document == expected_recovered_document
-        assert rule.compare_sets == {url: {"Foo"}}
+        assert _get_first_dynamic_set_entries(rule, url) == {"Foo"}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200
 
@@ -1419,7 +1426,6 @@ Heinz
                 "target_field": "user_results",
                 "list_file_paths": [list_name],
             },
-            "description": "",
         }
 
         config = {
@@ -1444,7 +1450,7 @@ Heinz
             data_error = rule.data_error
             assert isinstance(data_error, RefreshableGetterError)
             assert document == expected_failed_document
-            assert rule.compare_sets == {}
+            assert _get_first_dynamic_set_entries(rule, list_name) is None
             assert responses.calls[-1].request.url == url
             assert responses.calls[-1].response.status_code == 500
 

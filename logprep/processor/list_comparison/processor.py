@@ -131,20 +131,21 @@ class ListComparison(Processor):
         Dynamic list loading errors are converted to ``ProcessingWarning`` so the rule's
         failure tags are applied instead of producing a normal ``not_in_list`` result.
         """
-        try:
-            compare_sets = rule.get_compare_sets(event)
-        except Exception as error:
-            raise ProcessingWarning(str(error), rule, event) from error
 
         event_values = set(value_list)
 
-        matches = [
-            set_name
-            for set_name, set_values in compare_sets.items()
-            if not event_values.isdisjoint(set_values)
-        ]
+        try:
 
-        return matches, compare_sets.keys()
+            matches = [
+                set_name
+                for set_name, set_values in rule.iter_compare_sets(event)
+                if not event_values.isdisjoint(set_values)
+            ]
+
+        except Exception as error:
+            raise ProcessingWarning(str(error), rule, event) from error
+
+        return matches, rule.compare_set_names
 
     def _shut_down(self) -> None:
         RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
