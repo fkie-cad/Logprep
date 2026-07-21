@@ -41,36 +41,88 @@ target field :code:`List_comparison.example`.
    :noindex:
 """
 
+import functools
 import logging
 import os.path
+from abc import ABC, abstractmethod
+from collections.abc import Generator
+from enum import Enum, auto
+from string import Template
+from typing import TypeAlias
 
 from attrs import define, field, validators
 
+from logprep.abc.getter import Getter
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.environ import ENV_VARS
 from logprep.util.getter import (
     GetterFactory,
-    HttpGetter,
     RefreshableGetter,
 )
 from logprep.util.helper import DottedTemplate, get_dotted_field_value
 
 logger = logging.getLogger()
 
+ListName: TypeAlias = str
+ListContent: TypeAlias = set
+
+
+class ContentFailure(Enum):
+    """Sentinel type for indicating missing fields."""
+
+    CONTENT_FAILURE = auto()
+
+
+CONTENT_FAILURE = ContentFailure.CONTENT_FAILURE  # pylint: disable=invalid-name
+"""Sentinel value for indicating failed content retrievals"""
+
+
+@define(kw_only=True)
+class _CompareSet(ABC):
+    name: ListName
+
+    @abstractmethod
+    def update_content(self, uri: str, content: ListContent | None):
+        """Updates the cached and post-processed content"""
+
+
+@define(kw_only=True)
+class _StaticCompareSet(_CompareSet):
+    content: ListContent | None
+    error: Exception | None = field(default=None)
+
+    def update_content(self, _, content: ListContent | None):
+        self.content = content
+
+
+@define(kw_only=True)
+class _DynamicCompareSet(_CompareSet):
+    uri_template: DottedTemplate
+    uri_to_content: dict[str, ListContent] = field(factory=dict)
+
+    def update_content(self, uri: str, content: ListContent | None):
+        if content is None:
+            self.remove_content(uri)
+        else:
+            self.uri_to_content[uri] = content
+
+    def remove_content(self, uri: str):
+        """Remove the cached contents for a specific uri"""
+        self.uri_to_content.pop(uri, None)
+
 
 class ListComparisonRule(FieldManagerRule):
     """Check if documents match a filter."""
-
-    _compare_sets: dict[str, set]
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
         """RuleConfig for ListComparisonRule"""
 
         list_file_paths: list[str] = field(
-            validator=validators.deep_iterable(member_validator=validators.instance_of(str))
+            validator=validators.deep_iterable(member_validator=validators.instance_of(str)),
+            factory=list,
         )
         """List of files. For string format see :ref:`getters`.
 
@@ -88,6 +140,44 @@ class ListComparisonRule(FieldManagerRule):
            authenticity and integrity of the loaded values.
 
         """
+
+        list_paths: dict[ListName, str] = field(
+            validator=validators.deep_mapping(
+                key_validator=validators.instance_of(ListName),
+                value_validator=validators.instance_of(str),
+                mapping_validator=validators.instance_of(dict),
+            ),
+            factory=dict,
+        )
+        """
+        Mapping for configuring list paths with representative names.
+        Keys represent the names on which results will be reported.
+        Values represent the paths which populates `${LOGPREP_LIST}`.
+
+        Example:
+
+        ..  code-block:: yaml
+
+            list_paths:
+                BLACKLISTED_HOSTS: blacklists/malicious_hosts
+            list_search_base_path: http://example.tld/api/${LOGPREP_LIST}
+
+
+        .. security-best-practice::
+           :title: Processor - List Comparison list file paths Memory Consumption
+
+           Be aware that all values of the remote files were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - List Comparison list file paths Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
+        """
+
         list_search_base_path: str | None = field(
             default=None, validator=validators.optional(validators.instance_of(str))
         )
@@ -143,6 +233,20 @@ class ListComparisonRule(FieldManagerRule):
                     Reads the list from the ``"content"`` key of the JSON object.
         """
 
+        def __attrs_post_init__(self):
+            if self.list_file_paths and self.list_paths:
+                raise ValueError("`list_file_paths` and `list_paths` must not both be specified")
+
+        @functools.cached_property
+        def named_paths(self) -> dict[ListName, str]:
+            """
+            Adapter property unifying access to legacy `list_file_paths` and `list_paths`
+            """
+            if self.list_paths:
+                return self.list_paths
+            # legacy: path name is the path itself
+            return {path: path for path in self.list_file_paths}
+
     def __init__(
         self,
         filter_rule: FilterExpression,
@@ -151,10 +255,10 @@ class ListComparisonRule(FieldManagerRule):
     ):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
-        self._compare_sets = {}
         self._callback_tag = ""
-        self._is_dynamic_http = False
-        self._dynamic_templates: tuple[DottedTemplate, ...] = ()
+        self.compare_set_names = self._config.named_paths.keys()
+        self._static_sets: list[_StaticCompareSet] = []
+        self._dynamic_sets: list[_DynamicCompareSet] = []
         self._all_dynamic_identifiers: tuple[str, ...] = ()
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
@@ -186,57 +290,66 @@ class ListComparisonRule(FieldManagerRule):
         """
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         self._callback_tag = callback_tag
+
         if not list_search_base_path.startswith("http"):
             self._init_list_comparison_from_local_file(list_search_base_path)
         else:
-            self._config.list_search_base_path = (
-                list_search_base_path
-                if not self._config.list_search_base_path
-                else self._config.list_search_base_path
-            )
+            base_template = Template(list_search_base_path)
+            all_dynamic_identifiers: set[str] = set()
 
-            base_template = DottedTemplate(self._config.list_search_base_path)
-            resolved_templates = tuple(
-                DottedTemplate(
-                    DottedTemplate(
-                        base_template.safe_substitute({**ENV_VARS, "LOGPREP_LIST": list_path})
-                    ).safe_substitute(ENV_VARS)
-                )
-                for list_path in self._config.list_file_paths
-            )
+            for name, list_path in self._config.named_paths.items():
+                full_path = base_template.safe_substitute(LOGPREP_LIST=list_path)
+                full_path_with_env = Template(full_path).safe_substitute(ENV_VARS)
 
-            dynamic_identifiers = tuple(
-                dict.fromkeys(
-                    identifier
-                    for template in resolved_templates
-                    for identifier in template.get_identifiers()
-                )
-            )
+                dynamic_template = DottedTemplate(full_path_with_env)
+                dynamic_identifiers = dynamic_template.get_identifiers()
 
-            # Check if this is a static (eagerly loaded) or dynamic (lazily loaded) list_comparison
-            if dynamic_identifiers:
-                self._is_dynamic_http = True
-                self._dynamic_templates = resolved_templates
-                self._all_dynamic_identifiers = dynamic_identifiers
-                return
+                if dynamic_identifiers:
+                    self._add_dynamic_compare_set(name=name, uri_template=dynamic_template)
+                    all_dynamic_identifiers = all_dynamic_identifiers.union(dynamic_identifiers)
+                else:
+                    self._add_static_compare_set(name=name, path=full_path_with_env)
 
-            self._init_static_http_list_comparison(resolved_templates)
+            self._all_dynamic_identifiers = tuple(all_dynamic_identifiers)
 
-    def _update_compare_sets_via_http(
-        self, http_getter: HttpGetter, fully_resolved_uri: str, *, mark_rule_failed: bool = True
-    ) -> set[dict] | None:
+    def _add_static_compare_set(self, name: ListName, path: str):
+        compare_set = _StaticCompareSet(name=name, content=set())
+        self._static_sets.append(compare_set)
+        self._load_and_refresh_uri(compare_set, path)
+
+    def _add_dynamic_compare_set(self, name: ListName, uri_template: DottedTemplate):
+        compare_set = _DynamicCompareSet(name=name, uri_template=uri_template)
+        self._dynamic_sets.append(compare_set)
+
+    def _update_compare_sets_via_http(self, getter: Getter, compare_set: _CompareSet):
         try:
-            content = http_getter.get_list(content_field=self._config.content_field)
-            file_elements = (elem for elem in content if not elem.startswith("#"))
-            self._compare_sets[fully_resolved_uri] = set(file_elements)
+            content = getter.get_list(content_field=self._config.content_field)
+            file_elements = set(elem for elem in content if not elem.startswith("#"))
+            compare_set.update_content(getter.target, file_elements)
         except Exception as ex:
-            if mark_rule_failed:
-                self.mark_failed(error=ex)
-                return None
+            if isinstance(compare_set, _StaticCompareSet):
+                self._mark_failed(compare_set, error=ex)
             raise ex
         else:
+            # TODO ugly check in hot path, better idea?
+            if isinstance(compare_set, _StaticCompareSet):
+                self._clear_failed(compare_set)
+
+    def _recompute_failure_state(self):
+        errors = [cs.error for cs in self._static_sets if cs.error]
+        if errors:
+            self.mark_failed(ExceptionGroup("rule failed due to list data retrieval", errors))
+        else:
             self.clear_failed()
-            return self._compare_sets[fully_resolved_uri]
+
+    def _mark_failed(self, compare_set: _StaticCompareSet, error: Exception):
+        compare_set.error = error
+        self._recompute_failure_state()
+
+    def _clear_failed(self, compare_set: _StaticCompareSet):
+        if compare_set.error:
+            compare_set.error = None
+            self._recompute_failure_state()
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
         content_field = self._config.content_field
@@ -257,50 +370,34 @@ class ListComparisonRule(FieldManagerRule):
             )
             file_elements = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)
-            self._compare_sets.update({filename: set(file_elements)})
+            self._static_sets.append(_StaticCompareSet(name=filename, content=set(file_elements)))
 
-    def _init_static_http_list_comparison(self, templates: tuple[DottedTemplate, ...]) -> None:
-        for template in templates:
-            self._load_http_compare_set(template.substitute({}))
+    def _load_and_refresh_uri(self, compare_set: _CompareSet, uri: str):
+        getter = GetterFactory.from_string(uri)
+        if not isinstance(getter, RefreshableGetter):
+            raise TypeError(f"The target {uri} must be a url")
 
-    def _load_http_compare_set(
-        self, resolved_uri: str, *, dynamic: bool = False
-    ) -> set[dict] | None:
-        http_getter = GetterFactory.from_string(resolved_uri)
-        if not isinstance(http_getter, HttpGetter):
-            raise TypeError(f"The target {resolved_uri} must be a url")
-
-        http_getter.keep_alive()
-
-        compare_set = self._update_compare_sets_via_http(
-            http_getter, resolved_uri, mark_rule_failed=not dynamic
+        update_func = functools.partial(
+            self._update_compare_sets_via_http, getter=getter, compare_set=compare_set
         )
+
+        update_func()
         tag = self._callback_tag
+        key = (tag, uri, id(self))
 
-        http_getter.add_callback(
-            tag,
-            self._update_compare_sets_via_http,
-            deduplication_key=(tag, resolved_uri, id(self)),
-            fnc_args=[
-                http_getter,
-                resolved_uri,
-            ],
-            fnc_kwargs={"mark_rule_failed": not dynamic},
-        )
+        getter.add_callback(tag, update_func, deduplication_key=key)
 
-        http_getter.add_cleanup_callback(
-            tag,
-            self._cleanup,
-            deduplication_key=(tag, resolved_uri, id(self)),
-            fnc_args=[resolved_uri],
-        )
-        return compare_set
+        if isinstance(compare_set, _DynamicCompareSet):
+            # only keep_alive dynamic entries, such that static entries live forever
+            getter.keep_alive()
+            cleanup_func = functools.partial(self._cleanup, compare_set=compare_set, uri=uri)
+            getter.add_cleanup_callback(tag, cleanup_func, deduplication_key=key)
 
-    def _cleanup(self, resolved_uri: str):
-        self._compare_sets.pop(resolved_uri, None)
-        logger.debug("Deleted compare set for %s after cleanup", resolved_uri)
+    def _cleanup(self, compare_set: _DynamicCompareSet, uri: str):
+        compare_set.remove_content(uri)
+        logger.debug("Deleted compare set for %s after cleanup", uri)
 
-    def get_compare_sets(self, event: dict) -> dict[str, set]:
+    def iter_compare_sets(self, event: dict) -> Generator[tuple[str, set]]:
         """Return the compare sets relevant for the current event.
 
         For local and static lists, this returns the already initialized compare sets.
@@ -316,48 +413,36 @@ class ListComparisonRule(FieldManagerRule):
             loaded, so the processor can apply the rule's failure tags.
         """
 
-        assert self._config.list_search_base_path
+        if self._all_dynamic_identifiers:
+            dynamic_values = {
+                identifier: get_dotted_field_value(event, identifier)
+                for identifier in self._all_dynamic_identifiers
+            }
 
-        if not self._is_dynamic_http or not self._config.list_search_base_path.startswith("http"):
-            return self._compare_sets
+            for identifier, val in dynamic_values.items():
+                if val is None:
+                    raise ValueError(
+                        f"missing event field {identifier!r} for dynamic list comparison path"
+                    )
+                if not isinstance(val, (str, int)):
+                    raise ValueError(
+                        f"value for list comparison field {identifier!r} is not a scalar value"
+                    )
 
-        compare_sets_result: dict[str, set] = {}
+        for static_compare_set in self._static_sets:
+            if static_compare_set.content is None or static_compare_set.error is not None:
+                raise ValueError("invariant broken; rule should be in failed state")
+            yield static_compare_set.name, static_compare_set.content
 
-        key_val = {
-            identifier: get_dotted_field_value(event, identifier)
-            for identifier in self._all_dynamic_identifiers
-        }
-
-        for identifier, val in key_val.items():
-            if val is None:
-                raise ValueError(
-                    f"missing event field {identifier!r} for dynamic list comparison path"
-                )
-            if not isinstance(val, (str, int)):
-                raise ValueError(
-                    f"value for list comparison field {identifier!r} is not a scalar value"
-                )
-
-        for tmpl in self._dynamic_templates:
-            dynamic_resolved = tmpl.substitute(key_val)
-
-            if dynamic_resolved in self._compare_sets:
-                RefreshableGetter.keep_alive_for_target(dynamic_resolved)
-
-                compare_sets_result[dynamic_resolved] = self._compare_sets[dynamic_resolved]
-                continue
-
-            compare_set = self._load_http_compare_set(dynamic_resolved, dynamic=True)
-            assert compare_set is not None
-
-            compare_sets_result[dynamic_resolved] = compare_set
-
-        return compare_sets_result
-
-    @property
-    def compare_sets(self) -> dict[str, set]:
-        """Returns the comparison sets"""
-        return self._compare_sets
+        for dynamic_compare_set in self._dynamic_sets:
+            assert dynamic_values
+            uri = dynamic_compare_set.uri_template.substitute(dynamic_values)
+            content = dynamic_compare_set.uri_to_content.get(uri)
+            if content is None:
+                self._load_and_refresh_uri(dynamic_compare_set, uri)
+            else:
+                RefreshableGetter.keep_alive_for_target(uri)
+            yield dynamic_compare_set.name, dynamic_compare_set.uri_to_content[uri]
 
     @property
     def failure_tags(self) -> list[str]:

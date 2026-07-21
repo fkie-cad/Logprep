@@ -51,7 +51,7 @@ class NetworkComparison(ListComparison):
         applied.
         """
         try:
-            compare_sets = rule.get_compare_sets(event)
+            compare_sets = rule.iter_compare_sets(event)
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error
 

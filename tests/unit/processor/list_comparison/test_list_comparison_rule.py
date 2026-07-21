@@ -149,6 +149,6 @@ class TestListComparisonRule:
         ):
             if will_fail:
                 with pytest.raises(TypeError, match=f"The target {url} must be a url"):
-                    rule._load_http_compare_set(url)
+                    rule._load_and_refresh_uri(url)
             else:
-                rule._load_http_compare_set(url)
+                rule._load_and_refresh_uri(url)
