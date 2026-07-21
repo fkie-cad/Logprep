@@ -113,9 +113,9 @@ class BNF(Forward):
 
         # add parse action that replaces the function identifier with a (name, number of args) tuple
         def insert_fn_argcount_tuple(t):
-            fn = t.pop(0)  # pylint: disable=redefined-outer-name
+            _fn = t.pop(0)
             num_args = len(t[0])
-            t.insert(0, (fn, num_args))
+            t.insert(0, (_fn, num_args))
 
         fn_call = (self.ident + self.lpar - Group(expr_list) + self.rpar).set_parse_action(
             insert_fn_argcount_tuple
@@ -167,9 +167,7 @@ class BNF(Forward):
     @staticmethod
     def reject_boolean_operands(*operands):
         if any(isinstance(operand, bool) for operand in operands):
-            raise Exception(  # pylint: disable=broad-exception-raised
-                "boolean values cannot be used as operands"
-            )
+            raise ValueError("boolean values cannot be used as operands")
 
     def evaluate_stack(self):
         op, num_args = self.exprStack.pop(), 0
@@ -194,7 +192,7 @@ class BNF(Forward):
             args = reversed([self.evaluate_stack() for _ in range(num_args)])
             return fn[op](*args)
         if op[0].isalpha():
-            raise Exception(f"invalid identifier '{op}'")  # pylint: disable=broad-exception-raised
+            raise ValueError(f"invalid identifier '{op}'")
         # try to evaluate as int first, then as float if int fails
         try:
             return int(op)
