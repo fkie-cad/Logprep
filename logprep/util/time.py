@@ -11,7 +11,7 @@ class TimeParserException(LogprepException):
 
 
 class UnixTimestampLength(IntEnum):
-    """Digit lengths of common Unix timestamp representations."""
+    """Digit lengths of common UNIX timestamp representations."""
 
     SECONDS = 10
     MILLISECONDS = 13
