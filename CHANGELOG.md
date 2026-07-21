@@ -2,7 +2,7 @@
 ### Breaking
 
 ### Features
-* add support for fractional UNIX timestamps in the timestamper processor while preserving integer timestamp normalization.
+* add support for fractional UNIX timestamps in the `timestamper` processor while preserving integer timestamp normalization
 
 ### Improvements
 * add launch configurations for ng and advanced debugging
