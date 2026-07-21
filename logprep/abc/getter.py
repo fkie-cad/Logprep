@@ -1,6 +1,5 @@
 """Module for getter interface"""
 
-import itertools
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -57,21 +56,14 @@ class Getter(ABC):
     def _resolve_content(self, raw_content: bytes) -> str:
         content = raw_content.decode("utf8")
         template = EnvTemplate(content)
-        resolved_content = template.safe_substitute(self._get_kwargs(template, content))
+        resolved_content = template.safe_substitute(self._get_kwargs(template))
         logger.debug("resolved environment placeholders in content: %s", resolved_content)
         return resolved_content
 
-    def _get_kwargs(self, template: EnvTemplate, content: str):
-        used_env_vars = self._get_used_env_vars(template, content)
+    def _get_kwargs(self, template: EnvTemplate) -> dict[str, str]:
+        used_env_vars = set(template.get_identifiers())
         self.missing_env_vars = used_env_vars.difference(ENV_VARS.keys())
         return ENV_VARS | {missing_key: "" for missing_key in self.missing_env_vars}
-
-    def _get_used_env_vars(self, template: EnvTemplate, content: str) -> set[str]:
-        # returns a list of tuples in form (escaped, named, braced, invalid)
-        found_variables = template.compiled_pattern.findall(content)
-        used_named_env_vars = map(lambda x: x[1], found_variables)
-        used_braced_env_vars = map(lambda x: x[2], found_variables)
-        return {item for item in itertools.chain(used_named_env_vars, used_braced_env_vars) if item}
 
     def _resolve_content_by_content_type(self) -> dict | list | str:
         """Get content with enriched environment variables parsed based on content type."""
@@ -100,7 +92,7 @@ class Getter(ABC):
         try:
             parsed_yaml = list(yaml.load_all(content))
         except YAMLError:
-            logger.warning("getter failed to deserialize yaml: %s", content, exc_info=True)
+            logger.debug("getter failed to deserialize yaml: %s", content, exc_info=True)
             raise
         if not parsed_yaml:
             return {}
@@ -120,7 +112,7 @@ class Getter(ABC):
         try:
             return json.loads(content)
         except json.JSONDecodeError:
-            logger.warning("getter failed to deserialize json: %s", content, exc_info=True)
+            logger.debug("getter failed to deserialize json: %s", content, exc_info=True)
             raise
 
     def get_json(self) -> dict | list:

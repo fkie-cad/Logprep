@@ -23,7 +23,14 @@ def set_env_var(name: str, value: str):
 
 
 class EnvTemplate(Template):
-    """Template class for uppercase only template variables"""
+    """
+    Template class for substituting environment variables in the forms
+    `${LOGPREP_VAR}` and `$LOGPREP_VAR`.
+    Functionality is restricted to uppercase variables which are prefixed with:
+    `LOGPREP_`, `CI_`, `GITHUB_` or `PYTEST_`.
+    The variable `LOGPREP_LIST` is specifically excluded as it is being used dynamically
+    in processors.
+    """
 
     pattern = r"""
         \$(?:
@@ -35,9 +42,3 @@ class EnvTemplate(Template):
     """  # type: ignore[assignment]
 
     flags = re.VERBOSE
-
-    @property
-    def compiled_pattern(self) -> re.Pattern[str]:
-        """Return the compiled internal pattern used to identify vars"""
-        # Template sets `pattern = re.compile(pattern)` internally
-        return self.pattern  # type: ignore

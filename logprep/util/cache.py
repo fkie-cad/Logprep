@@ -2,7 +2,6 @@
 
 import datetime
 from collections import OrderedDict
-from typing import Union
 
 
 class Cache(OrderedDict):
@@ -15,7 +14,7 @@ class Cache(OrderedDict):
         self._max_timedelta = max_timedelta
         super().__init__()
 
-    def requires_storing(self, item: Union[int, str]) -> bool:
+    def requires_storing(self, item: int | str) -> bool:
         """Check if the item was stored within the last timedelta.
 
         Parameters
