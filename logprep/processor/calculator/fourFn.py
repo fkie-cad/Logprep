@@ -109,7 +109,7 @@ class BNF(Forward):
     def __init__(self) -> None:
         super().__init__()
         self.exprStack = []
-        expr_list = DelimitedList(Group(self))  # pylint: disable=E1121
+        expr_list = DelimitedList(Group(self))
 
         # add parse action that replaces the function identifier with a (name, number of args) tuple
         def insert_fn_argcount_tuple(t):
