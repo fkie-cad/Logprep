@@ -73,7 +73,7 @@ class Calculator(FieldManager):
         @timeout(seconds=rule.timeout)
         def calculate(event, rule: CalculatorRule, expression: str) -> float | None:
             try:
-                _ = self.bnf.parseString(expression, parseAll=True)
+                _ = self.bnf.parse_string(expression, parse_all=True)
                 return self.bnf.evaluate_stack()
             except (ParseException, ParseSyntaxException) as error:
                 error.msg = f"({self.name}): expression '{error.line}' could not be parsed"

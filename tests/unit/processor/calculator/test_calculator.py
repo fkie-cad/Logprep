@@ -625,7 +625,7 @@ class TestCalculator(BaseProcessorTestCase):
     )
     def test_fourfn(self, expression, expected):
         bnf = BNF()
-        _ = bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
+        _ = bnf.parse_string(expression, parse_all=True)  # pylint: disable=E1123,E1121
         result = bnf.evaluate_stack()
         assert result == expected
 
@@ -640,7 +640,7 @@ class TestCalculator(BaseProcessorTestCase):
         bnf = BNF()
 
         with pytest.raises(ParseException):
-            bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
+            bnf.parse_string(expression, parse_all=True)  # pylint: disable=E1123,E1121
 
     @pytest.mark.parametrize(
         "expression",
@@ -654,7 +654,7 @@ class TestCalculator(BaseProcessorTestCase):
     )
     def test_fourfn_rejects_boolean_operands(self, expression):
         bnf = BNF()
-        bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
+        bnf.parse_string(expression, parse_all=True)  # pylint: disable=E1123,E1121
 
         with pytest.raises(
             Exception,
@@ -673,7 +673,7 @@ class TestCalculator(BaseProcessorTestCase):
         bnf = BNF()
         expression = "round((PI + 2) * 3 ^ 2 ^ 2 / 4 - -5, 2) >= multiply(2, 3) + E"
 
-        bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
+        bnf.parse_string(expression, parse_all=True)  # pylint: disable=E1123,E1121
 
         assert bnf.exprStack == [
             "PI",
