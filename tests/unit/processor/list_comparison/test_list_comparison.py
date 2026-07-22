@@ -1,5 +1,4 @@
-# pylint: disable=missing-docstring
-# pylint: disable=protected-access
+# pylint: disable=missing-docstring,too-many-lines,protected-access,duplicate-code
 import json
 import re
 import time
