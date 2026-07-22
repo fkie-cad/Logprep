@@ -24,6 +24,13 @@ from logprep.util.getter import (
 from tests.conftest import mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.list_comparison.test_list_comparison import (
+    HTTP_BASE_PATH,
+    HTTP_DYNAMIC_BASE_PATH,
+    LOCAL_BASE_PATH,
+    NOT_SET,
+    _compare_sets,
+)
+from tests.unit.processor.list_comparison.test_list_comparison import (
     failure_test_cases as non_ng_failure_test_cases,
 )
 from tests.unit.processor.list_comparison.test_list_comparison import (
@@ -32,25 +39,6 @@ from tests.unit.processor.list_comparison.test_list_comparison import (
 from tests.unit.processor.list_comparison.test_list_comparison import (
     test_cases as non_ng_test_cases,
 )
-
-NOT_SET = object()
-"""A sentinel object to indicate that a value has not been provided."""
-
-LOCAL_BASE_PATH = "tests/testdata/unit/list_comparison/rules"
-HTTP_BASE_PATH = "http://localhost/${LOGPREP_LIST}"
-HTTP_DYNAMIC_BASE_PATH = "http://localhost/${tenant}/${LOGPREP_LIST}"
-
-DUMMY_HTTP_LIST = "# a comment\nFranz\nAlpha\nBeta\n"
-"""Body returned for every HTTP list in ``test_cases`` so matches are deterministic."""
-
-
-def _compare_sets(rule: ListComparisonRule, event: dict | None = None) -> dict[str, set]:
-    """Materialize a rule's compare sets via its public ``iter_compare_sets`` API.
-
-    Local and static lists are available with an empty event; dynamic lists
-    require the event fields that resolve their target URI.
-    """
-    return dict(rule.iter_compare_sets(event or {}))
 
 
 def _warning_str(warning) -> str:
@@ -87,7 +75,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             mocked.add_callback(
                 responses.GET,
                 re.compile(r"http.*"),
-                callback=lambda _: (200, {}, DUMMY_HTTP_LIST),
+                callback=lambda _: (200, {}, "# a comment\nFranz\nAlpha\nBeta\n"),
             )
             processor = await self._create_lister([rule])
             log_event = LogEvent(event, original=b"", input_meta=InputMeta())
