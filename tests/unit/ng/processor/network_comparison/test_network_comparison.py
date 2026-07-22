@@ -1,20 +1,412 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import json
-import typing
+import re
 from ipaddress import IPv4Network
+from pathlib import Path
 
 import pytest
 import responses
 
-from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.network_comparison.processor import NetworkComparison
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.network_comparison.rule import NetworkComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter, RefreshableGetter, RefreshableGetterError
 from tests.conftest import mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+
+LOCAL_BASE_PATH = "tests/testdata/unit/network_comparison/rules"
+
+DUMMY_HTTP_LIST = "# a comment\n127.0.0.1\n127.0.0.0/24\n"
+"""Body returned for every HTTP list in ``test_cases`` so matches are deterministic."""
+
+
+def _compare_sets(rule: NetworkComparisonRule, event: dict | None = None) -> dict[str, set]:
+    """Materialize a rule's compare sets via its public ``iter_compare_sets`` API.
+
+    Local and static lists are available with an empty event; dynamic lists
+    require the event fields that resolve their target URI.
+    """
+    return dict(rule.iter_compare_sets(event or {}))
+
+
+def _warning_str(warning) -> str:
+    return f"{type(warning).__name__}: {warning}"
+
+
+test_cases = [  # rule, event, expected
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["../lists/network_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.1"},
+        {"ip": "127.0.0.1", "ip_results": {"in_list": ["network_list.txt"]}},
+        id="ip matches an explicit address in the list",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["../lists/network_only_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.55"},
+        {"ip": "127.0.0.55", "ip_results": {"in_list": ["network_only_list.txt"]}},
+        id="ip is contained in a network of the list",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["../lists/network_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "8.8.8.8"},
+        {"ip": "8.8.8.8", "ip_results": {"not_in_list": ["network_list.txt"]}},
+        id="ip is in no network of the list",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["../lists/empty_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.1"},
+        {"ip": "127.0.0.1", "ip_results": {"not_in_list": ["empty_list.txt"]}},
+        id="empty list yields not_in_list",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": [
+                    "../lists/ip_only_list.txt",
+                    "../lists/network_only_list.txt",
+                ],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.1"},
+        {
+            "ip": "127.0.0.1",
+            "ip_results": {"in_list": ["ip_only_list.txt", "network_only_list.txt"]},
+        },
+        id="ip matches both of two lists",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": [
+                    "../lists/ip_only_list.txt",
+                    "../lists/network_only_list.txt",
+                ],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.55"},
+        {"ip": "127.0.0.55", "ip_results": {"in_list": ["network_only_list.txt"]}},
+        id="ip matches only one of two lists",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": [
+                    "../lists/ip_only_list.txt",
+                    "../lists/network_only_list.txt",
+                ],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "8.8.8.8"},
+        {
+            "ip": "8.8.8.8",
+            "ip_results": {"not_in_list": ["ip_only_list.txt", "network_only_list.txt"]},
+        },
+        id="ip matches neither of two lists",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["../lists/ip_only_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": ["127.0.0.1", "127.0.0.2"]},
+        {"ip": ["127.0.0.1", "127.0.0.2"], "ip_results": {"in_list": ["ip_only_list.txt"]}},
+        id="matching list is reported once even with multiple matching values",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip.field"],
+                "target_field": "ip_results",
+                "list_file_paths": ["../lists/network_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": {"field": "127.0.0.1"}},
+        {"ip": {"field": "127.0.0.1"}, "ip_results": {"in_list": ["network_list.txt"]}},
+        id="dotted source subfield is resolved",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "dotted.ip_results",
+                "list_file_paths": ["../lists/network_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.1"},
+        {"ip": "127.0.0.1", "dotted": {"ip_results": {"in_list": ["network_list.txt"]}}},
+        id="dotted target field is created",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "dotted.ip_results",
+                "list_file_paths": ["../lists/network_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.1", "dotted": {"ip_results": {"in_list": ["already_present"]}}},
+        {
+            "ip": "127.0.0.1",
+            "dotted": {"ip_results": {"in_list": ["already_present", "network_list.txt"]}},
+        },
+        id="existing in_list target field is extended",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["../lists/network_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+                "delete_source_fields": True,
+            },
+        },
+        {"ip": "127.0.0.1"},
+        {"ip_results": {"in_list": ["network_list.txt"]}},
+        id="source field is deleted when configured",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_paths": {"KNOWN_NETWORKS": "../lists/network_list.txt"},
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.1"},
+        {"ip": "127.0.0.1", "ip_results": {"in_list": ["KNOWN_NETWORKS"]}},
+        id="list_paths mapping reports the configured name on match",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_paths": {"KNOWN_NETWORKS": "../lists/network_list.txt"},
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "8.8.8.8"},
+        {"ip": "8.8.8.8", "ip_results": {"not_in_list": ["KNOWN_NETWORKS"]}},
+        id="list_paths mapping reports the configured name on no match",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["networks/blocked"],
+                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+            },
+        },
+        {"ip": "127.0.0.1"},
+        {"ip": "127.0.0.1", "ip_results": {"in_list": ["networks/blocked"]}},
+        id="http list, ip found",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_paths": {"BLOCKED_NETWORKS": "networks/blocked"},
+                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+            },
+        },
+        {"ip": "8.8.8.8"},
+        {"ip": "8.8.8.8", "ip_results": {"not_in_list": ["BLOCKED_NETWORKS"]}},
+        id="http list_paths mapping, ip not found",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_paths": {"BLOCKED_NETWORKS": "blocked"},
+                "list_search_base_path": "https://api.example/lists/${tenant}/${LOGPREP_LIST}",
+            },
+        },
+        {"tenant": "acme", "ip": "127.0.0.1"},
+        {"tenant": "acme", "ip": "127.0.0.1", "ip_results": {"in_list": ["BLOCKED_NETWORKS"]}},
+        id="dynamic http list resolved from event field",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["${tenant}/blocked"],
+                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+            },
+        },
+        {"tenant": "acme", "ip": "127.0.0.1"},
+        {"tenant": "acme", "ip": "127.0.0.1", "ip_results": {"in_list": ["${tenant}/blocked"]}},
+        id="dynamic variable in list_file_paths resolved from event field",
+    ),
+]
+
+
+failure_test_cases = [  # rule, event, expected, error_message
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["../lists/network_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "Franz"},
+        {
+            "ip": "Franz",
+            "tags": ["_network_comparison_failure"],
+            "ip_results": {"not_in_list": ["network_list.txt"]},
+        },
+        r"does not appear to be an IPv4 or IPv6 address",
+        id="source value is not an ip address",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "dotted.ip_results.do_not_look_here",
+                "list_file_paths": ["../lists/network_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.1", "dotted": {"ip_results": ["do_not_look_here"]}},
+        {
+            "ip": "127.0.0.1",
+            "dotted": {"ip_results": ["do_not_look_here"]},
+            "tags": ["_network_comparison_failure"],
+        },
+        r"FieldExistsWarning.*could not be extended: dotted.ip_results.do_not_look_here",
+        id="intermediate target field has wrong type",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "dotted.ip_results",
+                "list_file_paths": ["../lists/network_list.txt"],
+                "list_search_base_path": LOCAL_BASE_PATH,
+            },
+        },
+        {"ip": "127.0.0.1", "dotted": "dotted_ip"},
+        {
+            "ip": "127.0.0.1",
+            "dotted": "dotted_ip",
+            "tags": ["_network_comparison_failure"],
+        },
+        r"FieldExistsWarning.*could not be extended: dotted.ip_results",
+        id="target parent field exists as string and cannot be extended",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["networks/blocked"],
+                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+            },
+        },
+        {"ip": "127.0.0.1"},
+        {"ip": "127.0.0.1", "tags": ["_network_comparison_failure"]},
+        r"Max retries exceeded",
+        id="http list is unreachable",
+    ),
+]
+
+
+invalid_config_cases = [  # network_comparison_config, error_message
+    pytest.param(
+        {
+            "source_fields": ["ip"],
+            "target_field": "ip_results",
+            "list_file_paths": ["../lists/network_list.txt"],
+            "list_paths": {"KNOWN_NETWORKS": "../lists/network_list.txt"},
+        },
+        r"must not both be specified",
+        id="list_file_paths and list_paths are mutually exclusive",
+    ),
+    pytest.param(
+        {
+            "source_fields": ["ip"],
+            "target_field": "ip_results",
+        },
+        r"needs to be specified",
+        id="one of list_file_paths or list_paths is required",
+    ),
+]
 
 
 class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
@@ -29,708 +421,338 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         await super().async_setup()
         await self.object.setup()
 
-    async def test_non_ip_element_has_fail_tag(self):
-        document = {"ip1": "Franz"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data.get("tags") == ["_network_comparison_failure"]
-
-    async def test_network_comparison_uses_rule_level_list_search_base_path_without_processor_base_path(
-        self,
-    ):
-        document = {"ip": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {"ip": "127.0.0.1", "network_results": {"in_list": ["network_list.txt"]}}
-        rule_dict = {
-            "filter": "ip",
-            "network_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "network_results",
-                "list_search_base_path": self.CONFIG["list_search_base_path"],
-                "list_file_paths": ["../lists/network_list.txt"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "network_comparison",
-            "rules": [],
-        }
-        processor = Factory.create({"custom_lister": config})
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
+    async def _create_lister(self, rules: list[dict], **extra_config):
+        RefreshableGetter.reset()
+        patch = {"rules": rules, "list_search_base_path": None, **extra_config}
+        processor = self._create_test_instance(patch)
         await processor.setup()
-        await processor.process(log_event)
+        return processor
 
+    @pytest.mark.parametrize("rule, event, expected", test_cases)
+    async def test_testcases(self, rule, event, expected):
+        with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked:
+            mocked.add_callback(
+                responses.GET,
+                re.compile(r"http.*"),
+                callback=lambda _: (200, {}, DUMMY_HTTP_LIST),
+            )
+            processor = await self._create_lister([rule])
+            log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+            await processor.process(log_event)
         assert log_event.data == expected
 
-    async def test_element_not_in_list(self):
-        # Test if ip 1.2.34 is not in ip list
-        document = {"ip1": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+    @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
+    async def test_testcases_failure_handling(self, rule, event, expected, error_message):
+        with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked:
+            mocked.add_callback(
+                responses.GET, re.compile(r"http.*"), callback=lambda _: (500, {}, "")
+            )
+            processor = await self._create_lister([rule])
+            log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+            result = await processor.process(log_event)
+        assert len(result.warnings) == 1
+        assert re.search(error_message, _warning_str(result.warnings[0]))
+        assert log_event.data == expected
 
-        await self.object.process(log_event)
+    @pytest.mark.parametrize("network_comparison_config, error_message", invalid_config_cases)
+    async def test_rule_config_is_validated(self, network_comparison_config, error_message):
+        rule_dict = {"filter": "ip", "network_comparison": network_comparison_config}
+        with pytest.raises(ValueError, match=error_message):
+            NetworkComparisonRule.create_from_dict(rule_dict)
 
-        assert len(log_event.data.get("ip_results", {}).get("not_in_list")) == 1
-        assert log_event.data.get("ip_results", {}).get("in_list") is None
+    async def test_multiple_rules_write_independent_target_fields(self):
+        document = {"ip1": "127.0.0.1", "ip2": "127.0.0.2"}
 
-    async def test_element_in_two_lists(self):
-        # Tests if ip1 127.0.0.1 appears in two lists, ip2 1.1.1.1 is in no list
-        document = {"ip1": "1.1.1.1", "ip2": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        await self.object.process(log_event)
+        assert document["ip_results"] == {"in_list": ["ip_only_list.txt"]}
+        assert document["ip1_and_ip2_results"] == {
+            "in_list": ["ip_only_list.txt", "network_only_list.txt"]
+        }
 
-        assert len(log_event.data.get("ip_results", {}).get("not_in_list")) == 1
-        assert log_event.data.get("ip_results", {}).get("in_list") is None
-        assert len(log_event.data.get("ip1_and_ip2_results", {}).get("in_list")) == 2
-        assert log_event.data.get("ip1_and_ip2_results", {}).get("not_in_list") is None
+    async def test_multiple_rules_all_not_in_list(self):
+        document = {"ip1": "8.8.8.8", "ip2": "9.9.9.9"}
 
-    async def test_element_not_in_two_lists(self):
-        # Tests if the ip1 1.1.1.1 does not appear in two lists,
-        # and ip2 2.2.2.2 is also not in list
-        document = {"ip1": "1.1.1.1", "ip2": "2.2.2.2"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        await self.object.process(log_event)
+        assert document["ip_results"] == {"not_in_list": ["ip_only_list.txt"]}
+        assert document["ip1_and_ip2_results"] == {
+            "not_in_list": ["ip_only_list.txt", "network_only_list.txt"]
+        }
 
-        assert len(document.get("ip1_and_ip2_results", {}).get("not_in_list")) == 2
-        assert log_event.data.get("ip1_and_ip2_results", {}).get("in_list") is None
-        assert len(log_event.data.get("ip_results", {}).get("not_in_list")) == 1
-        assert log_event.data.get("ip_results", {}).get("in_list") is None
-
-    async def test_two_lists_with_one_matched(self):
-        document = {"ip1": "1.1.1.1", "ip2": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-
-        await self.object.process(log_event)
-
-        assert len(document.get("ip_results", {}).get("not_in_list")) != 0
-        assert log_event.data.get("ip_results", {}).get("in_list") is None
-        assert log_event.data.get("ip1_and_ip2_results", {}).get("not_in_list") is None
-        assert len(log_event.data.get("ip1_and_ip2_results", {}).get("in_list")) != 0
-
-    async def test_dotted_output_field(self):
-        # tests if outputting network_comparison results to dotted fields works
-        document = {"dot_ip": "127.0.0.2", "ip1": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-
-        await self.object.process(log_event)
-
-        assert log_event.data.get("dotted", {}).get("ip_results", {}).get("not_in_list") is None
-        document = {"dot_ip": "127.0.0.2", "ip1": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-
-        await self.object.process(log_event)
-
-        assert (
-            document.get("more", {})
-            .get("than", {})
-            .get("dotted", {})
-            .get("ip_results", {})
-            .get("not_in_list")
-            is None
+    async def test_rule_level_base_path_takes_precedence_over_processor_base_path(self):
+        document = {"ip": "127.0.0.1"}
+        processor = await self._create_lister(
+            [
+                {
+                    "filter": "ip",
+                    "network_comparison": {
+                        "source_fields": ["ip"],
+                        "target_field": "network_results",
+                        "list_search_base_path": LOCAL_BASE_PATH,
+                        "list_file_paths": ["../lists/network_list.txt"],
+                    },
+                }
+            ],
+            list_search_base_path="some/nonexistent/base/path",
         )
-
-    async def test_extend_dotted_output_field(self):
-        # tests if network_comparison properly extends lists already present in output fields.
-        document = {
-            "ip1": "127.0.0.1",
-            "dotted": {"ip_results": {"in_list": ["already_present"]}},
+        await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
+        assert document == {
+            "ip": "127.0.0.1",
+            "network_results": {"in_list": ["network_list.txt"]},
         }
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        rule_dict = {
-            "filter": "ip1",
-            "network_comparison": {
-                "source_fields": ["ip1"],
-                "target_field": "dotted.ip_results",
-                "list_file_paths": ["../lists/ip_only_list.txt"],
-            },
-            "description": "",
-        }
-        await self._load_rule(rule_dict)
-        await self.object.setup()
-        await self.object.process(log_event)
-
-        assert log_event.data.get("dotted", {}).get("ip_results", {}).get("not_in_list") is None
-        assert len(log_event.data.get("dotted", {}).get("ip_results", {}).get("in_list")) == 2
-
-    async def test_dotted_parent_field_exists_but_subfield_doesnt(self):
-        # tests if network_comparison properly extends lists already present in output fields.
-        document = {
-            "ip1": "127.0.0.1",
-            "dotted": {"preexistent_output_field": {"in_list": ["already_present"]}},
-        }
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-
-        rule_dict = {
-            "filter": "ip1",
-            "network_comparison": {
-                "source_fields": ["ip1"],
-                "target_field": "dotted.ip_results",
-                "list_file_paths": ["../lists/ip_only_list.txt"],
-            },
-            "description": "",
-        }
-        await self._load_rule(rule_dict)
-        await self.object.setup()
-        await self.object.process(log_event)
-
-        assert document.get("dotted", {}).get("ip_results", {}).get("not_in_list") is None
-        assert len(log_event.data.get("dotted", {}).get("ip_results", {}).get("in_list")) == 1
-        assert (
-            len(log_event.data.get("dotted", {}).get("preexistent_output_field", {}).get("in_list"))
-            == 1
+    async def test_local_list_is_converted_to_networks(self):
+        processor = await self._create_lister(
+            [
+                {
+                    "filter": "ip",
+                    "network_comparison": {
+                        "source_fields": ["ip"],
+                        "target_field": "network_results",
+                        "list_file_paths": ["../lists/network_list.txt"],
+                        "list_search_base_path": LOCAL_BASE_PATH,
+                    },
+                }
+            ]
         )
-
-    async def test_target_field_exists_and_cant_be_extended(self):
-        document = {"dot_ip": "127.0.0.2", "ip1": "127.0.0.1", "dotted": "field_exists"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {
-            "dot_ip": "127.0.0.2",
-            "ip1": "127.0.0.1",
-            "dotted": "field_exists",
-            "tags": ["_network_comparison_failure"],
+        assert _compare_sets(processor.rules[0]) == {
+            "network_list.txt": {IPv4Network("127.0.0.1/32"), IPv4Network("127.0.0.0/24")}
         }
-
-        rule_dict = {
-            "filter": "ip1",
-            "network_comparison": {
-                "source_fields": ["ip1"],
-                "target_field": "dotted.ip_results",
-                "list_file_paths": ["../lists/network_list.txt"],
-            },
-            "description": "",
-        }
-        await self._load_rule(rule_dict)
-        await self.object.setup()
-        result = await self.object.process(log_event)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
-        assert log_event.data == expected
-
-    async def test_intermediate_output_field_is_wrong_type(self):
-        document = {
-            "dot_ip": "127.0.0.2",
-            "ip1": "127.0.0.1",
-            "dotted": {"ip_results": ["do_not_look_here"]},
-        }
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {
-            "tags": ["_network_comparison_failure"],
-            "dot_ip": "127.0.0.2",
-            "ip1": "127.0.0.1",
-            "dotted": {"ip_results": ["do_not_look_here"]},
-        }
-
-        rule_dict = {
-            "filter": "ip1",
-            "network_comparison": {
-                "source_fields": ["ip1"],
-                "target_field": "dotted.ip_results.do_not_look_here",
-                "list_file_paths": ["../lists/network_list.txt"],
-            },
-            "description": "",
-        }
-        await self._load_rule(rule_dict)
-        await self.object.setup()
-        result = await self.object.process(log_event)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
-        assert log_event.data == expected
-
-    async def test_check_in_dotted_subfield(self):
-        document = {"ip": {"field": "1.1.1.1"}}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-
-        await self.object.process(log_event)
-
-        assert len(log_event.data.get("ip_results", {}).get("not_in_list")) == 2
-        assert log_event.data.get("ip_results", {}).get("in_list") is None
-
-    async def test_ignore_comment_in_list(self):
-        # Tests for a comment inside a list, but as a field inside a document to check
-        # if the comment is actually ignored
-        document = {"ip1": "# This is a doc string for testing"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-
-        await self.object.process(log_event)
-
-        assert len(log_event.data.get("ip_results", {}).get("not_in_list")) == 1
-        assert log_event.data.get("ip_results", {}).get("in_list") is None
-
-    async def test_delete_source_field(self):
-        document = {"ip1": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        rule_dict = {
-            "filter": "ip1",
-            "network_comparison": {
-                "source_fields": ["ip1"],
-                "target_field": "ip_results",
-                "list_file_paths": ["../lists/ip_only_list.txt"],
-                "delete_source_fields": True,
-            },
-            "description": "",
-        }
-        expected = {"ip_results": {"in_list": ["ip_only_list.txt"]}}
-        await self._load_rule(rule_dict)
-        await self.object.setup()
-        await self.object.process(log_event)
-        assert log_event.data == expected
-
-    async def test_overwrite_target_field(self):
-        document = {"ip1": "127.0.0.1"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {"ip1": "127.0.0.1", "tags": ["_network_comparison_failure"]}
-        rule_dict = {
-            "filter": "ip1",
-            "network_comparison": {
-                "source_fields": ["ip1"],
-                "target_field": "ip1",
-                "list_file_paths": ["../lists/network_list.txt"],
-                "overwrite_target": True,
-            },
-            "description": "",
-        }
-        await self._load_rule(rule_dict)
-        await self.object.setup()
-        result = await self.object.process(log_event)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
-        assert log_event.data == expected
 
     @responses.activate
-    async def test_network_comparison_loads_rule_with_http_template_in_list_search_base_path(self):
+    async def test_loads_static_http_list_with_template_base_path(self):
         url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
-        responses.add(
-            responses.GET,
-            url,
-            """127.0.0.1
-127.0.0.2
-127.0.0.3
-""",
+        responses.add(responses.GET, url, "127.0.0.1\n127.0.0.2\n127.0.0.3\n")
+        processor = await self._create_lister(
+            [
+                {
+                    "filter": "ip",
+                    "network_comparison": {
+                        "source_fields": ["ip"],
+                        "target_field": "ip_results",
+                        "list_file_paths": ["bad_ips.list"],
+                        "list_search_base_path": (
+                            "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                        ),
+                    },
+                }
+            ]
         )
-        rule_dict = {
-            "filter": "ip",
-            "network_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "uip_results",
-                "list_file_paths": ["bad_ips.list"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "network_comparison",
-            "rules": [],
-            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
-        }
-        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-        await processor.setup()
-        assert processor.rules[0].compare_sets == {
-            url: {
+        assert _compare_sets(processor.rules[0]) == {
+            "bad_ips.list": {
                 IPv4Network("127.0.0.1/32"),
                 IPv4Network("127.0.0.2/32"),
                 IPv4Network("127.0.0.3/32"),
             }
         }
 
-    async def test_network_comparison_loads_rule_with_networks(self):
-        rule_dict = {
-            "filter": "ip",
-            "network_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "network_results",
-                "list_file_paths": ["../lists/network_list.txt"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "network_comparison",
-            "rules": [],
-            "list_search_base_path": self.CONFIG["list_search_base_path"],
-        }
-        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-        await processor.setup()
-        assert processor.rules[0].compare_sets == {
-            "network_list.txt": {IPv4Network("127.0.0.1/32"), IPv4Network("127.0.0.0/24")}
-        }
-
     @responses.activate
-    async def test_network_comparison_loads_rule_using_http_and_updates_with_callback(
-        self, tmp_path
-    ):
-        target = "localhost/tests/testdata/bad_ips.list?ref=bla"
-        url = f"http://{target}"
-        responses.add(
-            responses.GET,
-            url,
-            """127.0.0.1
-1.1.1.1
-2.2.2.2
-""",
-        )
-        responses.add(
-            responses.GET,
-            url,
-            """127.0.0.1
-1.1.1.1
-""",
-        )
-        rule_dict = {
-            "filter": "ip",
-            "network_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "ip_results",
-                "list_file_paths": ["bad_ips.list"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "network_comparison",
-            "rules": [],
-            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
-        }
+    async def test_static_http_list_is_updated_by_refresh_callback(self, tmp_path):
+        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
+        responses.add(responses.GET, url, "127.0.0.1\n1.1.1.1\n2.2.2.2\n")
+        responses.add(responses.GET, url, "127.0.0.1\n1.1.1.1\n")
 
-        RefreshableGetter.reset()
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 10}}))
 
-        getter_file_content = {url: {"refresh_interval": 10}}
-        http_getter_conf = tmp_path / "http_getter.json"
-        http_getter_conf.write_text(json.dumps(getter_file_content))
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
-            processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
-            rule = processor.rule_class.create_from_dict(rule_dict)
-            processor._rule_tree.add_rule(rule)
-            await processor.setup()
-            assert processor.rules[0].compare_sets == {
-                url: {
-                    IPv4Network("1.1.1.1/32"),
-                    IPv4Network("2.2.2.2/32"),
-                    IPv4Network("127.0.0.1/32"),
-                }
-            }
-            assert processor.rules[0].compare_sets == {
-                url: {
-                    IPv4Network("1.1.1.1/32"),
-                    IPv4Network("2.2.2.2/32"),
-                    IPv4Network("127.0.0.1/32"),
-                }
-            }
-            HttpGetter(target=url, protocol="http").scheduler.run_all()
-            assert processor.rules[0].compare_sets == {
-                url: {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
-            }
-
-    async def test_network_comparison_does_not_add_duplicates_from_list_source(self):
-        document = {"ip": ["127.0.0.1", "127.0.0.2"]}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {
-            "ip": ["127.0.0.1", "127.0.0.2"],
-            "network_results": {
-                "in_list": [
-                    "network_list.txt",
-                    "network_only_list.txt",
-                    "ip_only_list.txt",
+            processor = await self._create_lister(
+                [
+                    {
+                        "filter": "ip",
+                        "network_comparison": {
+                            "source_fields": ["ip"],
+                            "target_field": "ip_results",
+                            "list_file_paths": ["bad_ips.list"],
+                            "list_search_base_path": (
+                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                            ),
+                        },
+                    }
                 ]
-            },
-        }
-        rule_dict = {
-            "filter": "ip",
-            "network_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "network_results",
-                "list_file_paths": [
-                    "../lists/network_list.txt",
-                    "../lists/network_only_list.txt",
-                    "../lists/ip_only_list.txt",
-                ],
-            },
-            "description": "",
-        }
-        await self._load_rule(rule_dict)
-        await self.object.setup()
-        await self.object.process(log_event)
-        assert document == expected
+            )
+            rule = processor.rules[0]
+            assert _compare_sets(rule) == {
+                "bad_ips.list": {
+                    IPv4Network("1.1.1.1/32"),
+                    IPv4Network("2.2.2.2/32"),
+                    IPv4Network("127.0.0.1/32"),
+                }
+            }
 
-    @pytest.mark.parametrize(
-        "testcase, ip, result",
-        [
-            ("matching IP", "127.0.0.1", {"in_list": ["network_list.txt"]}),
-            ("matching network", "127.0.0.123", {"in_list": ["network_list.txt"]}),
-            ("not matching IP", "127.0.123.1", {"not_in_list": ["network_list.txt"]}),
-            ("not matching IP list", ["127.0.123.1"], {"not_in_list": ["network_list.txt"]}),
-            ("matching IP list", ["127.0.0.1"], {"in_list": ["network_list.txt"]}),
-            ("matching network list", ["127.0.0.123"], {"in_list": ["network_list.txt"]}),
-            ("not matching network list", ["127.0.123.1"], {"not_in_list": ["network_list.txt"]}),
-            ("matching from list", ["127.0.123.1", "127.0.0.1"], {"in_list": ["network_list.txt"]}),
-        ],
-    )
-    async def test_match_network_field(self, testcase, ip, result):
-        document = {"ip": ip}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {"ip": ip, "network_results": result}
-        rule_dict = {
-            "filter": "ip",
-            "network_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "network_results",
-                "list_file_paths": ["../lists/network_list.txt"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "network_comparison",
-            "rules": [],
-            "list_search_base_path": self.CONFIG["list_search_base_path"],
-        }
-        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-        await processor.setup()
-        await processor.process(log_event)
-        assert document == expected, testcase
+            HttpGetter(target=url, protocol="http").scheduler.run_all()
+            assert _compare_sets(rule) == {
+                "bad_ips.list": {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
+            }
 
     @responses.activate
-    async def test_network_comparison_dynamic_http_failure_does_not_mark_rule_failed(self):
+    async def test_refresh_of_one_list_does_not_affect_unmodified_entries(self, tmp_path):
+        url1 = "http://localhost/tests/testdata/bad_ips_1.list?ref=bla"
+        responses.add(responses.GET, url1, "127.0.0.1")
+        responses.add(responses.GET, url1, "1.1.1.1")
+
+        url2 = "http://localhost/tests/testdata/bad_ips_2.list?ref=bla"
+        responses.add(responses.GET, url2, "2.2.2.2", headers={"etag": "1"})
+        responses.add(responses.GET, url2, headers={"etag": "1"}, status=304)
+
+        http_getter_conf = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(
+            json.dumps({url1: {"refresh_interval": 10}, url2: {"refresh_interval": 10}})
+        )
+
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
+            processor = await self._create_lister(
+                [
+                    {
+                        "filter": "ip",
+                        "network_comparison": {
+                            "source_fields": ["ip"],
+                            "target_field": "ip_results",
+                            "list_file_paths": ["bad_ips_1.list", "bad_ips_2.list"],
+                            "list_search_base_path": (
+                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                            ),
+                        },
+                    }
+                ]
+            )
+            rule = processor.rules[0]
+            assert _compare_sets(rule) == {
+                "bad_ips_1.list": {IPv4Network("127.0.0.1/32")},
+                "bad_ips_2.list": {IPv4Network("2.2.2.2/32")},
+            }
+
+            HttpGetter(target=url1, protocol="http").scheduler.run_all()
+            assert _compare_sets(rule) == {
+                "bad_ips_1.list": {IPv4Network("1.1.1.1/32")},
+                "bad_ips_2.list": {IPv4Network("2.2.2.2/32")},
+            }
+
+    @responses.activate
+    async def test_dynamic_http_failure_does_not_mark_rule_failed(self):
         failed_document = {"tenant": "acme", "ip": "1.2.3.4"}
         successful_document = {"tenant": "beta", "ip": "1.2.3.4"}
-        failed_log_event = LogEvent(failed_document, original=b"", input_meta=InputMeta())
-        successful_log_event = LogEvent(successful_document, original=b"", input_meta=InputMeta())
-        url_template = "http://localhost/${tenant}/${LOGPREP_LIST}"
+        list_name = "bad_ips.list"
         failed_url = "http://localhost/acme/bad_ips.list"
         successful_url = "http://localhost/beta/bad_ips.list"
-        expected_failed_document = {
+        responses.add(responses.GET, url=failed_url, status=500)
+        responses.add(responses.GET, url=successful_url, body="1.2.3.4\n", status=200)
+
+        processor = await self._create_lister(
+            [
+                {
+                    "filter": "ip",
+                    "network_comparison": {
+                        "source_fields": ["ip"],
+                        "target_field": "ip_results",
+                        "list_file_paths": [list_name],
+                        "list_search_base_path": "http://localhost/${tenant}/${LOGPREP_LIST}",
+                    },
+                }
+            ]
+        )
+        rule = processor.rules[0]
+
+        result = await processor.process(
+            LogEvent(failed_document, original=b"", input_meta=InputMeta())
+        )
+
+        assert failed_document == {
             "tenant": "acme",
             "ip": "1.2.3.4",
             "tags": ["_network_comparison_failure"],
         }
-        expected_successful_document = {
-            "tenant": "beta",
-            "ip": "1.2.3.4",
-            "ip_results": {"in_list": [successful_url]},
-        }
-
-        responses.add(responses.GET, url=failed_url, status=500)
-        responses.add(responses.GET, url=successful_url, body="1.2.3.4\n", status=200)
-
-        rule_dict = {
-            "filter": "ip",
-            "network_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "ip_results",
-                "list_file_paths": ["bad_ips.list"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "network_comparison",
-            "rules": [],
-            "list_search_base_path": url_template,
-        }
-
-        RefreshableGetter.reset()
-
-        processor = Factory.create({"custom_lister": config})
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-        await processor.setup()
-
-        result = await processor.process(failed_log_event)
-
-        assert failed_document == expected_failed_document
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert rule.data_error is None
-        assert failed_url not in rule.compare_sets
         assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
         assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
 
-        await processor.process(successful_log_event)
+        await processor.process(LogEvent(successful_document, original=b"", input_meta=InputMeta()))
 
-        assert successful_document == expected_successful_document
+        assert successful_document == {
+            "tenant": "beta",
+            "ip": "1.2.3.4",
+            "ip_results": {"in_list": [list_name]},
+        }
         assert rule.data_error is None
-        assert rule.compare_sets == {successful_url: {IPv4Network("1.2.3.4/32")}}
+        assert _compare_sets(rule, {"tenant": "beta"}) == {list_name: {IPv4Network("1.2.3.4/32")}}
 
     @responses.activate
-    async def test_network_comparison_process_adds_failure_tag_if_http_list_request_returns_500(
-        self, caplog
-    ):
+    async def test_process_adds_failure_tag_if_http_list_returns_500(self, caplog):
         document = {"ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {
-            "ip": "1.2.3.4",
-            "tags": ["_network_comparison_failure"],
-        }
+        list_name = "bad_ips.list"
         url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
+        responses.add(responses.GET, url=url, status=500)
 
-        responses.add(
-            responses.GET,
-            url=url,
-            status=500,
+        processor = await self._create_lister(
+            [
+                {
+                    "filter": "ip",
+                    "network_comparison": {
+                        "source_fields": ["ip"],
+                        "target_field": "ip_results",
+                        "list_file_paths": [list_name],
+                        "list_search_base_path": (
+                            "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                        ),
+                    },
+                }
+            ]
         )
-
-        rule_dict = {
-            "filter": "ip",
-            "network_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "ip_results",
-                "list_file_paths": ["bad_ips.list"],
-            },
-            "description": "",
-        }
-
-        config = {
-            "type": "network_comparison",
-            "rules": [],
-            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
-        }
-
-        RefreshableGetter.reset()
-
-        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-
-        assert rule.data_error is None
-
-        await processor.setup()
+        rule = processor.rules[0]
 
         assert "NetworkComparison" in caplog.text
         assert "too many 500 error responses" in caplog.text
 
-        await processor.process(log_event)
+        await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        data_error = rule.data_error
-        assert isinstance(data_error, RefreshableGetterError)
-
-        assert document == expected
+        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
         assert len(responses.calls) == 4
         assert responses.calls[0].request.url == url
-        assert rule.compare_sets == {}
-
-    async def test_network_comparison_logs_warning_on_field_exists_warning(
-        self,
-    ):
-        document = {
-            "dot_ip": "127.0.0.2",
-            "ip1": "127.0.0.1",
-            "dotted": {"ip_results": ["do_not_look_here"]},
-        }
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {
-            "tags": ["_network_comparison_failure"],
-            "dot_ip": "127.0.0.2",
-            "ip1": "127.0.0.1",
-            "dotted": {"ip_results": ["do_not_look_here"]},
-        }
-
-        rule_dict = {
-            "filter": "ip1",
-            "network_comparison": {
-                "source_fields": ["ip1"],
-                "target_field": "dotted.ip_results.do_not_look_here",
-                "list_file_paths": ["../lists/network_list.txt"],
-            },
-            "description": "",
-        }
-
-        config = {
-            "type": "network_comparison",
-            "rules": [],
-            "list_search_base_path": self.CONFIG["list_search_base_path"],
-        }
-
-        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-        await processor.setup()
-
-        result = await processor.process(log_event)
-
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
-        assert document == expected
 
     @responses.activate
-    async def test_network_comparison_recovers_after_failed_http_getter_setup(
-        self,
-    ):
-        document = {"ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected_failed_document = {
-            "ip": "1.2.3.4",
-            "tags": ["_network_comparison_failure"],
-        }
+    async def test_recovers_after_failed_http_getter_setup(self):
         list_name = "bad_ips.list"
         url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
+        rules = [
+            {
+                "filter": "ip",
+                "network_comparison": {
+                    "source_fields": ["ip"],
+                    "target_field": "ip_results",
+                    "list_file_paths": [list_name],
+                    "list_search_base_path": (
+                        "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                    ),
+                },
+            }
+        ]
 
-        responses.add(
-            responses.GET,
-            url=url,
-            status=500,
-        )
+        responses.add(responses.GET, url=url, status=500)
+        processor = await self._create_lister(rules)
+        rule = processor.rules[0]
 
-        rule_dict = {
-            "filter": "ip",
-            "network_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "ip_results",
-                "list_file_paths": [list_name],
-            },
-            "description": "",
-        }
+        document = {"ip": "1.2.3.4"}
+        await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        config = {
-            "type": "network_comparison",
-            "rules": [],
-            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
-        }
-
-        RefreshableGetter.reset()
-
-        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-        await processor.setup()
-        await processor.process(log_event)
-
-        data_error = rule.data_error
-        assert isinstance(data_error, RefreshableGetterError)
-        assert document == expected_failed_document
-        assert rule.compare_sets == {}
+        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500
 
-        # recovered case:
+        responses.replace(responses.GET, url=url, body="1.2.3.4\n", status=200)
 
-        responses.replace(
-            responses.GET,
-            url=url,
-            body="1.2.3.4\n",
-            status=200,
-        )
+        processor = await self._create_lister(rules)
+        rule = processor.rules[0]
 
         document = {"ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected_recovered_document = {
-            "ip": "1.2.3.4",
-            "ip_results": {"in_list": [url]},
-        }
-
-        RefreshableGetter.reset()
-
-        processor = typing.cast(NetworkComparison, Factory.create({"custom_lister": config}))
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-
-        await processor.setup()
-        await processor.process(log_event)
+        await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
         assert rule.data_error is None
-        assert document == expected_recovered_document
-        assert rule.compare_sets == {url: {IPv4Network("1.2.3.4/32")}}
+        assert document == {"ip": "1.2.3.4", "ip_results": {"in_list": [list_name]}}
+        assert _compare_sets(rule) == {list_name: {IPv4Network("1.2.3.4/32")}}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200
