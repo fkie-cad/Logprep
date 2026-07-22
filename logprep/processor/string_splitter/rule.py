@@ -66,7 +66,7 @@ class StringSplitterRule(FieldManagerRule):
         )
         delimiter: str = field(validator=validators.instance_of(str), default=" ")
         """The delimiter for splitting. Defaults to whitespace"""
-        mapping: dict = field(default={}, init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         drop_empty: bool = field(default=False)
         """If empty list values (as a result of the splitting operation) should be dropped or kept.

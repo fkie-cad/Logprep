@@ -31,7 +31,7 @@ Processor Configuration
 """
 
 import typing
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 
 from attrs import define, field, validators
 
@@ -102,7 +102,7 @@ class ListComparison(Processor):
 
     def _list_comparison(
         self, rule: ListComparisonRule, event: dict[str, FieldValue]
-    ) -> tuple[list[str], str]:
+    ) -> tuple[Sequence[str], str]:
         """Check if field value violates block or allow list.
 
         Returns
@@ -121,13 +121,13 @@ class ListComparison(Processor):
         )
 
         matching_keys, all_keys = self._get_lists_matching_with_values(rule, value_list, event)
-        if len(matching_keys) == 0:
+        if not matching_keys:
             return list(all_keys), "not_in_list"
         return matching_keys, "in_list"
 
     def _get_lists_matching_with_values(
         self, rule: ListComparisonRule, values: Sequence[FieldValue], event: dict[str, FieldValue]
-    ) -> tuple[list[str], Iterable[str]]:
+    ) -> tuple[Sequence[str], Sequence[str]]:
         """Return matching comparison-list identifiers and the evaluated compare set names.
 
         Dynamic list loading errors are converted to ``ProcessingWarning`` so the rule's
@@ -147,10 +147,9 @@ class ListComparison(Processor):
 
         return matches, rule.compare_set_names
 
-    # pylint: disable=unused-argument
     def _prepare_event_values_for_match(
-        self, values: Sequence[FieldValue], rule: ListComparisonRule, event: dict[str, FieldValue]
-    ) -> typing.Any:
+        self, values: Sequence[FieldValue], _: ListComparisonRule, __: dict[str, FieldValue]
+    ) -> set[FieldValue]:
         """Convert the raw source-field values into the form used for matching.
 
         Invalid values are reported as warnings and skipped by subclasses that need
@@ -158,10 +157,8 @@ class ListComparison(Processor):
         """
         return set(values)
 
-    # pylint: enable=unused-argument
-
     @staticmethod
-    def _matches_compare_set(prepared_values: typing.Any, set_values: set) -> bool:
+    def _matches_compare_set(prepared_values: set[FieldValue], set_values: set) -> bool:
         """Return whether any prepared event value matches the given compare set."""
         return not prepared_values.isdisjoint(set_values)
 
