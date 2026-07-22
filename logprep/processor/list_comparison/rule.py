@@ -408,9 +408,8 @@ class ListComparisonRule(FieldManagerRule):
 
         for name, list_path in zip(list_names, list_paths):
             full_path = base_template.safe_substitute(LOGPREP_LIST=list_path)
-            full_path_with_env = DottedTemplate(full_path).safe_substitute(
-                {key: value for key, value in ENV_VARS.items() if key.isupper()}
-            )
+            # TODO maybe only allow uppercase and specially prefixed env vars like in EnvTemplate
+            full_path_with_env = DottedTemplate(full_path).safe_substitute(ENV_VARS)
 
             dynamic_template = DottedTemplate(full_path_with_env)
             dynamic_identifiers = dynamic_template.get_identifiers()
