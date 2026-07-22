@@ -306,6 +306,60 @@ test_cases = [  # rule, event, expected
         {"tenant": "acme", "ip": "127.0.0.1", "ip_results": {"in_list": ["${tenant}/blocked"]}},
         id="dynamic variable in list_file_paths resolved from event field",
     ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["blocked"],
+                "list_search_base_path": "https://api.example/lists/${tenant.id}/${LOGPREP_LIST}",
+            },
+        },
+        {"tenant": {"id": "acme"}, "ip": "127.0.0.1"},
+        {
+            "tenant": {"id": "acme"},
+            "ip": "127.0.0.1",
+            "ip_results": {"in_list": ["blocked"]},
+        },
+        id="dotted event field in list_search_base_path",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["${tenant.id}/blocked"],
+                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+            },
+        },
+        {"tenant": {"id": "acme"}, "ip": "127.0.0.1"},
+        {
+            "tenant": {"id": "acme"},
+            "ip": "127.0.0.1",
+            "ip_results": {"in_list": ["${tenant.id}/blocked"]},
+        },
+        id="dotted event field in list_file_paths",
+    ),
+    pytest.param(
+        {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_paths": {"BLOCKED_NETWORKS": "${tenant.id}/blocked"},
+                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+            },
+        },
+        {"tenant": {"id": "acme"}, "ip": "8.8.8.8"},
+        {
+            "tenant": {"id": "acme"},
+            "ip": "8.8.8.8",
+            "ip_results": {"not_in_list": ["BLOCKED_NETWORKS"]},
+        },
+        id="dotted event field in list_paths",
+    ),
 ]
 
 
