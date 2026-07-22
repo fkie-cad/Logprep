@@ -3,6 +3,7 @@
 import json
 import re
 import time
+from copy import deepcopy
 from pathlib import Path
 from unittest import mock
 
@@ -22,6 +23,15 @@ from logprep.util.getter import (
 )
 from tests.conftest import mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+from tests.unit.processor.list_comparison.test_list_comparison import (
+    failure_test_cases as non_ng_failure_test_cases,
+)
+from tests.unit.processor.list_comparison.test_list_comparison import (
+    invalid_config_cases as non_ng_invalid_config_cases,
+)
+from tests.unit.processor.list_comparison.test_list_comparison import (
+    test_cases as non_ng_test_cases,
+)
 
 NOT_SET = object()
 """A sentinel object to indicate that a value has not been provided."""
@@ -47,454 +57,9 @@ def _warning_str(warning) -> str:
     return f"{type(warning).__name__}: {warning}"
 
 
-test_cases = [  # rule, event, expected
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "Franz"},
-        {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}},
-        id="single value is found in the list",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "Charlotte"},
-        {"user": "Charlotte", "user_results": {"not_in_list": ["user_list.txt"]}},
-        id="single value is not found in the list",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "# This is a doc string for testing"},
-        {
-            "user": "# This is a doc string for testing",
-            "user_results": {"not_in_list": ["user_list.txt"]},
-        },
-        id="comment lines in the list are ignored",
-    ),
-    pytest.param(
-        {
-            "filter": "users",
-            "list_comparison": {
-                "source_fields": ["users"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"users": ["Charlotte", "Franz"]},
-        {"users": ["Charlotte", "Franz"], "user_results": {"in_list": ["user_list.txt"]}},
-        id="one value of a list source is found in the list",
-    ),
-    pytest.param(
-        {
-            "filter": "users",
-            "list_comparison": {
-                "source_fields": ["users"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"users": ["Charlotte", "Omega"]},
-        {"users": ["Charlotte", "Omega"], "user_results": {"not_in_list": ["user_list.txt"]}},
-        id="no value of a list source is found in the list",
-    ),
-    pytest.param(
-        {
-            "filter": "system",
-            "list_comparison": {
-                "source_fields": ["system"],
-                "target_field": "results",
-                "list_file_paths": ["../lists/user_list.txt", "../lists/system_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"system": "Alpha"},
-        {"system": "Alpha", "results": {"in_list": ["system_list.txt"]}},
-        id="value is found in one of two lists",
-    ),
-    pytest.param(
-        {
-            "filter": "system",
-            "list_comparison": {
-                "source_fields": ["system"],
-                "target_field": "results",
-                "list_file_paths": ["../lists/user_list.txt", "../lists/system_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"system": "Franz"},
-        {"system": "Franz", "results": {"in_list": ["user_list.txt", "system_list.txt"]}},
-        id="value is found in both of two lists",
-    ),
-    pytest.param(
-        {
-            "filter": "system",
-            "list_comparison": {
-                "source_fields": ["system"],
-                "target_field": "results",
-                "list_file_paths": ["../lists/user_list.txt", "../lists/system_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"system": "Gamma"},
-        {"system": "Gamma", "results": {"not_in_list": ["user_list.txt", "system_list.txt"]}},
-        id="value is found in neither of two lists",
-    ),
-    pytest.param(
-        {
-            "filter": "channel",
-            "list_comparison": {
-                "source_fields": ["channel.type"],
-                "target_field": "channel_results",
-                "list_file_paths": ["../lists/user_list.txt", "../lists/system_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"channel": {"type": "fast"}},
-        {
-            "channel": {"type": "fast"},
-            "channel_results": {"not_in_list": ["user_list.txt", "system_list.txt"]},
-        },
-        id="dotted source subfield is resolved",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "dotted.user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "Franz"},
-        {"user": "Franz", "dotted": {"user_results": {"in_list": ["user_list.txt"]}}},
-        id="dotted target field is created",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "deeply.nested.user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "Franz"},
-        {"user": "Franz", "deeply": {"nested": {"user_results": {"in_list": ["user_list.txt"]}}}},
-        id="deeply dotted target field is created",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/empty_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "Franz"},
-        {"user": "Franz", "user_results": {"not_in_list": ["empty_list.txt"]}},
-        id="empty list yields not_in_list",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "dotted.user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "Franz", "dotted": {"user_results": {"in_list": ["already_present"]}}},
-        {
-            "user": "Franz",
-            "dotted": {"user_results": {"in_list": ["already_present", "user_list.txt"]}},
-        },
-        id="existing in_list target field is extended",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "dotted.user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "Franz", "dotted": {"preexistent_output_field": {"in_list": ["already_present"]}}},
-        {
-            "user": "Franz",
-            "dotted": {
-                "preexistent_output_field": {"in_list": ["already_present"]},
-                "user_results": {"in_list": ["user_list.txt"]},
-            },
-        },
-        id="sibling target subfield is preserved",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-                "delete_source_fields": True,
-            },
-        },
-        {"user": "Franz"},
-        {"user_results": {"in_list": ["user_list.txt"]}},
-        id="source field is deleted when configured",
-    ),
-    pytest.param(
-        {
-            "filter": "users",
-            "list_comparison": {
-                "source_fields": ["users"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/system_list.txt", "../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"users": ["Franz", "Alpha"]},
-        {
-            "users": ["Franz", "Alpha"],
-            "user_results": {"in_list": ["system_list.txt", "user_list.txt"]},
-        },
-        id="matching list is reported once even with multiple matching values",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_paths": {"KNOWN_USERS": "../lists/user_list.txt"},
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "Franz"},
-        {"user": "Franz", "user_results": {"in_list": ["KNOWN_USERS"]}},
-        id="list_paths mapping reports the configured name on match",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_paths": {"KNOWN_USERS": "../lists/user_list.txt"},
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"user": "Charlotte"},
-        {"user": "Charlotte", "user_results": {"not_in_list": ["KNOWN_USERS"]}},
-        id="list_paths mapping reports the configured name on no match",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["users/blocked"],
-                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
-            },
-        },
-        {"user": "Franz"},
-        {"user": "Franz", "user_results": {"in_list": ["users/blocked"]}},
-        id="http list, value found",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_paths": {"BLOCKED_USERS": "users/blocked"},
-                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
-            },
-        },
-        {"user": "Charlotte"},
-        {"user": "Charlotte", "user_results": {"not_in_list": ["BLOCKED_USERS"]}},
-        id="http list_paths mapping, value not found",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_paths": {"BLOCKED_USERS": "blocked"},
-                "list_search_base_path": "https://api.example/lists/${tenant}/${LOGPREP_LIST}",
-            },
-        },
-        {"tenant": "acme", "user": "Franz"},
-        {"tenant": "acme", "user": "Franz", "user_results": {"in_list": ["BLOCKED_USERS"]}},
-        id="dynamic http list resolved from event field",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["${tenant}/blocked"],
-                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
-            },
-        },
-        {"tenant": "acme", "user": "Franz"},
-        {
-            "tenant": "acme",
-            "user": "Franz",
-            "user_results": {"in_list": ["${tenant}/blocked"]},
-        },
-        id="dynamic variable in list_file_paths resolved from event field",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_paths": {"BLOCKED_USERS": "${tenant}/blocked"},
-                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
-            },
-        },
-        {"tenant": "acme", "user": "Charlotte"},
-        {
-            "tenant": "acme",
-            "user": "Charlotte",
-            "user_results": {"not_in_list": ["BLOCKED_USERS"]},
-        },
-        id="dynamic variable in list_paths resolved from event field",
-    ),
-]
-
-
-failure_test_cases = [  # rule, event, expected, error_message
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "dotted.user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"dot_channel": "test", "user": "Franz", "dotted": "dotted_Franz"},
-        {
-            "dot_channel": "test",
-            "user": "Franz",
-            "dotted": "dotted_Franz",
-            "tags": ["_list_comparison_failure"],
-        },
-        r"FieldExistsWarning.*could not be extended: dotted.user_results",
-        id="target parent field exists as string and cannot be extended",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "dotted.user_results.do_not_look_here",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-            },
-        },
-        {"dot_channel": "test", "user": "Franz", "dotted": {"user_results": ["do_not_look_here"]}},
-        {
-            "dot_channel": "test",
-            "user": "Franz",
-            "dotted": {"user_results": ["do_not_look_here"]},
-            "tags": ["_list_comparison_failure"],
-        },
-        r"FieldExistsWarning.*could not be extended: dotted.user_results.do_not_look_here",
-        id="intermediate target field has wrong type",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user",
-                "list_file_paths": ["../lists/user_list.txt"],
-                "list_search_base_path": LOCAL_BASE_PATH,
-                "overwrite_target": True,
-            },
-        },
-        {"user": "Franz"},
-        {"user": "Franz", "tags": ["_list_comparison_failure"]},
-        r"FieldExistsWarning.*could not be extended: user",
-        id="overwrite target fails when target equals source",
-    ),
-    pytest.param(
-        {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["users/blocked"],
-                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
-            },
-        },
-        {"user": "Franz"},
-        {"user": "Franz", "tags": ["_list_comparison_failure"]},
-        r"Max retries exceeded",
-        id="http list is unreachable",
-    ),
-]
-
-
-invalid_config_cases = [  # list_comparison_config, error_message
-    pytest.param(
-        {
-            "source_fields": ["user"],
-            "target_field": "user_results",
-            "list_file_paths": ["../lists/user_list.txt"],
-            "list_paths": {"KNOWN_USERS": "../lists/user_list.txt"},
-        },
-        r"must not both be specified",
-        id="list_file_paths and list_paths are mutually exclusive",
-    ),
-    pytest.param(
-        {
-            "source_fields": ["user"],
-            "target_field": "user_results",
-        },
-        r"needs to be specified",
-        id="one of list_file_paths or list_paths is required",
-    ),
-]
+test_cases = deepcopy(non_ng_test_cases)
+failure_test_cases = deepcopy(non_ng_failure_test_cases)
+invalid_config_cases = deepcopy(non_ng_invalid_config_cases)
 
 
 class TestListComparison(BaseProcessorTestCase[ListComparison]):
@@ -710,6 +275,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         RefreshableGetter.reset()
         processor = self._create_test_instance(
             {
+                "list_search_base_path": None,
                 "rules": [
                     {
                         "filter": "user",
@@ -722,7 +288,6 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         },
                     }
                 ],
-                "list_search_base_path": None,
             }
         )
         with pytest.raises(ValueError, match="Content is not a list"):
@@ -1277,6 +842,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         RefreshableGetter.reset()
         processor = self._create_test_instance(
             {
+                "list_search_base_path": None,
                 "rules": [
                     {
                         "filter": "user",
@@ -1290,7 +856,6 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         },
                     }
                 ],
-                "list_search_base_path": None,
             }
         )
         rule = processor.rules[0]
