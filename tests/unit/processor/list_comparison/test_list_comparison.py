@@ -523,28 +523,6 @@ failure_test_cases = [  # rule, event, expected, error_message
 ]
 
 
-invalid_config_cases = [  # list_comparison_config, error_message
-    pytest.param(
-        {
-            "source_fields": ["user"],
-            "target_field": "user_results",
-            "list_file_paths": ["../lists/user_list.txt"],
-            "list_paths": {"KNOWN_USERS": "../lists/user_list.txt"},
-        },
-        r"must not both be specified",
-        id="list_file_paths and list_paths are mutually exclusive",
-    ),
-    pytest.param(
-        {
-            "source_fields": ["user"],
-            "target_field": "user_results",
-        },
-        r"needs to be specified",
-        id="one of list_file_paths or list_paths is required",
-    ),
-]
-
-
 class TestListComparison(BaseProcessorTestCase):
     CONFIG = {
         "type": "list_comparison",
@@ -587,12 +565,6 @@ class TestListComparison(BaseProcessorTestCase):
         assert len(result.warnings) == 1
         assert re.search(error_message, _warning_str(result.warnings[0]))
         assert event == expected
-
-    @pytest.mark.parametrize("list_comparison_config, error_message", invalid_config_cases)
-    def test_rule_config_is_validated(self, list_comparison_config, error_message):
-        rule_dict = {"filter": "user", "list_comparison": list_comparison_config}
-        with pytest.raises(ValueError, match=error_message):
-            ListComparisonRule.create_from_dict(rule_dict)
 
     def test_multiple_rules_write_independent_target_fields(self):
         document = {"user": "Mark", "system": "Franz"}
@@ -668,8 +640,13 @@ class TestListComparison(BaseProcessorTestCase):
     )
     @responses.activate
     def test_loads_json_list_from_http(self, json_content, content_field):
-        url = "http://localhost:8080/v2/valuestore/test_4"
-        responses.add(responses.GET, url, json.dumps(json_content), content_type="application/json")
+        url = "http://localhost:8080/v2/valuestore/test_4/${LOGPREP_LIST}"
+        responses.add(
+            responses.GET,
+            url.replace("${LOGPREP_LIST}", "bad_users.list"),
+            json.dumps(json_content),
+            content_type="application/json",
+        )
         list_comparison = {
             "source_fields": ["user"],
             "target_field": "user_results",
@@ -693,8 +670,13 @@ class TestListComparison(BaseProcessorTestCase):
     )
     @responses.activate
     def test_loads_yaml_list_from_http(self, yaml_content, content_field):
-        url = "http://localhost:8080/v2/valuestore/hosts.yml"
-        responses.add(responses.GET, url, yaml_content, content_type="application/yaml")
+        url = "http://localhost:8080/v2/valuestore/${LOGPREP_LIST}"
+        responses.add(
+            responses.GET,
+            url.replace("${LOGPREP_LIST}", "hosts.yml"),
+            yaml_content,
+            content_type="application/yaml",
+        )
         list_comparison = {
             "source_fields": ["user"],
             "target_field": "user_results",

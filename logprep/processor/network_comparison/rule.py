@@ -51,7 +51,7 @@ Examples for network_comparison:
 
 """
 
-from ipaddress import ip_network
+from ipaddress import IPv4Network, IPv6Network, ip_network
 
 from attrs import define, field, validators
 
@@ -138,7 +138,7 @@ class NetworkComparisonRule(ListComparisonRule):
         HTTP(S) paths, unresolved placeholders are resolved from event fields during
         processing.
         """
-        mapping: dict = field(default={}, init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         content_field: str | None = field(
             validator=validators.optional(validators.instance_of(str)),
@@ -185,7 +185,7 @@ class NetworkComparisonRule(ListComparisonRule):
             if not self.list_file_paths and not self.list_paths:
                 raise ValueError("one of `list_file_paths` or `list_paths` needs to be specified")
 
-    def _transform_and_filter_list_element(self, elem):
+    def _transform_and_filter_list_element(self, elem) -> IPv4Network | IPv6Network | None:  # type: ignore
         elem = super()._transform_and_filter_list_element(elem)
         if elem is not None:
             elem = ip_network(elem)

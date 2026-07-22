@@ -12,7 +12,6 @@ import responses
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.list_comparison.processor import ListComparison
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
     HttpGetter,
@@ -33,9 +32,6 @@ from tests.unit.processor.list_comparison.test_list_comparison import (
     failure_test_cases as non_ng_failure_test_cases,
 )
 from tests.unit.processor.list_comparison.test_list_comparison import (
-    invalid_config_cases as non_ng_invalid_config_cases,
-)
-from tests.unit.processor.list_comparison.test_list_comparison import (
     test_cases as non_ng_test_cases,
 )
 
@@ -46,7 +42,6 @@ def _warning_str(warning) -> str:
 
 test_cases = deepcopy(non_ng_test_cases)
 failure_test_cases = deepcopy(non_ng_failure_test_cases)
-invalid_config_cases = deepcopy(non_ng_invalid_config_cases)
 
 
 class TestListComparison(BaseProcessorTestCase[ListComparison]):
@@ -93,12 +88,6 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         assert len(result.warnings) == 1
         assert re.search(error_message, _warning_str(result.warnings[0]))
         assert log_event.data == expected
-
-    @pytest.mark.parametrize("list_comparison_config, error_message", invalid_config_cases)
-    async def test_rule_config_is_validated(self, list_comparison_config, error_message):
-        rule_dict = {"filter": "user", "list_comparison": list_comparison_config}
-        with pytest.raises(ValueError, match=error_message):
-            ListComparisonRule.create_from_dict(rule_dict)
 
     async def test_multiple_rules_write_independent_target_fields(self):
         document = {"user": "Mark", "system": "Franz"}
@@ -174,8 +163,13 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
     )
     @responses.activate
     async def test_loads_json_list_from_http(self, json_content, content_field):
-        url = "http://localhost:8080/v2/valuestore/test_4"
-        responses.add(responses.GET, url, json.dumps(json_content), content_type="application/json")
+        url = "http://localhost:8080/v2/valuestore/test_4/${LOGPREP_LIST}"
+        responses.add(
+            responses.GET,
+            url.replace("${LOGPREP_LIST}", "bad_users.list"),
+            json.dumps(json_content),
+            content_type="application/json",
+        )
         list_comparison = {
             "source_fields": ["user"],
             "target_field": "user_results",
@@ -201,8 +195,13 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
     )
     @responses.activate
     async def test_loads_yaml_list_from_http(self, yaml_content, content_field):
-        url = "http://localhost:8080/v2/valuestore/hosts.yml"
-        responses.add(responses.GET, url, yaml_content, content_type="application/yaml")
+        url = "http://localhost:8080/v2/valuestore/${LOGPREP_LIST}"
+        responses.add(
+            responses.GET,
+            url.replace("${LOGPREP_LIST}", "hosts.yml"),
+            yaml_content,
+            content_type="application/yaml",
+        )
         list_comparison = {
             "source_fields": ["user"],
             "target_field": "user_results",

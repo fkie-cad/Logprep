@@ -5,7 +5,7 @@ Rule Configuration
 Processor-specific rule configuration is done using the mandatory field :code:`list_comparison`.
 
 The fields :code:`source_fields` and :code:`target_field` are used to define which field value
-flows into the comparison and where the results flows to, respectively.
+flows into the comparison and where the results flow to, respectively.
 The processor is able to handle multiple lists and checks if the values referenced by
 :code:`source_fields` have any intersection.
 
@@ -26,19 +26,18 @@ For **HTTP(s) paths**, :code:`list_search_base_path` has to carry a `${LOGPREP_L
 which is used to inject the sub-paths from :code:`list_paths` or :code:`list_file_paths` literally.
 Also, environment variables are interpolated in the process, for instance if the data source for the
 lists is an API, for which domain/host/port etc. are supplied via the environment.
-Environment variables are limited to TODO insert link to relevant docs here here.
 Additionally, field values can be injected into the paths using the same notation and
 (potentially dotted) field references.
 A URI with field references is considered *dynamic* and has considerable performance implications,
 as every new concrete path needs to be fetched ad-hoc during event processing.
 Caching and cache timeouts are used to balance performance and memory demands.
 
-Results of the list comparison are writting to :code:`target_field`.
+Results of the list comparison are written to :code:`target_field`.
 If there was any intersection between :code:`source_fields` and any list, a sub-field called
 `"in_list"` is populated, which in turn holds a list of all matching list names.
 If there was no intersection, `"not_in_list"` is populated instead with all list names which
 were tested in the comparison.
-Do note that there is always only one of both responses.
+Do note that only one of these responses is present at a time.
 
 In the following example, the field :code:`user_agent` will be checked against the provided list
 (:code:`/lists/users/privileged.txt`).
@@ -94,7 +93,6 @@ import logging
 import os.path
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
-from enum import Enum, auto
 from typing import TypeAlias
 
 from attrs import define, field, validators
@@ -116,22 +114,12 @@ ListName: TypeAlias = str
 ListContent: TypeAlias = set
 
 
-class ContentFailure(Enum):
-    """Sentinel type for indicating missing fields."""
-
-    CONTENT_FAILURE = auto()
-
-
-CONTENT_FAILURE = ContentFailure.CONTENT_FAILURE  # pylint: disable=invalid-name
-"""Sentinel value for indicating failed content retrievals"""
-
-
 @define(kw_only=True)
 class _CompareSet(ABC):
     name: ListName
 
     @abstractmethod
-    def update_content(self, uri: str, content: ListContent | None):
+    def update_content(self, uri: str, content: ListContent | None) -> None:
         """Updates the cached and post-processed content"""
 
 
@@ -140,7 +128,7 @@ class _StaticCompareSet(_CompareSet):
     content: ListContent | None
     error: Exception | None = field(default=None)
 
-    def update_content(self, _, content: ListContent | None):
+    def update_content(self, _, content: ListContent | None) -> None:
         self.content = content
 
 
@@ -149,13 +137,13 @@ class _DynamicCompareSet(_CompareSet):
     uri_template: DottedTemplate
     uri_to_content: dict[str, ListContent] = field(factory=dict)
 
-    def update_content(self, uri: str, content: ListContent | None):
+    def update_content(self, uri: str, content: ListContent | None) -> None:
         if content is None:
             self.remove_content(uri)
         else:
             self.uri_to_content[uri] = content
 
-    def remove_content(self, uri: str):
+    def remove_content(self, uri: str) -> None:
         """Remove the cached contents for a specific uri"""
         self.uri_to_content.pop(uri, None)
 
@@ -199,7 +187,7 @@ class ListComparisonRule(FieldManagerRule):
         """
         Mapping for configuring list paths with representative names.
         Keys represent the names on which results will be reported.
-        Values represent the paths which populates `${LOGPREP_LIST}`.
+        Values represent the paths used to populate `${LOGPREP_LIST}`.
 
         Example:
 
@@ -239,7 +227,7 @@ class ListComparisonRule(FieldManagerRule):
         HTTP(S) paths, unresolved placeholders are resolved from event fields during
         processing.
         """
-        mapping: dict = field(default={}, init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         content_field: str | None = field(
             validator=validators.optional(validators.instance_of(str)),
@@ -280,7 +268,7 @@ class ListComparisonRule(FieldManagerRule):
                     Reads the list from the ``"content"`` key of the JSON object.
         """
 
-        def __attrs_post_init__(self):
+        def __attrs_post_init__(self) -> None:
             if self.list_file_paths and self.list_paths:
                 raise ValueError("`list_file_paths` and `list_paths` must not both be specified")
             if not self.list_file_paths and not self.list_paths:
@@ -338,16 +326,16 @@ class ListComparisonRule(FieldManagerRule):
         else:
             self._init_list_comparison_from_http(base_path, list_paths, list_names)
 
-    def _add_static_compare_set(self, name: ListName, path: str):
+    def _add_static_compare_set(self, name: ListName, path: str) -> None:
         compare_set = _StaticCompareSet(name=name, content=set())
         self._static_sets.append(compare_set)
         self._load_and_refresh_uri(compare_set, path)
 
-    def _add_dynamic_compare_set(self, name: ListName, uri_template: DottedTemplate):
+    def _add_dynamic_compare_set(self, name: ListName, uri_template: DottedTemplate) -> None:
         compare_set = _DynamicCompareSet(name=name, uri_template=uri_template)
         self._dynamic_sets.append(compare_set)
 
-    def _update_compare_sets_via_http(self, getter: Getter, compare_set: _CompareSet):
+    def _update_compare_sets_via_http(self, getter: Getter, compare_set: _CompareSet) -> None:
         try:
             content = self._get_list_contents_from_getter(getter)
             compare_set.update_content(getter.target, content)
@@ -355,13 +343,13 @@ class ListComparisonRule(FieldManagerRule):
             if isinstance(compare_set, _StaticCompareSet):
                 self._mark_failed(compare_set, error=ex)
                 return
-            raise ex
+            raise
         else:
             # TODO ugly check in hot path, better idea?
             if isinstance(compare_set, _StaticCompareSet):
                 self._clear_failed(compare_set)
 
-    def _recompute_failure_state(self):
+    def _recompute_failure_state(self) -> None:
         errors = [cs.error for cs in self._static_sets if cs.error]
         if errors:
             if len(errors) == 1:
@@ -371,11 +359,11 @@ class ListComparisonRule(FieldManagerRule):
         else:
             self.clear_failed()
 
-    def _mark_failed(self, compare_set: _StaticCompareSet, error: Exception):
+    def _mark_failed(self, compare_set: _StaticCompareSet, error: Exception) -> None:
         compare_set.error = error
         self._recompute_failure_state()
 
-    def _clear_failed(self, compare_set: _StaticCompareSet):
+    def _clear_failed(self, compare_set: _StaticCompareSet) -> None:
         if compare_set.error:
             compare_set.error = None
             self._recompute_failure_state()
@@ -390,6 +378,11 @@ class ListComparisonRule(FieldManagerRule):
 
         if list_names is None:
             list_names = [os.path.basename(path) for path in absolute_paths]
+            if len(list_names) != len(set(list_names)):
+                raise ValueError(
+                    "list names need to be unique; the basename for these entries is not:"
+                    f"{', '.join(absolute_paths)}"
+                )
 
         for list_name, list_path in zip(list_names, absolute_paths):
             content = self._get_list_contents_from_getter(GetterFactory.from_string(list_path))
@@ -401,6 +394,13 @@ class ListComparisonRule(FieldManagerRule):
         self, base_path: str, list_paths: Sequence[str], list_names: Sequence[str] | None
     ):
         base_template = DottedTemplate(base_path)
+
+        if "LOGPREP_LIST" not in base_template.get_identifiers():
+            raise ValueError(
+                "LOGPREP_LIST needs to be configured in list_search_base_path,"
+                f"it is not: {base_path}"
+            )
+
         all_dynamic_identifiers: set[str] = set()
 
         if list_names is None:
@@ -434,7 +434,7 @@ class ListComparisonRule(FieldManagerRule):
             if elem is not None
         }
 
-    def _load_and_refresh_uri(self, compare_set: _CompareSet, uri: str):
+    def _load_and_refresh_uri(self, compare_set: _CompareSet, uri: str) -> None:
         getter = GetterFactory.from_string(uri)
         if not isinstance(getter, RefreshableGetter):
             raise TypeError(f"The target {uri} must be a url")
@@ -445,7 +445,7 @@ class ListComparisonRule(FieldManagerRule):
 
         update_func()
         tag = self._callback_tag
-        key = (tag, uri, id(self))
+        key = (uri, id(compare_set))
 
         getter.add_callback(tag, update_func, deduplication_key=key)
 
@@ -455,7 +455,7 @@ class ListComparisonRule(FieldManagerRule):
             cleanup_func = functools.partial(self._cleanup, compare_set=compare_set, uri=uri)
             getter.add_cleanup_callback(tag, cleanup_func, deduplication_key=key)
 
-    def _cleanup(self, compare_set: _DynamicCompareSet, uri: str):
+    def _cleanup(self, compare_set: _DynamicCompareSet, uri: str) -> None:
         compare_set.remove_content(uri)
         logger.debug("Deleted compare set for %s after cleanup", uri)
 
