@@ -27,6 +27,7 @@ Processor Configuration
 .. automodule:: logprep.processor.network_comparison.rule
 """
 
+from collections.abc import Sequence
 from ipaddress import IPv4Address, IPv6Address, ip_address
 
 from logprep.ng.processor.list_comparison.processor import ListComparison
@@ -41,7 +42,7 @@ class NetworkComparison(ListComparison):
     rule_class = NetworkComparisonRule
 
     def _prepare_event_values_for_match(
-        self, values: list, rule: ListComparisonRule, event: dict[str, FieldValue]
+        self, values: Sequence, rule: ListComparisonRule, event: dict[str, FieldValue]
     ) -> list[IPv4Address | IPv6Address]:
         """Parse the source-field values as IP addresses, warning about invalid ones."""
         event_ips = []

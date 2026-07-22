@@ -131,7 +131,7 @@ class ListComparison(Processor):
         return matching_keys, "in_list"
 
     def _get_lists_matching_with_values(
-        self, rule: ListComparisonRule, values: list[FieldValue], event: dict[str, FieldValue]
+        self, rule: ListComparisonRule, values: Sequence[FieldValue], event: dict[str, FieldValue]
     ) -> tuple[list[str], Iterable[str]]:
         """Return matching comparison-list identifiers and the evaluated compare set names.
 
@@ -154,7 +154,7 @@ class ListComparison(Processor):
 
     # pylint: disable=unused-argument
     def _prepare_event_values_for_match(
-        self, values: list[FieldValue], rule: ListComparisonRule, event: dict[str, FieldValue]
+        self, values: Sequence[FieldValue], rule: ListComparisonRule, event: dict[str, FieldValue]
     ) -> typing.Any:
         """Convert the raw source-field values into the form used for matching.
 
