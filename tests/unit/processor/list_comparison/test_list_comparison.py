@@ -28,9 +28,6 @@ LOCAL_BASE_PATH = "tests/testdata/unit/list_comparison/rules"
 HTTP_BASE_PATH = "http://localhost/${LOGPREP_LIST}"
 HTTP_DYNAMIC_BASE_PATH = "http://localhost/${tenant}/${LOGPREP_LIST}"
 
-DUMMY_HTTP_LIST = "# a comment\nFranz\nAlpha\nBeta\n"
-"""Body returned for every HTTP list in ``test_cases`` so matches are deterministic."""
-
 
 def _compare_sets(rule: ListComparisonRule, event: dict | None = None) -> dict[str, set]:
     """Materialize a rule's compare sets via its public ``iter_compare_sets`` API.
@@ -574,7 +571,7 @@ class TestListComparison(BaseProcessorTestCase):
             mocked.add_callback(
                 responses.GET,
                 re.compile(r"http.*"),
-                callback=lambda _: (200, {}, DUMMY_HTTP_LIST),
+                callback=lambda _: (200, {}, "# a comment\nFranz\nAlpha\nBeta\n"),
             )
             processor = self._create_lister([rule])
             processor.process(event)
