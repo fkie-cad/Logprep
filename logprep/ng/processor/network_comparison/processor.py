@@ -40,7 +40,7 @@ class NetworkComparison(ListComparison):
 
     rule_class = NetworkComparisonRule
 
-    def _prepare_event_values(
+    def _prepare_event_values_for_match(
         self, values: list, rule: ListComparisonRule, event: dict[str, FieldValue]
     ) -> list[IPv4Address | IPv6Address]:
         """Parse the source-field values as IP addresses, warning about invalid ones."""

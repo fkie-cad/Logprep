@@ -139,7 +139,7 @@ class ListComparison(Processor):
         failure tags are applied instead of producing a normal ``not_in_list`` result.
         """
 
-        prepared_values = self._prepare_event_values(values, rule, event)
+        prepared_values = self._prepare_event_values_for_match(values, rule, event)
 
         try:
             matches = [
@@ -153,7 +153,7 @@ class ListComparison(Processor):
         return matches, rule.compare_set_names
 
     # pylint: disable=unused-argument
-    def _prepare_event_values(
+    def _prepare_event_values_for_match(
         self, values: list[FieldValue], rule: ListComparisonRule, event: dict[str, FieldValue]
     ) -> typing.Any:
         """Convert the raw source-field values into the form used for matching.
