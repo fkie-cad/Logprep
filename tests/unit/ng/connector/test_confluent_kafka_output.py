@@ -20,6 +20,7 @@ from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.abc.output import FatalOutputError
+from logprep.ng.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.util.helper import get_dotted_field_value
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
@@ -29,7 +30,7 @@ KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 @pytest.mark.skip
 @mock.patch("confluent_kafka.Consumer", new=mock.MagicMock())
 @mock.patch("confluent_kafka.Producer", new=mock.MagicMock())
-class TestConfluentKafkaOutput(BaseOutputTestCase):
+class TestConfluentKafkaOutput(BaseOutputTestCase[ConfluentKafkaOutput]):
 
     CONFIG = {
         "type": "confluentkafka_output",

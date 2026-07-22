@@ -21,7 +21,7 @@ from unittest import mock
 import pytest
 
 from logprep.ng.abc.connector import Connector
-from logprep.ng.abc.event import ErrorEvent, InputMeta, LogEvent, OutputEvent
+from logprep.ng.abc.event import ErrorEvent, InputMeta, LogEvent
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.util.helper import FieldValue, get_dotted_field_value
@@ -724,16 +724,12 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
         assert result.data == expected, f"{expected} is not the same as {result.data}"
 
 
-def _create_log_event(data: dict[str, FieldValue], output_target: str | None = None) -> OutputEvent:
-    return LogEvent(data, output_target=output_target, original=b"", input_meta=InputMeta())
-
-
 class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[OutputTypeT]):
 
     @staticmethod
     def _create_log_event(
         data: dict[str, FieldValue], output_target: str | None = None
-    ) -> OutputEvent:
+    ) -> LogEvent:
         return LogEvent(data, output_target=output_target, original=b"", input_meta=InputMeta())
 
     async def test_is_output_instance(self):
@@ -743,13 +739,14 @@ class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[Outp
     @abstractmethod
     def mock_output_delivery_for_events(
         self,
-    ) -> Callable[[Sequence[bool | Exception]], None]:
+    ) -> Callable[[Sequence[list[bool] | Exception]], None]:
         """
         Returns a helper method which configures the mock in the concrete test class.
-        Whereas `True` indicates a successful store operation, `False` represents a failed
-        operation which has been gracefully handled by the used client.
-        `Exception` on the other hand is an error scenario which the client was not able
-        (or does not indent to) to handle gracefully.
+        Each element of the given sequence describes one delivery attempt of the client:
+        a list of per-event outcomes (`True` for a successful store operation, `False`
+        for a failure which has been gracefully handled by the used client), or a
+        single `Exception` for an error scenario which the client was not able
+        (or does not intend to) handle gracefully for that whole attempt.
         """
 
     @pytest.mark.parametrize(("count"), [pytest.param(n, id=f"{n} events") for n in [0, 1, 2, 5]])
@@ -758,7 +755,7 @@ class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[Outp
         self.object.metrics.number_of_processed_events = 0
 
         events = [self._create_log_event({"message": f"test {i}"}) for i in range(count)]
-        mock_output_delivery_for_events([True for _ in events])
+        mock_output_delivery_for_events([[True for _ in events]])
         await self.object.store(events)
 
         assert self.object.metrics.number_of_processed_events == count
@@ -769,7 +766,7 @@ class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[Outp
         self.object.metrics.number_of_errors = 0
 
         events = [self._create_log_event({"message": f"test {i}"}) for i in range(count)]
-        mock_output_delivery_for_events([False for _ in events])
+        mock_output_delivery_for_events([[False for _ in events]])
         await self.object.store(events)
 
         assert self.object.metrics.number_of_errors == count
@@ -782,7 +779,7 @@ class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[Outp
         self.object.metrics.number_of_errors = 0
 
         events = [self._create_log_event({"message": f"test {i}"}) for i in range(count)]
-        mock_output_delivery_for_events([Exception("unexpected client failure") for _ in events])
+        mock_output_delivery_for_events([Exception("unexpected client failure")])
         await self.object.store(events)
 
         assert self.object.metrics.number_of_errors == count
