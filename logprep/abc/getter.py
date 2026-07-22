@@ -62,7 +62,7 @@ class Getter(ABC):
         """Get content with enriched environment variables parsed based on content type."""
 
         raw, content_type = self._get_raw()
-        # TODO make resolving env variables optional, especially for user-defiend pure data payloads
+        # TODO make resolving env variables optional, especially for user-defined pure data payloads
         content = self._resolve_content(raw)
 
         match content_type:

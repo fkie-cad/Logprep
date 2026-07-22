@@ -506,7 +506,7 @@ class RefreshableGetter(Getter, ABC):
         self.shared.keep_alive()
 
     def timed_out(self) -> bool:
-        """Whether the target has timed out"""
+        """Whether this target has timed out"""
         return self.shared.timed_out
 
     @classmethod
@@ -565,7 +565,7 @@ class RefreshableGetter(Getter, ABC):
 
     @classmethod
     def reset(cls, cleanup: bool = False):
-        """Wipe the cache and optionall run cleanup callbacks"""
+        """Wipe the cache and optionally run cleanup callbacks"""
         for target, shared_target_data in list(cls._target_to_data_caches.items()):
             del cls._target_to_data_caches[target]
             if cleanup:
