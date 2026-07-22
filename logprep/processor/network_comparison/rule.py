@@ -41,6 +41,14 @@ target field :code:`network_comparison.example`.
    :undoc-members:
    :inherited-members:
    :noindex:
+
+
+Examples for network_comparison:
+--------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.network_comparison.test_network_comparison
+   :template: testcase-renderer.tmpl
+
 """
 
 from ipaddress import ip_network

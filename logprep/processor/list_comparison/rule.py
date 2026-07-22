@@ -80,6 +80,13 @@ target field :code:`compare_result`.
    :undoc-members:
    :inherited-members:
    :noindex:
+
+Examples for list_comparison:
+-----------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.list_comparison.test_list_comparison
+   :template: testcase-renderer.tmpl
+
 """
 
 import functools
