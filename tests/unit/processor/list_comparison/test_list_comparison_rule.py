@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 from logprep.factory_error import InvalidConfigurationError
-from logprep.processor.list_comparison.rule import ListComparisonRule
+from logprep.processor.list_comparison.rule import ListComparisonRule, _StaticCompareSet
 
 
 @pytest.fixture(name="rule_definition")
@@ -93,7 +93,7 @@ class TestListComparisonRule:
         rule2 = ListComparisonRule.create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
 
-    def test_compare_set_not_empty_for_valid_rule_def_after_init_list_comparison(
+    def test_compare_sets_not_empty_for_valid_rule_def_after_init_list_comparison(
         self, rule_definition
     ):
         rule = ListComparisonRule.create_from_dict(rule_definition)
@@ -102,9 +102,10 @@ class TestListComparisonRule:
 
         rule.init_list_comparison("test_owner", "tests/testdata/unit/list_comparison/rules")
 
-        assert rule.compare_sets is not None
-        assert isinstance(rule.compare_sets, dict)
-        assert len(rule.compare_sets.keys()) > 0
+        compare_sets = dict(rule.iter_compare_sets({}))
+
+        assert compare_sets == {"user_list.txt": {"Franz"}}
+        assert list(rule.compare_set_names) == ["user_list.txt"]
 
     def test_init_list_comparison_raises_if_no_base_path_is_configured(self):
         rule_definition = {
@@ -142,6 +143,7 @@ class TestListComparisonRule:
         }
         rule = ListComparisonRule.create_from_dict(rule_definition)
         rule = typing.cast(ListComparisonRule, rule)
+        compare_set = _StaticCompareSet(name="user_list.txt", content=set())
 
         with mock.patch(
             "logprep.processor.list_comparison.rule.ListComparisonRule._update_compare_sets_via_http",
@@ -149,6 +151,6 @@ class TestListComparisonRule:
         ):
             if will_fail:
                 with pytest.raises(TypeError, match=f"The target {url} must be a url"):
-                    rule._load_and_refresh_uri(url)
+                    rule._load_and_refresh_uri(compare_set, url)
             else:
-                rule._load_and_refresh_uri(url)
+                rule._load_and_refresh_uri(compare_set, url)

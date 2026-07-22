@@ -126,7 +126,7 @@ class ListComparison(Processor):
         return matching_keys, "in_list"
 
     def _get_lists_matching_with_values(
-        self, rule: ListComparisonRule, value_list: list[FieldValue], event: dict[str, FieldValue]
+        self, rule: ListComparisonRule, values: list[FieldValue], event: dict[str, FieldValue]
     ) -> tuple[list[str], Iterable[str]]:
         """Return matching comparison-list identifiers and the evaluated compare set names.
 
@@ -134,20 +134,36 @@ class ListComparison(Processor):
         failure tags are applied instead of producing a normal ``not_in_list`` result.
         """
 
-        event_values = set(value_list)
+        prepared_values = self._prepare_event_values_for_match(values, rule, event)
 
         try:
-
             matches = [
                 set_name
                 for set_name, set_values in rule.iter_compare_sets(event)
-                if not event_values.isdisjoint(set_values)
+                if self._matches_compare_set(prepared_values, set_values)
             ]
-
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error
 
         return matches, rule.compare_set_names
+
+    # pylint: disable=unused-argument
+    def _prepare_event_values_for_match(
+        self, values: list[FieldValue], rule: ListComparisonRule, event: dict[str, FieldValue]
+    ) -> typing.Any:
+        """Convert the raw source-field values into the form used for matching.
+
+        Invalid values are reported as warnings and skipped by subclasses that need
+        to parse the values first.
+        """
+        return set(values)
+
+    # pylint: enable=unused-argument
+
+    @staticmethod
+    def _matches_compare_set(prepared_values: typing.Any, set_values: set) -> bool:
+        """Return whether any prepared event value matches the given compare set."""
+        return not prepared_values.isdisjoint(set_values)
 
     def _shut_down(self) -> None:
         RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
