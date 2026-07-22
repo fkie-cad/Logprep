@@ -77,6 +77,7 @@ from collections.abc import Iterator, Sequence
 from functools import cached_property, partial
 from typing import Any
 
+import msgspec
 from attrs import define, field, validators
 from opensearchpy import (
     AsyncOpenSearch,
@@ -119,7 +120,9 @@ class BulkError(LogprepException):
 class MsgspecSerializer(JSONSerializer):
     """Plugs Logprep's msgspec JSON codec into the opensearch-py client."""
 
-    def __init__(self, encoder, decoder, *args, **kwargs):
+    def __init__(
+        self, encoder: msgspec.json.Encoder, decoder: msgspec.json.Decoder, *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self._encoder = encoder
         self._decoder = decoder
@@ -182,7 +185,9 @@ class OpensearchOutput(Output):
 
         number_of_bulk_requests: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of bulk requests sent to Opensearch, including retries",
+                description="Number of bulk requests sent to Opensearch,"
+                "excluding transport-level retries and including client-level"
+                "and circuit breaker triggered retries",
                 name="opensearch_output_number_of_bulk_requests",
             )
         )
@@ -288,7 +293,7 @@ class OpensearchOutput(Output):
         """Max chunk size to use for bulk requests. The default is 100MB."""
 
         max_client_retries: int = field(
-            default=3, validator=[validators.instance_of(int), validators.gt(0)]
+            default=3, validator=[validators.instance_of(int), validators.ge(0)]
         )
         """Max retries the transport layer performs *per request*, immediately
         and without backoff: node failover on connection errors and
@@ -480,7 +485,7 @@ class OpensearchOutput(Output):
             verify_certs=True,
             timeout=self.config.timeout,
             serializer=self._serializer,
-            max_client_retries=self.config.max_client_retries,
+            max_retries=self.config.max_client_retries,
             retry_on_status=self.config.retryable_transport_statuses,
             pool_maxsize=self.config.pool_maxsize,
         )
@@ -616,6 +621,7 @@ class OpensearchOutput(Output):
     @Metric.measure_time_async(metric_name="send_time_per_batch")
     async def _store(self, events: Sequence[OutputEvent]) -> None:
         logger.debug("Flushing %d documents to opensearch", len(events))
+        # TODO maybe introduce step-wise chunking in the future, if memory use becomes a problem
         await asyncio.gather(*(self._resolve_chunk(chunk) for chunk in self._chunks(events)))
 
     async def health(self) -> bool:  # type: ignore[override]
