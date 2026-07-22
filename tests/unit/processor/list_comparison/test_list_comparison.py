@@ -395,6 +395,60 @@ test_cases = [  # rule, event, expected
         },
         id="dynamic variable in list_paths resolved from event field",
     ),
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["blocked"],
+                "list_search_base_path": "https://api.example/lists/${tenant.id}/${LOGPREP_LIST}",
+            },
+        },
+        {"tenant": {"id": "acme"}, "user": "Franz"},
+        {
+            "tenant": {"id": "acme"},
+            "user": "Franz",
+            "user_results": {"in_list": ["blocked"]},
+        },
+        id="dotted event field in list_search_base_path",
+    ),
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["${tenant.id}/blocked"],
+                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+            },
+        },
+        {"tenant": {"id": "acme"}, "user": "Franz"},
+        {
+            "tenant": {"id": "acme"},
+            "user": "Franz",
+            "user_results": {"in_list": ["${tenant.id}/blocked"]},
+        },
+        id="dotted event field in list_file_paths",
+    ),
+    pytest.param(
+        {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_paths": {"BLOCKED_USERS": "${tenant.id}/blocked"},
+                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+            },
+        },
+        {"tenant": {"id": "acme"}, "user": "Charlotte"},
+        {
+            "tenant": {"id": "acme"},
+            "user": "Charlotte",
+            "user_results": {"not_in_list": ["BLOCKED_USERS"]},
+        },
+        id="dotted event field in list_paths",
+    ),
 ]
 
 

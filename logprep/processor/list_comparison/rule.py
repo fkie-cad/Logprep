@@ -402,7 +402,6 @@ class ListComparisonRule(FieldManagerRule):
         self, base_path: str, list_paths: Sequence[str], list_names: Sequence[str] | None
     ):
         base_template = Template(base_path)
-        assert base_template.is_valid()
         all_dynamic_identifiers: set[str] = set()
 
         if list_names is None:
