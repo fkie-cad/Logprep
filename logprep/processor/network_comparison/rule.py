@@ -58,12 +58,6 @@ from attrs import define, field, validators
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.processor.list_comparison.rule import ListComparisonRule, ListName
 
-# def _fix_inherited_pydoc(cls, fields):
-#     cls.__doc__ = cls.bases[0].__doc__.replace("ListComparisonRule", "NetworkComparisonRule")
-#     for f in fields:
-#         f.__doc__ = "BLALA"
-#     return fields
-
 
 class NetworkComparisonRule(ListComparisonRule):
     """Check if documents match a filter."""
