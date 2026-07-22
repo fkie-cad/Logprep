@@ -95,7 +95,6 @@ import os.path
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
 from enum import Enum, auto
-from string import Template
 from typing import TypeAlias
 
 from attrs import define, field, validators
@@ -104,7 +103,7 @@ from logprep.abc.getter import Getter
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.environ import ENV_VARS, EnvTemplate
+from logprep.util.environ import ENV_VARS
 from logprep.util.getter import (
     GetterFactory,
     RefreshableGetter,
@@ -401,7 +400,7 @@ class ListComparisonRule(FieldManagerRule):
     def _init_list_comparison_from_http(
         self, base_path: str, list_paths: Sequence[str], list_names: Sequence[str] | None
     ):
-        base_template = Template(base_path)
+        base_template = DottedTemplate(base_path)
         all_dynamic_identifiers: set[str] = set()
 
         if list_names is None:
@@ -409,7 +408,9 @@ class ListComparisonRule(FieldManagerRule):
 
         for name, list_path in zip(list_names, list_paths):
             full_path = base_template.safe_substitute(LOGPREP_LIST=list_path)
-            full_path_with_env = EnvTemplate(full_path).safe_substitute(ENV_VARS)
+            full_path_with_env = DottedTemplate(full_path).safe_substitute(
+                {key: value for key, value in ENV_VARS.items() if key.isupper()}
+            )
 
             dynamic_template = DottedTemplate(full_path_with_env)
             dynamic_identifiers = dynamic_template.get_identifiers()
