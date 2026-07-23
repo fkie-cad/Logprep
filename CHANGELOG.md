@@ -54,6 +54,8 @@
 * fix `grokker` dropping matches on duplicate named capture groups
 * fix `list_comparison` & `network_comparison` to actually work with dotted field notation
 * fix `list_comparison` & `network_comparison` rule failure handling for multiple lists
+* fix `list_comparison` & `network_comparison` to raise on http-urls without `LOGPREP_LIST`
+* fix `list_comparison` & `network_comparison` to raise on ambigous basenames for `list_file_paths`
 
 ## 19.4.1
 
