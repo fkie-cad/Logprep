@@ -116,7 +116,7 @@ class AddFromUrlConfig:
 
     def __attrs_post_init__(self) -> None:
         if not self.target_field and not self.target_field_mapping:
-            raise ValueError("add_from_url requires target_field or target_field_mapping")
+            raise ValueError("adding values from url requires target_field or target_field_mapping")
 
 
 def _convert_add_from_url(
@@ -149,15 +149,13 @@ class GenericAdderRule(FieldManagerRule):
         """Contains a dictionary of field names and values that should be added.
         If dot notation is being used, then all fields on the path are being
         automatically created."""
-        add_from_file: list | None = field(
-            validator=validators.optional(
-                validators.deep_iterable(
-                    iterable_validator=validators.instance_of(list),
-                    member_validator=validators.instance_of(str),
-                )
+        add_from_file: list[str] = field(
+            validator=validators.deep_iterable(
+                iterable_validator=validators.instance_of(list),
+                member_validator=validators.instance_of(str),
             ),
-            converter=lambda x: x if x is None or isinstance(x, list) else [x],
-            default=None,
+            converter=lambda x: x if isinstance(x, list) else [x],
+            factory=list,
             eq=False,
         )
         """Contains the path or url to YML file that contains a dictionary of field names
@@ -236,21 +234,18 @@ class GenericAdderRule(FieldManagerRule):
                 )
 
             # Eagerly loaded from file
-            if self.add_from_file:
-                for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
-                    getter = GetterFactory.from_string(add_file)
-                    if isinstance(getter, RefreshableGetter):
-                        # TODO: This never gets cleaned up, Memory leak on a lot of new generic adders / generic resolvers
-                        getter.add_callback(
-                            f"generic_adder:{self.id}:{add_file}", self._refresh_add
-                        )
-                    self._add_from_path()
+            for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
+                getter = GetterFactory.from_string(add_file)
+                if isinstance(getter, RefreshableGetter):
+                    # TODO: This never gets cleaned up, Memory leak on a lot of new generic adders / generic resolvers
+                    getter.add_callback(f"generic_adder:{self.id}:{add_file}", self._refresh_add)
+                self._add_from_path()
 
         def _add_from_path(self):
             """Reads add fields from file"""
             missing_files = []
-            assert self.add_from_file is not None
-            for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
+
+            for add_file in self.add_from_file:
                 try:
                     add_dict = GetterFactory.from_string(add_file).get_yaml()
                 except FileNotFoundError:
@@ -343,6 +338,7 @@ class GenericAdderRule(FieldManagerRule):
                 deduplication_key=(tag, dynamic_resolved, id(self)),
                 fnc_args=[dynamic_resolved],
             )
+
         else:
             RefreshableGetter.keep_alive_for_target(dynamic_resolved)
             content = self._dynamic_content[dynamic_resolved]
