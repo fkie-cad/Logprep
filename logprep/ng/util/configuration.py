@@ -192,7 +192,6 @@ The following config file will be valid by setting the given environment variabl
 
 import json
 import logging
-import os
 import typing
 from copy import deepcopy
 from importlib.metadata import version
@@ -223,6 +222,7 @@ from logprep.ng.util.defaults import (
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
+from logprep.util.environ import ENV_VARS, del_env_var, set_env_var
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
@@ -442,7 +442,7 @@ class LoggerConfig:
         """
 
         log_config = asdict(self)
-        os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
+        set_env_var("LOGPREP_LOG_CONFIG", json.dumps(log_config))
         logging.config.dictConfig(log_config)
 
     def _set_loggers_levels(self) -> None:
@@ -1062,9 +1062,9 @@ class Configuration:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
-        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
+        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in ENV_VARS:
             try:
-                credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+                credentials_file_path = ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
                 if credentials_file_path is None:
                     raise ValueError("credentials file path was None but expected it to be set")
                 _ = CredentialsFactory.get_content(Path(credentials_file_path))
@@ -1093,8 +1093,8 @@ class Configuration:
         missing_env_vars = tuple(chain(*[getter.missing_env_vars for getter in getters]))
         if missing_env_vars:
             raise MissingEnvironmentError(", ".join(missing_env_vars))
-        if "PROMETHEUS_MULTIPROC_DIR" in os.environ and self.metrics.enabled:
-            os.environ.pop("PROMETHEUS_MULTIPROC_DIR", None)
+        if "PROMETHEUS_MULTIPROC_DIR" in ENV_VARS and self.metrics.enabled:
+            del_env_var("PROMETHEUS_MULTIPROC_DIR")
             logger.warning(
                 "PROMETHEUS_MULTIPROC_DIR was set, even though it should be unset for ng"
             )

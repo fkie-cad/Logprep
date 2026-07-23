@@ -2,15 +2,12 @@
 They are returned by the GetterFactory.
 """
 
-import datetime
 import logging
-import os
 import re
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import cached_property
-from gc import callbacks
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
@@ -33,6 +30,11 @@ from logprep.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
     ENV_NAME_LOGPREP_GETTER_CONFIG,
 )
+from logprep.util.environ import ENV_VARS
+
+logger = logging.getLogger("Getter")
+
+rg_logger = logging.getLogger("RefreshableGetter")
 
 
 class GetterNotFoundError(LogprepException):
@@ -70,7 +72,7 @@ class GetterFactory:
             The generated getter.
         """
         protocol, target = cls._dissect(getter_string)
-        target = cls._expand_variables(target, os.environ)
+        target = cls._expand_variables(target, ENV_VARS)
         # get credentials
         if protocol is None:
             protocol = "file"
@@ -99,6 +101,9 @@ class GetterFactory:
 class DataSharedPerTarget:
     """Contains data that is shared for getters with the same target"""
 
+    target: str
+    """The target for which this objects caches data"""
+
     cache: bytes | None = None
     """Value of the resource when it was last obtained"""
 
@@ -112,7 +117,7 @@ class DataSharedPerTarget:
     """Interval after which getters attempt to obtain the resource again"""
 
     timeout_interval: int | None = None
-    """Timeout interval after which no more refresh attempts should be made, and resources should be cleaned up"""
+    """Amount of time after the last access, after which the cache will be invalidated"""
 
     default_return_value: bytes | None = None
     """Default value to be returned if defined in the configuration"""
@@ -134,20 +139,27 @@ class DataSharedPerTarget:
 
     @property
     def timed_out(self) -> bool:
+        """
+        Whether the cached object has timed out,
+        meaning :code:`timeout_interval` has passed since the last access
+        """
         if self.timeout_interval is None:
             return False
         if self.last_called is None:
             return False
         return time.monotonic() - self.last_called > self.timeout_interval
 
+    def keep_alive(self) -> None:
+        """Signal a data access, rendering :code:`timeout_interval` to reset for this target"""
+        rg_logger.debug("target signaled as still in use: %s", self.target)
+        self.last_called = time.monotonic()
+
 
 @define(kw_only=True)
 class RefreshableGetter(Getter, ABC):
     """Interface for getters that refresh their value periodically"""
 
-    _logger = logging.getLogger("RefreshableGetter")
-
-    _shared: ClassVar[dict[str, DataSharedPerTarget]] = {}
+    _target_to_data_caches: ClassVar[dict[str, DataSharedPerTarget]] = {}
     """Dictionary to store DataSharedPerTarget objects per getter target"""
 
     def _init_scheduler(self):
@@ -163,14 +175,14 @@ class RefreshableGetter(Getter, ABC):
     @property
     def shared(self) -> DataSharedPerTarget:
         """Returns the shared data for current target"""
-        if self.target not in self._shared:
-            self.shared = DataSharedPerTarget()
-        return self._shared[self.target]
+        if self.target not in self._target_to_data_caches:
+            self.shared = DataSharedPerTarget(target=self.target)
+        return self._target_to_data_caches[self.target]
 
     @shared.setter
     def shared(self, value: DataSharedPerTarget) -> None:
         """Set shared data for current target"""
-        self._shared[self.target] = value
+        self._target_to_data_caches[self.target] = value
 
     @property
     def scheduler(self) -> Scheduler | None:
@@ -340,7 +352,7 @@ class RefreshableGetter(Getter, ABC):
         This is a no-op if the target has no shared getter state. ``deduplication_key``
         prevents duplicate callback registration without affecting tag-based removal.
         """
-        shared = cls._shared.get(target)
+        shared = cls._target_to_data_caches.get(target)
         if shared is None:
             return
 
@@ -379,10 +391,10 @@ class RefreshableGetter(Getter, ABC):
         )
 
     def _get_getter_config_entry(self) -> dict:
-        if ENV_NAME_LOGPREP_GETTER_CONFIG not in os.environ:
+        if ENV_NAME_LOGPREP_GETTER_CONFIG not in ENV_VARS:
             return {}
 
-        getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
+        getter_file_path = ENV_VARS.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
         if not getter_file_path or getter_file_path == self.target and self.protocol == "file":
             return {}
 
@@ -433,8 +445,10 @@ class RefreshableGetter(Getter, ABC):
             self._log_cache_warning(error)
             was_modified = False
         if not was_modified:
+            rg_logger.debug("target has not been modified, cache is up-to-date: %s", self.target)
             self.shared.refreshing = False
             return
+        rg_logger.debug("target was modified, cache updated and running callbacks: %s", self.target)
         for callback in self._callbacks:
             callback["function"](*callback["args"], **callback["kwargs"])
         self.shared.refreshing = False
@@ -462,7 +476,7 @@ class RefreshableGetter(Getter, ABC):
         self.cache = self._default_return_value
 
     def _log_cache_warning(self, error: Exception):
-        self._logger.warning(
+        rg_logger.warning(
             f"Not updating {type(self).__name__} cache with URI '{self.uri}' due to: %s", error
         )
 
@@ -488,14 +502,17 @@ class RefreshableGetter(Getter, ABC):
         return self.cache, self.content_type
 
     def keep_alive(self):
-        self.shared.last_called = time.monotonic()
+        """Signal a data access, rendering :code:`timeout_interval` to reset for this target"""
+        self.shared.keep_alive()
 
     def timed_out(self) -> bool:
+        """Whether this target has timed out"""
         return self.shared.timed_out
 
     @classmethod
     def timed_out_for_target(cls, target: str) -> bool:
-        target_shared = cls._shared.get(target)
+        """Whether the target has timed out"""
+        target_shared = cls._target_to_data_caches.get(target)
         if target_shared is None:
             return False
 
@@ -503,9 +520,10 @@ class RefreshableGetter(Getter, ABC):
 
     @classmethod
     def remove_callbacks_for_tag(cls, tag: str) -> None:
+        """Removes update and cleanup callbacks for the given tag"""
         empty_targets = []
 
-        for target, shared in cls._shared.items():
+        for target, shared in cls._target_to_data_caches.items():
             shared.callbacks = [
                 callback for callback in shared.callbacks if callback.get("tag") != tag
             ]
@@ -517,28 +535,42 @@ class RefreshableGetter(Getter, ABC):
                 empty_targets.append(target)
 
         for target in empty_targets:
-            cls._shared.pop(target, None)
+            cls._target_to_data_caches.pop(target, None)
 
     @classmethod
     def keep_alive_for_target(cls, target: str):
-        shared = cls._shared.get(target)
+        """Signal a data access, rendering :code:`timeout_interval` to reset for this target"""
+
+        shared = cls._target_to_data_caches.get(target)
         if shared is None:
+            rg_logger.warning("attempted to keep alive an already deleted target: %s", target)
             return
 
-        shared.last_called = time.monotonic()
+        shared.keep_alive()
 
     @classmethod
     def refresh(cls):
         """Run pending refresh schedulers and cleanup timed-out targets."""
-        for target, shared_target_data in list(cls._shared.items()):
+        rg_logger.debug("refreshing all cached getters")
+        for target, shared_target_data in list(cls._target_to_data_caches.items()):
             if cls.timed_out_for_target(target):
-                del cls._shared[target]
+                rg_logger.debug("target has timed out and will be cleaned up: %s", target)
+                del cls._target_to_data_caches[target]
                 for callback in shared_target_data.cleanup_callbacks:
                     callback["function"](*callback["args"], **callback["kwargs"])
                 continue
 
             if shared_target_data.scheduler:
                 shared_target_data.scheduler.run_pending()
+
+    @classmethod
+    def reset(cls, cleanup: bool = False):
+        """Wipe the cache and optionally run cleanup callbacks"""
+        for target, shared_target_data in list(cls._target_to_data_caches.items()):
+            del cls._target_to_data_caches[target]
+            if cleanup:
+                for callback in shared_target_data.cleanup_callbacks:
+                    callback["function"](*callback["args"], **callback["kwargs"])
 
 
 @define(kw_only=True)
@@ -549,7 +581,6 @@ class FileGetter(Getter):
 
     * :code:`/yourpath/yourfile.extension`
     * :code:`file://yourpath/yourfile.extension`
-
     """
 
     def _get_raw(self) -> tuple[bytes, ContentType | None]:
@@ -621,7 +652,7 @@ class HttpGetter(RefreshableGetter):
     def credentials(self) -> Credentials:
         """Get credentials for target from environment variable"""
         creds = None
-        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
+        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in ENV_VARS:
             creds = CredentialsFactory.from_target(self.uri)
         return creds if creds else Credentials()
 
@@ -644,6 +675,9 @@ class HttpGetter(RefreshableGetter):
             resp.raise_for_status()
         except requests.exceptions.HTTPError as error:
             self._handle_http_error(error)
+        logger.debug(
+            "querying %s with etag=%s yielded status=%d", self.uri, self.hash, resp.status_code
+        )
         if "etag" in resp.headers:
             self.hash = resp.headers["etag"]
         return resp
@@ -662,7 +696,7 @@ class HttpGetter(RefreshableGetter):
     def _handle_http_error(error: requests.exceptions.HTTPError):
         if not error.response.status_code == 401:
             raise RefreshableGetterError(str(error)) from error
-        if os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
+        if ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
             raise RefreshableGetterError(str(error)) from error
         raise CredentialsEnvNotFoundError(
             (

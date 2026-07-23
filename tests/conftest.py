@@ -1,5 +1,6 @@
 """Global configuration and fixtures for all pytest-based tests"""
 
+import contextlib
 import functools
 from multiprocessing import active_children, set_start_method
 from unittest import mock
@@ -9,6 +10,7 @@ from prometheus_client import REGISTRY
 
 from logprep.registry import Registry
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.environ import _ENV_SNAPSHOT
 from logprep.util.getter import RefreshableGetter
 
 
@@ -36,7 +38,7 @@ def clear_prometheus_registry():
 @pytest.fixture(autouse=True)
 def clear_getter_cache():
     """Clear getter cache after each test"""
-    RefreshableGetter._shared.clear()  # pylint: disable=protected-access
+    RefreshableGetter.reset()
 
 
 def pytest_sessionstart(session):  # pylint: disable=unused-argument
@@ -73,3 +75,28 @@ def cleanup_child_processes():
     for child in active_children():
         child.terminate()
         child.join(timeout=2)
+
+
+@contextlib.contextmanager
+def mock_env(env_dict):
+    """
+    Mock helper to update the env snapshot.
+
+    Usage:
+        @mock_env({"PYTEST_TEST_TOKEN": "mytoken"})
+        def test_something():
+            ...
+
+        def test_something_else():
+            with mock_env({"PYTEST_TEST_TOKEN": "mytoken"}):
+    """
+
+    original = dict(_ENV_SNAPSHOT)
+    try:
+        _ENV_SNAPSHOT.clear()
+        _ENV_SNAPSHOT.update(env_dict)
+        with mock.patch("os.environ", env_dict):
+            yield _ENV_SNAPSHOT
+    finally:
+        _ENV_SNAPSHOT.clear()
+        _ENV_SNAPSHOT.update(original)

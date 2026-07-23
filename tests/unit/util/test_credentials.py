@@ -24,6 +24,7 @@ from logprep.util.credentials import (
     OAuth2TokenCredentials,
 )
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from tests.conftest import mock_env
 
 
 class TestBasicAuthCredentials:
@@ -966,8 +967,7 @@ getter:
     ):
         credential_file_path = tmp_path / "credentials"
         credential_file_path.write_text(credential_file_content)
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}):
             if error is not None:
                 with pytest.raises(error):
                     creds = CredentialsFactory.from_target("https://some.url/configuration")
@@ -984,8 +984,7 @@ input:
             username: test_user
             password: myverysecretpassword
 """)
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}):
             creds = CredentialsFactory.from_endpoint("/some/auth/endpoint")
             assert isinstance(creds, BasicAuthCredentials)
             assert "test_user" in creds.username
@@ -1003,14 +1002,12 @@ getter:
         client_id: test
         client_secret: test
 """)
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}):
             creds = CredentialsFactory.from_target("http://some.url")
             assert isinstance(creds, OAuth2ClientFlowCredentials)
 
     def test_credentials_is_none_on_invalid_credentials_file_path(self):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: "this is something useless"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_CREDENTIALS_FILE: "this is something useless"}):
             with pytest.raises(InvalidConfigurationError, match=r"wrong credentials file path"):
                 creds = CredentialsFactory.from_target("https://some.url")
                 assert creds is None
@@ -1062,8 +1059,7 @@ getter:
         {type_of_secret}: {secret_file_path}
 """)
         secret_file_path.write_text(secret_content)
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}):
             creds = CredentialsFactory.from_target("http://some.url/configuration")
             assert isinstance(creds, instance), testcase
 
@@ -1084,8 +1080,7 @@ getter:
         secret_file_path_0.write_text("thisismysecretsecretclientsecret")
         secret_file_path_1.write_text("thisismysecorndsecretsecretpasswordsecret")
 
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}):
             creds = CredentialsFactory.from_target("http://some.url/configuration")
             assert isinstance(creds, Credentials)
 
@@ -1114,8 +1109,7 @@ getter:
         username: testuser
         password_file: "thisismysecretsecretclientsecret"
 """)
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}):
             with pytest.raises(
                 InvalidConfigurationError,
                 match="Invalid credentials file.* unexpected keyword argument 'http://some.url'",
@@ -1130,8 +1124,7 @@ getter:
         username: testuser
         password_file: "thisismysecretsecretclientsecret"
 """)
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}):
             with pytest.raises(
                 InvalidConfigurationError,
                 match="Invalid credentials file.* unexpected keyword argument '/some/endpoint'",

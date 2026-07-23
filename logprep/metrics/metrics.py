@@ -116,7 +116,6 @@ Processor Specific Metrics
 """
 
 import functools
-import os
 import time
 import typing
 from abc import ABC, abstractmethod
@@ -127,6 +126,7 @@ from attrs import define, field, validators
 from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge, Histogram
 from prometheus_client.metrics import MetricWrapperBase
 
+from logprep.util.environ import ENV_VARS
 from logprep.util.helper import _add_field_to_silent_fail
 
 
@@ -159,7 +159,7 @@ class Metric(ABC):
         # In that mode it is not allowed to set a Registry specifically.
         # For the non multiprocessing mode, we need to set a Registry otherwise our custom metrics never get
         # registered and then subsequently cannot be exported
-        if os.environ.get("PROMETHEUS_MULTIPROC_DIR", "") != "":
+        if ENV_VARS.get("PROMETHEUS_MULTIPROC_DIR", "") != "":
             self._registry = None
         else:
             self._registry = REGISTRY
@@ -211,7 +211,7 @@ class Metric(ABC):
     def measure_time(metric_name: str = "processing_time_per_event", self_arg: int = 0):
         """Decorate function to measure execution time for function and add results to event."""
 
-        if not os.environ.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
+        if not ENV_VARS.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
 
             def without_append(func):
                 @functools.wraps(func)
@@ -265,7 +265,7 @@ class Metric(ABC):
     def measure_time_async(metric_name: str = "processing_time_per_event", self_arg: int = 0):
         """Decorate function to measure execution time for function and add results to event."""
 
-        if not os.environ.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
+        if not ENV_VARS.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
 
             def without_append(func):
                 @functools.wraps(func)

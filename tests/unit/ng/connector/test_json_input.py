@@ -8,7 +8,6 @@
 
 import base64
 import json
-import os
 import re
 import zlib
 from copy import deepcopy
@@ -21,6 +20,7 @@ from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.abc.input import CriticalInputError
 from logprep.util.time import TimeParser
+from tests.conftest import mock_env
 from tests.unit.ng.connector.base import BaseInputTestCase
 
 
@@ -821,16 +821,19 @@ class TestJsonInput(BaseInputTestCase):
                     },
                 }
             }
+            env_vars = {
+                "TEST_ENV_VARIABLE_FOO": "test_value_foo",
+                "TEST_ENV_VARIABLE_BAR": "test_value_bar",
+            }
             connector_config = deepcopy(self.CONFIG)
             connector_config.update(preprocessing_config)
             connector = Factory.create({"test connector": connector_config})
             connector._wait_for_health = mock.MagicMock()
             connector.pipeline_index = 1
             connector.setup()
-            os.environ["TEST_ENV_VARIABLE_FOO"] = "test_value_foo"
-            os.environ["TEST_ENV_VARIABLE_BAR"] = "test_value_bar"
             connector._get_event = mock.MagicMock(return_value=return_value)
-            result = connector.get_next(0.01)
+            with mock_env(env_vars):
+                result = connector.get_next(0.01)
             assert result.data == {
                 "any": "content",
                 "enriched_field1": "test_value_foo",

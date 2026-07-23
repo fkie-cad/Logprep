@@ -1,7 +1,5 @@
 """Module for caching items and checking if they need to be stored (again)."""
 
-from typing import Union
-
 import datetime
 from collections import OrderedDict
 
@@ -16,7 +14,7 @@ class Cache(OrderedDict):
         self._max_timedelta = max_timedelta
         super().__init__()
 
-    def requires_storing(self, item: Union[int, str]) -> bool:
+    def requires_storing(self, item: int | str) -> bool:
         """Check if the item was stored within the last timedelta.
 
         Parameters

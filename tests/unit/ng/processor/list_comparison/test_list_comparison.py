@@ -15,7 +15,13 @@ from logprep.ng.abc.processor import Processor
 from logprep.ng.processor.list_comparison.processor import ListComparison
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter, RefreshableGetterError, refresh_getters
+from logprep.util.getter import (
+    HttpGetter,
+    RefreshableGetter,
+    RefreshableGetterError,
+    refresh_getters,
+)
+from tests.conftest import mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
@@ -362,13 +368,12 @@ Heinz
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
-        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)
@@ -409,7 +414,7 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -462,9 +467,9 @@ Heinz
             "list_search_base_path": "http://localhost/${LOGPREP_LIST}",
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
-        with mock.patch.dict("os.environ", environment):
+        with mock_env(environment):
             processor = Factory.create({"custom_lister": config})
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)
@@ -502,9 +507,9 @@ Heinz
             "list_search_base_path": "http://localhost/${LOGPREP_LIST}",
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
-        with mock.patch.dict("os.environ", {"LIST_TENANT": "acme"}):
+        with mock_env({"LIST_TENANT": "acme"}):
             processor = Factory.create({"custom_lister": config})
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)
@@ -538,7 +543,7 @@ Heinz
             "list_search_base_path": "http://localhost/${LOGPREP_LIST}",
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -612,7 +617,7 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -652,7 +657,7 @@ Heinz
             "list_search_base_path": "http://localhost/${tenants.0:2}/${LOGPREP_LIST}",
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -695,7 +700,7 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -704,10 +709,10 @@ Heinz
 
         with mock.patch("logprep.util.getter.time.monotonic", side_effect=[100.0, 125.0]):
             await processor.process(first_log_event)
-            assert HttpGetter._shared[url].last_called == 100.0
+            assert HttpGetter._target_to_data_caches[url].last_called == 100.0
 
             await processor.process(second_log_event)
-            assert HttpGetter._shared[url].last_called == 125.0
+            assert HttpGetter._target_to_data_caches[url].last_called == 125.0
 
         assert len(responses.calls) == 1
         assert first_document["user_results"] == {"in_list": [url]}
@@ -747,7 +752,7 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -794,7 +799,7 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -830,7 +835,7 @@ Heinz
             "list_search_base_path": "http://localhost/${tenant}/${LOGPREP_LIST}",
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -872,7 +877,7 @@ Heinz
             "list_search_base_path": "http://localhost/${tenant}/${LOGPREP_LIST}",
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -927,7 +932,7 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -941,8 +946,8 @@ Heinz
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert rule.data_error is None
         assert failed_url not in rule.compare_sets
-        assert len(HttpGetter._shared[failed_url].callbacks) == 0
-        assert len(HttpGetter._shared[failed_url].cleanup_callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
 
         await processor.process(successful_log_event)
 
@@ -1051,7 +1056,7 @@ Heinz
             "list_search_base_path": str(file_root_path),
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -1097,7 +1102,7 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         captured_sessions = []
         original_get_requests_session = HttpGetter._get_requests_session
@@ -1178,7 +1183,7 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -1208,7 +1213,7 @@ Heinz
             "user_results": {"in_list": [url]},
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -1260,13 +1265,12 @@ Heinz
             "list_search_base_path": url_template,
         }
 
-        HttpGetter._shared.clear()
+        RefreshableGetter.reset()
 
         getter_file_content = {url: {"refresh_interval": 1}}
         http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
-        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             processor = typing.cast(Processor, Factory.create({"custom_lister": config}))
             rule = processor.rule_class.create_from_dict(rule_dict)
             processor._rule_tree.add_rule(rule)

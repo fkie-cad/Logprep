@@ -18,6 +18,7 @@ from prometheus_client import (
 
 from logprep.abc.component import Component
 from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
+from tests.conftest import mock_env
 
 
 class TestMetric:
@@ -367,7 +368,7 @@ class TestComponentMetrics:
         metrics_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert "test_metric_without_label_values" not in metrics_output
 
-    @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
+    @mock_env({"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"})
     def test_measure_time_measures_and_appends_processing_times_but_not_hostname(self):
         @Metric.measure_time(metric_name="test_metric_histogram")
         def decorated_function_append(self, document):
@@ -392,7 +393,7 @@ class TestComponentMetrics:
         assert "test_rule" in document.get("processing_times")
         assert document.get("processing_times").get("test_rule") > 0
 
-    @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
+    @mock_env({"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"})
     def test_measure_time_measures_and_appends_processing_times_two_times(self):
         # simulates consecutive calls from processors that appear two times in
         # the pipeline, more precise two of the same rule_types appear in the
@@ -423,7 +424,7 @@ class TestComponentMetrics:
         assert document.get("processing_times").get("test_rule") > 0
 
     @mock.patch("logprep.metrics.metrics.gethostname", return_value="testhost")
-    @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
+    @mock_env({"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"})
     def test_measure_time_measures_and_appends_pipeline_processing_times_and_hostname(
         self, mock_gethostname
     ):
@@ -476,8 +477,7 @@ class TestComponentMetrics:
 
     @mock.patch("time.perf_counter", side_effect=[1, 2])
     def test_measure_time_measures_but_does_not_append_to_empty_events(self, mock_perf_counter):
-        mock_env = {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}
-        with mock.patch.dict("os.environ", mock_env):
+        with mock_env({"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}):
 
             @Metric.measure_time(metric_name="test_metric_histogram")
             def decorated_function_append(self, document):

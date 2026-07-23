@@ -18,6 +18,7 @@ from logprep import run_logprep
 from logprep.run_logprep import cli
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import EXITCODES
+from tests.conftest import mock_env
 
 
 @mock.patch("logprep.registry.Registry.set_ng_active", new=lambda _: None)
@@ -187,7 +188,7 @@ class TestRunLogprepCli:
     @responses.activate
     def test_run_version_arg_prints_with_http_config_without_exposing_secret_data(self):
         config_path = "tests/testdata/config/config.yml"
-        mock_env = {
+        env_creds = {
             "LOGPREP_CONFIG_AUTH_USERNAME": "username",
             "LOGPREP_CONFIG_AUTH_PASSWORD": "password",
         }
@@ -197,7 +198,7 @@ class TestRunLogprepCli:
             Path(config_path).read_text(encoding="utf8"),
         )
         args = ["run", "--version", f"http://localhost:32000/{config_path}"]
-        with mock.patch("os.environ", mock_env):
+        with mock_env(env_creds):
             result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output

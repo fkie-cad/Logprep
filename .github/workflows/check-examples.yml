@@ -47,7 +47,7 @@ jobs:
       - name: Send test data to kafka
         id: kafka_input
         run: |
-          event_count=`cat $EVENT_DATA_SOURCE | jq -s length`
+          event_count=$(cat $EVENT_DATA_SOURCE | jq -s length)
           echo event_count=$event_count >> $GITHUB_OUTPUT
           echo "Sending $event_count events to kafka"
           (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) \
@@ -67,7 +67,6 @@ jobs:
       - name: Wait and check for processed events in opensearch
         id: wait_for_opensearch_index
         timeout-minutes: 2
-        working-directory: examples/compose
         run: |
           while true
           do
@@ -80,7 +79,6 @@ jobs:
           sleep 5
       - name: Debug - show processed index in opensearch
         if: failure() && steps.wait_for_opensearch_index.outcome == 'failure'
-        working-directory: examples/compose
         run: |
           echo "Indices:"
           curl -X GET "http://localhost:9200/_list/indices" -s
@@ -89,11 +87,19 @@ jobs:
       - name: Query opensearch for events in index 'processed'
         working-directory: examples/compose
         id: opensearch_output
+        timeout-minutes: 1
         run: |
-          event_count=`curl -X GET "http://localhost:9200/processed/_count" -s | jq '.count'`
+          while true
+          do
+            # it might take multiple batches to write all the data, let's check repeatedly
+            event_count=$(curl -X GET "http://localhost:9200/processed/_count" -s | jq '.count')
+            if [ "${{ steps.kafka_input.outputs.event_count }}" == "$event_count" ]; then
+              break
+            fi
+            sleep 5
+          done
           echo event_count=${event_count} >> $GITHUB_OUTPUT
       - name: Check if all events were processed
-        working-directory: examples/compose
         run: |
           echo "Kafka: #events = ${{ steps.kafka_input.outputs.event_count }}"
           echo "Opensearch: #events = ${{ steps.opensearch_output.outputs.event_count }}"

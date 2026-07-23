@@ -32,7 +32,6 @@ Configuration properties shared between input types.
 import base64
 import hashlib
 import json
-import os
 import zlib
 from functools import cached_property
 from hmac import HMAC
@@ -44,6 +43,7 @@ from msgspec import DecodeError
 
 from logprep.ng.abc.event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.util.environ import ENV_VARS
 from logprep.util.helper import (
     MISSING,
     FieldValue,
@@ -176,8 +176,7 @@ class Preprocessor:
     def _add_env_enrichment_to_event(self, event: dict, enrichments: dict) -> None:
         """Add the env enrichment information to the event"""
         fields = {
-            target: os.environ.get(variable_name, "")
-            for target, variable_name in enrichments.items()
+            target: ENV_VARS.get(variable_name, "") for target, variable_name in enrichments.items()
         }
         add_fields_to(event, fields)
 

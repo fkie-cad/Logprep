@@ -192,7 +192,6 @@ The following config file will be valid by setting the given environment variabl
 
 import json
 import logging
-import os
 import typing
 from copy import deepcopy
 from importlib.metadata import version
@@ -226,6 +225,7 @@ from logprep.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
     MIN_CONFIG_REFRESH_INTERVAL,
 )
+from logprep.util.environ import ENV_VARS, set_env_var
 from logprep.util.getter import (
     GetterFactory,
     GetterNotFoundError,
@@ -436,7 +436,7 @@ class LoggerConfig:
         make it available for the uvicorn server in :code:'logprep.util.http'.
         """
         log_config = asdict(self)
-        os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
+        set_env_var("LOGPREP_LOG_CONFIG", json.dumps(log_config))
         dictConfig(log_config)
 
     def _set_loggers_levels(self) -> None:
@@ -1045,9 +1045,9 @@ class Configuration:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
-        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
+        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in ENV_VARS:
             try:
-                credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+                credentials_file_path = ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
                 if credentials_file_path is None:
                     raise ValueError("missing credentials file path")
                 _ = CredentialsFactory.get_content(Path(credentials_file_path))
@@ -1076,8 +1076,8 @@ class Configuration:
         missing_env_vars = tuple(chain(*[getter.missing_env_vars for getter in getters]))
         if missing_env_vars:
             raise MissingEnvironmentError(", ".join(missing_env_vars))
-        if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
-            prometheus_multiproc_path = os.environ["PROMETHEUS_MULTIPROC_DIR"]
+        if "PROMETHEUS_MULTIPROC_DIR" in ENV_VARS:
+            prometheus_multiproc_path = ENV_VARS["PROMETHEUS_MULTIPROC_DIR"]
             if not Path(prometheus_multiproc_path).exists():
                 raise InvalidConfigurationError(
                     (
@@ -1086,7 +1086,7 @@ class Configuration:
                     )
                 )
         if self.metrics.enabled:
-            if "PROMETHEUS_MULTIPROC_DIR" not in os.environ:
+            if "PROMETHEUS_MULTIPROC_DIR" not in ENV_VARS:
                 raise InvalidConfigurationError(
                     "Metrics enabled but PROMETHEUS_MULTIPROC_DIR is not set"
                 )

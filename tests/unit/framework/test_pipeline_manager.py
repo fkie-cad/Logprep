@@ -24,6 +24,7 @@ from logprep.util.configuration import Configuration, MetricsConfig
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.logging import logqueue
 from logprep.util.queue import Queue
+from tests.conftest import mock_env
 from tests.testdata.metadata import path_to_config
 
 
@@ -126,7 +127,7 @@ class TestPipelineManager:
             assert logprep_instance.was_started and logprep_instance.was_stopped
 
     def test_restart_failed_pipelines_calls_prometheus_cleanup_method(self, tmpdir, config_path):
-        with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
+        with mock_env({"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
             failed_pipeline = mock.MagicMock()
             failed_pipeline.is_alive = mock.MagicMock()
             failed_pipeline.is_alive.return_value = False
@@ -152,7 +153,7 @@ class TestPipelineManager:
         assert self.manager.metrics.number_of_failed_pipelines == 1
 
     def test_stop_calls_prometheus_cleanup_method(self, tmpdir, config_path):
-        with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
+        with mock_env({"PROMETHEUS_MULTIPROC_DIR": tmpdir}):
             config = Configuration.from_sources([str(config_path)])
             config.metrics = {"enabled": True, "port": 1234}
             config.process_count = 2
