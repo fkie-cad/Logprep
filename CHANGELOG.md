@@ -1,5 +1,14 @@
 ## Upcoming Changes
 ### Breaking
+
+### Features
+
+### Improvements
+
+### Bugfix
+
+## 20.0.0
+### Breaking
 * change `list_comparison` & `network_comparison` processor result to return sub-paths or list names
 
 ### Features
@@ -58,7 +67,6 @@
 * fix `list_comparison` & `network_comparison` to raise on ambigous basenames for `list_file_paths`
 
 ## 19.4.1
-
 ### Breaking
 
 ### Features
