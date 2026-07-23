@@ -158,7 +158,7 @@ class ListComparison(Processor):
         return set(values)
 
     @staticmethod
-    def _matches_compare_set(prepared_values: set[FieldValue], set_values: set) -> bool:
+    def _matches_compare_set(prepared_values: set[FieldValue], set_values: set[str]) -> bool:
         """Return whether any prepared event value matches the given compare set."""
         return not prepared_values.isdisjoint(set_values)
 

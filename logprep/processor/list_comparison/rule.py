@@ -111,7 +111,8 @@ from logprep.util.helper import DottedTemplate, get_dotted_field_value
 logger = logging.getLogger("ListComparison")
 
 ListName: TypeAlias = str
-ListContent: TypeAlias = set
+ListContent: TypeAlias = set[str]
+# TODO support arbitrary FieldValue types
 
 
 @define(kw_only=True)
@@ -128,7 +129,7 @@ class _StaticCompareSet(_CompareSet):
     content: ListContent | None
     error: Exception | None = field(default=None)
 
-    def update_content(self, _, content: ListContent | None) -> None:
+    def update_content(self, _: str, content: ListContent | None) -> None:
         self.content = content
 
 
@@ -269,6 +270,7 @@ class ListComparisonRule(FieldManagerRule):
         """
 
         def __attrs_post_init__(self) -> None:
+            super().__attrs_post_init__()
             if self.list_file_paths and self.list_paths:
                 raise ValueError("`list_file_paths` and `list_paths` must not both be specified")
             if not self.list_file_paths and not self.list_paths:
@@ -303,7 +305,7 @@ class ListComparisonRule(FieldManagerRule):
         self,
         callback_tag: str,
         base_path: str | None = None,
-    ):
+    ) -> None:
         """Initialize comparison lists for this rule.
 
         Local lists are loaded eagerly. Static HTTP(S) lists are loaded eagerly and
@@ -370,7 +372,7 @@ class ListComparisonRule(FieldManagerRule):
 
     def _init_list_comparison_from_local_file(
         self, base_path: str, list_paths: Sequence[str], list_names: Sequence[str] | None
-    ):
+    ) -> None:
         if not base_path.endswith("/"):
             base_path = base_path + "/"
 
@@ -392,7 +394,7 @@ class ListComparisonRule(FieldManagerRule):
 
     def _init_list_comparison_from_http(
         self, base_path: str, list_paths: Sequence[str], list_names: Sequence[str] | None
-    ):
+    ) -> None:
         base_template = DottedTemplate(base_path)
 
         if "LOGPREP_LIST" not in base_template.get_identifiers():
@@ -459,7 +461,7 @@ class ListComparisonRule(FieldManagerRule):
         compare_set.remove_content(uri)
         logger.debug("Deleted compare set for %s after cleanup", uri)
 
-    def iter_compare_sets(self, event: dict) -> Generator[tuple[str, set]]:
+    def iter_compare_sets(self, event: dict) -> Generator[tuple[ListName, ListContent]]:
         """Return the compare sets relevant for the current event.
 
         For local and static lists, this returns the already initialized compare sets.

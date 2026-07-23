@@ -98,7 +98,7 @@ class NetworkComparisonRule(ListComparisonRule):
         """
         Mapping for configuring list paths with representative names.
         Keys represent the names on which results will be reported.
-        Values represent the paths which populates `${LOGPREP_LIST}`.
+        he values represent the paths used to populate `${LOGPREP_LIST}`.
 
         Example:
 
@@ -179,13 +179,17 @@ class NetworkComparisonRule(ListComparisonRule):
                     Reads the list from the ``"content"`` key of the JSON object.
         """
 
-        def __attrs_post_init__(self):
+        def __attrs_post_init__(self) -> None:
+            super().__attrs_post_init__()
             if self.list_file_paths and self.list_paths:
                 raise ValueError("`list_file_paths` and `list_paths` must not both be specified")
             if not self.list_file_paths and not self.list_paths:
                 raise ValueError("one of `list_file_paths` or `list_paths` needs to be specified")
 
-    def _transform_and_filter_list_element(self, elem) -> IPv4Network | IPv6Network | None:  # type: ignore
+    def _transform_and_filter_list_element(  # type: ignore
+        self,
+        elem,
+    ) -> IPv4Network | IPv6Network | None:
         elem = super()._transform_and_filter_list_element(elem)
         if elem is not None:
             elem = ip_network(elem)

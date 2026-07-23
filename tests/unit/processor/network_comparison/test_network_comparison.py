@@ -804,3 +804,48 @@ class TestNetworkComparison(BaseProcessorTestCase):
         assert _compare_sets(rule) == {list_name: {IPv4Network("1.2.3.4/32")}}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200
+
+    @responses.activate
+    def test_refresh_updates_all_compare_sets_resolving_to_same_uri(self, tmp_path):
+        url = "http://localhost/tests/testdata/shared_ips.list?ref=bla"
+
+        responses.add(responses.GET, url, "127.0.0.1")
+        responses.add(responses.GET, url, "1.1.1.1")
+
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 10}}))
+
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
+            processor = self._create_lister(
+                [
+                    {
+                        "filter": "ip",
+                        "network_comparison": {
+                            "source_fields": ["ip"],
+                            "target_field": "ip_results",
+                            "list_paths": {
+                                "FIRST_LIST": "shared_ips.list",
+                                "SECOND_LIST": "shared_ips.list",
+                            },
+                            "list_search_base_path": (
+                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                            ),
+                        },
+                    }
+                ]
+            )
+            rule = processor.rules[0]
+
+            assert _compare_sets(rule) == {
+                "FIRST_LIST": {IPv4Network("127.0.0.1/32")},
+                "SECOND_LIST": {IPv4Network("127.0.0.1/32")},
+            }
+
+            assert len(HttpGetter._target_to_data_caches[url].callbacks) == 2
+
+            HttpGetter(target=url, protocol="http").scheduler.run_all()
+
+            assert _compare_sets(rule) == {
+                "FIRST_LIST": {IPv4Network("1.1.1.1/32")},
+                "SECOND_LIST": {IPv4Network("1.1.1.1/32")},
+            }
