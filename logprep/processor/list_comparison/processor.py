@@ -7,13 +7,15 @@ comparison lists loaded from local files or HTTP(S) targets. HTTP base paths may
 be static or templated with environment variables and event fields for dynamic,
 lazy list loading.
 
+A :code:`list_search_base_path` can be specified on the processor level, which is used if the
+individual rules do not define it on their own. Rule-level configuration takes precedence.
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
-    - listcomparisonname:
+    - some_processor_name:
         type: list_comparison
         rules:
             - tests/testdata/rules/rules
@@ -29,6 +31,7 @@ Processor Configuration
 """
 
 import typing
+from collections.abc import Sequence
 
 from attrs import define, field, validators
 
@@ -97,7 +100,9 @@ class ListComparison(Processor):
             fields = {join_dotted_fields((rule.target_field, comparison_key)): comparison_result}
             add_fields_to(event, fields, rule=rule, merge_with_target=True)
 
-    def _list_comparison(self, rule: ListComparisonRule, event: dict) -> tuple[list, str]:
+    def _list_comparison(
+        self, rule: ListComparisonRule, event: dict[str, FieldValue]
+    ) -> tuple[Sequence[str], str]:
         """Check if field value violates block or allow list.
 
         Returns
@@ -115,33 +120,47 @@ class ListComparison(Processor):
             else [field_value_to_be_checked]
         )
 
-        list_matches, compare_sets = self._get_lists_matching_with_values(rule, value_list, event)
-        if len(list_matches) == 0:
-            return list(compare_sets.keys()), "not_in_list"
-        return list_matches, "in_list"
+        matching_keys, all_keys = self._get_lists_matching_with_values(rule, value_list, event)
+        if not matching_keys:
+            return list(all_keys), "not_in_list"
+        return matching_keys, "in_list"
 
     def _get_lists_matching_with_values(
-        self, rule: ListComparisonRule, value_list: list, event: dict
-    ) -> tuple[list, dict[str, set]]:
-        """Return matching comparison-list identifiers and the evaluated compare sets.
+        self, rule: ListComparisonRule, values: Sequence[FieldValue], event: dict[str, FieldValue]
+    ) -> tuple[Sequence[str], Sequence[str]]:
+        """Return matching comparison-list identifiers and the evaluated compare set names.
 
         Dynamic list loading errors are converted to ``ProcessingWarning`` so the rule's
         failure tags are applied instead of producing a normal ``not_in_list`` result.
         """
-        list_matches: list[str] = []
+
+        prepared_values = self._prepare_event_values_for_match(values, rule, event)
+
         try:
-            dynamic_set = rule.get_dynamic_set(event)
+            matches = [
+                set_name
+                for set_name, set_values in rule.iter_compare_sets(event)
+                if self._matches_compare_set(prepared_values, set_values)
+            ]
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error
 
-        for value in value_list:
-            for compare_list, compare_values in dynamic_set.items():
-                if compare_list in list_matches:
-                    continue
-                if value in compare_values:
-                    list_matches.append(compare_list)
+        return matches, rule.compare_set_names
 
-        return list_matches, dynamic_set
+    def _prepare_event_values_for_match(
+        self, values: Sequence[FieldValue], _: ListComparisonRule, __: dict[str, FieldValue]
+    ) -> set[FieldValue]:
+        """Convert the raw source-field values into the form used for matching.
+
+        Invalid values are reported as warnings and skipped by subclasses that need
+        to parse the values first.
+        """
+        return set(values)
+
+    @staticmethod
+    def _matches_compare_set(prepared_values: set[FieldValue], set_values: set[str]) -> bool:
+        """Return whether any prepared event value matches the given compare set."""
+        return not prepared_values.isdisjoint(set_values)
 
     def _shut_down(self) -> None:
         RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)

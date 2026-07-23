@@ -1,8 +1,10 @@
 ## Upcoming Changes
 ### Breaking
+* change `list_comparison` & `network_comparison` processor result to return sub-paths or list names
 
 ### Features
 * calculator: add support for >, <, >=, <=, ==, and != comparisons with arithmetic expressions on both sides
+* allow `list_comparison` & `network_comparison` to be supplied with explicit list names for results
 
 ### Improvements
 * calculator: add clean expression-stack teardown after parsing or evaluation to safely reuse the shared BNF parser
@@ -50,7 +52,10 @@
 ### Bugfix
 * fix `dissector` not dissecting multiline strings
 * fix `grokker` dropping matches on duplicate named capture groups
-* fix `list_comparison` to actually work with dotted field notation
+* fix `list_comparison` & `network_comparison` to actually work with dotted field notation
+* fix `list_comparison` & `network_comparison` rule failure handling for multiple lists
+* fix `list_comparison` & `network_comparison` to raise on http-urls without `LOGPREP_LIST`
+* fix `list_comparison` & `network_comparison` to raise on ambigous basenames for `list_file_paths`
 
 ## 19.4.1
 

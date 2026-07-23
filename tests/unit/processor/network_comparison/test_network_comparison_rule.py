@@ -92,32 +92,70 @@ class TestNetworkComparisonRule:
         rule2 = NetworkComparisonRule.create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
 
-    def test_compare_set_not_empty_for_valid_rule_def_after_init_list_comparison(
+    def test_compare_sets_not_empty_for_valid_rule_def_after_init_list_comparison(
         self, rule_definition
     ):
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
 
         rule.init_list_comparison("test_owner", "tests/testdata/unit/network_comparison/rules")
 
-        assert rule.compare_sets is not None
-        assert isinstance(rule.compare_sets, dict)
-        assert len(rule.compare_sets.keys()) > 0
+        compare_sets = dict(rule.iter_compare_sets({}))
+
+        assert compare_sets == {
+            "network_list.txt": {IPv4Network("127.0.0.0/24"), IPv4Network("127.0.0.1/32")}
+        }
+        assert list(rule.compare_set_names) == ["network_list.txt"]
 
     @pytest.mark.parametrize(
-        "testcase, lists, list_count",
+        "testcase, lists, expected",
         [
-            ("Compare combined network and IP", ["../lists/network_list.txt"], 1),
-            ("Compare network only", ["../lists/network_only_list.txt"], 1),
-            ("Compare IP only", ["../lists/ip_only_list.txt"], 1),
+            (
+                "Compare combined network and IP",
+                ["../lists/network_list.txt"],
+                {"network_list.txt": {IPv4Network("127.0.0.0/24"), IPv4Network("127.0.0.1/32")}},
+            ),
+            (
+                "Compare network only",
+                ["../lists/network_only_list.txt"],
+                {
+                    "network_only_list.txt": {
+                        IPv4Network("127.0.0.0/8"),
+                        IPv4Network("127.0.0.0/16"),
+                        IPv4Network("127.0.0.0/24"),
+                    }
+                },
+            ),
+            (
+                "Compare IP only",
+                ["../lists/ip_only_list.txt"],
+                {
+                    "ip_only_list.txt": {
+                        IPv4Network("127.0.0.1/32"),
+                        IPv4Network("127.0.0.2/32"),
+                        IPv4Network("127.0.0.3/32"),
+                    }
+                },
+            ),
             (
                 "Compare separate network and IP file",
                 ["../lists/network_only_list.txt", "../lists/ip_only_list.txt"],
-                2,
+                {
+                    "network_only_list.txt": {
+                        IPv4Network("127.0.0.0/8"),
+                        IPv4Network("127.0.0.0/16"),
+                        IPv4Network("127.0.0.0/24"),
+                    },
+                    "ip_only_list.txt": {
+                        IPv4Network("127.0.0.1/32"),
+                        IPv4Network("127.0.0.2/32"),
+                        IPv4Network("127.0.0.3/32"),
+                    },
+                },
             ),
-            ("Compare empty file", ["../lists/empty_list.txt"], 0),
+            ("Compare empty file", ["../lists/empty_list.txt"], {"empty_list.txt": set()}),
         ],
     )
-    def test_compare_set_with_network_and_string_loads_correctly(self, testcase, lists, list_count):
+    def test_compare_set_with_network_and_string_loads_correctly(self, testcase, lists, expected):
         rule_definition = {
             "filter": "ip",
             "network_comparison": {
@@ -131,11 +169,11 @@ class TestNetworkComparisonRule:
 
         rule.init_list_comparison("test_owner", "tests/testdata/unit/network_comparison/rules")
 
-        assert rule.compare_sets is not None
-        assert isinstance(rule.compare_sets, dict)
-        assert len(rule.compare_sets.keys()) == list_count
-        for string_values in rule.compare_sets.values():
-            assert all(isinstance(value, IPv4Network) for value in string_values)
+        compare_sets = dict(rule.iter_compare_sets({}))
+
+        assert compare_sets == expected, testcase
+        for networks in compare_sets.values():
+            assert all(isinstance(network, IPv4Network) for network in networks)
 
     def test_rule_load_fails_if_network_invalid(self):
         rule_definition = {

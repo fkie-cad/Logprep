@@ -90,6 +90,16 @@ pipeline:
           calculator:
             target_field: "calculation"
             calc: "1 + 1"
+  - list_comparison:
+      type: list_comparison
+      rules:
+        - filter: "something"
+          list_comparison:
+            source_fields: ["something"]
+            target_field: "something_comparison"
+            list_file_paths:
+              - example_list.json
+            list_search_base_path: examples/exampledata/rules/list_comparison
 input:
   kafka:
     type: confluentkafka_input

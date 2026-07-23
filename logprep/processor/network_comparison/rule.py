@@ -41,28 +41,34 @@ target field :code:`network_comparison.example`.
    :undoc-members:
    :inherited-members:
    :noindex:
+
+
+Examples for network_comparison:
+--------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.network_comparison.test_network_comparison
+   :template: testcase-renderer.tmpl
+
 """
 
-from ipaddress import ip_network
+from ipaddress import IPv4Network, IPv6Network, ip_network
 
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.processor.list_comparison.rule import ListComparisonRule
-from logprep.util.getter import HttpGetter
+from logprep.processor.list_comparison.rule import ListComparisonRule, ListName
 
 
 class NetworkComparisonRule(ListComparisonRule):
     """Check if documents match a filter."""
-
-    _compare_sets: dict
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
         """RuleConfig for NetworkComparisonRule"""
 
         list_file_paths: list[str] = field(
-            validator=validators.deep_iterable(member_validator=validators.instance_of(str))
+            validator=validators.deep_iterable(member_validator=validators.instance_of(str)),
+            factory=list,
         )
         """List of files. For string format see :ref:`getters`.
 
@@ -80,11 +86,58 @@ class NetworkComparisonRule(ListComparisonRule):
            authenticity and integrity of the loaded values.
 
         """
-        list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
-        """Base Path from where to find relative files from :code:`list_file_paths`.
-        You can also pass a template with keys from environment,
-        e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
-        will be filled by this processor. """
+
+        list_paths: dict[ListName, str] = field(
+            validator=validators.deep_mapping(
+                key_validator=validators.instance_of(ListName),
+                value_validator=validators.instance_of(str),
+                mapping_validator=validators.instance_of(dict),
+            ),
+            factory=dict,
+        )
+        """
+        Mapping for configuring list paths with representative names.
+        Keys represent the names on which results will be reported.
+        he values represent the paths used to populate `${LOGPREP_LIST}`.
+
+        Example:
+
+        ..  code-block:: yaml
+
+            list_paths:
+                BLACKLISTED_HOSTS: blacklists/malicious_hosts
+            list_search_base_path: http://example.tld/api/${LOGPREP_LIST}
+
+
+        .. security-best-practice::
+           :title: Processor - Network Comparison list file paths Memory Consumption
+
+           Be aware that all values of the remote files were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - Network Comparison list file paths Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
+        """
+
+        list_search_base_path: str | None = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
+        )
+        """
+        Base path used to resolve this rule's relative ``list_file_paths``.
+
+        If unset, the processor-level ``list_search_base_path`` is used. A base path must
+        be configured either on the rule or on the processor.
+
+        The value may use getter syntax and ``string.Template`` placeholders.
+        Environment variables and ``${LOGPREP_LIST}`` are resolved during setup. For
+        HTTP(S) paths, unresolved placeholders are resolved from event fields during
+        processing.
+        """
         mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         content_field: str | None = field(
@@ -126,35 +179,18 @@ class NetworkComparisonRule(ListComparisonRule):
                     Reads the list from the ``"content"`` key of the JSON object.
         """
 
-    def init_list_comparison(
-        self, callback_tag: str, list_search_base_path: str | None = None
-    ) -> None:
-        """Initialize network comparison lists for this rule.
+        def __attrs_post_init__(self) -> None:
+            super().__attrs_post_init__()
+            if self.list_file_paths and self.list_paths:
+                raise ValueError("`list_file_paths` and `list_paths` must not both be specified")
+            if not self.list_file_paths and not self.list_paths:
+                raise ValueError("one of `list_file_paths` or `list_paths` needs to be specified")
 
-        The base list-comparison initialization loads local, static HTTP(S), or dynamic
-        HTTP(S) compare sets. Loaded values are then converted to IP network objects.
-        """
-        super().init_list_comparison(callback_tag, list_search_base_path)
-        self._convert_compare_sets_to_networks()
-
-    def _update_compare_sets_via_http(
-        self, http_getter: HttpGetter, fully_resolved_uri: str, *, mark_rule_failed: bool = True
-    ) -> set | None:
-        compare_set = super()._update_compare_sets_via_http(
-            http_getter, fully_resolved_uri, mark_rule_failed=mark_rule_failed
-        )
-        if compare_set is None:
-            return None
-        self._convert_compare_sets_to_networks(updated_list_path=fully_resolved_uri)
-        return self._compare_sets.get(fully_resolved_uri)
-
-    def _convert_compare_sets_to_networks(self, updated_list_path: str | None = None) -> None:
-        self._compare_sets = {
-            list_path: (
-                set(map(ip_network, compare_strings))
-                if (updated_list_path is None or list_path == updated_list_path)
-                else compare_strings
-            )
-            for list_path, compare_strings in self._compare_sets.items()
-            if compare_strings
-        }
+    def _transform_and_filter_list_element(  # type: ignore
+        self,
+        elem: str,
+    ) -> IPv4Network | IPv6Network | None:
+        transformed = super()._transform_and_filter_list_element(elem)
+        if transformed is not None:
+            return ip_network(transformed)
+        return None
