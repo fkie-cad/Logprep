@@ -295,7 +295,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "add_generic_test": "Test",
             "event_id": 123,
-            "\\u\\0\\1\\x\\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
+            "\\u\\0\\1\\x\\z": "whatever",
         },
         {
             "add_generic_test": "Test",
@@ -303,8 +303,8 @@ test_cases = [  # testcase, rule, event, expected
             "comp\\lex.field": "value",
             "comp\\lex.nested": {"field": 42},
             "nested": {"comp\\lex.field": 1337},
-            "\\u\\0\\1\\x\\y": 1338,  # pylint: disable=anomalous-backslash-in-string
-            "\\u\\0\\1\\x\\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
+            "\\u\\0\\1\\x\\y": 1338,
+            "\\u\\0\\1\\x\\z": "whatever",
         },
         id="Add from rule definition with escaping",
     ),

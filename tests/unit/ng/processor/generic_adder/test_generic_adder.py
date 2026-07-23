@@ -95,7 +95,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await instance.process(log_event)
 
-        rule_add = instance.rules[0].add
+        rule_add = instance.rules[0].add({})
 
         assert event["some_list_field"] == ["some_value"]
         assert event["some_list_field"] is not rule_add["some_list_field"], "only copies in events"
