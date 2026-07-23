@@ -118,13 +118,7 @@ class Getter(ABC):
         """Gets and parses the raw content to yaml or json"""
         content = self._resolve_content_by_content_type()
 
-        if isinstance(content, dict) and content_field is not None:
-            content = content[content_field]
-        elif content_field is not None:
-            raise ValueError(
-                "Expected mapping type, like json object when content_field is set, got %s.",
-                type(content),
-            )
+        content = Getter._apply_content_field(content, content_field)
 
         if isinstance(content, str):
             content = self._parse_yaml_or_json(content)
@@ -151,17 +145,25 @@ class Getter(ABC):
         """Helper which tries to convert content to list"""
         return content.splitlines()
 
-    def get_list(self, content_field: str | None = None) -> list:
-        """Gets list and fails otherwise"""
-
-        content = self._resolve_content_by_content_type()
-
+    @staticmethod
+    def _apply_content_field(
+        content: dict | list | str, content_field: str | None = None
+    ) -> dict | list | str:
         if isinstance(content, dict) and content_field is not None:
             content = content[content_field]
         elif content_field is not None:
             raise ValueError(
                 f"Expected mapping type when content_field is set, got {type(content)}"
             )
+
+        return content
+
+    def get_list(self, content_field: str | None = None) -> list:
+        """Gets list and fails otherwise"""
+
+        content = self._resolve_content_by_content_type()
+
+        content = Getter._apply_content_field(content, content_field)
 
         if isinstance(content, str):
             content = self._parse_newline_separated_list(content)
