@@ -152,7 +152,6 @@ class ListComparison(Processor):
 
         return matches, rule.compare_set_names
 
-    # TODO use generic type parameter for prepared values in the future
     def _prepare_event_values_for_match(
         self, values: Sequence[FieldValue], _: ListComparisonRule, __: dict[str, FieldValue]
     ) -> set[FieldValue]:

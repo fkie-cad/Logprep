@@ -108,7 +108,7 @@ from logprep.util.getter import (
 )
 from logprep.util.helper import DottedTemplate, get_dotted_field_value
 
-logger = logging.getLogger()
+logger = logging.getLogger("ListComparison")
 
 ListName: TypeAlias = str
 ListContent: TypeAlias = set
