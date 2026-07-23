@@ -188,7 +188,7 @@ class NetworkComparisonRule(ListComparisonRule):
 
     def _transform_and_filter_list_element(  # type: ignore
         self,
-        elem,
+        elem: str,
     ) -> IPv4Network | IPv6Network | None:
         elem = super()._transform_and_filter_list_element(elem)
         if elem is not None:
