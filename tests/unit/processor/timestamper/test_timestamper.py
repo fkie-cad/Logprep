@@ -12,6 +12,179 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
     (
+        "normalizes unix timestamp with seconds precision",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000",
+        },
+        {
+            "message": "1700000000",
+            "@timestamp": "2023-11-14T23:13:20+01:00",
+        },
+    ),
+    (
+        "normalizes unix timestamp with milliseconds precision",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000123",
+        },
+        {
+            "message": "1700000000123",
+            "@timestamp": "2023-11-14T23:13:20.123000+01:00",
+        },
+    ),
+    (
+        "normalizes unix timestamp with microseconds precision",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000123456",
+        },
+        {
+            "message": "1700000000123456",
+            "@timestamp": "2023-11-14T23:13:20.123456+01:00",
+        },
+    ),
+    (
+        "normalizes unix timestamp with nanoseconds precision",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000123456789",
+        },
+        {
+            "message": "1700000000123456789",
+            # The timestamp is normalized from nanoseconds, but datetime only supports
+            # microsecond precision. Therefore 123456789 ns is rounded to 123457 us.
+            "@timestamp": "2023-11-14T23:13:20.123457+01:00",
+        },
+    ),
+    (
+        "parses fractional unix timestamp with seconds precision",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000.123",
+        },
+        {
+            "message": "1700000000.123",
+            "@timestamp": "2023-11-14T23:13:20.123000+01:00",
+        },
+    ),
+    (
+        "parses fractional unix timestamp with microseconds",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000.123456",
+        },
+        {
+            "message": "1700000000.123456",
+            "@timestamp": "2023-11-14T23:13:20.123456+01:00",
+        },
+    ),
+    (
+        "normalizes fractional unix timestamp with milliseconds precision",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000123.456",
+        },
+        {
+            "message": "1700000000123.456",
+            "@timestamp": "2023-11-14T23:13:20.123456+01:00",
+        },
+    ),
+    (
+        "parses fractional unix timestamp from float with seconds precision",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": 1700000000.123,
+        },
+        {
+            "message": 1700000000.123,
+            "@timestamp": "2023-11-14T23:13:20.123000+01:00",
+        },
+    ),
+    (
+        "normalizes fractional unix timestamp from float with milliseconds precision",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": 1700000000123.456,
+        },
+        {
+            "message": 1700000000123.456,
+            "@timestamp": "2023-11-14T23:13:20.123456+01:00",
+        },
+    ),
+    (
         "parses iso8601 without pattern",
         {
             "filter": "message",
@@ -291,6 +464,46 @@ failure_test_cases = [
             "tags": ["_timestamper_failure"],
         },
         r"Could not parse timestamp.*event=\{'message': ''\}",
+    ),
+    (
+        "fails on unsupported unix timestamp length",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "17000000001",
+        },
+        {
+            "message": "17000000001",
+            "tags": ["_timestamper_failure"],
+        },
+        r"Could not parse timestamp.*event=\{'message': '17000000001'\}",
+    ),
+    (
+        "fails on unsupported fractional unix timestamp length",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "17000000001.123",
+        },
+        {
+            "message": "17000000001.123",
+            "tags": ["_timestamper_failure"],
+        },
+        r"Could not parse timestamp.*event=\{'message': '17000000001\.123'\}",
     ),
     (
         "normalization from timestamp with non matching patterns",
