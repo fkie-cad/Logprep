@@ -9,7 +9,7 @@ import responses
 
 from logprep.processor.generic_adder.rule import AddFromUrlConfig, GenericAdderRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter, RefreshableGetter
+from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetter
 from tests.conftest import mock_env
 
 
@@ -139,6 +139,89 @@ class TestGenericAdderRule:
 
         assert additions == {"enrichment": response_content}
         assert responses.calls[0].request.url == resolved_url
+
+    @responses.activate
+    def test_static_url_loads_during_setup_and_registers_only_refresh_callback(self):
+        url = "https://values.example/static"
+        response_content = {"risk": {"score": 7}}
+        responses.add(responses.GET, url, json=response_content)
+        RefreshableGetter.reset()
+        rule = GenericAdderRule.create_from_dict(
+            {
+                "filter": "*",
+                "generic_adder": {
+                    "add_from_url": {
+                        "url": url,
+                        "target_field": "enrichment",
+                    }
+                },
+            }
+        )
+
+        rule.init_generic_adder("generic-adder-test")
+
+        assert rule.add({}) == {"enrichment": response_content}
+        assert rule.add({}) == {"enrichment": response_content}
+        assert len(responses.calls) == 1
+        assert len(HttpGetter._target_to_data_caches[url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[url].cleanup_callbacks) == 0
+
+    @responses.activate
+    def test_static_url_recovers_after_failed_initial_load(self, tmp_path):
+        url = "https://values.example/static"
+        response_content = {"risk": {"score": 7}}
+        responses.add(responses.GET, url, status=500)
+        RefreshableGetter.reset()
+        getter_config = tmp_path / "http_getter.json"
+        getter_config.write_text(json.dumps({url: {"refresh_interval": 1}}))
+        rule = GenericAdderRule.create_from_dict(
+            {
+                "filter": "*",
+                "generic_adder": {
+                    "add_from_url": {
+                        "url": url,
+                        "target_field": "enrichment",
+                    }
+                },
+            }
+        )
+
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(getter_config)}):
+            rule.init_generic_adder("generic-adder-test")
+            getter = GetterFactory.from_string(url)
+            assert isinstance(getter, HttpGetter)
+            assert getter.scheduler is not None
+
+            assert rule.data_error is not None
+            assert len(getter.shared.callbacks) == 1
+            assert len(getter.shared.cleanup_callbacks) == 0
+
+            responses.replace(responses.GET, url, json=response_content)
+            getter.scheduler.run_all()
+
+        assert rule.data_error is None
+        assert rule.add({}) == {"enrichment": response_content}
+
+    def test_target_field_mapping_skips_missing_values_but_preserves_none(self, caplog):
+        rule = GenericAdderRule.create_from_dict(
+            {
+                "filter": "*",
+                "generic_adder": {
+                    "add_from_url": {
+                        "url": "https://values.example/${tenant}",
+                        "target_field_mapping": {
+                            "present": "enrichment.present",
+                            "missing": "enrichment.missing",
+                        },
+                    }
+                },
+            }
+        )
+
+        additions = rule._content_to_items_to_add({"present": None})
+
+        assert additions == {"enrichment.present": None}
+        assert "source_field: missing" in caplog.text
 
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",

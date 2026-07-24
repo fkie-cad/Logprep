@@ -28,6 +28,7 @@ import typing
 from typing import Sequence
 
 from logprep.abc.processor import Processor
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.getter import RefreshableGetter
 from logprep.util.helper import add_fields_to
@@ -49,7 +50,10 @@ class GenericAdder(Processor):
             rule.init_generic_adder(self._job_tag_for_cleanup)
 
     def _apply_rules(self, event: dict, rule: GenericAdderRule):
-        items_to_add = rule.add(event)
+        try:
+            items_to_add = rule.add(event)
+        except Exception as error:
+            raise ProcessingWarning(str(error), rule, event) from error
         if items_to_add:
             add_fields_to(event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target)
 

@@ -28,6 +28,7 @@ import typing
 from typing import Sequence
 
 from logprep.ng.abc.processor import Processor
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.helper import FieldValue, add_fields_to
@@ -52,7 +53,11 @@ class GenericAdder(Processor):
 
     def _apply_rules(self, event: dict, rule: Rule) -> None:
         rule = typing.cast(GenericAdderRule, rule)
-        items_to_add = rule.add(event)
+
+        try:
+            items_to_add = rule.add(event)
+        except Exception as error:
+            raise ProcessingWarning(str(error), rule, event) from error
         if items_to_add:
             add_fields_to(event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target)
 

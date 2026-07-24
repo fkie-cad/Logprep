@@ -10,9 +10,9 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError, ProcessingWarning
 from logprep.processor.generic_adder.processor import GenericAdder
-from logprep.util.getter import RefreshableGetter
+from logprep.util.getter import HttpGetter, RefreshableGetter
 from tests.unit.processor.base import BaseProcessorTestCase
 from tests.conftest import mock_env
 
@@ -517,3 +517,137 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert second_event == first_event
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == resolved_url
+
+    @responses.activate
+    def test_dynamic_url_failure_is_event_scoped(self):
+        failed_url = "https://values.example/acme"
+        successful_url = "https://values.example/beta"
+        responses.add(responses.GET, failed_url, status=500)
+        responses.add(responses.GET, successful_url, json={"risk": {"score": 7}})
+        RefreshableGetter.reset()
+        processor = typing.cast(
+            GenericAdder,
+            self._create_test_instance(
+                {
+                    "dynamic_generic_adder": {
+                        "type": "generic_adder",
+                        "rules": [
+                            {
+                                "filter": "*",
+                                "generic_adder": {
+                                    "add_from_url": {
+                                        "url": "https://values.example/${tenant}",
+                                        "target_field": "enrichment",
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                }
+            ),
+        )
+        processor.setup()
+        rule = processor.rules[0]
+        failed_event = {"tenant": "acme"}
+        successful_event = {"tenant": "beta"}
+
+        failed_result = processor.process(failed_event)
+        successful_result = processor.process(successful_event)
+
+        assert failed_result.errors == []
+        assert len(failed_result.warnings) == 1
+        assert isinstance(failed_result.warnings[0], ProcessingWarning)
+        assert failed_event == {
+            "tenant": "acme",
+            "tags": ["_generic_adder_failure"],
+        }
+        assert rule.data_error is None
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+
+        assert successful_result.errors == []
+        assert successful_result.warnings == []
+        assert successful_event == {
+            "tenant": "beta",
+            "enrichment": {"risk": {"score": 7}},
+        }
+
+        processor.shut_down()
+
+    def test_missing_dynamic_url_field_adds_warning_without_clearing_event(self):
+        processor = typing.cast(
+            GenericAdder,
+            self._create_test_instance(
+                {
+                    "dynamic_generic_adder": {
+                        "type": "generic_adder",
+                        "rules": [
+                            {
+                                "filter": "*",
+                                "generic_adder": {
+                                    "add_from_url": {
+                                        "url": "https://values.example/${tenant.id}",
+                                        "target_field": "enrichment",
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                }
+            ),
+        )
+        processor.setup()
+        event = {"message": "preserved"}
+
+        result = processor.process(event)
+
+        assert result.errors == []
+        assert len(result.warnings) == 1
+        assert "missing event field 'tenant.id'" in str(result.warnings[0])
+        assert event == {
+            "message": "preserved",
+            "tags": ["_generic_adder_failure"],
+        }
+
+    @responses.activate
+    def test_mapping_response_type_error_adds_warning_without_clearing_event(self):
+        url = "https://values.example/acme"
+        responses.add(responses.GET, url, json=["not", "a", "mapping"])
+        RefreshableGetter.reset()
+        processor = typing.cast(
+            GenericAdder,
+            self._create_test_instance(
+                {
+                    "dynamic_generic_adder": {
+                        "type": "generic_adder",
+                        "rules": [
+                            {
+                                "filter": "*",
+                                "generic_adder": {
+                                    "add_from_url": {
+                                        "url": "https://values.example/${tenant}",
+                                        "target_field_mapping": {
+                                            "risk.score": "enrichment.score",
+                                        },
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                }
+            ),
+        )
+        processor.setup()
+        event = {"tenant": "acme"}
+
+        result = processor.process(event)
+
+        processor.shut_down()
+
+        assert result.errors == []
+        assert len(result.warnings) == 1
+        assert "target_field_mapping requires a mapping response" in str(result.warnings[0])
+        assert event == {
+            "tenant": "acme",
+            "tags": ["_generic_adder_failure"],
+        }

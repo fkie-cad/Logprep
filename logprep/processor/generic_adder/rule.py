@@ -93,6 +93,7 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_from_dict
+from logprep.util.environ import ENV_VARS
 from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetter
 from logprep.util.helper import (
     MISSING,
@@ -281,6 +282,7 @@ class GenericAdderRule(FieldManagerRule):
         self._is_dynamic: bool = False
         self._dynamic_template: DottedTemplate
         self._dynamic_identifiers: tuple[str, ...] = ()
+        self._static_uri: str | None = None
 
     def init_generic_adder(self, job_tag: str) -> None:
         self._callback_tag = job_tag
@@ -292,12 +294,29 @@ class GenericAdderRule(FieldManagerRule):
         assert config.add_from_url is not None
 
         base_template = DottedTemplate(config.add_from_url.url)
-        resolved_template = DottedTemplate(base_template.safe_substitute({**os.environ}))
+        resolved_template = DottedTemplate(base_template.safe_substitute({**ENV_VARS}))
         self._dynamic_template = resolved_template
         self._dynamic_identifiers = tuple(resolved_template.get_identifiers())
 
         if len(self._dynamic_identifiers) > 0:
             self._is_dynamic = True
+
+        if not self._is_dynamic:
+            static_uri = resolved_template.substitute()
+            http_getter = GetterFactory.from_string(static_uri)
+
+            assert isinstance(http_getter, HttpGetter)
+
+            self._update_static_content(http_getter, static_uri)
+
+            http_getter.add_callback(
+                self._callback_tag,
+                self._update_static_content,
+                deduplication_key=(self._callback_tag, static_uri, id(self)),
+                fnc_args=[http_getter, static_uri],
+            )
+
+            self._static_uri = static_uri
 
     def _dynamic_add_from_url(self, event: dict) -> dict[str, FieldValue]:
         config = typing.cast(GenericAdderRule.Config, self._config)
@@ -311,16 +330,16 @@ class GenericAdderRule(FieldManagerRule):
         for identifier, val in key_val.items():
             if val is None:
                 raise ValueError(
-                    f"missing event field {identifier!r} for dynamic list comparison path"
+                    f"missing event field {identifier!r} for dynamic generic adder path"
                 )
             if not isinstance(val, (str, int)):
                 raise ValueError(
-                    f"value for list comparison field {identifier!r} is not a scalar value"
+                    f"value for generic adder field {identifier!r} is not a scalar value"
                 )
             pass
 
         dynamic_resolved = self._dynamic_template.substitute(key_val)
-        content: FieldValue | None = None
+        content: FieldValue = None
         if dynamic_resolved not in self._dynamic_content:
             http_getter = GetterFactory.from_string(dynamic_resolved)
             assert isinstance(http_getter, HttpGetter)
@@ -345,20 +364,26 @@ class GenericAdderRule(FieldManagerRule):
                 deduplication_key=(tag, dynamic_resolved, id(self)),
                 fnc_args=[dynamic_resolved],
             )
-
         else:
             RefreshableGetter.keep_alive_for_target(dynamic_resolved)
             content = self._dynamic_content[dynamic_resolved]
 
+        return self._content_to_items_to_add(content)
+
+    def _content_to_items_to_add(self, content: FieldValue):
         items_to_add: dict[str, FieldValue] = {}
+
+        config = typing.cast(GenericAdderRule.Config, self._config)
+        assert config.add_from_url
 
         if config.add_from_url.target_field:
             items_to_add[config.add_from_url.target_field] = content
         else:
             assert config.add_from_url.target_field_mapping is not None
 
-            # TODO: Check this differently, what should this be?
-            assert isinstance(content, dict)
+            if not isinstance(content, dict):
+                raise ValueError("add_from_url.target_field_mapping requires a mapping response")
+
             for (
                 mapping_source_field,
                 mapping_target_field,
@@ -380,6 +405,14 @@ class GenericAdderRule(FieldManagerRule):
         content = http_getter.get_collection()
         self._dynamic_content[resolved_uri] = content
 
+    def _update_static_content(self, getter: HttpGetter, uri: str) -> None:
+        try:
+            self._update_dynamic_content(getter, uri)
+        except Exception as error:
+            self.mark_failed(error)
+        else:
+            self.clear_failed()
+
     def _cleanup(self, resolved_uri: str):
         self._dynamic_content.pop(resolved_uri, None)
 
@@ -389,6 +422,10 @@ class GenericAdderRule(FieldManagerRule):
 
         if config.add_from_file or config.add:
             return config.add
+
+        if not self._is_dynamic:
+            assert self._static_uri
+            return self._content_to_items_to_add(self._dynamic_content[self._static_uri])
 
         assert config.add_from_url is not None
         return self._dynamic_add_from_url(event)

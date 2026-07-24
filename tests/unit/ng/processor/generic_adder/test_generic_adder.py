@@ -14,7 +14,8 @@ import responses
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_adder.processor import GenericAdder
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError, ProcessingWarning
+from logprep.util.getter import HttpGetter, RefreshableGetter
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
     failure_test_cases as non_ng_failure_test_cases,
@@ -135,3 +136,119 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             "enrichment": response_content,
         }
         assert responses.calls[0].request.url == resolved_url
+
+    @responses.activate
+    async def test_dynamic_url_failure_is_event_scoped(self):
+        failed_url = "https://values.example/acme"
+        successful_url = "https://values.example/beta"
+        responses.add(responses.GET, failed_url, status=500)
+        responses.add(responses.GET, successful_url, json={"risk": {"score": 7}})
+        RefreshableGetter.reset()
+        processor = self._create_test_instance(
+            {
+                "rules": [
+                    {
+                        "filter": "*",
+                        "generic_adder": {
+                            "add_from_url": {
+                                "url": "https://values.example/${tenant}",
+                                "target_field": "enrichment",
+                            }
+                        },
+                    }
+                ]
+            }
+        )
+        await processor.setup()
+        rule = processor.rules[0]
+        failed_event = {"tenant": "acme"}
+        successful_event = {"tenant": "beta"}
+
+        failed_result = await processor.process(
+            LogEvent(failed_event, original=b"", input_meta=InputMeta())
+        )
+        successful_result = await processor.process(
+            LogEvent(successful_event, original=b"", input_meta=InputMeta())
+        )
+
+        assert failed_result.errors == []
+        assert len(failed_result.warnings) == 1
+        assert isinstance(failed_result.warnings[0], ProcessingWarning)
+        assert failed_event == {
+            "tenant": "acme",
+            "tags": ["_generic_adder_failure"],
+        }
+        assert rule.data_error is None
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+
+        assert successful_result.errors == []
+        assert successful_result.warnings == []
+        assert successful_event == {
+            "tenant": "beta",
+            "enrichment": {"risk": {"score": 7}},
+        }
+
+    async def test_missing_dynamic_url_field_adds_warning_without_clearing_event(self):
+        processor = self._create_test_instance(
+            {
+                "rules": [
+                    {
+                        "filter": "*",
+                        "generic_adder": {
+                            "add_from_url": {
+                                "url": "https://values.example/${tenant.id}",
+                                "target_field": "enrichment",
+                            }
+                        },
+                    }
+                ]
+            }
+        )
+        await processor.setup()
+        event = {"message": "preserved"}
+
+        result = await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
+
+        assert result.errors == []
+        assert len(result.warnings) == 1
+        assert "missing event field 'tenant.id'" in str(result.warnings[0])
+        assert event == {
+            "message": "preserved",
+            "tags": ["_generic_adder_failure"],
+        }
+
+    @responses.activate
+    async def test_mapping_response_type_error_adds_warning_without_clearing_event(self):
+        url = "https://values.example/acme"
+        responses.add(responses.GET, url, json=["not", "a", "mapping"])
+        RefreshableGetter.reset()
+        processor = self._create_test_instance(
+            {
+                "rules": [
+                    {
+                        "filter": "*",
+                        "generic_adder": {
+                            "add_from_url": {
+                                "url": "https://values.example/${tenant}",
+                                "target_field_mapping": {
+                                    "risk.score": "enrichment.score",
+                                },
+                            }
+                        },
+                    }
+                ]
+            }
+        )
+        await processor.setup()
+        event = {"tenant": "acme"}
+
+        result = await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
+
+        assert result.errors == []
+        assert len(result.warnings) == 1
+        assert "target_field_mapping requires a mapping response" in str(result.warnings[0])
+        assert event == {
+            "tenant": "acme",
+            "tags": ["_generic_adder_failure"],
+        }
