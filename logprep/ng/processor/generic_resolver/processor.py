@@ -58,7 +58,7 @@ class GenericResolver(FieldManager):
         The cache can be disabled by setting this option to :code:`0`.
 
         .. security-best-practice::
-           :title: Processor - Generic Resolver Max Cached Entries
+           :title: |PROCESSOR| - Max Cached Entries
 
            Ensure to set this to a reasonable value to avoid excessive memory usage
            and OOM situations caused by the generic resolver cache.

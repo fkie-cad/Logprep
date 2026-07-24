@@ -52,7 +52,7 @@ class ListComparison(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """ListComparison config"""
+        """Config for |PROCESSOR|"""
 
         list_search_base_path: str | None = field(
             validator=validators.optional(validators.instance_of(str)), default=None

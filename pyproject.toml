@@ -95,6 +95,7 @@ dev = [
   "types-PyYaml",
   "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
   "ipykernel>=7.3.0",
+  "import-linter[ui]>=2.13",
 ]
 
 doc = [
@@ -107,6 +108,7 @@ doc = [
   "ipython>=8.7",
   "openpyxl",
   "pandas<3",
+  "sphinx-autobuild>=2025.8.25",
 ]
 
 [project.urls]
@@ -181,6 +183,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["luqum.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["sphinx.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

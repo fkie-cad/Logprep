@@ -64,5 +64,17 @@
                 "PYTHONASYNCIODEBUG": "1",
             },
         },
+        {
+            "name": "Sphinx Autobuild",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "sphinx_autobuild",
+            "args": [
+                "doc/source/",
+                "doc/build/"
+            ],
+            "subProcess": true,
+            "justMyCode": false
+        },
     ]
 }

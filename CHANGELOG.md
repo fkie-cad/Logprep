@@ -6,6 +6,7 @@
 * add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
 
 ### Improvements
+* docs: enable pydoc placeholders for facilitating component reuse through inheritance
 
 ### Bugfix
 

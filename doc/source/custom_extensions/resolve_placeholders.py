@@ -1,0 +1,190 @@
+"""
+Resolve Placeholders
+====================
+
+Sphinx extension which resolves context dependent placeholders sourced from pydoc.
+
+This extension allows for referencing user-facing classes (like processors) without
+sacrificing reusability through inheritance in other components.
+
+Example
+-------
+
+    class Config(...):
+
+        list_file_paths: list[str] = field(...)
+        \"\"\"
+        List of files. For string format see :ref:`getters`.
+
+        .. security-best-practice::
+           :title: |PROCESSOR| -  list file paths Memory Consumption
+
+           ...
+        \"\"\"
+
+
+Rendered below :code:`ListComparisonRule.Config` the title reads
+:code:`List Comparison Processor - list file paths Memory Consumption`, rendered below
+:code:`NetworkComparisonRule.Config` it reads
+:code:`Network Comparison Processor - list file paths Memory Consumption` - from a single
+docstring.
+
+Available placeholders
+----------------------
+
+Placeholders are resolved from the object path autodoc reports, which has the shape
+:code:`logprep.<category>.<key>.<module>.<Class>...`.  Because that path is the one from
+the :code:`autoclass` directive, an inherited attribute resolves against the subclass it
+is rendered below, not the class that defines it.
+
+``|PROCESSOR|`` / ``|CONNECTOR|`` / ``|RULE|`` / ``|INPUT|`` / ``|OUTPUT|`` / ``|COMPONENT|``
+    Aliases for the component named by :code:`<key>` in the path, all resolving to the
+    same value, e.g. :code:`Network Comparison`.  Each has a ``_KEY`` variant giving the
+    snake case configuration key, e.g. :code:`network_comparison`.  Which aliases exist
+    depends on the object: its category (:code:`|PROCESSOR|` / :code:`|CONNECTOR|`), the
+    class's own role (:code:`|RULE|` / :code:`|INPUT|` / :code:`|OUTPUT|`), and the
+    universal :code:`|COMPONENT|`.  They are aliases, not an inheritance chain: a rule does
+    not inherit its processor, it belongs to it.
+"""
+
+from __future__ import annotations
+
+import re
+import typing
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
+
+from sphinx.util import logging
+
+if TYPE_CHECKING:
+    from sphinx.application import Sphinx
+
+logger = logging.getLogger(__name__)
+
+
+Category = Literal["processor", "connector"]
+
+Role = Literal["rule", "processor", "input", "output"]
+
+CATEGORIES: tuple[Category, ...] = ("processor", "connector")
+
+ROLE_MODULES: tuple[Role, ...] = ("rule", "processor", "input", "output")
+
+PLACEHOLDER_PATTERN = re.compile(r"\|([A-Z_]+)\|")
+
+DOCUMENTED_TYPES = ("class", "attribute", "property")
+
+
+class ProcessingError(Exception):
+    """Raised if parsing or processing failed"""
+
+
+@dataclass(frozen=True)
+class ComponentMeta:
+    """A documented component, parsed from its object path."""
+
+    key: str
+    category: Category
+    role: Role | None
+
+
+def parse_component_object_path(name: str) -> ComponentMeta | None:
+    """Parse a component object path, or return :code:`None` if it is not one.
+
+    The path shape is :code:`logprep.<category>.<key>.<module>.<Class>...`, so
+    :code:`...processor.network_comparison.rule.NetworkComparisonRule` parses to
+    :code:`ComponentMeta(key="network_comparison", category="processor", role="rule")`.
+    The :code:`base` package sits where a component name would but holds shared base
+    classes, so it is excluded.
+    """
+    parts = name.split(".")
+    if len(parts) < 5:
+        return None
+    _, category, key, module, *_ = parts
+    if category not in CATEGORIES or key == "base":
+        # exclude entries like logprep.processor.base
+        return None
+    role = module if module in ROLE_MODULES else None
+    return ComponentMeta(
+        key=key, category=typing.cast(Category, category), role=typing.cast(Role, role)
+    )
+
+
+def humanize(snake: str) -> str:
+    """Turn a snake_case token into spaced Title Case.
+
+    :code:`network_comparison` -> :code:`Network Comparison`, :code:`s3` -> :code:`S3`.
+    """
+    return " ".join(word[:1].upper() + word[1:] for word in snake.split("_"))
+
+
+def replacements_for(name: str) -> dict[str, str]:
+    """Map every placeholder available for ``name`` to its value.
+
+    For the component's category and the documented class's role, three placeholders are
+    produced:
+
+    * :code:`|X_KEY|` - the snake case configuration key, e.g. :code:`network_comparison`;
+    * :code:`|X_NAME|` - the human readable name, e.g. :code:`Network Comparison`;
+    * :code:`|X|` - the name suffixed with the word, e.g. :code:`Network Comparison
+      Processor`, :code:`Network Comparison Rule`.
+
+    :code:`|COMPONENT|`, :code:`|COMPONENT_NAME|` and :code:`|COMPONENT_KEY|` all give the
+    bare component, since "component" is not a word to suffix in prose.  A processor's own
+    class has role and category both :code:`processor`, so its placeholders appear once.
+    """
+    meta = parse_component_object_path(name)
+    if meta is None:
+        raise ProcessingError(f"no component in object path: {name}")
+
+    key = meta.key
+    readable = humanize(key)
+
+    roles: set[Category | Role] = {meta.category}
+    if meta.role is not None:
+        roles.add(meta.role)
+
+    result: dict[str, str] = {
+        "COMPONENT": readable,
+        "COMPONENT_NAME": readable,
+        "COMPONENT_KEY": key,
+    }
+    for role in roles:
+        upper = role.upper()
+        result[upper] = f"{readable} {humanize(role)}"
+        result[f"{upper}_NAME"] = readable
+        result[f"{upper}_KEY"] = key
+    return result
+
+
+def resolve_placeholders(_, what: str, name: str, __, ___, lines: list[str]) -> None:
+    """Replace the known placeholders in a docstring with class specific values."""
+    if what not in DOCUMENTED_TYPES:
+        return
+    if not any(PLACEHOLDER_PATTERN.search(line) for line in lines):
+        return
+
+    try:
+        replacements = replacements_for(name)
+    except ProcessingError as error:
+        logger.warning("cannot find replacements for name %s (%s)", name, str(error))
+        return
+
+    def replace(match: re.Match) -> str:
+        placeholder = match.group(1)
+        if placeholder not in replacements:
+            logger.warning(
+                "cannot resolve placeholder |%s| in %s: no class in the object path",
+                placeholder,
+                name,
+            )
+            return match.group(0)
+        return replacements[placeholder]
+
+    lines[:] = [PLACEHOLDER_PATTERN.sub(replace, line) for line in lines]
+
+
+def setup(app: Sphinx) -> dict:
+    """Register the extension."""
+    app.connect("autodoc-process-docstring", resolve_placeholders)
+    return {"version": "1.0", "parallel_read_safe": True, "parallel_write_safe": True}

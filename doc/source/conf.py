@@ -1,4 +1,5 @@
 # pylint: disable-all
+# type: ignore
 # -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
@@ -70,6 +71,7 @@ extensions = [
     "IPython.sphinxext.ipython_console_highlighting",
     "sphinx_copybutton",
     "security_best_practices",
+    "resolve_placeholders",
 ]
 
 extensions.append("sphinx.ext.todo")
