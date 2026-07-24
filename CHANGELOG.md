@@ -2,6 +2,7 @@
 ### Breaking
 
 ### Features
+* generic_adder: add support for templated http urls
 
 ### Improvements
 
