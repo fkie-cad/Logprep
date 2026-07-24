@@ -25,10 +25,12 @@ Processor Configuration
 """
 
 import typing
+from typing import Sequence
 
 from logprep.ng.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.generic_adder.rule import GenericAdderRule
+from logprep.util.getter import RefreshableGetter
 from logprep.util.helper import add_fields_to
 
 
@@ -37,8 +39,22 @@ class GenericAdder(Processor):
 
     rule_class = GenericAdderRule
 
+    @property
+    def _rules(self) -> Sequence[GenericAdderRule]:
+        """Returns all rules"""
+        return typing.cast(Sequence[GenericAdderRule], self.rules)
+
+    async def setup(self):
+        await super().setup()
+        for rule in self._rules:
+            rule.init_generic_adder(self._job_tag_for_cleanup)
+
     def _apply_rules(self, event: dict, rule: Rule) -> None:
         rule = typing.cast(GenericAdderRule, rule)
         items_to_add = rule.add(event)
         if items_to_add:
             add_fields_to(event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target)
+
+    def _shut_down(self) -> None:
+        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
+        return super()._shut_down()
