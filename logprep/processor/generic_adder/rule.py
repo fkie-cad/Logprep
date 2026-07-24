@@ -203,22 +203,20 @@ class GenericAdderRule(FieldManagerRule):
         def __attrs_post_init__(self):
             self._base_add = copy.deepcopy(self.add)
 
-            if (
-                self.add_from_file is not None or len(self.add) > 0
-            ) and self.add_from_url is not None:
+            if (self.add_from_file or self.add) and self.add_from_url is not None:
                 raise ValueError(
                     "only one of add_from_file + add or add_from_url is allowed per GenericAdder rule"
                 )
 
-            if not self.add and self.add_from_file is None and self.add_from_url is None:
+            if not self.add and not self.add_from_file and self.add_from_url is None:
                 raise ValueError(
                     "one of add, add_from_file or add_from_url is neccessary per GenericAdder rule"
                 )
 
             if (
                 self.add_from_url is not None
-                and self.add_from_url.target_field is not None
-                and len(self.add_from_url.target_field_mapping) > 0
+                and self.add_from_url.target_field
+                and self.add_from_url.target_field_mapping
             ):
                 raise ValueError(
                     "only one of target_field or target_field_mapping is allowed per GenericAdder rule"
@@ -226,8 +224,8 @@ class GenericAdderRule(FieldManagerRule):
 
             if (
                 self.add_from_url is not None
-                and self.add_from_url.target_field is None
-                and len(self.add_from_url.target_field_mapping) <= 0
+                and not self.add_from_url.target_field
+                and not self.add_from_url.target_field_mapping
             ):
                 raise ValueError(
                     "one of target_field or target_field_mapping is neccessary per GenericAdder rule"
@@ -375,7 +373,7 @@ class GenericAdderRule(FieldManagerRule):
         """Returns the fields to add"""
         config = typing.cast(GenericAdderRule.Config, self._config)
 
-        if config.add_from_file is not None or len(config.add) > 0:
+        if config.add_from_file or config.add:
             return config.add
 
         assert config.add_from_url is not None
