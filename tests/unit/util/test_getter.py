@@ -1472,6 +1472,31 @@ class TestHttpGetter:
         http_getter.get_collection()
         mock_parse_yaml.assert_called_once()
 
+    @responses.activate
+    def test_get_collection_extracts_content_field(self):
+        responses.add(
+            responses.GET,
+            "http://something",
+            json={"payload": {"answer": 42}},
+        )
+
+        http_getter = GetterFactory.from_string("http://something")
+
+        assert http_getter.get_collection("payload") == {"answer": 42}
+
+    @responses.activate
+    def test_get_collection_rejects_content_field_for_non_mapping_content(self):
+        responses.add(
+            responses.GET,
+            "http://something",
+            json=["one", "two"],
+        )
+
+        http_getter = GetterFactory.from_string("http://something")
+
+        with pytest.raises(ValueError, match="Expected mapping type when content_field is set"):
+            http_getter.get_collection("payload")
+
     @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a dict")
     def test_get_dict_raises_exception_if_result_not_dict(self, _):
         http_getter = GetterFactory.from_string("http://something")
