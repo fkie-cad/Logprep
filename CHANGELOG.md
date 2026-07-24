@@ -6,6 +6,7 @@
 ### Features
 * add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
 * introduce API-level support for asynchronous rule processing and I/O capability detection in `ng` processors
+* generic_adder: add support for templated http urls
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
