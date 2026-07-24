@@ -83,6 +83,7 @@ In the following example two files are being used, but only the first existing f
 # pylint: enable=anomalous-backslash-in-string
 
 import copy
+import logging
 import os
 import typing
 
@@ -93,7 +94,15 @@ from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_from_dict
 from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetter
-from logprep.util.helper import DottedTemplate, FieldValue, get_dotted_field_value
+from logprep.util.helper import (
+    MISSING,
+    DottedTemplate,
+    FieldValue,
+    get_dotted_field_value,
+    get_dotted_field_value_with_missing,
+)
+
+logger = logging.getLogger("GenericAdder")
 
 
 @define(kw_only=True, frozen=True)
@@ -354,11 +363,16 @@ class GenericAdderRule(FieldManagerRule):
                 mapping_source_field,
                 mapping_target_field,
             ) in config.add_from_url.target_field_mapping.items():
-                # what should happen with missing fields? Right now None is skipped
-                # change this to get_dotted_field_value_with_missing
-                items_to_add[mapping_target_field] = get_dotted_field_value(
-                    content, mapping_source_field
-                )
+                item = get_dotted_field_value_with_missing(content, mapping_source_field)
+                if item is MISSING:
+                    logger.warning(
+                        "could not add source_field: %s for target_field: %s because was missing",
+                        mapping_source_field,
+                        mapping_target_field,
+                    )
+                    continue
+
+                items_to_add[mapping_target_field] = item
 
         return items_to_add
 
