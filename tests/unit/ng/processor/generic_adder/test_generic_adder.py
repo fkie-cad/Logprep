@@ -9,6 +9,7 @@ import re
 from copy import deepcopy
 
 import pytest
+import responses
 
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
@@ -102,3 +103,35 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
 
         assert event["some_dict_field"] == {"some_key": "some_value"}
         assert event["some_dict_field"] is not rule_add["some_dict_field"], "only copies in events"
+
+    @responses.activate
+    async def test_adds_response_from_event_templated_url(self):
+        resolved_url = "https://values.example/acme"
+        response_content = {"user": {"name": "Alice"}, "risk": {"score": 7}}
+        responses.add(responses.GET, resolved_url, json=response_content)
+        processor = self._create_test_instance(
+            {
+                "rules": [
+                    {
+                        "filter": "*",
+                        "generic_adder": {
+                            "add_from_url": {
+                                "url": "https://values.example/${tenant.id}",
+                                "target_field": "enrichment",
+                            }
+                        },
+                    }
+                ]
+            }
+        )
+        await processor.setup()
+        event = {"tenant": {"id": "acme"}}
+
+        result = await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
+
+        assert result.errors == []
+        assert event == {
+            "tenant": {"id": "acme"},
+            "enrichment": response_content,
+        }
+        assert responses.calls[0].request.url == resolved_url
