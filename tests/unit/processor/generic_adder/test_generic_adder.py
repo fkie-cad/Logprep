@@ -7,11 +7,14 @@ import typing
 from copy import deepcopy
 
 import pytest
+import responses
 
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.generic_adder.processor import GenericAdder
+from logprep.util.getter import RefreshableGetter
 from tests.unit.processor.base import BaseProcessorTestCase
+from tests.conftest import mock_env
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
 RULES_DIR_INVALID = "tests/testdata/unit/generic_adder/rules_invalid"
@@ -295,7 +298,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "add_generic_test": "Test",
             "event_id": 123,
-            "\\u\\0\\1\\x\\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
+            "\\u\\0\\1\\x\\z": "whatever",
         },
         {
             "add_generic_test": "Test",
@@ -303,8 +306,8 @@ test_cases = [  # testcase, rule, event, expected
             "comp\\lex.field": "value",
             "comp\\lex.nested": {"field": 42},
             "nested": {"comp\\lex.field": 1337},
-            "\\u\\0\\1\\x\y": 1338,  # pylint: disable=anomalous-backslash-in-string
-            "\\u\\0\\1\\x\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
+            "\\u\\0\\1\\x\\y": 1338,
+            "\\u\\0\\1\\x\\z": "whatever",
         },
         id="Add from rule definition with escaping",
     ),
@@ -454,10 +457,63 @@ class TestGenericAdder(BaseProcessorTestCase):
         event = {}
         instance.process(event)
 
-        rule_add = instance.rules[0].add
+        rule_add = instance.rules[0].add({})
 
         assert event["some_list_field"] == ["some_value"]
         assert event["some_list_field"] is not rule_add["some_list_field"], "only copies in events"
 
         assert event["some_dict_field"] == {"some_key": "some_value"}
         assert event["some_dict_field"] is not rule_add["some_dict_field"], "only copies in events"
+
+    @responses.activate
+    def test_adds_mapped_response_fields_from_event_templated_url(self):
+        resolved_url = "https://values.example/acme"
+        responses.add(
+            responses.GET,
+            resolved_url,
+            json={
+                "user": {"name": "Alice"},
+                "risk": {"score": 7},
+            },
+        )
+        configuration = {
+            "dynamic_generic_adder": {
+                "type": "generic_adder",
+                "rules": [
+                    {
+                        "filter": "*",
+                        "generic_adder": {
+                            "add_from_url": {
+                                "url": "https://${GENERIC_ADDER_HOST}/${tenant.id}",
+                                "target_field_mapping": {
+                                    "user.name": "enrichment.user",
+                                    "risk.score": "enrichment.score",
+                                },
+                            }
+                        },
+                    }
+                ],
+            }
+        }
+
+        RefreshableGetter.reset()
+        with mock_env({"GENERIC_ADDER_HOST": "values.example"}):
+            processor = typing.cast(GenericAdder, self._create_test_instance(configuration))
+            processor.setup()
+
+            first_event = {"tenant": {"id": "acme"}}
+            second_event = {"tenant": {"id": "acme"}}
+            first_result = processor.process(first_event)
+            second_result = processor.process(second_event)
+
+            processor.shut_down()
+
+        assert first_result.errors == []
+        assert second_result.errors == []
+        assert first_event == {
+            "tenant": {"id": "acme"},
+            "enrichment": {"user": "Alice", "score": 7},
+        }
+        assert second_event == first_event
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == resolved_url
