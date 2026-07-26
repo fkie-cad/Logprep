@@ -14,7 +14,10 @@ import responses
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_adder.processor import GenericAdder
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError, ProcessingWarning
+from logprep.processor.base.exceptions import (
+    InvalidRuleDefinitionError,
+    ProcessingWarning,
+)
 from logprep.util.getter import HttpGetter, RefreshableGetter
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (

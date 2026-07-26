@@ -25,7 +25,7 @@ Processor Configuration
 """
 
 import typing
-from typing import Sequence
+from collections.abc import Sequence
 
 from logprep.ng.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
@@ -42,13 +42,13 @@ class GenericAdder(Processor):
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
     @property
-    def _rules(self) -> Sequence[GenericAdderRule]:
+    def rules(self) -> Sequence[GenericAdderRule]:
         """Returns all rules"""
-        return typing.cast(Sequence[GenericAdderRule], self.rules)
+        return typing.cast(Sequence[GenericAdderRule], super().rules)
 
     async def setup(self):
         await super().setup()
-        for rule in self._rules:
+        for rule in self.rules:
             rule.init_generic_adder(self._job_tag_for_cleanup)
 
     def _apply_rules(self, event: dict, rule: Rule) -> None:

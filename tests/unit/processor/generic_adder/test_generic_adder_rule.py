@@ -221,7 +221,7 @@ class TestGenericAdderRule:
         additions = rule._content_to_items_to_add({"present": None})
 
         assert additions == {"enrichment.present": None}
-        assert "source_field: missing" in caplog.text
+        assert "source_field missing" in caplog.text
 
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",

@@ -133,9 +133,9 @@ class Getter(ABC):
             logger.debug("parsing yaml failed, falling back to json for content: %s", content)
             return self._parse_json(content)
 
-    def get_dict(self) -> dict:
+    def get_dict(self, content_field: str | None = None) -> dict:
         """Gets dict and fails otherwise"""
-        result = self.get_collection()
+        result = self.get_collection(content_field=content_field)
         if not isinstance(result, dict):
             raise ValueError(f"Expected a dict, got {type(result)}")
         return result
@@ -160,9 +160,7 @@ class Getter(ABC):
 
     def get_list(self, content_field: str | None = None) -> list:
         """Gets list and fails otherwise"""
-
         content = self._resolve_content_by_content_type()
-
         content = Getter._apply_content_field(content, content_field)
 
         if isinstance(content, str):

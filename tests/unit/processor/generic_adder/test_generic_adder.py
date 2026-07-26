@@ -10,11 +10,14 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError, ProcessingWarning
+from logprep.processor.base.exceptions import (
+    InvalidRuleDefinitionError,
+    ProcessingWarning,
+)
 from logprep.processor.generic_adder.processor import GenericAdder
 from logprep.util.getter import HttpGetter, RefreshableGetter
-from tests.unit.processor.base import BaseProcessorTestCase
 from tests.conftest import mock_env
+from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
 RULES_DIR_INVALID = "tests/testdata/unit/generic_adder/rules_invalid"

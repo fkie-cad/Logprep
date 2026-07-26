@@ -80,11 +80,8 @@ In the following example two files are being used, but only the first existing f
    :noindex:
 """
 
-# pylint: enable=anomalous-backslash-in-string
-
 import copy
 import logging
-import os
 import typing
 
 from attrs import define, field, validators
@@ -108,13 +105,24 @@ logger = logging.getLogger("GenericAdder")
 
 @define(kw_only=True, frozen=True)
 class AddFromUrlConfig:
+    """Configuration for adding values loaded from an HTTP(S) URL."""
+
     url: str = field(
         validator=[validators.instance_of(str), validators.matches_re(r"^https?://.+")]
     )
+    """The URL to load values from.
+
+    Environment variables and dotted event fields can be inserted with placeholders such as
+    :code:`${TENANT}` and :code:`${tenant.id}`.
+    """
 
     target_field: str | None = field(
         default=None, validator=validators.optional(validators.instance_of(str))
     )
+    """The dotted event field into which the complete response is written.
+
+    This is mutually exclusive with :attr:`target_field_mapping`.
+    """
 
     target_field_mapping: dict[str, str] = field(
         validator=validators.deep_mapping(
@@ -123,6 +131,10 @@ class AddFromUrlConfig:
         ),
         factory=dict,
     )
+    """A mapping of dotted response fields to dotted target fields in the event.
+
+    This is mutually exclusive with :attr:`target_field`.
+    """
 
     def __attrs_post_init__(self) -> None:
         if not self.target_field and not self.target_field_mapping:
@@ -166,6 +178,10 @@ class GenericAdderRule(FieldManagerRule):
             ),
             converter=lambda x: x if isinstance(x, list) else [x],
             factory=list,
+            # Eq false in this case means that this is not taken into account when comparing two Configs,
+            # that is neccessary in this case because on init this will be loaded into add,
+            # and when comparing two rules, we dont care if whats to add came from a file or is written inline
+            # but we do care if whatever gets added is the same
             eq=False,
         )
         """Contains the path or url to YML file that contains a dictionary of field names
@@ -192,7 +208,13 @@ class GenericAdderRule(FieldManagerRule):
             default=None,
             validator=validators.optional(validators.instance_of(AddFromUrlConfig)),
             converter=_convert_add_from_url,
+            # Explicitly set it to true here to show the difference between this and add_from_file
+            eq=True,
         )
+        """Configuration for loading values from an HTTP(S) URL and adding them to the event.
+
+        This is mutually exclusive with :attr:`add` and :attr:`add_from_file`.
+        """
 
         only_first_existing_file: bool = field(
             validator=validators.instance_of(bool), default=False, eq=False
@@ -203,8 +225,6 @@ class GenericAdderRule(FieldManagerRule):
 
         _base_add: dict = field(default={}, eq=False)
         """Stores original add fields (as provided in the config) for future refreshes of getters"""
-
-        # pylint: enable=anomalous-backslash-in-string
 
         def _refresh_add(self):
             self.add = copy.deepcopy(self._base_add)
@@ -242,7 +262,7 @@ class GenericAdderRule(FieldManagerRule):
                 )
 
             # Eagerly loaded from file
-            for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
+            for add_file in self.add_from_file:
                 getter = GetterFactory.from_string(add_file)
                 if isinstance(getter, RefreshableGetter):
                     # TODO: This never gets cleaned up, Memory leak on a lot of new generic adders / generic resolvers
@@ -277,7 +297,7 @@ class GenericAdderRule(FieldManagerRule):
 
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
-        self._dynamic_content: dict[str, FieldValue] = {}
+        self._chached_add_content: dict[str, FieldValue] = {}
         self._callback_tag = ""
         self._is_dynamic: bool = False
         self._dynamic_template: DottedTemplate
@@ -287,21 +307,17 @@ class GenericAdderRule(FieldManagerRule):
     def init_generic_adder(self, job_tag: str) -> None:
         self._callback_tag = job_tag
 
-        config = typing.cast(GenericAdderRule.Config, self._config)
-        if config.add_from_file or config.add:
+        if self.config.add_from_file or self.config.add:
             return
 
-        assert config.add_from_url is not None
+        assert self.config.add_from_url is not None
 
-        base_template = DottedTemplate(config.add_from_url.url)
+        base_template = DottedTemplate(self.config.add_from_url.url)
         resolved_template = DottedTemplate(base_template.safe_substitute({**ENV_VARS}))
         self._dynamic_template = resolved_template
         self._dynamic_identifiers = tuple(resolved_template.get_identifiers())
 
-        if len(self._dynamic_identifiers) > 0:
-            self._is_dynamic = True
-
-        if not self._is_dynamic:
+        if not self._dynamic_identifiers:
             static_uri = resolved_template.substitute()
             http_getter = GetterFactory.from_string(static_uri)
 
@@ -317,12 +333,15 @@ class GenericAdderRule(FieldManagerRule):
             )
 
             self._static_uri = static_uri
+        else:
+            self._is_dynamic = True
 
-    def _dynamic_add_from_url(self, event: dict) -> dict[str, FieldValue]:
-        config = typing.cast(GenericAdderRule.Config, self._config)
+    @property
+    def config(self) -> Config:
+        """Return typed config"""
+        return typing.cast(GenericAdderRule.Config, self._config)
 
-        assert config.add_from_url
-
+    def _dynamic_add_from_url(self, event: dict[str, FieldValue]) -> dict[str, FieldValue]:
         key_val = {
             identifier: get_dotted_field_value(event, identifier)
             for identifier in self._dynamic_identifiers
@@ -340,14 +359,14 @@ class GenericAdderRule(FieldManagerRule):
 
         dynamic_resolved = self._dynamic_template.substitute(key_val)
         content: FieldValue = None
-        if dynamic_resolved not in self._dynamic_content:
+        if dynamic_resolved not in self._chached_add_content:
             http_getter = GetterFactory.from_string(dynamic_resolved)
             assert isinstance(http_getter, HttpGetter)
 
             http_getter.keep_alive()
 
             content = http_getter.get_collection()
-            self._dynamic_content[dynamic_resolved] = content
+            self._chached_add_content[dynamic_resolved] = content
 
             tag = self._callback_tag
 
@@ -366,32 +385,33 @@ class GenericAdderRule(FieldManagerRule):
             )
         else:
             RefreshableGetter.keep_alive_for_target(dynamic_resolved)
-            content = self._dynamic_content[dynamic_resolved]
+            content = self._chached_add_content[dynamic_resolved]
 
         return self._content_to_items_to_add(content)
 
     def _content_to_items_to_add(self, content: FieldValue):
         items_to_add: dict[str, FieldValue] = {}
 
-        config = typing.cast(GenericAdderRule.Config, self._config)
-        assert config.add_from_url
+        assert self.config.add_from_url
 
-        if config.add_from_url.target_field:
-            items_to_add[config.add_from_url.target_field] = content
+        if self.config.add_from_url.target_field:
+            items_to_add[self.config.add_from_url.target_field] = content
         else:
-            assert config.add_from_url.target_field_mapping is not None
+            assert self.config.add_from_url.target_field_mapping is not None
 
             if not isinstance(content, dict):
-                raise ValueError("add_from_url.target_field_mapping requires a mapping response")
+                raise ValueError(
+                    f"add_from_url.target_field_mapping requires a mapping response, got {content}"
+                )
 
             for (
                 mapping_source_field,
                 mapping_target_field,
-            ) in config.add_from_url.target_field_mapping.items():
+            ) in self.config.add_from_url.target_field_mapping.items():
                 item = get_dotted_field_value_with_missing(content, mapping_source_field)
                 if item is MISSING:
                     logger.warning(
-                        "could not add source_field: %s for target_field: %s because was missing",
+                        "could not add source_field %s for target_field %s because it is missing",
                         mapping_source_field,
                         mapping_target_field,
                     )
@@ -403,7 +423,7 @@ class GenericAdderRule(FieldManagerRule):
 
     def _update_dynamic_content(self, http_getter: HttpGetter, resolved_uri: str):
         content = http_getter.get_collection()
-        self._dynamic_content[resolved_uri] = content
+        self._chached_add_content[resolved_uri] = content
 
     def _update_static_content(self, getter: HttpGetter, uri: str) -> None:
         try:
@@ -414,18 +434,16 @@ class GenericAdderRule(FieldManagerRule):
             self.clear_failed()
 
     def _cleanup(self, resolved_uri: str):
-        self._dynamic_content.pop(resolved_uri, None)
+        self._chached_add_content.pop(resolved_uri, None)
 
     def add(self, event: dict) -> dict:
         """Returns the fields to add"""
-        config = typing.cast(GenericAdderRule.Config, self._config)
-
-        if config.add_from_file or config.add:
-            return config.add
+        if self.config.add:
+            return self.config.add
 
         if not self._is_dynamic:
             assert self._static_uri
-            return self._content_to_items_to_add(self._dynamic_content[self._static_uri])
-
-        assert config.add_from_url is not None
-        return self._dynamic_add_from_url(event)
+            return self._content_to_items_to_add(self._chached_add_content[self._static_uri])
+        else:
+            assert self.config.add_from_url is not None
+            return self._dynamic_add_from_url(event)
