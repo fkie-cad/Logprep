@@ -1,6 +1,6 @@
 """
-IpInformer
-==========
+|PROCESSOR_NAME|
+================
 
 The `ip_informer` processor enriches an event with ip information.
 
@@ -24,10 +24,10 @@ Processor Configuration
 """
 
 import ipaddress
+import typing
 from functools import partial
 from itertools import chain
 from typing import Iterable
-import typing
 
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager

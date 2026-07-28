@@ -1,6 +1,6 @@
 """
-Replacer
-============
+|PROCESSOR_NAME|
+================
 
 The `replacer` is a processor that replaces parts of a string with strings defined in rules.
 

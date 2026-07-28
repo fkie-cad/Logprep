@@ -1,6 +1,6 @@
 """
-NetworkComparison
-=================
+|PROCESSOR_NAME|
+================
 
 The `network_comparison` processor compares IP address values from source fields
 against network lists loaded from local files or HTTP(S) targets. It supports the

@@ -1,6 +1,6 @@
 """
-Grokker
-=======
+|PROCESSOR_NAME|
+================
 
 The `grokker` processor dissects a message on a basis of grok patterns. This processor is based
 of the ideas of the logstash grok filter plugin.

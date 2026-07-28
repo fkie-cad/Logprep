@@ -1,6 +1,6 @@
 """
-GenericResolver
-===============
+|PROCESSOR_NAME|
+================
 
 The `generic_resolver` resolves log event values using regex lists.
 

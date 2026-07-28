@@ -1,6 +1,6 @@
 """
-Deduplicator
-============
+|PROCESSOR_NAME|
+================
 
 The `deduplicator` is a processor that removes duplicate values from specified fields.
 
@@ -28,7 +28,7 @@ import typing
 from logprep.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.deduplicator.rule import DeduplicatorRule
-from logprep.util.helper import get_dotted_field_value, add_fields_to
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
 class Deduplicator(Processor):

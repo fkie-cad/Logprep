@@ -1,6 +1,6 @@
 """
-Amides
-======
+|PROCESSOR_NAME|
+================
 
 The :code:`Amides` processor implements the proof-of-concept Adaptive Misuse Detection System
 (AMIDES). AMIDES extends conventional rule matching of SIEM systems by applying machine learning

@@ -1,6 +1,6 @@
 """
-DomainLabelExtractor
-====================
+|PROCESSOR_NAME|
+================
 
 The `domain_label_extractor` is a processor that splits a domain into it's corresponding labels
 like :code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`. If instead an IP

@@ -1,6 +1,6 @@
 """
-ListComparison
-==============
+|PROCESSOR_NAME|
+================
 
 The `list_comparison` processor compares values of source fields against
 comparison lists loaded from local files or HTTP(S) targets. HTTP base paths may

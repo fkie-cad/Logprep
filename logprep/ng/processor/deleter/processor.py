@@ -1,6 +1,6 @@
 """
-Deleter
-=======
+|PROCESSOR_NAME|
+================
 
 The `deleter` is a processor that removes an entire event from further pipeline processing.
 

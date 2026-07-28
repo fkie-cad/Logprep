@@ -1,6 +1,6 @@
 """
-Labeler
-=======
+|PROCESSOR_NAME|
+================
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^

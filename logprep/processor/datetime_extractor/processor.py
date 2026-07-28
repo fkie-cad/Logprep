@@ -1,6 +1,6 @@
 """
-DatetimeExtractor
-=================
+|PROCESSOR_NAME|
+================
 
 The `datetime_extractor` is a processor that can extract timestamps from a field and
 split it into its parts.

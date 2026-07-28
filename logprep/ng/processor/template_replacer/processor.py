@@ -1,5 +1,5 @@
 """
-TemplateReplacer
+|PROCESSOR_NAME|
 ================
 
 The `template_replacer` is a processor that can replace parts of a text field to anonymize those

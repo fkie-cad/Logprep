@@ -1,6 +1,6 @@
 """
-Decoder
-============
+|PROCESSOR_NAME|
+================
 
 The `decoder` processor decodes or parses field values from the configured
 :code:`source_format`. Following options for :code:`source_format` are implemented:

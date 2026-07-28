@@ -1,6 +1,6 @@
 """
-Pseudonymizer
-=============
+|PROCESSOR_NAME|
+================
 
 The :code:`pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
 privacy regulations can be adhered to.

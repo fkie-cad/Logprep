@@ -1,6 +1,6 @@
 """
-GenericAdder
-============
+|PROCESSOR_NAME|
+================
 The `generic_adder` is a processor that adds new fields and values to documents based on a list.
 The list resides inside a rule and/or inside a file.
 

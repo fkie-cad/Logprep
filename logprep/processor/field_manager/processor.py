@@ -1,6 +1,6 @@
 """
-FieldManager
-============
+|PROCESSOR_NAME|
+================
 
 The `field_manager` processor copies or moves values from multiple source fields to one
 target field.

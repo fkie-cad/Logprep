@@ -72,7 +72,7 @@ ROLE_MODULES: tuple[Role, ...] = ("rule", "processor", "input", "output")
 
 PLACEHOLDER_PATTERN = re.compile(r"\|([A-Z_]+)\|")
 
-DOCUMENTED_TYPES = ("class", "attribute", "property")
+DOCUMENTED_TYPES = ("module", "class", "attribute", "property")
 
 
 class ProcessingError(Exception):
@@ -98,7 +98,7 @@ def parse_component_object_path(name: str) -> ComponentMeta | None:
     classes, so it is excluded.
     """
     parts = name.split(".")
-    if len(parts) < 5:
+    if len(parts) < 4:
         return None
     _, category, key, module, *_ = parts
     if category not in CATEGORIES or key == "base":
