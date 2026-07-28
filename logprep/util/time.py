@@ -1,12 +1,27 @@
 """Logprep time helpers module"""
 
-from datetime import datetime, tzinfo, UTC
+from datetime import UTC, datetime, tzinfo
+from enum import IntEnum
 
 from logprep.abc.exceptions import LogprepException
 
 
 class TimeParserException(LogprepException):
     """Exception class for time parsing"""
+
+
+class UnixTimestampLength(IntEnum):
+    """Digit lengths of common UNIX timestamp representations."""
+
+    SECONDS = 10
+    MILLISECONDS = 13
+    MICROSECONDS = 16
+    NANOSECONDS = 19
+
+
+SCALABLE_UNIX_TIMESTAMP_LENGTHS = frozenset(
+    int(length) for length in UnixTimestampLength if length > UnixTimestampLength.SECONDS
+)
 
 
 class TimeParser:
@@ -123,37 +138,48 @@ class TimeParser:
         return time_object
 
     @staticmethod
-    def _normalize_unix_timestamp(timestamp: str) -> int | float:
-        """Normalize the input timestamp string to unix timestamp in seconds.
+    def _normalize_unix_timestamp_to_seconds(timestamp: str) -> int | float:
+        """Normalize a UNIX timestamp string to seconds.
 
-        The input string is assumed to be in seconds if it is 10 digits long or shorter,
-        since seconds with more than 10 digits would be far into the future.
-        For strings longer than 10 digits the parsed integer is divided to be 10 digits long
-        before the decimal point.
-
-        Parameters
-        ----------
-        timestamp : str
-            The date string in unix timestamp format
-
-        Returns
-        -------
-        int | float
-            Unix timestamp parsed as number in seconds
+        The precision is inferred from the digits before the decimal point. Supported
+        precisions are seconds, milliseconds, microseconds, and nanoseconds. Fractional
+        timestamps are parsed as float to preserve sub-second precision.
 
         Raises
         ------
         TimeParserException
-            Raised if input timestamp string could not be parsed as integer
+            Raised if the timestamp cannot be parsed or has an unsupported length.
         """
+
         try:
-            return (
-                int(timestamp)
-                if len(timestamp) <= 10
-                else int(timestamp) / 10 ** (len(timestamp) - 10)
-            )
+            timestamp = timestamp.strip()
+            timestamp_parts = timestamp.split(".", maxsplit=1)
+            integer_part = timestamp_parts[0]
+            has_fractional_part = len(timestamp_parts) == 2
+
+            divisor = TimeParser._get_unix_timestamp_normalization_divisor(integer_part)
+            value = float(timestamp) if has_fractional_part else int(timestamp)
+
+            if divisor == 1:
+                return value
+
+            return value / divisor
         except ValueError as error:
             raise TimeParserException(str(error)) from error
+
+    @staticmethod
+    def _get_unix_timestamp_normalization_divisor(integer_part: str) -> int:
+        """Return the divisor for normalizing a supported UNIX timestamp to seconds."""
+
+        integer_part_length = len(integer_part)
+
+        if integer_part_length <= UnixTimestampLength.SECONDS:
+            return 1
+
+        if integer_part_length in SCALABLE_UNIX_TIMESTAMP_LENGTHS:
+            return 10 ** (integer_part_length - UnixTimestampLength.SECONDS)
+
+        raise ValueError(f"Unsupported Unix timestamp length: {integer_part_length}")
 
     @classmethod
     def parse_datetime(
@@ -179,7 +205,7 @@ class TimeParser:
             The parsed timestamp as datetime object.
         """
         if source_format == "UNIX":
-            normalized_unix_timestamp = cls._normalize_unix_timestamp(timestamp)
+            normalized_unix_timestamp = cls._normalize_unix_timestamp_to_seconds(timestamp)
             parsed_datetime = cls.from_unix_timestamp(normalized_unix_timestamp)
         elif source_format == "ISO8601":
             parsed_datetime = cls.from_string(timestamp, set_missing_utc=False)

@@ -1,7 +1,9 @@
 ## Upcoming Changes
 ### Breaking
+* restrict UNIX timestamp normalization to seconds, milliseconds, microseconds, and nanoseconds.
 
 ### Features
+* add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
 
 ### Improvements
 
