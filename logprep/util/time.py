@@ -19,6 +19,11 @@ class UnixTimestampLength(IntEnum):
     NANOSECONDS = 19
 
 
+SCALABLE_UNIX_TIMESTAMP_LENGTHS = frozenset(
+    int(length) for length in UnixTimestampLength if length > UnixTimestampLength.SECONDS
+)
+
+
 class TimeParser:
     """Encapsulation of time related methods"""
 
@@ -163,12 +168,6 @@ class TimeParser:
             raise TimeParserException(str(error)) from error
 
     @staticmethod
-    def _get_unix_timestamp_integer_part(timestamp: str) -> str:
-        """Return the integer part of a UNIX timestamp."""
-        return timestamp.split(".", maxsplit=1)[0]
-
-    @staticmethod
-    @staticmethod
     def _get_unix_timestamp_normalization_divisor(integer_part: str) -> int:
         """Return the divisor for normalizing a supported UNIX timestamp to seconds."""
 
@@ -177,33 +176,10 @@ class TimeParser:
         if integer_part_length <= UnixTimestampLength.SECONDS:
             return 1
 
-        scalable_unix_timestamp_lengths = frozenset(
-            int(length) for length in UnixTimestampLength if length > UnixTimestampLength.SECONDS
-        )
-
-        if integer_part_length in scalable_unix_timestamp_lengths:
+        if integer_part_length in SCALABLE_UNIX_TIMESTAMP_LENGTHS:
             return 10 ** (integer_part_length - UnixTimestampLength.SECONDS)
 
         raise ValueError(f"Unsupported Unix timestamp length: {integer_part_length}")
-
-    @staticmethod
-    def _normalize_fractional_unix_timestamp_to_seconds(timestamp: str, divisor: int) -> float:
-        """Normalize a fractional UNIX timestamp to seconds.
-
-        Fractional UNIX timestamps are parsed as float to preserve sub-second
-        precision.
-        """
-        return float(timestamp) / divisor
-
-    @staticmethod
-    def _normalize_integer_unix_timestamp_to_seconds(timestamp: str, divisor: int) -> int | float:
-        """Normalize an integer-only UNIX timestamp to seconds."""
-        parsed_timestamp = int(timestamp)
-
-        if divisor == 1:
-            return parsed_timestamp
-
-        return parsed_timestamp / divisor
 
     @classmethod
     def parse_datetime(
