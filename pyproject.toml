@@ -186,7 +186,7 @@ module = ["luqum.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["sphinx.*"]
+module = ["sphinx.*", "docutils.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

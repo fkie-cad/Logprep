@@ -49,11 +49,13 @@ is rendered below, not the class that defines it.
 
 from __future__ import annotations
 
+import itertools
 import re
 import typing
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
+from docutils.parsers.rst.states import Body
 from sphinx.util import logging
 
 if TYPE_CHECKING:
@@ -163,8 +165,20 @@ def replacements_for(name: str) -> dict[str, str]:
     return result
 
 
+DOCUTILS_LINE_PATTERN = re.compile(Body.patterns["line"])
+"""Pattern for identifying underlines"""
+
+
+def is_section_underline(line: str) -> bool:
+    """Return whether ``line`` is an RST section underline."""
+    return bool(line) and DOCUTILS_LINE_PATTERN.fullmatch(line) is not None
+
+
 def resolve_placeholders(_, what: str, name: str, __, ___, lines: list[str]) -> None:
-    """Replace the known placeholders in a docstring with class specific values."""
+    """
+    Replace the known placeholders in a docstring with class specific values.
+    Ensures subsequent lines acting as underlines are adapted in length to conform the RST standard.
+    """
     if what not in DOCUMENTED_TYPES:
         return
     if not any(PLACEHOLDER_PATTERN.search(line) for line in lines):
@@ -187,7 +201,14 @@ def resolve_placeholders(_, what: str, name: str, __, ___, lines: list[str]) -> 
             return match.group(0)
         return replacements[placeholder]
 
-    lines[:] = [PLACEHOLDER_PATTERN.sub(replace, line) for line in lines]
+    for index, (line, next_line) in enumerate(itertools.zip_longest(lines, lines[1:])):
+        resolved = PLACEHOLDER_PATTERN.sub(replace, line)
+        lines[index] = resolved
+        if resolved == line or next_line is None:
+            continue
+        if is_section_underline(next_line):
+            title_char = next_line[0]
+            lines[index + 1] = title_char * len(resolved)
 
 
 def setup(app: Sphinx) -> dict:
