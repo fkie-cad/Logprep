@@ -72,7 +72,7 @@ class GenericResolver(FieldManager):
 
     @define(kw_only=True)
     class Metrics(FieldManager.Metrics):
-        """Tracks statistics about the generic resolver"""
+        """Tracks statistics about the |PROCESSOR_NAME|"""
 
         new_results: GaugeMetric = field(
             factory=lambda: GaugeMetric(

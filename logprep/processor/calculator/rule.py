@@ -33,7 +33,7 @@ A speaking example:
    :inherited-members:
    :no-undoc-members:
 
-The calculator supports the following arithmetic operators:
+The |PROCESSOR_NAME| supports the following arithmetic operators:
 
 * :code:`+` addition
 * :code:`-` subtraction
@@ -41,7 +41,7 @@ The calculator supports the following arithmetic operators:
 * :code:`/` division
 * :code:`^` exponentiation
 
-The calculator supports the following comparison operators:
+The |PROCESSOR_NAME| supports the following comparison operators:
 
 * :code:`>` greater than
 * :code:`<` less than

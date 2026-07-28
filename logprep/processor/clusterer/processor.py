@@ -3,7 +3,7 @@
 ================
 
 The log clustering is mainly developed for Syslogs, unstructured and semi-structured logs.
-The clusterer calculates a log signature based on the message field.
+The |PROCESSOR_NAME| calculates a log signature based on the message field.
 The log signature is calculated with heuristic and deterministic rules.
 The idea of a log signature is to extract a subset of the constant parts of a log and
 to delete the dynamic parts.

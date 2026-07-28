@@ -64,7 +64,7 @@ IMPLEMENTED_DECODERS = tuple(DECODERS.keys())
 
 
 class DecoderRule(FieldManagerRule):
-    """Rule for the decoder processor"""
+    """Rule for the |PROCESSOR_NAME| processor"""
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
@@ -86,7 +86,7 @@ class DecoderRule(FieldManagerRule):
             default="json",
         )
         """The source format in the source field. Defaults to :code:`json`
-        Possible values are 
+        Possible values are
         :code:`json`,
         :code:`base64`,
         :code:`clf`,

@@ -2,16 +2,16 @@
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^
 
-Rules of the clusterer are evaluated in alphanumerical order.
+Rules of the |PROCESSOR_NAME| are evaluated in alphanumerical order.
 Some rules do only make sense if they are performed in a sequence with other rules.
-The clusterer matches multiple rules at once and applies them all before creating a
+The |PROCESSOR_NAME| matches multiple rules at once and applies them all before creating a
 clustering signature.
 Therefore, it is recommended to prefix rules with numbers, i.e. `00_01_*`.
 Here the first two digits represent a type of rules that make sense together and the second digits
 represent the order of rules of the same type.
 
 A subset of terms from this field can be extracted into the clustering-signature field defined in
-the clusterer configuration.
+the |PROCESSOR_NAME| configuration.
 
 
 
