@@ -52,7 +52,7 @@ class GenericResolver(FieldManager):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """GenericResolver config"""
+        """Config for |PROCESSOR|"""
 
         max_cache_entries: int = field(validator=validators.instance_of(int), default=0)
         """(Optional) Size of cache for results when resolving from a list.

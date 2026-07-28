@@ -130,7 +130,7 @@ class GrokkerRule(DissectorRule):
         matching timeout will be raised.
 
         .. security-best-practice::
-           :title: Processor - Grokker DOS (Denial of Service) via Backreferences
+           :title: |PROCESSOR| - DOS (Denial of Service) via Backreferences
 
            Avoid using backreferences in grok patterns, as they can lead to excessive memory consumption
            and potential denial of service attacks.

@@ -57,7 +57,7 @@ class DomainLabelExtractor(FieldManager):
 
     @define(kw_only=True)
     class Config(FieldManager.Config):
-        """DomainLabelExtractor config"""
+        """Config for |PROCESSOR|"""
 
         tagging_field_name: str = field(default="tags", validator=validators.instance_of(str))
         """Optional configuration field that defines into which field in the event the

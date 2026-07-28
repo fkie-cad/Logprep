@@ -70,7 +70,7 @@ class DomainResolver(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """DomainResolver config"""
+        """Config for |PROCESSOR|"""
 
         timeout: float = field(
             default=0.5,

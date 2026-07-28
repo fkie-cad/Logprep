@@ -163,14 +163,14 @@ class ListComparisonRule(FieldManagerRule):
         """List of files. For string format see :ref:`getters`.
 
         .. security-best-practice::
-           :title: Processor - |PROCESSOR| list file paths Memory Consumption
+           :title: |PROCESSOR| - list file paths Memory Consumption
 
            Be aware that all values of the remote files were loaded into memory. Consider to avoid
            dynamic increasing lists without setting limits for Memory consumption. Additionally
            avoid loading large files all at once to avoid exceeding http body limits.
 
         .. security-best-practice::
-           :title: Processor - |PROCESSOR| list file paths Authenticity and Integrity
+           :title: |PROCESSOR| - list file paths Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.
@@ -200,14 +200,14 @@ class ListComparisonRule(FieldManagerRule):
 
 
         .. security-best-practice::
-           :title: Processor - |PROCESSOR| list file paths Memory Consumption
+           :title: |PROCESSOR| - list file paths Memory Consumption
 
            Be aware that all values of the remote files were loaded into memory. Consider to avoid
            dynamic increasing lists without setting limits for Memory consumption. Additionally
            avoid loading large files all at once to avoid exceeding http body limits.
 
         .. security-best-practice::
-           :title: Processor - |PROCESSOR| list file paths Authenticity and Integrity
+           :title: |PROCESSOR| - list file paths Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.

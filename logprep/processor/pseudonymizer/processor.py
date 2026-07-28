@@ -64,7 +64,7 @@ class Pseudonymizer(FieldManager):
 
     @define(kw_only=True)
     class Config(FieldManager.Config):
-        """Pseudonymizer config"""
+        """Config for |PROCESSOR|"""
 
         outputs: tuple[dict[str, str]] = field(
             validator=validators.deep_iterable(
@@ -87,7 +87,7 @@ class Pseudonymizer(FieldManager):
         Path to the public key of an analyst. For string format see :ref:`getters`.
 
         .. security-best-practice::
-           :title: Processor - Pseudonymizer pubkey analyst Authenticity and Integrity
+           :title: |PROCESSOR| - pubkey analyst Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.
@@ -97,7 +97,7 @@ class Pseudonymizer(FieldManager):
         Path to the public key for depseudonymization. For string format see :ref:`getters`.
 
         .. security-best-practice::
-           :title: Processor - Pseudonymizer pubkey depseudo Authenticity and Integrity
+           :title: |PROCESSOR| - pubkey depseudo Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.
@@ -110,14 +110,14 @@ class Pseudonymizer(FieldManager):
         pseudonymization, i.e.:
 
         .. security-best-practice::
-           :title: Processor - Pseudonymizer regex mapping Memory Consumption
+           :title: |PROCESSOR| - regex mapping Memory Consumption
 
            Be aware that all values of the remote file were loaded into memory. Consider to avoid
            dynamic increasing lists without setting limits for Memory consumption. Additionally
            avoid loading large files all at once to avoid exceeding http body limits.
 
         .. security-best-practice::
-           :title: Processor - Pseudonymizer regex mapping Authenticity and Integrity
+           :title: |PROCESSOR| - regex mapping Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.
@@ -135,7 +135,7 @@ class Pseudonymizer(FieldManager):
         entry is deleted. Has to be greater than 0.
 
         .. security-best-practice::
-           :title: Processor - Pseudonymizer max_cached_pseudonyms
+           :title: |PROCESSOR| - max_cached_pseudonyms
 
            Ensure to set this to a reasonable value to avoid excessive memory usage
            and OOM situations by the domain resolver cache.
@@ -148,7 +148,7 @@ class Pseudonymizer(FieldManager):
         Behaves similarly to the max_cached_pseudonyms. Has to be greater than 0.
 
         .. security-best-practice::
-           :title: Processor - Pseudonymizer max_cached_pseudonymized_urls
+           :title: |PROCESSOR| - max_cached_pseudonymized_urls
 
            Ensure to set this to a reasonable value to avoid excessive memory usage
            and OOM situations by the domain resolver cache.
@@ -161,7 +161,7 @@ class Pseudonymizer(FieldManager):
         Default is 'GCM'.
 
         .. security-best-practice::
-           :title: Processor - Pseudonymizer
+           :title: |PROCESSOR|
 
            The :code:`pseudonymizer` works with two public keys for different roles.
            It is suggested to ensure that two different keys are being used such that

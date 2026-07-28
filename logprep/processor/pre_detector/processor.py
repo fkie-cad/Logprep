@@ -53,7 +53,7 @@ class PreDetector(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """PreDetector config"""
+        """Config for |PROCESSOR|"""
 
         outputs: tuple[dict[str, str]] = field(
             validator=(
@@ -92,14 +92,14 @@ class PreDetector(Processor):
         then the expiration date of the IP is being used.
 
         .. security-best-practice::
-           :title: Processor - PreDetector alert_ip_list_path Memory Consumption
+           :title: |PROCESSOR| - alert_ip_list_path Memory Consumption
 
            Be aware that all values of the remote file were loaded into memory. Consider to avoid
            dynamic increasing lists without setting limits for Memory consumption. Additionally
            avoid loading large files all at once to avoid exceeding http body limits.
 
         .. security-best-practice::
-           :title: Processor - PreDetector alert_ip_list_path Authenticity and Integrity
+           :title: |PROCESSOR| - alert_ip_list_path Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.
