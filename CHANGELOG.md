@@ -1,8 +1,8 @@
 ## Upcoming Changes
 ### Breaking
+* add support for fractional UNIX timestamps in the `timestamper` processor while preserving integer timestamp normalization
 
 ### Features
-* add support for fractional UNIX timestamps in the `timestamper` processor while preserving integer timestamp normalization
 
 ### Improvements
 
@@ -60,34 +60,6 @@
 * improve robustness of compose tests
 
 ### Bugfix
-* fix `dissector` not dissecting multiline strings
-* fix `grokker` dropping matches on duplicate named capture groups
-
-## 19.4.1
-
-### Breaking
-
-### Features
-* add support for `dict` in `generic_adder`
-
-### Improvements
-* fix Pyparsing deprecation warnings
-
-### Bugfix
-* fix `add_fields_to` injecting identical objects instead of copies
-* fix `generic_adder` accumulating state by inserting identical objects in events
-
-## 19.4.0
-### Breaking
-
-### Features
-* allow `list_comparison` and `network_comparison` to use dynamic values from event to resolve list uris
-
-### Improvements
-
-### Bugfix
-* make `list_search_base_path` actually optional and correctly overrideable by rule config
-* add missing documentation for the `network_comparison` processor
 * fix `dissector` not dissecting multiline strings
 * fix `grokker` dropping matches on duplicate named capture groups
 * fix `list_comparison` & `network_comparison` to actually work with dotted field notation
