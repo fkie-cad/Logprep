@@ -61,7 +61,7 @@ class GenericResolver(FieldManager):
            :title: |PROCESSOR| - Max Cached Entries
 
            Ensure to set this to a reasonable value to avoid excessive memory usage
-           and OOM situations caused by the generic resolver cache.
+           and OOM situations caused by the |PROCESSOR_NAME| cache.
 
         """
         cache_metrics_interval: int = field(validator=validators.instance_of(int), default=1)
@@ -71,7 +71,7 @@ class GenericResolver(FieldManager):
 
     @define(kw_only=True)
     class Metrics(FieldManager.Metrics):
-        """Tracks statistics about the generic resolver"""
+        """Tracks statistics about the |PROCESSOR_NAME|"""
 
         new_results: GaugeMetric = field(
             factory=lambda: GaugeMetric(
