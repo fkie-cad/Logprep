@@ -100,28 +100,28 @@ class ComponentMeta:
     role: Role | None
 
 
-def parse_component_object_path(name: str) -> ComponentMeta | None:
-    """Parse a component object path, or return :code:`None` if it is not one.
+def parse_component_object_path(name: str) -> ComponentMeta:
+    """Parse a component object path or raises a `ProcessingError` on failure.
 
-    The path shape is :code:`logprep.<category>.<key>.<module>.<Class>...`, so
-    :code:`...processor.network_comparison.rule.NetworkComparisonRule` parses to
+    The path shape is :code:`logprep[.ng].<category>.<key>.<module>.<Class>...`, so both
+    :code:`logprep.processor.network_comparison.rule.NetworkComparisonRule` and
+    :code:`logprep.ng.processor.network_comparison.rule.NetworkComparisonRule` parse to
     :code:`ComponentMeta(key="network_comparison", category="processor", role="rule")`.
-    The :code:`base` package sits where a component name would but holds shared base
-    classes, so it is excluded.
     """
-    parts = name.split(".")
-    if len(parts) < 4:
-        return None
-    _, category, key, module, *_ = parts
-    if category not in CATEGORIES or key == "base":
-        # exclude entries like logprep.processor.base
-        return None
-    role = module if module in ROLE_MODULES else None
-    return ComponentMeta(
-        key=key,
-        category=typing.cast(Category, category),
-        role=typing.cast("Role | None", role),
-    )
+    try:
+        parts = name.removeprefix("logprep.").removeprefix("ng.").split(".")
+        category, key, module = parts[:3]
+        if category not in CATEGORIES or key == "base":
+            # exclude entries like logprep.processor.base
+            raise ProcessingError(f"no component in object path: {name}")
+        role = module if module in ROLE_MODULES else None
+        return ComponentMeta(
+            key=key,
+            category=typing.cast(Category, category),
+            role=typing.cast(Role | None, role),
+        )
+    except ValueError as error:
+        raise ProcessingError(f"no component in object path: {name}") from error
 
 
 def humanize(snake: str) -> str:
@@ -145,8 +145,6 @@ def replacements_for(name: str) -> dict[str, str]:
       Processor`, :code:`Network Comparison Rule`.
     """
     meta = parse_component_object_path(name)
-    if meta is None:
-        raise ProcessingError(f"no component in object path: {name}")
 
     key = meta.key
     readable = humanize(key)
