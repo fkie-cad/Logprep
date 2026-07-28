@@ -74,6 +74,11 @@ PLACEHOLDER_PATTERN = re.compile(r"\|([A-Z_]+)\|")
 
 DOCUMENTED_TYPES = ("module", "class", "attribute", "property")
 
+HUMANIZE_OVERWRITE = {
+    "Opensearch": "OpenSearch",
+    "Geoip Enricher": "GeoIP Enricher",
+}
+
 
 class ProcessingError(Exception):
     """Raised if parsing or processing failed"""
@@ -115,7 +120,8 @@ def humanize(snake: str) -> str:
 
     :code:`network_comparison` -> :code:`Network Comparison`, :code:`s3` -> :code:`S3`.
     """
-    return " ".join(word[:1].upper() + word[1:] for word in snake.split("_"))
+    result = " ".join(word[:1].upper() + word[1:] for word in snake.split("_"))
+    return HUMANIZE_OVERWRITE.get(result, result)
 
 
 def replacements_for(name: str) -> dict[str, str]:
