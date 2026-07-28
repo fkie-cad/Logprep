@@ -17,7 +17,7 @@ Example
         List of files. For string format see :ref:`getters`.
 
         .. security-best-practice::
-           :title: |PROCESSOR| -  list file paths Memory Consumption
+           :title: |PROCESSOR| - list file paths Memory Consumption
 
            ...
         \"\"\"
@@ -37,14 +37,19 @@ Placeholders are resolved from the object path autodoc reports, which has the sh
 the :code:`autoclass` directive, an inherited attribute resolves against the subclass it
 is rendered below, not the class that defines it.
 
-``|PROCESSOR|`` / ``|CONNECTOR|`` / ``|RULE|`` / ``|INPUT|`` / ``|OUTPUT|`` / ``|COMPONENT|``
-    Aliases for the component named by :code:`<key>` in the path, all resolving to the
-    same value, e.g. :code:`Network Comparison`.  Each has a ``_KEY`` variant giving the
-    snake case configuration key, e.g. :code:`network_comparison`.  Which aliases exist
-    depends on the object: its category (:code:`|PROCESSOR|` / :code:`|CONNECTOR|`), the
-    class's own role (:code:`|RULE|` / :code:`|INPUT|` / :code:`|OUTPUT|`), and the
-    universal :code:`|COMPONENT|`.  They are aliases, not an inheritance chain: a rule does
-    not inherit its processor, it belongs to it.
+For the component's category (:code:`processor` / :code:`connector`) and the documented
+class's role (:code:`rule` / :code:`input` / :code:`output`), three placeholders each are
+produced.  Writing ``X`` for the upper case word:
+
+``|X_KEY|``
+    The snake case configuration key, e.g. :code:`network_comparison`.
+
+``|X_NAME|``
+    The human readable name, e.g. :code:`Network Comparison`.
+
+``|X|``
+    The name suffixed with the word, e.g. :code:`|PROCESSOR|` -> :code:`Network Comparison
+    Processor`, :code:`|RULE|` -> :code:`Network Comparison Rule`.
 """
 
 from __future__ import annotations
@@ -113,7 +118,9 @@ def parse_component_object_path(name: str) -> ComponentMeta | None:
         return None
     role = module if module in ROLE_MODULES else None
     return ComponentMeta(
-        key=key, category=typing.cast(Category, category), role=typing.cast(Role, role)
+        key=key,
+        category=typing.cast(Category, category),
+        role=typing.cast("Role | None", role),
     )
 
 
@@ -136,10 +143,6 @@ def replacements_for(name: str) -> dict[str, str]:
     * :code:`|X_NAME|` - the human readable name, e.g. :code:`Network Comparison`;
     * :code:`|X|` - the name suffixed with the word, e.g. :code:`Network Comparison
       Processor`, :code:`Network Comparison Rule`.
-
-    :code:`|COMPONENT|`, :code:`|COMPONENT_NAME|` and :code:`|COMPONENT_KEY|` all give the
-    bare component, since "component" is not a word to suffix in prose.  A processor's own
-    class has role and category both :code:`processor`, so its placeholders appear once.
     """
     meta = parse_component_object_path(name)
     if meta is None:
@@ -152,11 +155,7 @@ def replacements_for(name: str) -> dict[str, str]:
     if meta.role is not None:
         roles.add(meta.role)
 
-    result: dict[str, str] = {
-        "COMPONENT": readable,
-        "COMPONENT_NAME": readable,
-        "COMPONENT_KEY": key,
-    }
+    result: dict[str, str] = {}
     for role in roles:
         upper = role.upper()
         result[upper] = f"{readable} {humanize(role)}"
@@ -166,7 +165,7 @@ def replacements_for(name: str) -> dict[str, str]:
 
 
 DOCUTILS_LINE_PATTERN = re.compile(Body.patterns["line"])
-"""Pattern for identifying underlines"""
+"""docutils' own pattern for a section underline, reused so this stays in step with it."""
 
 
 def is_section_underline(line: str) -> bool:
@@ -177,7 +176,9 @@ def is_section_underline(line: str) -> bool:
 def resolve_placeholders(_, what: str, name: str, __, ___, lines: list[str]) -> None:
     """
     Replace the known placeholders in a docstring with class specific values.
-    Ensures subsequent lines acting as underlines are adapted in length to conform the RST standard.
+
+    When a replacement changes a section title, the underline on the following line is
+    adapted to the new length so the result conforms to the RST standard.
     """
     if what not in DOCUMENTED_TYPES:
         return
