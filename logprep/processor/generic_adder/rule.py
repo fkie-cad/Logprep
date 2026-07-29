@@ -81,7 +81,6 @@ In the following example two files are being used, but only the first existing f
 """
 
 import copy
-import logging
 import typing
 
 from attrs import define, field, validators
@@ -93,14 +92,10 @@ from logprep.util.converters import convert_from_dict
 from logprep.util.environ import ENV_VARS
 from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetter
 from logprep.util.helper import (
-    MISSING,
     DottedTemplate,
     FieldValue,
     get_dotted_field_value,
-    get_dotted_field_value_with_missing,
 )
-
-logger = logging.getLogger("GenericAdder")
 
 
 @define(kw_only=True, frozen=True)
@@ -116,29 +111,8 @@ class AddFromUrlConfig:
     :code:`${TENANT}` and :code:`${tenant.id}`.
     """
 
-    target_field: str | None = field(
-        default=None, validator=validators.optional(validators.instance_of(str))
-    )
-    """The dotted event field into which the complete response is written.
-
-    This is mutually exclusive with :attr:`target_field_mapping`.
-    """
-
-    target_field_mapping: dict[str, str] = field(
-        validator=validators.deep_mapping(
-            key_validator=validators.instance_of(str),
-            value_validator=validators.instance_of(str),
-        ),
-        factory=dict,
-    )
-    """A mapping of dotted response fields to dotted target fields in the event.
-
-    This is mutually exclusive with :attr:`target_field`.
-    """
-
-    def __attrs_post_init__(self) -> None:
-        if not self.target_field and not self.target_field_mapping:
-            raise ValueError("adding values from url requires target_field or target_field_mapping")
+    target_field: str = field(validator=validators.instance_of(str))
+    """The dotted event field into which the complete response is written."""
 
 
 def _convert_add_from_url(
@@ -243,24 +217,6 @@ class GenericAdderRule(FieldManagerRule):
             if not self.add and not self.add_from_file and self.add_from_url is None:
                 raise ValueError(
                     "one of add, add_from_file or add_from_url is neccessary per GenericAdder rule"
-                )
-
-            if (
-                self.add_from_url is not None
-                and self.add_from_url.target_field
-                and self.add_from_url.target_field_mapping
-            ):
-                raise ValueError(
-                    "only one of target_field or target_field_mapping is allowed per GenericAdder rule"
-                )
-
-            if (
-                self.add_from_url is not None
-                and not self.add_from_url.target_field
-                and not self.add_from_url.target_field_mapping
-            ):
-                raise ValueError(
-                    "one of target_field or target_field_mapping is neccessary per GenericAdder rule"
                 )
 
         def _add_from_path(self):
@@ -395,36 +351,9 @@ class GenericAdderRule(FieldManagerRule):
         return self._content_to_items_to_add(content)
 
     def _content_to_items_to_add(self, content: FieldValue):
-        items_to_add: dict[str, FieldValue] = {}
-
         assert self.config.add_from_url
 
-        if self.config.add_from_url.target_field:
-            items_to_add[self.config.add_from_url.target_field] = content
-        else:
-            assert self.config.add_from_url.target_field_mapping is not None
-
-            if not isinstance(content, dict):
-                raise ValueError(
-                    f"add_from_url.target_field_mapping requires a mapping response, got {content}"
-                )
-
-            for (
-                mapping_source_field,
-                mapping_target_field,
-            ) in self.config.add_from_url.target_field_mapping.items():
-                item = get_dotted_field_value_with_missing(content, mapping_source_field)
-                if item is MISSING:
-                    logger.warning(
-                        "could not add source_field %s for target_field %s because it is missing",
-                        mapping_source_field,
-                        mapping_target_field,
-                    )
-                    continue
-
-                items_to_add[mapping_target_field] = item
-
-        return items_to_add
+        return {self.config.add_from_url.target_field: content}
 
     def _update_dynamic_content(self, http_getter: HttpGetter, resolved_uri: str):
         content = http_getter.get_collection()

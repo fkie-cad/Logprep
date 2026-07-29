@@ -470,16 +470,10 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert event["some_dict_field"] is not rule_add["some_dict_field"], "only copies in events"
 
     @responses.activate
-    def test_adds_mapped_response_fields_from_event_templated_url(self):
+    def test_adds_response_from_event_templated_url(self):
         resolved_url = "https://values.example/acme"
-        responses.add(
-            responses.GET,
-            resolved_url,
-            json={
-                "user": {"name": "Alice"},
-                "risk": {"score": 7},
-            },
-        )
+        response_content = {"user": {"name": "Alice"}, "risk": {"score": 7}}
+        responses.add(responses.GET, resolved_url, json=response_content)
         configuration = {
             "dynamic_generic_adder": {
                 "type": "generic_adder",
@@ -489,10 +483,7 @@ class TestGenericAdder(BaseProcessorTestCase):
                         "generic_adder": {
                             "add_from_url": {
                                 "url": "https://${GENERIC_ADDER_HOST}/${tenant.id}",
-                                "target_field_mapping": {
-                                    "user.name": "enrichment.user",
-                                    "risk.score": "enrichment.score",
-                                },
+                                "target_field": "enrichment",
                             }
                         },
                     }
@@ -516,7 +507,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert second_result.errors == []
         assert first_event == {
             "tenant": {"id": "acme"},
-            "enrichment": {"user": "Alice", "score": 7},
+            "enrichment": response_content,
         }
         assert second_event == first_event
         assert len(responses.calls) == 1
@@ -610,48 +601,5 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert "missing event field 'tenant.id'" in str(result.warnings[0])
         assert event == {
             "message": "preserved",
-            "tags": ["_generic_adder_failure"],
-        }
-
-    @responses.activate
-    def test_mapping_response_type_error_adds_warning_without_clearing_event(self):
-        url = "https://values.example/acme"
-        responses.add(responses.GET, url, json=["not", "a", "mapping"])
-        RefreshableGetter.reset()
-        processor = typing.cast(
-            GenericAdder,
-            self._create_test_instance(
-                {
-                    "dynamic_generic_adder": {
-                        "type": "generic_adder",
-                        "rules": [
-                            {
-                                "filter": "*",
-                                "generic_adder": {
-                                    "add_from_url": {
-                                        "url": "https://values.example/${tenant}",
-                                        "target_field_mapping": {
-                                            "risk.score": "enrichment.score",
-                                        },
-                                    }
-                                },
-                            }
-                        ],
-                    }
-                }
-            ),
-        )
-        processor.setup()
-        event = {"tenant": "acme"}
-
-        result = processor.process(event)
-
-        processor.shut_down()
-
-        assert result.errors == []
-        assert len(result.warnings) == 1
-        assert "target_field_mapping requires a mapping response" in str(result.warnings[0])
-        assert event == {
-            "tenant": "acme",
             "tags": ["_generic_adder_failure"],
         }

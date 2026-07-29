@@ -29,76 +29,30 @@ def fixture_rule_definition():
 
 
 class TestGenericAdderRule:
-    @pytest.mark.parametrize(
-        ("url_config", "expected_target_field", "expected_target_field_mapping"),
-        [
-            pytest.param(
-                {
-                    "url": "https://values.example/${tenant.id}",
-                    "target_field": "enrichment",
-                },
-                "enrichment",
-                {},
-                id="whole-response",
-            ),
-            pytest.param(
-                {
-                    "url": "https://values.example/${tenant.id}",
-                    "target_field_mapping": {
-                        "user.name": "enrichment.user",
-                        "risk.score": "enrichment.score",
-                    },
-                },
-                None,
-                {
-                    "user.name": "enrichment.user",
-                    "risk.score": "enrichment.score",
-                },
-                id="field-mapping",
-            ),
-        ],
-    )
-    def test_converts_add_from_url_configuration(
-        self, url_config, expected_target_field, expected_target_field_mapping
-    ):
+    def test_converts_add_from_url_configuration(self):
         rule = GenericAdderRule.create_from_dict(
             {
                 "filter": "*",
-                "generic_adder": {"add_from_url": url_config},
+                "generic_adder": {
+                    "add_from_url": {
+                        "url": "https://values.example/${tenant.id}",
+                        "target_field": "enrichment",
+                    }
+                },
             }
         )
 
         config = typing.cast(GenericAdderRule.Config, rule._config)
 
         assert isinstance(config.add_from_url, AddFromUrlConfig)
-        assert config.add_from_url.target_field == expected_target_field
-        assert config.add_from_url.target_field_mapping == expected_target_field_mapping
+        assert config.add_from_url.target_field == "enrichment"
 
-    @pytest.mark.parametrize(
-        ("url_config", "error_message"),
-        [
-            pytest.param(
-                {"url": "https://values.example/${tenant}"},
-                "requires target_field or target_field_mapping",
-                id="missing-target",
-            ),
-            pytest.param(
-                {
-                    "url": "https://values.example/${tenant}",
-                    "target_field": "enrichment",
-                    "target_field_mapping": {"risk": "enrichment.risk"},
-                },
-                "only one of target_field or target_field_mapping",
-                id="ambiguous-target",
-            ),
-        ],
-    )
-    def test_rejects_invalid_add_from_url_target_configuration(self, url_config, error_message):
-        with pytest.raises(ValueError, match=error_message):
+    def test_rejects_add_from_url_without_target_field(self):
+        with pytest.raises(TypeError, match="missing.*target_field"):
             GenericAdderRule.create_from_dict(
                 {
                     "filter": "*",
-                    "generic_adder": {"add_from_url": url_config},
+                    "generic_adder": {"add_from_url": {"url": "https://values.example/${tenant}"}},
                 }
             )
 
@@ -201,27 +155,6 @@ class TestGenericAdderRule:
 
         assert rule.data_error is None
         assert rule.add({}) == {"enrichment": response_content}
-
-    def test_target_field_mapping_skips_missing_values_but_preserves_none(self, caplog):
-        rule = GenericAdderRule.create_from_dict(
-            {
-                "filter": "*",
-                "generic_adder": {
-                    "add_from_url": {
-                        "url": "https://values.example/${tenant}",
-                        "target_field_mapping": {
-                            "present": "enrichment.present",
-                            "missing": "enrichment.missing",
-                        },
-                    }
-                },
-            }
-        )
-
-        additions = rule._content_to_items_to_add({"present": None})
-
-        assert additions == {"enrichment.present": None}
-        assert "source_field missing" in caplog.text
 
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",

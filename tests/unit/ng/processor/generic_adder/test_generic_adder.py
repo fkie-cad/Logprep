@@ -221,38 +221,3 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             "message": "preserved",
             "tags": ["_generic_adder_failure"],
         }
-
-    @responses.activate
-    async def test_mapping_response_type_error_adds_warning_without_clearing_event(self):
-        url = "https://values.example/acme"
-        responses.add(responses.GET, url, json=["not", "a", "mapping"])
-        RefreshableGetter.reset()
-        processor = self._create_test_instance(
-            {
-                "rules": [
-                    {
-                        "filter": "*",
-                        "generic_adder": {
-                            "add_from_url": {
-                                "url": "https://values.example/${tenant}",
-                                "target_field_mapping": {
-                                    "risk.score": "enrichment.score",
-                                },
-                            }
-                        },
-                    }
-                ]
-            }
-        )
-        await processor.setup()
-        event = {"tenant": "acme"}
-
-        result = await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
-
-        assert result.errors == []
-        assert len(result.warnings) == 1
-        assert "target_field_mapping requires a mapping response" in str(result.warnings[0])
-        assert event == {
-            "tenant": "acme",
-            "tags": ["_generic_adder_failure"],
-        }
