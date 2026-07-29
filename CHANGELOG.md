@@ -7,6 +7,8 @@
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
+* docs: change processor natural naming to capital cased with whitespace (e.g. "Generic Resolver")
+* docs: use processor name placeholders for most usages
 
 ### Bugfix
 
