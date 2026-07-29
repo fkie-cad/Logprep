@@ -118,8 +118,10 @@ class Getter(ABC):
         """Gets and parses the raw content to yaml or json"""
         content = self._resolve_content_by_content_type()
 
-        content = Getter._apply_content_field(content, content_field)
+        if isinstance(content, str):
+            content = self._parse_yaml_or_json(content)
 
+        content = Getter._apply_content_field(content, content_field)
         if isinstance(content, str):
             content = self._parse_yaml_or_json(content)
 

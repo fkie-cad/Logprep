@@ -231,6 +231,8 @@ class GenericAdderRule(FieldManagerRule):
             self._add_from_path()
 
         def __attrs_post_init__(self):
+            super().__attrs_post_init__()
+
             self._base_add = copy.deepcopy(self.add)
 
             if (self.add_from_file or self.add) and self.add_from_url is not None:
@@ -260,14 +262,6 @@ class GenericAdderRule(FieldManagerRule):
                 raise ValueError(
                     "one of target_field or target_field_mapping is neccessary per GenericAdder rule"
                 )
-
-            # Eagerly loaded from file
-            for add_file in self.add_from_file:
-                getter = GetterFactory.from_string(add_file)
-                if isinstance(getter, RefreshableGetter):
-                    # TODO: This never gets cleaned up, Memory leak on a lot of new generic adders / generic resolvers
-                    getter.add_callback(f"generic_adder:{self.id}:{add_file}", self._refresh_add)
-                self._add_from_path()
 
         def _add_from_path(self):
             """Reads add fields from file"""
@@ -308,6 +302,17 @@ class GenericAdderRule(FieldManagerRule):
         self._callback_tag = job_tag
 
         if self.config.add_from_file or self.config.add:
+            # Eagerly loaded from file
+            for add_file in self.config.add_from_file:
+                getter = GetterFactory.from_string(add_file)
+                if isinstance(getter, RefreshableGetter):
+                    # TODO: This never gets cleaned up, Memory leak on a lot of new generic adders / generic resolvers
+                    getter.add_callback(
+                        job_tag,
+                        self.config._refresh_add,
+                        deduplication_key=(self._callback_tag, add_file, id(self)),
+                    )
+                self.config._add_from_path()
             return
 
         assert self.config.add_from_url is not None

@@ -46,6 +46,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     async def test_generic_adder_testcases(self, rule, event, expected):
         await self._load_rule(rule)
+        await self.object.setup()
         log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert event == expected
@@ -66,7 +67,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             config = deepcopy(self.CONFIG)
             config["rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
-            Factory.create(configuration)
+            await Factory.create(configuration).setup()
 
     async def test_add_generic_fields_from_file_invalid(self):
         with pytest.raises(
@@ -76,7 +77,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             config = deepcopy(self.CONFIG)
             config["rules"] = [RULES_DIR_INVALID]
             configuration = {"test processor": config}
-            Factory.create(configuration)
+            await Factory.create(configuration).setup()
 
     async def test_add_only_copies(self):
         instance = self._create_test_instance(

@@ -288,6 +288,8 @@ class TestGenericAdderRule:
     ):
         rule1 = GenericAdderRule.create_from_dict(rule_definition)
         rule2 = GenericAdderRule.create_from_dict(other_rule_definition)
+        rule1.init_generic_adder("generic-adder-test")
+        rule2.init_generic_adder("generic-adder-test")
         assert (rule1 == rule2) == is_equal, testcase
 
     def test_rule_accepts_bool_type(self):
@@ -341,6 +343,7 @@ class TestGenericAdderRule:
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
             rule = GenericAdderRule.create_from_dict(rule_definition)
+            rule.init_generic_adder("generic-adder-test")
             assert rule.add({}) == expected_1
             HttpGetter.refresh()
             assert rule.add({}) == expected_1
