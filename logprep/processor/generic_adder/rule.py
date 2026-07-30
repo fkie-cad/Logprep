@@ -80,17 +80,17 @@ In the following example two files are being used, but only the first existing f
    :noindex:
 """
 
-import copy
 import typing
+from collections.abc import Sequence
 
 from attrs import define, field, validators
 
+from logprep.abc.getter import Getter
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
-from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_from_dict
 from logprep.util.environ import ENV_VARS
-from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetter
+from logprep.util.getter import GetterFactory, RefreshableGetter
 from logprep.util.helper import (
     DottedTemplate,
     FieldValue,
@@ -99,29 +99,46 @@ from logprep.util.helper import (
 
 
 @define(kw_only=True, frozen=True)
-class AddFromUrlConfig:
+class UriTargetConfig:
     """Configuration for adding values loaded from an HTTP(S) URL."""
 
-    url: str = field(
-        validator=[validators.instance_of(str), validators.matches_re(r"^https?://.+")]
-    )
+    uri: str = field(validator=validators.and_(validators.instance_of(str), validators.min_len(1)))
     """The URL to load values from.
 
     Environment variables and dotted event fields can be inserted with placeholders such as
     :code:`${TENANT}` and :code:`${tenant.id}`.
     """
 
-    target_field: str = field(validator=validators.instance_of(str))
+    target_field: str = field(
+        validator=validators.and_(validators.instance_of(str), validators.min_len(1))
+    )
     """The dotted event field into which the complete response is written."""
 
 
-def _convert_add_from_url(
-    value: AddFromUrlConfig | dict | None,
-) -> AddFromUrlConfig | None:
-    if value is None:
-        return None
+UriSpec = str | UriTargetConfig
 
-    return convert_from_dict(AddFromUrlConfig, value)
+
+def _convert_uri_specs(
+    value: UriSpec | dict | Sequence[UriSpec | dict],
+) -> tuple[UriSpec, ...]:
+    if isinstance(value, (str, UriTargetConfig, dict)):
+        values: tuple[UriSpec | dict, ...] = (value,)
+    else:
+        values = tuple(value)
+
+    return tuple(
+        convert_from_dict(UriTargetConfig, item) if isinstance(item, dict) else item
+        for item in values
+    )
+
+
+@define(kw_only=True)
+class _UriSource:
+    spec: UriSpec
+    template: DottedTemplate
+    identifiers: tuple[str, ...]
+    content_by_uri: dict[str, FieldValue] = field(factory=dict)
+    error: Exception | None = None
 
 
 class GenericAdderRule(Rule):
@@ -144,7 +161,7 @@ class GenericAdderRule(Rule):
                 key_validator=validators.instance_of(str),
                 value_validator=validators.instance_of((str, bool, list, dict, int, float)),
             ),
-            default={},
+            factory=dict,
         )
         """Contains a dictionary of field names and values that should be added.
         If dot notation is being used, then all fields on the path are being
@@ -183,16 +200,19 @@ class GenericAdderRule(Rule):
 
         """
 
-        add_from_url: AddFromUrlConfig | None = field(
-            default=None,
-            validator=validators.optional(validators.instance_of(AddFromUrlConfig)),
-            converter=_convert_add_from_url,
+        add_from_uri: tuple[UriSpec, ...] = field(
+            factory=tuple,
+            converter=_convert_uri_specs,
+            validator=validators.deep_iterable(
+                iterable_validator=validators.instance_of(tuple),
+                member_validator=validators.instance_of((str, UriTargetConfig)),
+            ),
             # Explicitly set it to true here to show the difference between this and add_from_file
             eq=True,
         )
         """Configuration for loading values from an HTTP(S) URL and adding them to the event.
 
-        This is mutually exclusive with :attr:`add` and :attr:`add_from_file`.
+        This is mutually exclusive with :attr:`add_from_file`.
         """
 
         only_first_existing_file: bool = field(
@@ -202,102 +222,100 @@ class GenericAdderRule(Rule):
         first existing file by setting :code:`generic_adder.only_first_existing_file: true`.
         In that case, only one file must exist."""
 
-        _base_add: dict = field(default={}, eq=False)
-        """Stores original add fields (as provided in the config) for future refreshes of getters"""
-
-        def _refresh_add(self):
-            self.add = copy.deepcopy(self._base_add)
-            self._add_from_path()
-
         def __attrs_post_init__(self):
-            self._base_add = copy.deepcopy(self.add)
-
-            if (self.add_from_file or self.add) and self.add_from_url is not None:
+            if self.add_from_file and self.add_from_uri:
                 raise ValueError(
-                    "only one of add_from_file + add or add_from_url is allowed per GenericAdder rule"
+                    "Deprecated add_from_file and new add_from_uri cannot both be configured"
                 )
 
-            if not self.add and not self.add_from_file and self.add_from_url is None:
+            if self.add_from_file:
+                self.add_from_uri = tuple(self.add_from_file)
+
+            if self.only_first_existing_file and not self.add_from_file:
                 raise ValueError(
-                    "one of add, add_from_file or add_from_url is neccessary per GenericAdder rule"
+                    "only_first_existing_file is only supported with deprecated add_from_file"
                 )
 
-        def _add_from_path(self):
-            """Reads add fields from file"""
-            missing_files = []
-
-            for add_file in self.add_from_file:
-                try:
-                    add_dict = GetterFactory.from_string(add_file).get_yaml()
-                except FileNotFoundError:
-                    missing_files.append(add_file)
-                    continue
-                if isinstance(add_dict, dict) and all(
-                    isinstance(value, (str, bool, list, int, float)) for value in add_dict.values()
-                ):
-                    self.add = {**self.add, **add_dict}
-                else:
-                    error_msg = (
-                        f"Additions file '{add_file}' must be a dictionary with string values!"
-                    )
-                    raise InvalidRuleDefinitionError(error_msg)
-                if self.only_first_existing_file:
-                    break
-            if missing_files and not self.only_first_existing_file:
-                raise InvalidRuleDefinitionError(
-                    f"The following required files do not exist: '{missing_files}'"
-                )
+            if not self.add and not self.add_from_uri:
+                raise ValueError("one of add or add_from_uri must be configured")
 
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
-        self._cached_add_content: dict[str, FieldValue] = {}
         self._callback_tag = ""
-        self._is_dynamic: bool = False
-        self._dynamic_template: DottedTemplate
-        self._dynamic_identifiers: tuple[str, ...] = ()
-        self._static_uri: str | None = None
+        self._uri_sources: list[_UriSource] = []
 
     def init_generic_adder(self, job_tag: str) -> None:
         self._callback_tag = job_tag
+        self._uri_sources.clear()
 
-        if self.config.add_from_file or self.config.add:
-            # Eagerly loaded from file
-            for add_file in self.config.add_from_file:
-                getter = GetterFactory.from_string(add_file)
-                if isinstance(getter, RefreshableGetter):
-                    getter.add_callback(
-                        job_tag,
-                        self.config._refresh_add,
-                        deduplication_key=(self._callback_tag, add_file, id(self)),
-                    )
-                self.config._add_from_path()
+        if self.config.only_first_existing_file:
+            self._init_first_existing_file()
             return
 
-        assert self.config.add_from_url is not None
+        for spec in self.config.add_from_uri:
+            source = self._create_uri_source(spec)
+            self._uri_sources.append(source)
 
-        base_template = DottedTemplate(self.config.add_from_url.url)
-        resolved_template = DottedTemplate(base_template.safe_substitute(ENV_VARS))
-        self._dynamic_template = resolved_template
-        self._dynamic_identifiers = tuple(resolved_template.get_identifiers())
+            if not source.identifiers:
+                self._init_static_source(source)
 
-        if not self._dynamic_identifiers:
-            static_uri = resolved_template.substitute()
-            getter = GetterFactory.from_string(static_uri)
+    def _init_first_existing_file(self) -> None:
+        missing_files: list[str] = []
 
-            assert isinstance(getter, RefreshableGetter)
+        for spec in self.config.add_from_uri:
+            assert isinstance(spec, str)
 
-            self._update_static_content(getter, static_uri)
+            source = self._create_uri_source(spec)
+            if source.identifiers:
+                raise InvalidRuleDefinitionError(
+                    f"only_first_existing_file does not support event-dependent paths: {spec!r}"
+                )
 
+            self._uri_sources.append(source)
+
+            try:
+                self._init_static_source(source)
+            except InvalidRuleDefinitionError as error:
+                self._uri_sources.pop()
+
+                if isinstance(error.__cause__, FileNotFoundError):
+                    missing_files.append(spec)
+                    continue
+
+                raise
+
+            return
+
+        raise InvalidRuleDefinitionError(f"None of the configured files exist: {missing_files!r}")
+
+    def _create_uri_source(self, spec: UriSpec) -> _UriSource:
+        uri = spec.uri if isinstance(spec, UriTargetConfig) else spec
+        template = DottedTemplate(DottedTemplate(uri).safe_substitute(ENV_VARS))
+
+        return _UriSource(
+            spec=spec, template=template, identifiers=tuple(template.get_identifiers())
+        )
+
+    def _init_static_source(self, source: _UriSource):
+        resolved_uri = source.template.substitute()
+        getter = GetterFactory.from_string(resolved_uri)
+
+        if isinstance(getter, RefreshableGetter):
+            self._update_static_content(source, getter, resolved_uri)
             getter.add_callback(
                 self._callback_tag,
                 self._update_static_content,
-                deduplication_key=(self._callback_tag, static_uri, id(self)),
-                fnc_args=[getter, static_uri],
+                deduplication_key=(self._callback_tag, resolved_uri, id(source)),
+                fnc_args=[source, getter, resolved_uri],
             )
+            return
 
-            self._static_uri = static_uri
-        else:
-            self._is_dynamic = True
+        try:
+            self._fetch_and_cache_uri(source, getter, resolved_uri)
+        except (FileNotFoundError, ValueError) as error:
+            raise InvalidRuleDefinitionError(
+                f"Could not load generic-adder URI {resolved_uri!r}: {error}"
+            ) from error
 
     @property
     def overwrite_target(self) -> bool:
@@ -314,15 +332,15 @@ class GenericAdderRule(Rule):
         """Return typed config"""
         return typing.cast(GenericAdderRule.Config, self._config)
 
-    def _dynamic_add_from_url(self, event: dict[str, FieldValue]) -> dict[str, FieldValue]:
-        key_val = {
+    def _dynamic_content(self, source: _UriSource, event: dict[str, FieldValue]) -> FieldValue:
+        values = {
             identifier: get_dotted_field_value(event, identifier)
-            for identifier in self._dynamic_identifiers
+            for identifier in source.identifiers
         }
-        for identifier, val in key_val.items():
+        for identifier, val in values.items():
             if val is None:
                 raise ValueError(
-                    f"missing event field {identifier!r} for dynamic generic adder path"
+                    f"missing event field {identifier!r} for dynamic generic adder URI"
                 )
             if not isinstance(val, (str, int)):
                 raise ValueError(
@@ -330,66 +348,91 @@ class GenericAdderRule(Rule):
                 )
             pass
 
-        dynamic_resolved = self._dynamic_template.substitute(key_val)
-        content: FieldValue = None
-        if dynamic_resolved not in self._cached_add_content:
-            getter = GetterFactory.from_string(dynamic_resolved)
-            assert isinstance(getter, RefreshableGetter)
+        resolved_uri = source.template.substitute(values)
 
-            getter.keep_alive()
+        if resolved_uri in source.content_by_uri:
+            RefreshableGetter.keep_alive_for_target(resolved_uri)
+            return source.content_by_uri[resolved_uri]
 
-            content = getter.get_collection()
-            self._cached_add_content[dynamic_resolved] = content
+        getter = GetterFactory.from_string(resolved_uri)
+        if not isinstance(getter, RefreshableGetter):
+            return getter.get_collection()
 
-            tag = self._callback_tag
+        getter.keep_alive()
+        content = self._fetch_and_cache_uri(source, getter, resolved_uri)
 
-            getter.add_callback(
-                tag,
-                self._fetch_and_cache_uri,
-                deduplication_key=(tag, dynamic_resolved, id(self)),
-                fnc_args=[getter, dynamic_resolved],
-            )
+        key = (self._callback_tag, resolved_uri, id(source))
 
-            getter.add_cleanup_callback(
-                tag,
-                self._cleanup,
-                deduplication_key=(tag, dynamic_resolved, id(self)),
-                fnc_args=[dynamic_resolved],
-            )
-        else:
-            RefreshableGetter.keep_alive_for_target(dynamic_resolved)
-            content = self._cached_add_content[dynamic_resolved]
+        getter.add_callback(
+            self._callback_tag,
+            self._fetch_and_cache_uri,
+            deduplication_key=key,
+            fnc_args=[source, getter, resolved_uri],
+        )
 
-        return self._content_to_items_to_add(content)
+        getter.add_cleanup_callback(
+            self._callback_tag,
+            self._cleanup,
+            deduplication_key=key,
+            fnc_args=[source, resolved_uri],
+        )
 
-    def _content_to_items_to_add(self, content: FieldValue):
-        assert self.config.add_from_url
+        return content
 
-        return {self.config.add_from_url.target_field: content}
+    def _content_for_source(self, source: _UriSource, event: dict[str, FieldValue]) -> FieldValue:
+        if source.identifiers:
+            return self._dynamic_content(source, event)
 
-    def _fetch_and_cache_uri(self, getter: RefreshableGetter, resolved_uri: str):
+        resolved_uri = source.template.substitute()
+        return source.content_by_uri[resolved_uri]
+
+    def _content_to_items_to_add(self, uri: UriSpec, content: FieldValue) -> dict[str, FieldValue]:
+        if isinstance(uri, UriTargetConfig):
+            return {uri.target_field: content}
+
+        if isinstance(content, dict):
+            return dict(content)
+
+        raise ValueError(
+            f"URI source {uri!r} without target_field must contain a mapping, got {type(content).__name__}"
+        )
+
+    def _fetch_and_cache_uri(self, source: _UriSource, getter: Getter, resolved_uri: str):
         content = getter.get_collection()
-        self._cached_add_content[resolved_uri] = content
 
-    def _update_static_content(self, getter: RefreshableGetter, uri: str) -> None:
+        self._content_to_items_to_add(source.spec, content)
+        source.content_by_uri[resolved_uri] = content
+        return content
+
+    def _update_static_content(self, source: _UriSource, getter: Getter, uri: str) -> None:
         try:
-            self._fetch_and_cache_uri(getter, uri)
+            self._fetch_and_cache_uri(source, getter, uri)
         except Exception as error:
-            self.mark_failed(error)
+            source.error = error
         else:
-            self.clear_failed()
+            source.error = None
 
-    def _cleanup(self, resolved_uri: str):
-        self._cached_add_content.pop(resolved_uri, None)
+        self._recompute_failure_state()
+
+    def _recompute_failure_state(self) -> None:
+        errors = [source.error for source in self._uri_sources if source.error is not None]
+
+        if not errors:
+            self.clear_failed()
+        elif len(errors) == 1:
+            self.mark_failed(errors[0])
+        else:
+            self.mark_failed(ExceptionGroup("generic-adder URI loading failed", errors))
+
+    def _cleanup(self, source: _UriSource, resolved_uri: str) -> None:
+        source.content_by_uri.pop(resolved_uri, None)
 
     def add(self, event: dict) -> dict:
         """Returns the fields to add"""
-        if self.config.add:
-            return self.config.add
+        items_to_add: dict[str, FieldValue] = dict(self.config.add)
 
-        if not self._is_dynamic:
-            assert self._static_uri
-            return self._content_to_items_to_add(self._cached_add_content[self._static_uri])
-        else:
-            assert self.config.add_from_url is not None
-            return self._dynamic_add_from_url(event)
+        for source in self._uri_sources:
+            content = self._content_for_source(source, event)
+            items_to_add.update(self._content_to_items_to_add(source.spec, content))
+
+        return items_to_add

@@ -163,6 +163,9 @@ class Getter(ABC):
     def get_list(self, content_field: str | None = None) -> list:
         """Gets list and fails otherwise"""
         content = self._resolve_content_by_content_type()
+        if content_field is not None and isinstance(content, str):
+            content = self._parse_yaml_or_json(content)
+
         content = Getter._apply_content_field(content, content_field)
 
         if isinstance(content, str):

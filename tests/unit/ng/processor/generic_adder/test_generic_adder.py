@@ -63,7 +63,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         assert event == expected
 
     async def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
-        with pytest.raises(InvalidRuleDefinitionError, match=r"files do not exist"):
+        with pytest.raises(InvalidRuleDefinitionError, match=r"Could not load generic-adder URI"):
             config = deepcopy(self.CONFIG)
             config["rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
@@ -72,7 +72,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
     async def test_add_generic_fields_from_file_invalid(self):
         with pytest.raises(
             InvalidRuleDefinitionError,
-            match=r"must be a dictionary with string values",
+            match=r"without target_field must contain a mapping",
         ):
             config = deepcopy(self.CONFIG)
             config["rules"] = [RULES_DIR_INVALID]
@@ -120,8 +120,8 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                     {
                         "filter": "*",
                         "generic_adder": {
-                            "add_from_url": {
-                                "url": "https://values.example/${tenant.id}",
+                            "add_from_uri": {
+                                "uri": "https://values.example/${tenant.id}",
                                 "target_field": "enrichment",
                             }
                         },
@@ -154,8 +154,8 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                     {
                         "filter": "*",
                         "generic_adder": {
-                            "add_from_url": {
-                                "url": "https://values.example/${tenant}",
+                            "add_from_uri": {
+                                "uri": "https://values.example/${tenant}",
                                 "target_field": "enrichment",
                             }
                         },
@@ -200,8 +200,8 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                     {
                         "filter": "*",
                         "generic_adder": {
-                            "add_from_url": {
-                                "url": "https://values.example/${tenant.id}",
+                            "add_from_uri": {
+                                "uri": "https://values.example/${tenant.id}",
                                 "target_field": "enrichment",
                             }
                         },
