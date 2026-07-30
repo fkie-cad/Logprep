@@ -1,21 +1,34 @@
 .. -*- mode: rst -*-
+
+{% macro render_block(label, value) %}
+  .. code-block:: yaml
+    :caption: {{ label }}
+
+    {{ value | yaml_pretty | indent(width=4, first=False) }}
+{% endmacro %}
+
 {% for item in data.test_cases %}
 
-{% if item.values %}
-{# handles pytest.param #}
-*{{ item.id }}:*
+{% if item.values %}{# handles pytest.param #}
 
-- rule: :code:`{{ item.values[0] }}`
-- message: :code:`{{ item.values[1] }}`
-- processed: :code:`{{ item.values[2] }}`
-
-{% else %}
-{# handles legacy tuple style #}
-*{{ item[0] }}:*
-
-- rule: :code:`{{ item[1] }}`
-- message: :code:`{{ item[2] }}`
-- processed: :code:`{{ item[3] }}`
+**Example**: *{{ item.id }}*
+{{ render_block("Rule configuration", item.values[0]) }}
+{% if item.values | length > 3 and item.values[3] is mapping %}
+{% for path, spec in item.values[3].items() %}
+{% if spec is mapping and spec.body is defined %}
+{{ render_block("Content at ``" ~ path ~ "``", spec.body) }}
 {% endif %}
+{% endfor %}
+{% endif %}
+{{ render_block("Event before processing", item.values[1]) }}
+{{ render_block("Event after processing", item.values[2]) }}
 
+{% else %}{# handles legacy tuple style #}
+
+Example: *{{ item[0] }}*
+{{ render_block("Rule configuration", item[1]) }}
+{{ render_block("Event before processing", item[2]) }}
+{{ render_block("Event after processing", item[3]) }}
+
+{% endif %}
 {% endfor %}

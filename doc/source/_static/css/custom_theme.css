@@ -21,14 +21,23 @@ p {
     border-top-right-radius: 6px;
 }
 
-.rst-content div[class^=highlight], .rst-content pre.literal-block {
+.code-block-caption code {
+    /* reduce decorations on inline code inside code block captions */
+    border: unset;
+    padding: 0 2px;
+    background-color: unset;
+}
+
+.rst-content div[class^=highlight],
+.rst-content pre.literal-block {
     margin: 0px 0 24px !important;
     box-shadow: 2px 2px 1px 0px #ededed;
     border-bottom-left-radius: 6px;
     border-bottom-right-radius: 6px;
 }
 
-.rst-content div[class^=highlight] div[class^=highlight], .rst-content pre.literal-block div[class^=highlight] {
+.rst-content div[class^=highlight] div[class^=highlight],
+.rst-content pre.literal-block div[class^=highlight] {
     margin: 0 !important;
 }
 
