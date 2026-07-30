@@ -154,7 +154,6 @@ class TestGenericAdderRule:
         url = "https://values.example/static"
         response_content = {"risk": {"score": 7}}
         responses.add(responses.GET, url, json=response_content)
-        RefreshableGetter.reset()
         rule = GenericAdderRule.create_from_dict(
             {
                 "filter": "*",
@@ -180,7 +179,6 @@ class TestGenericAdderRule:
         url = "https://values.example/static"
         response_content = {"risk": {"score": 7}}
         responses.add(responses.GET, url, status=500)
-        RefreshableGetter.reset()
         getter_config = tmp_path / "http_getter.json"
         getter_config.write_text(json.dumps({url: {"refresh_interval": 1}}))
         rule = GenericAdderRule.create_from_dict(
@@ -430,8 +428,6 @@ class TestGenericAdderRule:
         responses.add(responses.GET, url, json=from_http_1)
         responses.add(responses.GET, url, json=from_http_2)
         responses.add(responses.GET, url, json=from_http_3)
-
-        RefreshableGetter.reset()
 
         getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"

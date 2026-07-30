@@ -241,7 +241,7 @@ class GenericAdderRule(Rule):
 
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
-        self._callback_tag = ""
+        self._callback_tag: str | None = None
         self._uri_sources: list[_UriSource] = []
 
     def init_generic_adder(self, job_tag: str) -> None:
@@ -275,6 +275,10 @@ class GenericAdderRule(Rule):
 
             try:
                 self._init_static_source(source)
+                if source.error is not None:
+                    raise InvalidRuleDefinitionError(
+                        f"Could not load generic-adder URI {spec!r}: {source.error}"
+                    ) from source.error
             except InvalidRuleDefinitionError as error:
                 self._uri_sources.pop()
 

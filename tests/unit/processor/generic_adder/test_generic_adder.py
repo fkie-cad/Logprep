@@ -15,7 +15,7 @@ from logprep.processor.base.exceptions import (
     ProcessingWarning,
 )
 from logprep.processor.generic_adder.processor import GenericAdder
-from logprep.util.getter import HttpGetter, RefreshableGetter
+from logprep.util.getter import HttpGetter
 from tests.conftest import mock_env
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -491,7 +491,6 @@ class TestGenericAdder(BaseProcessorTestCase):
             }
         }
 
-        RefreshableGetter.reset()
         with mock_env({"GENERIC_ADDER_HOST": "values.example"}):
             processor = typing.cast(GenericAdder, self._create_test_instance(configuration))
             processor.setup()
@@ -519,7 +518,6 @@ class TestGenericAdder(BaseProcessorTestCase):
         successful_url = "https://values.example/beta"
         responses.add(responses.GET, failed_url, status=500)
         responses.add(responses.GET, successful_url, json={"risk": {"score": 7}})
-        RefreshableGetter.reset()
         processor = typing.cast(
             GenericAdder,
             self._create_test_instance(

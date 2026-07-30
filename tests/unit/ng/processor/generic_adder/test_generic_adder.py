@@ -18,7 +18,7 @@ from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
     ProcessingWarning,
 )
-from logprep.util.getter import HttpGetter, RefreshableGetter
+from logprep.util.getter import HttpGetter
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
     failure_test_cases as non_ng_failure_test_cases,
@@ -147,7 +147,6 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         successful_url = "https://values.example/beta"
         responses.add(responses.GET, failed_url, status=500)
         responses.add(responses.GET, successful_url, json={"risk": {"score": 7}})
-        RefreshableGetter.reset()
         processor = self._create_test_instance(
             {
                 "rules": [
