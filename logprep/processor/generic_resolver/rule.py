@@ -132,6 +132,13 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
    :undoc-members:
    :inherited-members:
    :noindex:
+
+Examples for generic_resolver:
+------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.generic_resolver.test_generic_resolver
+   :template: testcase-renderer.tmpl
+
 """
 
 import re

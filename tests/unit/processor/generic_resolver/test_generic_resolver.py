@@ -11,6 +11,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
+from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
@@ -82,6 +83,87 @@ resolve_value_variants = [
     pytest.param(
         None,
         id="None",
+    ),
+]
+
+
+CONTENT_FIELD_URL = "http://localhost/resolve-mapping"
+
+
+test_cases = [  # rule, event, expected, context
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": CONTENT_FIELD_URL,
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type"},
+        {
+            CONTENT_FIELD_URL: {
+                "body": {"content": {"ab": "ab_server_type", "de": "de_server_type"}}
+            }
+        },
+        id="content_field selects the nested resolve mapping",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": CONTENT_FIELD_URL,
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "",
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type"},
+        {CONTENT_FIELD_URL: {"body": {"ab": "ab_server_type"}}},
+        id="empty content_field reads the resolve mapping from the root",
+    ),
+]
+
+# rule, context, error_message
+failure_test_cases = [
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": CONTENT_FIELD_URL,
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        },
+        {CONTENT_FIELD_URL: {"body": ["ab", "de"]}},
+        "Expected mapping type when content_field is set",
+        id="content_field set but content root is a list",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": CONTENT_FIELD_URL,
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "missing",
+            },
+        },
+        {CONTENT_FIELD_URL: {"body": {"content": {"ab": "ab_server_type"}}}},
+        "Error loading additions",
+        id="content_field key absent from the loaded mapping",
     ),
 ]
 
@@ -1062,3 +1144,177 @@ class TestGenericResolver(BaseProcessorTestCase):
         result = self.object.process(event)
         assert not result.errors
         assert event == expected
+
+    @pytest.mark.parametrize("suffix", ["json", "txt"])
+    def test_resolve_from_file_with_content_field(self, suffix, tmp_path):
+        resolve_file = tmp_path / f"resolve.{suffix}"
+        resolve_file.write_text(json.dumps({"content": {"ab": "ab_server_type"}}))
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": str(resolve_file),
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        }
+        self._load_rule(rule)
+        self.object.setup()
+
+        document = {"to_resolve": "12ab34"}
+        self.object.process(document)
+
+        assert document == {"to_resolve": "12ab34", "resolved": "ab_server_type"}
+
+    @responses.activate
+    @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
+    def test_resolve_from_http_with_content_field(self, content_type):
+        url = "http://localhost:8123/resolve"
+        responses.add(
+            responses.GET,
+            url,
+            body=json.dumps({"content": {"ab": "ab_server_type"}}),
+            content_type=content_type,
+        )
+        RefreshableGetter.reset()
+
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": url,
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        }
+        self._load_rule(rule)
+        self.object.setup()
+
+        document = {"to_resolve": "12ab34"}
+        self.object.process(document)
+
+        assert document == {"to_resolve": "12ab34", "resolved": "ab_server_type"}
+
+    @pytest.mark.parametrize(
+        "content_field_config",
+        [
+            pytest.param({"content_field": ""}, id="empty_string"),
+            pytest.param({"content_field": None}, id="null"),
+            pytest.param({}, id="omitted"),
+        ],
+    )
+    def test_resolve_content_field_unset_reads_root(self, content_field_config, tmp_path):
+        resolve_file = tmp_path / "resolve.json"
+        resolve_file.write_text(json.dumps({"ab": "ab_server_type"}))
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": str(resolve_file),
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                **content_field_config,
+            },
+        }
+        self._load_rule(rule)
+        self.object.setup()
+
+        document = {"to_resolve": "12ab34"}
+        self.object.process(document)
+
+        assert document == {"to_resolve": "12ab34", "resolved": "ab_server_type"}
+
+    def test_resolve_content_field_selects_sibling_key(self, tmp_path):
+        resolve_file = tmp_path / "resolve.json"
+        resolve_file.write_text(json.dumps({"a": {"ab": "from_a"}, "b": {"ab": "from_b"}}))
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": str(resolve_file),
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "b",
+            },
+        }
+        self._load_rule(rule)
+        self.object.setup()
+
+        document = {"to_resolve": "12ab34"}
+        self.object.process(document)
+
+        assert document == {"to_resolve": "12ab34", "resolved": "from_b"}
+
+    def test_resolve_content_field_with_ignore_case(self, tmp_path):
+        resolve_file = tmp_path / "resolve.json"
+        resolve_file.write_text(json.dumps({"content": {"ab": "ab_server_type"}}))
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": str(resolve_file),
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+                "ignore_case": True,
+            },
+        }
+        self._load_rule(rule)
+        self.object.setup()
+
+        document = {"to_resolve": "12AB34"}
+        self.object.process(document)
+
+        assert document == {"to_resolve": "12AB34", "resolved": "ab_server_type"}
+
+    def test_resolve_content_field_list_of_single_key_dicts(self, tmp_path):
+        resolve_file = tmp_path / "resolve.json"
+        resolve_file.write_text(
+            json.dumps({"content": [{"ab": "ab_server_type"}, {"de": "de_server_type"}]})
+        )
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": str(resolve_file),
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        }
+        self._load_rule(rule)
+        self.object.setup()
+
+        document = {"to_resolve": "12ab34"}
+        self.object.process(document)
+
+        assert document == {"to_resolve": "12ab34", "resolved": "ab_server_type"}
+
+    @responses.activate
+    @pytest.mark.parametrize("rule, event, expected, context", test_cases)
+    def test_testcases(self, rule, event, expected, context):
+        for path, spec in context.items():
+            responses.add(responses.GET, path, json=spec["body"])
+
+        self._load_rule(rule)
+        self.object.setup()
+        self.object.process(event)
+
+        assert event == expected
+
+    @responses.activate
+    @pytest.mark.parametrize("rule, context, error_message", failure_test_cases)
+    def test_testcases_failure_handling(self, rule, context, error_message):
+        for path, spec in context.items():
+            responses.add(responses.GET, path, json=spec["body"])
+
+        with pytest.raises(InvalidConfigurationError, match=error_message):
+            self._load_rule(rule)
