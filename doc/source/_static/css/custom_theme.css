@@ -66,3 +66,29 @@ p {
     font-size: 150%;
     padding: 0 0 15px 0;
 }
+
+.side-by-side {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+}
+
+.side-by-side>.literal-block-wrapper {
+    flex: 1 1 300px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.side-by-side>.literal-block-wrapper>[class^="highlight-"] {
+    flex: 1;
+}
+
+.side-by-side>.literal-block-wrapper>[class^="highlight-"]>.highlight {
+    height: 100%;
+}
+
+.rst-content .admonition.example>.admonition-title:before {
+    /* fa-lightbulb-o */
+    content: "\f0eb";
+}

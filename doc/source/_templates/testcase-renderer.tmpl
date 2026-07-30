@@ -1,34 +1,44 @@
 .. -*- mode: rst -*-
 
-{% macro render_block(label, value) %}
-  .. code-block:: yaml
-    :caption: {{ label }}
+{% macro code_block(label, value) %}
+.. code-block:: yaml
+   :caption: {{ label }}
 
-    {{ value | yaml_pretty | indent(width=4, first=False) }}
+   {{ value | yaml_pretty | indent(width=3, first=False) }}
 {% endmacro %}
 
 {% for item in data.test_cases %}
 
 {% if item.values %}{# handles pytest.param #}
 
-**Example**: *{{ item.id }}*
-{{ render_block("Rule configuration", item.values[0]) }}
+.. admonition:: Example: {{ item.id }}
+   :collapsible: open
+   :class: example
+
+{{ code_block("Rule configuration", item.values[0]) | indent(width=3, first=True) }}
 {% if item.values | length > 3 and item.values[3] is mapping %}
 {% for path, spec in item.values[3].items() %}
 {% if spec is mapping and spec.body is defined %}
-{{ render_block("Content at ``" ~ path ~ "``", spec.body) }}
+{{ code_block("Content at ``" ~ path ~ "``", spec.body) | indent(width=3, first=True) }}
 {% endif %}
 {% endfor %}
 {% endif %}
-{{ render_block("Event before processing", item.values[1]) }}
-{{ render_block("Event after processing", item.values[2]) }}
+
+   .. container:: side-by-side
+{{ code_block("Event before processing", item.values[1]) | indent(width=6, first=True) }}
+{{ code_block("Event after processing", item.values[2]) | indent(width=6, first=True) }}
 
 {% else %}{# handles legacy tuple style #}
 
-Example: *{{ item[0] }}*
-{{ render_block("Rule configuration", item[1]) }}
-{{ render_block("Event before processing", item[2]) }}
-{{ render_block("Event after processing", item[3]) }}
+.. admonition:: Example: {{ item[0] }}
+   :collapsible: open
+   :class: example
+
+{{ code_block("Rule configuration", item[1]) | indent(width=3, first=True) }}
+
+   .. container:: side-by-side
+{{ code_block("Event before processing", item[2]) | indent(width=6, first=True) }}
+{{ code_block("Event after processing", item[3]) | indent(width=6, first=True) }}
 
 {% endif %}
 {% endfor %}
