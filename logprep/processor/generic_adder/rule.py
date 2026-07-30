@@ -247,7 +247,7 @@ class GenericAdderRule(FieldManagerRule):
 
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
-        self._chached_add_content: dict[str, FieldValue] = {}
+        self._cached_add_content: dict[str, FieldValue] = {}
         self._callback_tag = ""
         self._is_dynamic: bool = False
         self._dynamic_template: DottedTemplate
@@ -262,7 +262,6 @@ class GenericAdderRule(FieldManagerRule):
             for add_file in self.config.add_from_file:
                 getter = GetterFactory.from_string(add_file)
                 if isinstance(getter, RefreshableGetter):
-                    # TODO: This never gets cleaned up, Memory leak on a lot of new generic adders / generic resolvers
                     getter.add_callback(
                         job_tag,
                         self.config._refresh_add,
@@ -274,23 +273,23 @@ class GenericAdderRule(FieldManagerRule):
         assert self.config.add_from_url is not None
 
         base_template = DottedTemplate(self.config.add_from_url.url)
-        resolved_template = DottedTemplate(base_template.safe_substitute({**ENV_VARS}))
+        resolved_template = DottedTemplate(base_template.safe_substitute(ENV_VARS))
         self._dynamic_template = resolved_template
         self._dynamic_identifiers = tuple(resolved_template.get_identifiers())
 
         if not self._dynamic_identifiers:
             static_uri = resolved_template.substitute()
-            http_getter = GetterFactory.from_string(static_uri)
+            getter = GetterFactory.from_string(static_uri)
 
-            assert isinstance(http_getter, HttpGetter)
+            assert isinstance(getter, RefreshableGetter)
 
-            self._update_static_content(http_getter, static_uri)
+            self._update_static_content(getter, static_uri)
 
-            http_getter.add_callback(
+            getter.add_callback(
                 self._callback_tag,
                 self._update_static_content,
                 deduplication_key=(self._callback_tag, static_uri, id(self)),
-                fnc_args=[http_getter, static_uri],
+                fnc_args=[getter, static_uri],
             )
 
             self._static_uri = static_uri
@@ -320,25 +319,25 @@ class GenericAdderRule(FieldManagerRule):
 
         dynamic_resolved = self._dynamic_template.substitute(key_val)
         content: FieldValue = None
-        if dynamic_resolved not in self._chached_add_content:
-            http_getter = GetterFactory.from_string(dynamic_resolved)
-            assert isinstance(http_getter, HttpGetter)
+        if dynamic_resolved not in self._cached_add_content:
+            getter = GetterFactory.from_string(dynamic_resolved)
+            assert isinstance(getter, RefreshableGetter)
 
-            http_getter.keep_alive()
+            getter.keep_alive()
 
-            content = http_getter.get_collection()
-            self._chached_add_content[dynamic_resolved] = content
+            content = getter.get_collection()
+            self._cached_add_content[dynamic_resolved] = content
 
             tag = self._callback_tag
 
-            http_getter.add_callback(
+            getter.add_callback(
                 tag,
-                self._update_dynamic_content,
+                self._fetch_and_cache_uri,
                 deduplication_key=(tag, dynamic_resolved, id(self)),
-                fnc_args=[http_getter, dynamic_resolved],
+                fnc_args=[getter, dynamic_resolved],
             )
 
-            http_getter.add_cleanup_callback(
+            getter.add_cleanup_callback(
                 tag,
                 self._cleanup,
                 deduplication_key=(tag, dynamic_resolved, id(self)),
@@ -346,7 +345,7 @@ class GenericAdderRule(FieldManagerRule):
             )
         else:
             RefreshableGetter.keep_alive_for_target(dynamic_resolved)
-            content = self._chached_add_content[dynamic_resolved]
+            content = self._cached_add_content[dynamic_resolved]
 
         return self._content_to_items_to_add(content)
 
@@ -355,20 +354,20 @@ class GenericAdderRule(FieldManagerRule):
 
         return {self.config.add_from_url.target_field: content}
 
-    def _update_dynamic_content(self, http_getter: HttpGetter, resolved_uri: str):
-        content = http_getter.get_collection()
-        self._chached_add_content[resolved_uri] = content
+    def _fetch_and_cache_uri(self, getter: RefreshableGetter, resolved_uri: str):
+        content = getter.get_collection()
+        self._cached_add_content[resolved_uri] = content
 
-    def _update_static_content(self, getter: HttpGetter, uri: str) -> None:
+    def _update_static_content(self, getter: RefreshableGetter, uri: str) -> None:
         try:
-            self._update_dynamic_content(getter, uri)
+            self._fetch_and_cache_uri(getter, uri)
         except Exception as error:
             self.mark_failed(error)
         else:
             self.clear_failed()
 
     def _cleanup(self, resolved_uri: str):
-        self._chached_add_content.pop(resolved_uri, None)
+        self._cached_add_content.pop(resolved_uri, None)
 
     def add(self, event: dict) -> dict:
         """Returns the fields to add"""
@@ -377,7 +376,7 @@ class GenericAdderRule(FieldManagerRule):
 
         if not self._is_dynamic:
             assert self._static_uri
-            return self._content_to_items_to_add(self._chached_add_content[self._static_uri])
+            return self._content_to_items_to_add(self._cached_add_content[self._static_uri])
         else:
             assert self.config.add_from_url is not None
             return self._dynamic_add_from_url(event)
