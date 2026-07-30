@@ -194,11 +194,7 @@ class Rule:
         )
         """A list of tags which will be appended to the event on non critical errors,
         defaults to :code:`["_<rule_type>_failure"]`.
-        Is currently only used by following processors:
-        - Dissector
-        - FieldManager
-        - ListComparison
-        - NetworkComparison
+        Is currently only used by following processors: Dissector, Field Manager, List Comparison, Network Comparison
         """
 
     @define(kw_only=True)

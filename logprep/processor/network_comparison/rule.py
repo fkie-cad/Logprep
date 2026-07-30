@@ -2,9 +2,9 @@
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^
 
-The |PROCESSOR_NAME| enricher can match IPs to IP strings and networks in CIDR notation.
+The |PROCESSOR_NAME| can match IPs to IP strings and networks in CIDR notation.
 
-The network comparison enricher requires the additional field :code:`network_comparison`.
+The |PROCESSOR_NAME| requires the additional field :code:`network_comparison`.
 The mandatory keys under :code:`network_comparison` are :code:`source_fields`
 (as list with one element) and :code:`target_field`. Former
 is used to identify the field which is to be checked against the provided lists.
