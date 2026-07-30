@@ -222,7 +222,7 @@ class GenericResolverRule(FieldManagerRule):
             default=None,
         )
         """
-        Optional JSON key used to extract the list values from loaded content.
+        Optional JSON key used to extract the resolve mapping from loaded content.
 
         Example:
             Given the following JSON content:
@@ -230,29 +230,32 @@ class GenericResolverRule(FieldManagerRule):
             .. code-block:: json
 
                {
-                   "content": ["Jane", "Julia"]
+                   "content": {"ab": "ab_server_type", "de": "de_server_type"}
                }
 
             Set ``content_field`` to ``"content"`` to use the value of this key
-            as the comparison list.
+            as the resolve mapping.
 
         Note:
-            Setting ``content_field`` requires mapping-like JSON content. Non-JSON
-            content, or JSON content that does not resolve to a mapping, fails with an
-            error.
+            Setting ``content_field`` requires mapping-like content. Content that
+            does not resolve to a mapping (for example a list at the root) fails with
+            an error.
 
-            An empty ``content_field`` is treated as unset, so the list is expected at
-            the root of the JSON content.
+            An empty ``content_field`` is treated as unset, so the resolve mapping is
+            expected at the root of the loaded content.
 
             Examples:
                 ``content_field: ""``
-                    Is converted to ``None`` and reads the list from the JSON root.
+                    Is converted to ``None`` and reads the resolve mapping from the
+                    content root.
 
                 ``content_field: null``
-                    Is treated as ``None`` and reads the list from the JSON root.
+                    Is treated as ``None`` and reads the resolve mapping from the
+                    content root.
 
                 ``content_field: "content"``
-                    Reads the list from the ``"content"`` key of the JSON object.
+                    Reads the resolve mapping from the ``"content"`` key of the
+                    loaded mapping.
         """
 
         ignore_case: bool = field(validator=validators.instance_of(bool), default=False)
