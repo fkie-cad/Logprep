@@ -86,7 +86,7 @@ import typing
 from attrs import define, field, validators
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import InvalidRuleDefinitionError
+from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_from_dict
 from logprep.util.environ import ENV_VARS
@@ -124,17 +124,21 @@ def _convert_add_from_url(
     return convert_from_dict(AddFromUrlConfig, value)
 
 
-class GenericAdderRule(FieldManagerRule):
+class GenericAdderRule(Rule):
     """Check if documents match a filter and initialize the fields and values can be added."""
 
     @define(kw_only=True)
-    class Config(FieldManagerRule.Config):
+    class Config(Rule.Config):
         """Config for GenericAdderRule"""
+
+        overwrite_target: bool = field(validator=validators.instance_of(bool), default=False)
+        """Overwrite the target field value if exists. Defaults to :code:`False`"""
 
         merge_with_target: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the values
         of the source fields.
         """
+
         add: dict = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
@@ -145,6 +149,7 @@ class GenericAdderRule(FieldManagerRule):
         """Contains a dictionary of field names and values that should be added.
         If dot notation is being used, then all fields on the path are being
         automatically created."""
+
         add_from_file: list[str] = field(
             validator=validators.deep_iterable(
                 iterable_validator=validators.instance_of(list),
@@ -205,8 +210,6 @@ class GenericAdderRule(FieldManagerRule):
             self._add_from_path()
 
         def __attrs_post_init__(self):
-            super().__attrs_post_init__()
-
             self._base_add = copy.deepcopy(self.add)
 
             if (self.add_from_file or self.add) and self.add_from_url is not None:
@@ -295,6 +298,16 @@ class GenericAdderRule(FieldManagerRule):
             self._static_uri = static_uri
         else:
             self._is_dynamic = True
+
+    @property
+    def overwrite_target(self) -> bool:
+        """Returns the nested config overwrite_target"""
+        return self.config.overwrite_target
+
+    @property
+    def merge_with_target(self) -> bool:
+        """Returns the nested config merge_with_target"""
+        return self.config.merge_with_target
 
     @property
     def config(self) -> Config:
