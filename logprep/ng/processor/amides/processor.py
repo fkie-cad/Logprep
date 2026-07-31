@@ -125,7 +125,7 @@ class Amides(FieldManager):
         and the rule attributor.
 
         .. security-best-practice::
-           :title: |PROCESSOR| - Amides Model
+           :title: |PROCESSOR| - Model
 
            Ensure that you only use models from trusted sources, as it can be used to inject python
            code into the runtime.

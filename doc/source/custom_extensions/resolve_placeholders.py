@@ -58,7 +58,7 @@ import itertools
 import re
 import typing
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from docutils.parsers.rst.states import Body
 from sphinx.util import logging
@@ -81,9 +81,10 @@ PLACEHOLDER_PATTERN = re.compile(r"\|([A-Z_]+)\|")
 
 DOCUMENTED_TYPES = ("module", "class", "attribute", "property")
 
-HUMANIZE_OVERWRITE = {
+HUMANIZE_OVERRIDES = {
     "Opensearch": "OpenSearch",
     "Geoip Enricher": "GeoIP Enricher",
+    "Ip Informer": "IP Informer",
 }
 
 
@@ -130,7 +131,7 @@ def humanize(snake: str) -> str:
     :code:`network_comparison` -> :code:`Network Comparison`, :code:`s3` -> :code:`S3`.
     """
     result = " ".join(word[:1].upper() + word[1:] for word in snake.split("_"))
-    return HUMANIZE_OVERWRITE.get(result, result)
+    return HUMANIZE_OVERRIDES.get(result, result)
 
 
 def replacements_for(name: str) -> dict[str, str]:
@@ -171,7 +172,9 @@ def is_section_underline(line: str) -> bool:
     return bool(line) and DOCUTILS_LINE_PATTERN.fullmatch(line) is not None
 
 
-def resolve_placeholders(_, what: str, name: str, __, ___, lines: list[str]) -> None:
+def resolve_placeholders(
+    _app: Sphinx, what: str, name: str, _obj: object, _options: object, lines: list[str]
+) -> None:
     """
     Replace the known placeholders in a docstring with class specific values.
 
@@ -189,11 +192,11 @@ def resolve_placeholders(_, what: str, name: str, __, ___, lines: list[str]) -> 
         logger.warning("cannot find replacements for name %s (%s)", name, str(error))
         return
 
-    def replace(match: re.Match) -> str:
+    def replace(match: re.Match[str]) -> str:
         placeholder = match.group(1)
         if placeholder not in replacements:
             logger.warning(
-                "cannot resolve placeholder |%s| in %s: no class in the object path",
+                "cannot resolve placeholder |%s| in %s: placeholder is not available in this context",
                 placeholder,
                 name,
             )
@@ -210,7 +213,7 @@ def resolve_placeholders(_, what: str, name: str, __, ___, lines: list[str]) -> 
             lines[index + 1] = title_char * len(resolved)
 
 
-def setup(app: Sphinx) -> dict:
+def setup(app: Sphinx) -> dict[str, Any]:
     """Register the extension."""
     app.connect("autodoc-process-docstring", resolve_placeholders)
     return {"version": "1.0", "parallel_read_safe": True, "parallel_write_safe": True}
