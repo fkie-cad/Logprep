@@ -367,7 +367,6 @@ class TestGenericResolverRule:
             json={"content": {"ab": "ab_server_type", "de": "de_server_type"}},
             content_type="application/json",
         )
-        RefreshableGetter.reset()
 
         rule = GenericResolverRule.create_from_dict(
             {
@@ -405,7 +404,6 @@ class TestGenericResolverRule:
     def test_content_field_load_failures_from_http(self, body, content_field, match):
         url = "http://localhost:12346/resolve"
         responses.add(responses.GET, url, json=body, content_type="application/json")
-        RefreshableGetter.reset()
 
         with pytest.raises(InvalidConfigurationError, match=match):
             GenericResolverRule.create_from_dict(

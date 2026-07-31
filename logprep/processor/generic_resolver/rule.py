@@ -229,7 +229,7 @@ class GenericResolverRule(FieldManagerRule):
             default=None,
         )
         """
-        Optional JSON key used to extract the resolve mapping from loaded content.
+        Optional key used to extract the resolve mapping from loaded content.
 
         Example:
             Given the following JSON content:
