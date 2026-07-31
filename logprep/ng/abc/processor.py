@@ -4,7 +4,7 @@ import logging
 import typing
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import Any, ClassVar
 
 from attrs import define, field, validators
 
@@ -13,6 +13,7 @@ from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
 from logprep.ng.abc.event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.processor.base.rule import Rule
 from logprep.util.environ import ENV_VARS
 from logprep.util.helper import (
     FieldValue,
@@ -23,9 +24,6 @@ from logprep.util.helper import (
     pop_dotted_field_value,
 )
 from logprep.util.rule_loader import RuleLoader
-
-if TYPE_CHECKING:
-    from logprep.processor.base.rule import Rule  # pragma: no cover
 
 
 @define
