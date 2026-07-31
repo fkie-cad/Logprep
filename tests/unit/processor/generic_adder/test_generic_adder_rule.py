@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import responses
 
-from logprep.processor.generic_adder.rule import GenericAdderRule, UriTargetConfig
+from logprep.processor.generic_adder.rule import GenericAdderRule, UriConfig
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetter
 from tests.conftest import mock_env
@@ -45,7 +45,7 @@ class TestGenericAdderRule:
         config = typing.cast(GenericAdderRule.Config, rule._config)
 
         assert len(config.add_from_uri) == 1
-        assert isinstance(config.add_from_uri[0], UriTargetConfig)
+        assert isinstance(config.add_from_uri[0], UriConfig)
         assert config.add_from_uri[0].target_field == "enrichment"
 
     def test_converts_mixed_add_from_uri_configuration(self):
@@ -66,20 +66,25 @@ class TestGenericAdderRule:
 
         config = typing.cast(GenericAdderRule.Config, rule._config)
 
-        assert config.add_from_uri[0] == ("tests/testdata/unit/generic_adder/additions_file.yml")
-        assert config.add_from_uri[1] == UriTargetConfig(
+        assert config.add_from_uri[0] == UriConfig(
+            uri="tests/testdata/unit/generic_adder/additions_file.yml"
+        )
+        assert config.add_from_uri[1] == UriConfig(
             uri="https://values.example/${tenant.id}",
             target_field="enrichment",
         )
 
-    def test_rejects_add_from_uri_without_target_field(self):
-        with pytest.raises(TypeError, match="missing.*target_field"):
-            GenericAdderRule.create_from_dict(
-                {
-                    "filter": "*",
-                    "generic_adder": {"add_from_uri": {"uri": "https://values.example/${tenant}"}},
-                }
-            )
+    def test_accepts_add_from_uri_without_target_field(self):
+        rule = GenericAdderRule.create_from_dict(
+            {
+                "filter": "*",
+                "generic_adder": {"add_from_uri": {"uri": "https://values.example/${tenant}"}},
+            }
+        )
+
+        config = typing.cast(GenericAdderRule.Config, rule._config)
+
+        assert config.add_from_uri == [UriConfig(uri="https://values.example/${tenant}")]
 
     def test_rejects_deprecated_and_new_uri_configuration_together(self):
         with pytest.raises(
@@ -173,6 +178,55 @@ class TestGenericAdderRule:
         assert len(responses.calls) == 1
         assert len(HttpGetter._target_to_data_caches[url].callbacks) == 1
         assert len(HttpGetter._target_to_data_caches[url].cleanup_callbacks) == 0
+
+    @responses.activate
+    def test_content_field_is_applied_to_static_http_uri(self):
+        url = "https://values.example/static"
+        response_content = {
+            "payload": {"risk": {"score": 7}},
+            "metadata": {"version": 1},
+        }
+        responses.add(responses.GET, url, json=response_content)
+        rule = GenericAdderRule.create_from_dict(
+            {
+                "filter": "*",
+                "generic_adder": {
+                    "add_from_uri": {
+                        "uri": url,
+                        "target_field": "enrichment",
+                    },
+                    "content_field": "payload",
+                },
+            }
+        )
+
+        rule.init_generic_adder("generic-adder-test")
+
+        assert rule.add({}) == {"enrichment": response_content["payload"]}
+
+    @responses.activate
+    def test_content_field_is_applied_to_dynamic_http_uri(self):
+        resolved_url = "https://values.example/acme"
+        response_content = {
+            "payload": {"risk": {"score": 7}},
+            "metadata": {"version": 1},
+        }
+        responses.add(responses.GET, resolved_url, json=response_content)
+        rule = GenericAdderRule.create_from_dict(
+            {
+                "filter": "*",
+                "generic_adder": {
+                    "add_from_uri": {
+                        "uri": "https://values.example/${tenant}",
+                        "target_field": "enrichment",
+                    },
+                    "content_field": "payload",
+                },
+            }
+        )
+        rule.init_generic_adder("generic-adder-test")
+
+        assert rule.add({"tenant": "acme"}) == {"enrichment": response_content["payload"]}
 
     @responses.activate
     def test_static_url_recovers_after_failed_initial_load(self, tmp_path):

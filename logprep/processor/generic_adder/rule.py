@@ -1,4 +1,3 @@
-# pylint: disable=anomalous-backslash-in-string
 """
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^
@@ -99,42 +98,44 @@ from logprep.util.helper import (
 
 
 @define(kw_only=True, frozen=True)
-class UriTargetConfig:
-    """Configuration for adding values loaded from an HTTP(S) URL."""
+class UriConfig:
+    """Configuration for adding values loaded from an URI, which can be HTTP(S) URLs or file paths"""
 
     uri: str = field(validator=validators.and_(validators.instance_of(str), validators.min_len(1)))
-    """The URL to load values from.
+    """The URI to load values from.
 
     Environment variables and dotted event fields can be inserted with placeholders such as
-    :code:`${TENANT}` and :code:`${tenant.id}`.
+    :code:`${LOGPREP_DATA_API}` and :code:`${tenant.id}`.
     """
 
-    target_field: str = field(
-        validator=validators.and_(validators.instance_of(str), validators.min_len(1))
+    target_field: str | None = field(
+        default=None,
+        validator=validators.optional(
+            validators.and_(validators.instance_of(str), validators.min_len(1))
+        ),
     )
     """The dotted event field into which the complete response is written."""
 
 
-UriSpec = str | UriTargetConfig
+def _convert_uri_config(
+    value: str | dict | UriConfig | Sequence[str | dict | UriConfig],
+) -> list[UriConfig]:
+    values: Sequence[str | dict[str, object] | UriConfig]
 
-
-def _convert_uri_specs(
-    value: UriSpec | dict | Sequence[UriSpec | dict],
-) -> tuple[UriSpec, ...]:
-    if isinstance(value, (str, UriTargetConfig, dict)):
-        values: tuple[UriSpec | dict, ...] = (value,)
+    if isinstance(value, (str, dict, UriConfig)):
+        values = (value,)
     else:
-        values = tuple(value)
+        values = value
 
-    return tuple(
-        convert_from_dict(UriTargetConfig, item) if isinstance(item, dict) else item
+    return [
+        UriConfig(uri=item) if isinstance(item, str) else convert_from_dict(UriConfig, item)
         for item in values
-    )
+    ]
 
 
 @define(kw_only=True)
 class _UriSource:
-    spec: UriSpec
+    config: UriConfig
     template: DottedTemplate
     identifiers: tuple[str, ...]
     content_by_uri: dict[str, FieldValue] = field(factory=dict)
@@ -174,10 +175,8 @@ class GenericAdderRule(Rule):
             ),
             converter=lambda x: x if isinstance(x, list) else [x],
             factory=list,
-            # Eq false in this case means that this is not taken into account when comparing two Configs,
-            # that is neccessary in this case because on init this will be loaded into add,
-            # and when comparing two rules, we dont care if whats to add came from a file or is written inline
-            # but we do care if whatever gets added is the same
+            # Eq false because add_from_file gets normalized into add_from_uri
+            # and should not affect equality
             eq=False,
         )
         """Contains the path or url to YML file that contains a dictionary of field names
@@ -200,19 +199,55 @@ class GenericAdderRule(Rule):
 
         """
 
-        add_from_uri: tuple[UriSpec, ...] = field(
-            factory=tuple,
-            converter=_convert_uri_specs,
+        add_from_uri: Sequence[UriConfig] = field(
+            factory=list,
+            converter=_convert_uri_config,
             validator=validators.deep_iterable(
-                iterable_validator=validators.instance_of(tuple),
-                member_validator=validators.instance_of((str, UriTargetConfig)),
+                member_validator=validators.instance_of(UriConfig),
             ),
-            # Explicitly set it to true here to show the difference between this and add_from_file
-            eq=True,
         )
-        """Configuration for loading values from an HTTP(S) URL and adding them to the event.
+        """Configuration for loading values from URIs and adding them to the event.
 
         This is mutually exclusive with :attr:`add_from_file`.
+        """
+
+        content_field: str | None = field(
+            default=None,
+            validator=validators.optional(validators.instance_of(str)),
+            converter=lambda x: x if x != "" else None,
+        )
+        """
+        Optional JSON key used to extract the list values from loaded content.
+
+        Example:
+            Given the following JSON content:
+
+            .. code-block:: json
+
+               {
+                   "content": ["Jane", "Julia"]
+               }
+
+            Set ``content_field`` to ``"content"`` to use the value of this key
+            as the comparison list.
+
+        Note:
+            Setting ``content_field`` requires mapping-like JSON content. Non-JSON
+            content, or JSON content that does not resolve to a mapping, fails with an
+            error.
+
+            An empty ``content_field`` is treated as unset, so the list is expected at
+            the root of the JSON content.
+
+            Examples:
+                ``content_field: ""``
+                    Is converted to ``None`` and reads the list from the JSON root.
+
+                ``content_field: null``
+                    Is treated as ``None`` and reads the list from the JSON root.
+
+                ``content_field: "content"``
+                    Reads the list from the ``"content"`` key of the JSON object.
         """
 
         only_first_existing_file: bool = field(
@@ -229,7 +264,7 @@ class GenericAdderRule(Rule):
                 )
 
             if self.add_from_file:
-                self.add_from_uri = tuple(self.add_from_file)
+                self.add_from_uri = _convert_uri_config(self.add_from_file)
 
             if self.only_first_existing_file and not self.add_from_file:
                 raise ValueError(
@@ -239,14 +274,29 @@ class GenericAdderRule(Rule):
             if not self.add and not self.add_from_uri:
                 raise ValueError("one of add or add_from_uri must be configured")
 
+    @property
+    def overwrite_target(self) -> bool:
+        """Returns the nested config overwrite_target"""
+        return self.config.overwrite_target
+
+    @property
+    def merge_with_target(self) -> bool:
+        """Returns the nested config merge_with_target"""
+        return self.config.merge_with_target
+
+    @property
+    def config(self) -> Config:
+        """Return typed config"""
+        return typing.cast(GenericAdderRule.Config, self._config)
+
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
         self._callback_tag: str | None = None
         self._uri_sources: list[_UriSource] = []
 
     def init_generic_adder(self, job_tag: str) -> None:
+        """Initializes the generic adder and assignes the job_tag for callback cleanup"""
         self._callback_tag = job_tag
-        self._uri_sources.clear()
 
         if self.config.only_first_existing_file:
             self._init_first_existing_file()
@@ -262,13 +312,11 @@ class GenericAdderRule(Rule):
     def _init_first_existing_file(self) -> None:
         missing_files: list[str] = []
 
-        for spec in self.config.add_from_uri:
-            assert isinstance(spec, str)
-
-            source = self._create_uri_source(spec)
+        for config in self.config.add_from_uri:
+            source = self._create_uri_source(config)
             if source.identifiers:
                 raise InvalidRuleDefinitionError(
-                    f"only_first_existing_file does not support event-dependent paths: {spec!r}"
+                    f"only_first_existing_file does not support event-dependent paths: {config!r}"
                 )
 
             self._uri_sources.append(source)
@@ -277,13 +325,13 @@ class GenericAdderRule(Rule):
                 self._init_static_source(source)
                 if source.error is not None:
                     raise InvalidRuleDefinitionError(
-                        f"Could not load generic-adder URI {spec!r}: {source.error}"
+                        f"Could not load generic-adder URI {config.uri!r}: {source.error}"
                     ) from source.error
             except InvalidRuleDefinitionError as error:
                 self._uri_sources.pop()
 
                 if isinstance(error.__cause__, FileNotFoundError):
-                    missing_files.append(spec)
+                    missing_files.append(config.uri)
                     continue
 
                 raise
@@ -292,17 +340,18 @@ class GenericAdderRule(Rule):
 
         raise InvalidRuleDefinitionError(f"None of the configured files exist: {missing_files!r}")
 
-    def _create_uri_source(self, spec: UriSpec) -> _UriSource:
-        uri = spec.uri if isinstance(spec, UriTargetConfig) else spec
-        template = DottedTemplate(DottedTemplate(uri).safe_substitute(ENV_VARS))
+    def _create_uri_source(self, config: UriConfig) -> _UriSource:
+        template = DottedTemplate(DottedTemplate(config.uri).safe_substitute(ENV_VARS))
 
         return _UriSource(
-            spec=spec, template=template, identifiers=tuple(template.get_identifiers())
+            config=config, template=template, identifiers=tuple(template.get_identifiers())
         )
 
     def _init_static_source(self, source: _UriSource):
         resolved_uri = source.template.substitute()
         getter = GetterFactory.from_string(resolved_uri)
+
+        assert self._callback_tag
 
         if isinstance(getter, RefreshableGetter):
             self._update_static_content(source, getter, resolved_uri)
@@ -321,22 +370,9 @@ class GenericAdderRule(Rule):
                 f"Could not load generic-adder URI {resolved_uri!r}: {error}"
             ) from error
 
-    @property
-    def overwrite_target(self) -> bool:
-        """Returns the nested config overwrite_target"""
-        return self.config.overwrite_target
-
-    @property
-    def merge_with_target(self) -> bool:
-        """Returns the nested config merge_with_target"""
-        return self.config.merge_with_target
-
-    @property
-    def config(self) -> Config:
-        """Return typed config"""
-        return typing.cast(GenericAdderRule.Config, self._config)
-
-    def _dynamic_content(self, source: _UriSource, event: dict[str, FieldValue]) -> FieldValue:
+    def _get_cached_or_dynamic_content(
+        self, source: _UriSource, event: dict[str, FieldValue]
+    ) -> FieldValue:
         values = {
             identifier: get_dotted_field_value(event, identifier)
             for identifier in source.identifiers
@@ -365,6 +401,8 @@ class GenericAdderRule(Rule):
         getter.keep_alive()
         content = self._fetch_and_cache_uri(source, getter, resolved_uri)
 
+        assert self._callback_tag
+
         key = (self._callback_tag, resolved_uri, id(source))
 
         getter.add_callback(
@@ -385,26 +423,28 @@ class GenericAdderRule(Rule):
 
     def _content_for_source(self, source: _UriSource, event: dict[str, FieldValue]) -> FieldValue:
         if source.identifiers:
-            return self._dynamic_content(source, event)
+            return self._get_cached_or_dynamic_content(source, event)
 
         resolved_uri = source.template.substitute()
         return source.content_by_uri[resolved_uri]
 
-    def _content_to_items_to_add(self, uri: UriSpec, content: FieldValue) -> dict[str, FieldValue]:
-        if isinstance(uri, UriTargetConfig):
-            return {uri.target_field: content}
+    def _content_to_items_to_add(
+        self, config: UriConfig, content: FieldValue
+    ) -> dict[str, FieldValue]:
+        if config.target_field is not None:
+            return {config.target_field: content}
 
         if isinstance(content, dict):
             return dict(content)
 
         raise ValueError(
-            f"URI source {uri!r} without target_field must contain a mapping, got {type(content).__name__}"
+            f"URI source {config.uri!r} without target_field must contain a mapping, got {type(content).__name__}"
         )
 
     def _fetch_and_cache_uri(self, source: _UriSource, getter: Getter, resolved_uri: str):
-        content = getter.get_collection()
+        content = getter.get_collection(content_field=self.config.content_field)
 
-        self._content_to_items_to_add(source.spec, content)
+        self._content_to_items_to_add(source.config, content)
         source.content_by_uri[resolved_uri] = content
         return content
 
@@ -437,6 +477,6 @@ class GenericAdderRule(Rule):
 
         for source in self._uri_sources:
             content = self._content_for_source(source, event)
-            items_to_add.update(self._content_to_items_to_add(source.spec, content))
+            items_to_add.update(self._content_to_items_to_add(source.config, content))
 
         return items_to_add
