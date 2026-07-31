@@ -95,7 +95,6 @@ dev = [
   "types-PyYaml",
   "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
   "ipykernel>=7.3.0",
-  "import-linter[ui]>=2.13",
 ]
 
 doc = [
