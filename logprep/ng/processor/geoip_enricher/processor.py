@@ -40,7 +40,7 @@ from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("GeoipEnricher")
 
@@ -136,7 +136,7 @@ class GeoipEnricher(FieldManager):
         except (ValueError, AddressNotFoundError):
             return {}
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(GeoipEnricherRule, rule)
         ip_string = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [ip_string]):

@@ -25,9 +25,16 @@ Processor Configuration
 .. automodule:: logprep.processor.concatenator.rule
 """
 
+import typing
+from collections.abc import Iterable
+
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.rule import Rule
 from logprep.processor.concatenator.rule import ConcatenatorRule
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import (
+    FieldValue,
+    get_dotted_field_value,
+)
 
 
 class Concatenator(FieldManager):
@@ -35,7 +42,7 @@ class Concatenator(FieldManager):
 
     rule_class = ConcatenatorRule
 
-    def _apply_rules(self, event: dict, rule: ConcatenatorRule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """
         Apply matching rule to given log event.
         In the process of doing so, concat all found source fields into the new target field,
@@ -48,13 +55,22 @@ class Concatenator(FieldManager):
         rule :
             Currently applied concatenator rule.
         """
-        source_field_values = []
-        for source_field in rule.source_fields:
-            field_value = get_dotted_field_value(event, source_field)
-            source_field_values.append(field_value)
-        self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
+        rule = typing.cast(ConcatenatorRule, rule)
 
-        source_field_values = [field for field in source_field_values if field is not None]
-        target_value = f"{rule.separator}".join(source_field_values)
+        source_field_values = [
+            get_dotted_field_value(event, source_field) for source_field in rule.source_fields
+        ]
 
+        self._handle_missing_fields(
+            event,
+            rule,
+            rule.source_fields,
+            source_field_values,
+        )
+
+        string_values = [
+            field_value for field_value in source_field_values if isinstance(field_value, str)
+        ]
+
+        target_value = rule.separator.join(string_values)
         self._write_target_field(event, rule, target_value)

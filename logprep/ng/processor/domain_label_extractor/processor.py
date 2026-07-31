@@ -34,7 +34,6 @@ Processor Configuration
 import ipaddress
 import logging
 import typing
-from typing import Any, Dict
 from urllib.parse import urlsplit
 
 from attrs import define, field, validators
@@ -43,6 +42,7 @@ from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import (
+    FieldValue,
     add_and_overwrite,
     add_fields_to,
     get_dotted_field_list,
@@ -73,7 +73,7 @@ class DomainLabelExtractor(FieldManager):
         """Provides the properly typed rule configuration object"""
         return typing.cast(DomainLabelExtractor.Config, self._config)
 
-    def _apply_rules(self, event: Dict[str, Any], rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """
         Apply matching rule to given log event. Such that a given domain,
         configured via rule, is split into it's labels and parts. The resulting

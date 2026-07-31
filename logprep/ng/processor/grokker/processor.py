@@ -44,7 +44,7 @@ from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("Grokker")
 
@@ -77,7 +77,7 @@ class Grokker(FieldManager):
         """Returns all rules"""
         return typing.cast(Sequence[GrokkerRule], super().rules)
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(GrokkerRule, rule)
         matches = []
         source_values = []

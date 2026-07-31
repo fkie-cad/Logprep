@@ -23,8 +23,12 @@ Processor Configuration
 .. automodule:: logprep.processor.deleter.rule
 """
 
+import typing
+
 from logprep.ng.abc.processor import Processor
+from logprep.processor.base.rule import Rule
 from logprep.processor.deleter.rule import DeleterRule
+from logprep.util.helper import FieldValue
 
 
 class Deleter(Processor):
@@ -32,6 +36,7 @@ class Deleter(Processor):
 
     rule_class = DeleterRule
 
-    def _apply_rules(self, event: dict, rule: DeleterRule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
+        rule = typing.cast(DeleterRule, rule)
         if rule.delete_event:
             event.clear()

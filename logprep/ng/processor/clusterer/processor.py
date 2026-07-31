@@ -49,6 +49,7 @@ from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.rule import Rule
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
     LogRecord,
@@ -96,7 +97,8 @@ class Clusterer(FieldManager):
         self._last_rule_id = None
         self._last_non_extracted_signature = None
 
-    def _apply_rules(self, event, rule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
+        rule = typing.cast(ClustererRule, rule)
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
         if self._is_clusterable(event, rule.source_fields[0]):

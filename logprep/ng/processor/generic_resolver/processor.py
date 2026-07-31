@@ -133,7 +133,7 @@ class GenericResolver(FieldManager):
             return self._resolve_value_from_list
         return lru_cache(maxsize=self.max_cache_entries)(self._resolve_value_from_list)
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """Apply the given rule to the current event"""
         rule = typing.cast(GenericResolverRule, rule)
         source_field_values = [

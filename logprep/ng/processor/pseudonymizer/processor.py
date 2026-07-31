@@ -63,7 +63,7 @@ from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.converters import convert_ordered_tuples_with_factory
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import add_fields_to, get_dotted_field_values
+from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_values
 from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
@@ -232,7 +232,7 @@ class Pseudonymizer(FieldManager):
                         f"Regex keyword '{regex_keyword}' not found in regex_mapping '{self.config.regex_mapping}'"
                     )
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(PseudonymizerRule, rule)
         source_dict = get_dotted_field_values(event, rule.pseudonyms)
         self._handle_missing_fields(event, rule, source_dict.keys(), source_dict.values())

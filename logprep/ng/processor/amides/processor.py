@@ -100,7 +100,7 @@ from logprep.processor.amides.normalize import CommandLineNormalizer
 from logprep.processor.amides.rule import AmidesRule
 from logprep.processor.base.rule import Rule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import FieldValue, get_dotted_field_value
 
 logger = logging.getLogger("Amides")
 
@@ -229,7 +229,7 @@ class Amides(FieldManager):
 
         return models
 
-    def _apply_rules(self, event: dict, rule: Rule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
         rule = typing.cast(AmidesRule, rule)
         cmdline = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [cmdline]):

@@ -4,7 +4,7 @@ import logging
 import typing
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Type
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define, field, validators
 
@@ -76,7 +76,7 @@ class Processor(Component):
         "_bypass_rule_tree",
     ]
 
-    rule_class: ClassVar[Type["Rule"] | None] = None
+    rule_class: ClassVar[type[Rule] | None] = None
     _event: LogEvent
     _rule_tree: RuleTree
     _strategy = None
@@ -115,6 +115,11 @@ class Processor(Component):
             "type": self.config.type,
             "name": self.name,
         }
+
+    async def has_asyncio(self) -> bool:
+        """Return whether the processor performs asynchronous I/O operations."""
+
+        return False
 
     async def process(self, event: LogEvent) -> LogEvent:
         """Process a log event.
@@ -227,7 +232,7 @@ class Processor(Component):
     def _handle_warning_error(
         self,
         event: dict[str, FieldValue],
-        rule: "Rule",
+        rule: Rule,
         error: Exception,
         failure_tags: list[str] | None = None,
     ) -> None:

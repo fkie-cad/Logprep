@@ -24,14 +24,16 @@ Processor Configuration
 """
 
 import ipaddress
+import typing
 from functools import partial
 from itertools import chain
 from typing import Iterable
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.rule import Rule
 from logprep.processor.ip_informer.rule import IpInformerRule, get_ip_property_names
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import FieldValue, get_dotted_field_value
 
 
 class IpInformer(FieldManager):
@@ -43,7 +45,8 @@ class IpInformer(FieldManager):
 
     rule_class = IpInformerRule
 
-    def _apply_rules(self, event: dict, rule: IpInformerRule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
+        rule = typing.cast(IpInformerRule, rule)
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
         self._processing_warnings = []
@@ -58,10 +61,16 @@ class IpInformer(FieldManager):
         results = [(ip, self._ip_properties(ip, rule)) for ip in ip_address_list]
         return dict(filter(lambda x: bool(x[1]), results))
 
-    def _get_flat_ip_address_list(self, event: dict, rule: IpInformerRule) -> Iterable:
-        source_field_values = list(map(partial(get_dotted_field_value, event), rule.source_fields))
-        list_elements = filter(lambda x: isinstance(x, list), source_field_values)
-        str_elements = filter(lambda x: isinstance(x, str), source_field_values)
+    def _get_flat_ip_address_list(
+        self, event: dict[str, FieldValue], rule: IpInformerRule
+    ) -> Iterable:
+        source_field_values = [
+            get_dotted_field_value(event, source_field) for source_field in rule.source_fields
+        ]
+
+        list_elements = [value for value in source_field_values if isinstance(value, list)]
+        str_elements = [value for value in source_field_values if isinstance(value, str)]
+
         return chain(*list_elements, str_elements)
 
     def _ip_properties(self, ip_address: str, rule: IpInformerRule) -> dict:
