@@ -229,7 +229,7 @@ class Amides(FieldManager):
 
         return models
 
-    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(AmidesRule, rule)
         cmdline = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [cmdline]):

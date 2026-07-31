@@ -97,7 +97,7 @@ class Clusterer(FieldManager):
         self._last_rule_id = None
         self._last_non_extracted_signature = None
 
-    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(ClustererRule, rule)
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)

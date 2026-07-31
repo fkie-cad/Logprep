@@ -37,7 +37,7 @@ class Dropper(Processor):
 
     rule_class = DropperRule
 
-    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """Drops fields from event Logs."""
         rule = typing.cast(DropperRule, rule)
         for dotted_field in rule.fields_to_drop:

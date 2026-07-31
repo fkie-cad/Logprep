@@ -84,7 +84,7 @@ class ListComparison(Processor):
         for rule in self.rules:
             rule.init_list_comparison(self._job_tag_for_cleanup, self.config.list_search_base_path)
 
-    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """
         Apply matching rule to given log event.
         In the process of doing so, add the result of comparing

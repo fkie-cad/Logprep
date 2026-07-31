@@ -36,7 +36,7 @@ class Deduplicator(Processor):
 
     rule_class = DeduplicatorRule  # type: ignore
 
-    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(DeduplicatorRule, rule)
         for field in rule.fields:
             value_list = get_dotted_field_value(event, field)

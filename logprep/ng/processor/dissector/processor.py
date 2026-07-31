@@ -46,7 +46,7 @@ class Dissector(FieldManager):
 
     rule_class = DissectorRule  # type: ignore
 
-    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(DissectorRule, rule)
         self.__apply_mapping(event, rule)
         self._apply_convert_datatype(event, rule)
