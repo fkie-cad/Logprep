@@ -58,7 +58,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
         )
         mock_rule = mock.MagicMock()
         with mock.patch.object(self.object, "_handle_missing_fields", return_value=True):
-            result = self.object._apply_rules(document, mock_rule)
+            result = await self.object._apply_rules(document, mock_rule)
             assert result is None
 
     async def test_an_event_extracted_datetime_plus_one(self):
