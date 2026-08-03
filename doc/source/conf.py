@@ -13,20 +13,18 @@
 import os
 import sys
 from datetime import date
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+from importlib.metadata import version as get_versions
 from io import StringIO
 from pathlib import Path
 
 from ruamel.yaml import YAML
 
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath("../.."))
 sys.path.append(os.path.abspath("./custom_extensions"))
 
-from importlib.metadata import version as get_versions
 
 # -- Handlers ----------------------------------------------------------------
 

@@ -70,7 +70,7 @@ p {
 .side-by-side {
     display: flex;
     flex-wrap: wrap;
-    gap: 1em;
+    column-gap: 1em;
 }
 
 .side-by-side>.literal-block-wrapper {
