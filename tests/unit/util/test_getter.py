@@ -1663,6 +1663,12 @@ class TestHttpGetter:
                 id="yaml-list-returns-parsed-list",
             ),
             pytest.param(
+                "content:\n  key: value",
+                "text/yaml",
+                {"content": {"key": "value"}},
+                id="text/yaml-is-supported",
+            ),
+            pytest.param(
                 "plain text content",
                 "text/plain",
                 "plain text content",
