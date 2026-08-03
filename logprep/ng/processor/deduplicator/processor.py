@@ -28,7 +28,7 @@ import typing
 from logprep.ng.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.deduplicator.rule import DeduplicatorRule
-from logprep.util.helper import get_dotted_field_value, add_fields_to
+from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 
 class Deduplicator(Processor):
