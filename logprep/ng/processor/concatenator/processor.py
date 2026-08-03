@@ -33,7 +33,6 @@ from logprep.processor.concatenator.rule import ConcatenatorRule
 from logprep.util.helper import (
     FieldValue,
     get_dotted_field_value,
-    get_dotted_field_values,
 )
 
 
@@ -56,13 +55,16 @@ class Concatenator(FieldManager):
             Currently applied concatenator rule.
         """
         rule = typing.cast(ConcatenatorRule, rule)
-
-        source_field_values = get_dotted_field_values(event, rule.source_fields)
+        source_field_values = []
+        for source_field in rule.source_fields:
+            field_value = get_dotted_field_value(event, source_field)
+            source_field_values.append(field_value)
         self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
 
-        string_values = [
-            field_value for field_value in source_field_values if isinstance(field_value, str)
+        source_field_values = [field for field in source_field_values if field is not None]
+        source_field_values_str: list[str] = [
+            str(source_field_value) for source_field_value in source_field_values
         ]
+        target_value = f"{rule.separator}".join(source_field_values_str)
 
-        target_value = rule.separator.join(string_values)
         self._write_target_field(event, rule, target_value)
