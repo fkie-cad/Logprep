@@ -10,14 +10,14 @@ from logprep.ng.processor.ip_informer.processor import IpInformer
 from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.ip_informer.test_ip_informer import (
-    failure_test_cases as ng_failure_test_cases,
+    failure_test_cases as non_ng_failure_test_cases,
 )
 from tests.unit.processor.ip_informer.test_ip_informer import (
-    test_cases as ng_test_cases,
+    test_cases as non_ng_test_cases,
 )
 
-test_cases = deepcopy(ng_test_cases)
-failure_test_cases = deepcopy(ng_failure_test_cases)
+test_cases = deepcopy(non_ng_test_cases)
+failure_test_cases = deepcopy(non_ng_failure_test_cases)
 
 
 class TestIpInformer(BaseProcessorTestCase[IpInformer]):
