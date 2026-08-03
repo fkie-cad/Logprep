@@ -55,11 +55,13 @@ class GenericAdder(Processor):
         rule = typing.cast(GenericAdderRule, rule)
 
         try:
-            items_to_add = rule.add(event)
+            for items_to_add in rule.additions(event):
+                if items_to_add:
+                    add_fields_to(
+                        event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target
+                    )
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error
-        if items_to_add:
-            add_fields_to(event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target)
 
     def _shut_down(self) -> None:
         RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)

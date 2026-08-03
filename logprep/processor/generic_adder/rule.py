@@ -80,7 +80,7 @@ In the following example two files are being used, but only the first existing f
 """
 
 import typing
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 
 from attrs import define, field, validators
 
@@ -475,12 +475,14 @@ class GenericAdderRule(Rule):
     def _cleanup(self, source: _UriSource, resolved_uri: str) -> None:
         source.content_by_uri.pop(resolved_uri, None)
 
-    def add(self, event: dict) -> dict:
-        """Returns the fields to add"""
-        items_to_add: dict[str, FieldValue] = dict(self.config.add)
+    def additions(self, event: dict) -> Iterator[dict[str, FieldValue]]:
+        if self.config.add:
+            yield self.config.add
 
         for source in self._uri_sources:
             content = self._content_for_source(source, event)
-            items_to_add.update(self._content_to_items_to_add(source.config, content))
+            yield self._content_to_items_to_add(source.config, content)
 
-        return items_to_add
+    def add(self, event: dict) -> dict:
+        """Returns the fields to add"""
+        return {key: value for items in self.additions(event) for key, value in items.items()}
