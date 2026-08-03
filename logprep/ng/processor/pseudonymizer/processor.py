@@ -1,12 +1,12 @@
 """
-Pseudonymizer
-=============
+|PROCESSOR_NAME|
+================
 
 The :code:`pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
 privacy regulations can be adhered to.
 
 .. security-best-practice::
-   :title: Processor - Pseudonymizer
+   :title: |PROCESSOR|
 
    The :code:`pseudonymizer` works with two public keys for different roles.
    It is suggested to ensure that two different keys are being used such that the separation of the

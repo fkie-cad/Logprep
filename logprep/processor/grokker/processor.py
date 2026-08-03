@@ -1,6 +1,6 @@
 """
-Grokker
-=======
+|PROCESSOR_NAME|
+================
 
 The `grokker` processor dissects a message on a basis of grok patterns. This processor is based
 of the ideas of the logstash grok filter plugin.
@@ -64,13 +64,13 @@ class Grokker(FieldManager):
         directory structure in it.
 
         .. security-best-practice::
-           :title: Processor - Grokker Custom Patterns Directory Memory Consumption
+           :title: |PROCESSOR| - Custom Patterns Directory Memory Consumption
 
            Be aware that all values of the remote zip were loaded into memory. Reserve memory for
            this and avoid loading large files all at once to avoid exceeding http body limits.
 
         .. security-best-practice::
-           :title: Processor - Grokker Authenticity and Integrity
+           :title: |PROCESSOR| - Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.

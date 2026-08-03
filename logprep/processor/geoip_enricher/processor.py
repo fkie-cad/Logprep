@@ -1,6 +1,6 @@
 """
-GeoipEnricher
-=============
+|PROCESSOR_NAME|
+================
 
 Processor to enrich log messages with geolocalization information
 
@@ -49,7 +49,7 @@ class GeoipEnricher(FieldManager):
 
     @define(kw_only=True)
     class Config(FieldManager.Config):
-        """geoip_enricher config"""
+        """Config for |PROCESSOR|"""
 
         db_path: str = field(validator=validators.instance_of(str))
         """Path to a `Geo2Lite` city database by `Maxmind` in binary format.
@@ -60,13 +60,13 @@ class GeoipEnricher(FieldManager):
             https://www.maxmind.com.
 
         .. security-best-practice::
-           :title: Processor - GeoIP Enricher Database Memory Consumption
+           :title: |PROCESSOR| - Database Memory Consumption
 
            Be aware that all values of the remote file were loaded into memory.
            Avoid loading a large database via http to avoid exceeding http body limits.
 
         .. security-best-practice::
-           :title: Processor - GeoIP Enricher Authenticity and Integrity
+           :title: |PROCESSOR| - Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded database.

@@ -1,6 +1,6 @@
 """
-Dissector
-=========
+|PROCESSOR_NAME|
+================
 
 The `dissector` is a processor that tokenizes incoming strings using defined patterns.
 The behavior is based of the logstash dissect filter plugin and has the same advantage that

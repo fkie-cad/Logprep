@@ -1,6 +1,6 @@
 """
-Timestamper
-===========
+|PROCESSOR_NAME|
+================
 
 The `timestamper` processor normalizes timestamps to *iso8601* compliant output format.
 

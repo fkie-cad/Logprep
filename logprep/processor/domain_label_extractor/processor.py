@@ -1,6 +1,6 @@
 """
-DomainLabelExtractor
-====================
+|PROCESSOR_NAME|
+================
 
 The `domain_label_extractor` is a processor that splits a domain into it's corresponding labels
 like :code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`. If instead an IP
@@ -57,7 +57,7 @@ class DomainLabelExtractor(FieldManager):
 
     @define(kw_only=True)
     class Config(FieldManager.Config):
-        """DomainLabelExtractor config"""
+        """Config for |PROCESSOR|"""
 
         tagging_field_name: str = field(default="tags", validator=validators.instance_of(str))
         """Optional configuration field that defines into which field in the event the

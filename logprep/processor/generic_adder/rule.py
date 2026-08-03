@@ -27,7 +27,7 @@ It contains the path or url to a file with a YML file that contains a dictionary
 values that should be added to the document.
 Instead of a path, a list of paths can be used to add multiple files.
 All of those files must exist.
-If a list is used, it is possible to tell the generic adder to only use the first existing
+If a list is used, it is possible to tell the |PROCESSOR_NAME| to only use the first existing
 file by setting :code:`generic_adder.only_first_existing_file: true`.
 In that case, only one file must exist.
 Additions from :code:`generic_adder.add` and :code:`generic_adder.add_from_file` are
@@ -128,14 +128,14 @@ class GenericAdderRule(FieldManagerRule):
         All of those files must exist. For string format see :ref:`getters`
 
         .. security-best-practice::
-           :title: Processor - Generic Adder Add From File Memory Consumption
+           :title: |PROCESSOR| - Add From File Memory Consumption
 
            Be aware that all values of the remote file were loaded into memory. Consider to avoid
            dynamic increasing lists without setting limits for Memory consumption. Additionally
            avoid loading large files all at once to avoid exceeding http body limits.
 
         .. security-best-practice::
-           :title: Processor - Generic Adder Authenticity and Integrity
+           :title: |PROCESSOR| - Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.

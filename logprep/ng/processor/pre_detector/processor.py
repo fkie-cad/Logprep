@@ -1,6 +1,6 @@
 """
-PreDetector
-===========
+|PROCESSOR_NAME|
+================
 
 The `pre_detector` is a processor that creates alerts for matching events. It adds MITRE ATT&CK
 data to the alerts.

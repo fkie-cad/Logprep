@@ -1,6 +1,6 @@
 """
-DomainResolver
-==============
+|PROCESSOR_NAME|
+================
 
 The `domain_resolver` is a processor that can resolve domains inside a defined field.
 
@@ -70,7 +70,7 @@ class DomainResolver(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """DomainResolver config"""
+        """Config for |PROCESSOR|"""
 
         timeout: float = field(
             default=0.5,
@@ -80,7 +80,7 @@ class DomainResolver(Processor):
         """Timeout for resolving of domains.
 
         .. security-best-practice::
-           :title: Processor - Domain Resolver Timeout
+           :title: |PROCESSOR| - Timeout
 
            Ensure to set this to a reasonable value to avoid DOS attacks by malicious domains in
            your logs. The default is set to 0.5 seconds.
@@ -91,7 +91,7 @@ class DomainResolver(Processor):
         Logprep does therefore clear the cache.
 
         .. security-best-practice::
-           :title: Processor - Domain Resolver Max Cached Domains
+           :title: |PROCESSOR| - Max Cached Domains
 
            Ensure to set this to a reasonable value to avoid excessive memory usage
            and OOM situations by the domain resolver cache.

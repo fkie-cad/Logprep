@@ -1,6 +1,6 @@
 """
-IpInformer
-==========
+|PROCESSOR_NAME|
+================
 
 The `ip_informer` processor enriches an event with ip information.
 

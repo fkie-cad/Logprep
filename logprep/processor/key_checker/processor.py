@@ -1,6 +1,6 @@
 """
-KeyChecker
-==========
+|PROCESSOR_NAME|
+================
 
 The `key_checker` processor checks if all field names in a provided list are
 given in the processed event.

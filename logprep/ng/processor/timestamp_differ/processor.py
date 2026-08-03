@@ -1,6 +1,6 @@
 """
-TimestampDiffer
-===============
+|PROCESSOR_NAME|
+================
 
 The `timestamp_differ` can calculate the time difference between two timestamps.
 

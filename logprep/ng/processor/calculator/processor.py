@@ -1,6 +1,6 @@
 """
-Calculator
-==========
+|PROCESSOR_NAME|
+================
 
 The Calculator can be used to calculate with or without field values.
 

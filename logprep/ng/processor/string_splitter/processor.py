@@ -1,6 +1,6 @@
 """
-StringSplitter
-==============
+|PROCESSOR_NAME|
+================
 
 The `string_splitter` processor splits string by whitespace (default) or a given delimiter and
 writes the resulting list to a target field.

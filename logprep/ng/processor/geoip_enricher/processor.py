@@ -1,6 +1,6 @@
 """
-GeoipEnricher
-=============
+|PROCESSOR_NAME|
+================
 
 Processor to enrich log messages with geolocalization information
 

@@ -1,5 +1,5 @@
 """
-TemplateReplacer
+|PROCESSOR_NAME|
 ================
 
 The `template_replacer` is a processor that can replace parts of a text field to anonymize those
@@ -62,7 +62,7 @@ class TemplateReplacer(FieldManager):
 
     @define(kw_only=True)
     class Config(FieldManager.Config):
-        """TemplateReplacer config"""
+        """Config for |PROCESSOR|"""
 
         template: str = field(validator=validators.instance_of(str))
         """
@@ -70,14 +70,14 @@ class TemplateReplacer(FieldManager):
         format `%{provider_name}-%{event_id}: %{new_message}`.
 
         .. security-best-practice::
-           :title: Processor - TemplateReplacer template Memory Consumption
+           :title: |PROCESSOR| - template Memory Consumption
 
            Be aware that all values of the remote file were loaded into memory. Consider to avoid
            dynamic increasing lists without setting limits for Memory consumption. Additionally
            avoid loading large files all at once to avoid exceeding http body limits.
 
         .. security-best-practice::
-           :title: Processor - TemplateReplacer template Authenticity and Integrity
+           :title: |PROCESSOR| - template Authenticity and Integrity
 
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.

@@ -1,12 +1,12 @@
 """
-Requester
-=========
+|PROCESSOR_NAME|
+================
 
 A processor to invoke http requests. Can be used to enrich events from an external api or
 to trigger external systems by and with event field values.
 
 .. security-best-practice::
-   :title: Processor - Requester
+   :title: |PROCESSOR|
 
    As the `requester` can execute arbitrary http requests it is advised to execute requests only
    against known and trusted endpoints and that the communication is protected with a valid

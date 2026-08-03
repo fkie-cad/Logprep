@@ -1,6 +1,6 @@
 """
-GenericResolver
-===============
+|PROCESSOR_NAME|
+================
 
 The `generic_resolver` resolves log event values using regex lists.
 
@@ -52,17 +52,17 @@ class GenericResolver(FieldManager):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """GenericResolver config"""
+        """Config for |PROCESSOR|"""
 
         max_cache_entries: int = field(validator=validators.instance_of(int), default=0)
         """(Optional) Size of cache for results when resolving from a list.
         The cache can be disabled by setting this option to :code:`0`.
 
         .. security-best-practice::
-           :title: Processor - Generic Resolver Max Cached Entries
+           :title: |PROCESSOR| - Max Cached Entries
 
            Ensure to set this to a reasonable value to avoid excessive memory usage
-           and OOM situations caused by the generic resolver cache.
+           and OOM situations caused by the |PROCESSOR_NAME| cache.
 
         """
         cache_metrics_interval: int = field(validator=validators.instance_of(int), default=1)
@@ -72,7 +72,7 @@ class GenericResolver(FieldManager):
 
     @define(kw_only=True)
     class Metrics(FieldManager.Metrics):
-        """Tracks statistics about the generic resolver"""
+        """Tracks statistics about the |PROCESSOR_NAME|"""
 
         new_results: GaugeMetric = field(
             factory=lambda: GaugeMetric(

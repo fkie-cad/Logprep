@@ -1,6 +1,6 @@
 """
-SelectiveExtractor
-==================
+|PROCESSOR_NAME|
+================
 
 The `selective_extractor` is a processor that allows to write field values of a given log message to
 a different Kafka topic. The output topic is configured via the pipeline yml, while the fields to
@@ -29,8 +29,8 @@ Processor Configuration
 
 import typing
 
-from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
 from logprep.ng.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.processor.base.rule import Rule
 from logprep.util.helper import add_fields_to, get_source_fields_dict

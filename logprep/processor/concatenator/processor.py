@@ -1,6 +1,6 @@
 """
-Concatenator
-============
+|PROCESSOR_NAME|
+================
 
 The `concatenator` processor allows to concat a list of source fields into one new target field. The
 concat separator and the target field can be specified. Furthermore, it is possible to directly

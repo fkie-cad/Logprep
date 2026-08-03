@@ -1,6 +1,6 @@
 """
-SelectiveExtractor
-==================
+|PROCESSOR_NAME|
+================
 
 The `selective_extractor` is a processor that allows to write field values of a given log message to
 a different Kafka topic. The output topic is configured via the pipeline yml, while the fields to

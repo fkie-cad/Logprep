@@ -1,6 +1,6 @@
 """
-DomainResolver
-==============
+|PROCESSOR_NAME|
+================
 
 The `domain_resolver` is a processor that can resolve domains inside a defined field.
 

@@ -1,6 +1,6 @@
 """
-Dropper
-=======
+|PROCESSOR_NAME|
+================
 
 The `dropper` is a processor that removes fields from log messages. Which fields are deleted is
 determined within each rule.

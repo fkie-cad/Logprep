@@ -107,6 +107,7 @@ doc = [
   "ipython>=8.7",
   "openpyxl",
   "pandas<3",
+  "sphinx-autobuild>=2025.8.25",
 ]
 
 [project.urls]
@@ -181,6 +182,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["luqum.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["sphinx.*", "docutils.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
