@@ -3,7 +3,10 @@
 
 import pytest
 
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+)
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -182,3 +185,23 @@ class TestConcatenator(BaseProcessorTestCase):
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
         assert document.get("tags") == ["_concatenator_failure"]
+
+    def test_failing_if_any_field_value_in_not_a_string(self):
+        rule = {
+            "filter": "field.a",
+            "concatenator": {
+                "source_fields": ["field.a", "field.b", "other_field.c"],
+                "target_field": "target_field",
+                "separator": "-",
+                "overwrite_target": False,
+                "delete_source_fields": False,
+            },
+        }
+        self._load_rule(rule)
+
+        document = {"field": {"a": "first", "b": True}, "other_field": {"c": "third"}}
+        result = self.object.process(document)
+
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], ProcessingCriticalError)
+        assert "sequence item 1: expected str instance, bool found" in result.errors[0].message

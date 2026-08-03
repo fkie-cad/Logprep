@@ -62,9 +62,10 @@ class Concatenator(FieldManager):
         self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
 
         source_field_values = [field for field in source_field_values if field is not None]
-        source_field_values_str: list[str] = [
-            str(source_field_value) for source_field_value in source_field_values
-        ]
-        target_value = f"{rule.separator}".join(source_field_values_str)
+
+        try:
+            target_value = f"{rule.separator}".join(source_field_values)  # type: ignore[arg-type]
+        except:
+            raise
 
         self._write_target_field(event, rule, target_value)
