@@ -14,6 +14,7 @@
 
 ### Bugfix
 * chart: fix command handling
+* fix ng input timeout to also accept int parameters
 
 ## 20.0.0
 ### Breaking

@@ -95,7 +95,9 @@ class Input(Connector, AsyncIterator[LogEvent | ErrorEvent | None]):
         """See :class:`PreprocessingConfig` for further details."""
 
         timeout: float = field(
-            validator=(validators.instance_of(float), validators.gt(0)), default=5.0, eq=False
+            validator=(validators.instance_of(float), validators.gt(0)),
+            converter=float,
+            default=5.0,
         )
         """Timeout for retrieving the next event"""
 
