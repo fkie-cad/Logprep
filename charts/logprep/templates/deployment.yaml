@@ -50,7 +50,8 @@ spec:
             - name: http-input
               containerPort: {{ .Values.input.uvicorn_config.port }}
             {{- end }}
-          command: {{ .Values.command }}
+          command:
+            - {{ .Values.command }}
           args:
             - run
             {{- range .Values.configurations }}
@@ -81,7 +82,7 @@ spec:
               value: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
             {{- end }}
             {{- if .Values.environment }}
-            {{- toYaml .Values.environment  | nindent 12 }}
+            {{- toYaml .Values.environment | nindent 12 }}
             {{- end }}
           volumeMounts:
 

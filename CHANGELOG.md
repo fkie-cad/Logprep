@@ -11,6 +11,7 @@
 * docs: use processor name placeholders for most usages
 
 ### Bugfix
+* chart: fix command handling
 
 ## 20.0.0
 ### Breaking
