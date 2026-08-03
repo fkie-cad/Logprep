@@ -4,7 +4,7 @@
 
 ### Features
 * add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
-* add support for asynchronous rule processing and I/O capability detection to `ng` processors
+* introduce API-level support for asynchronous rule processing and I/O capability detection in `ng` processors
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance

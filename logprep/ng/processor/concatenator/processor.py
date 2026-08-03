@@ -26,7 +26,6 @@ Processor Configuration
 """
 
 import typing
-from collections.abc import Iterable
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
@@ -34,6 +33,7 @@ from logprep.processor.concatenator.rule import ConcatenatorRule
 from logprep.util.helper import (
     FieldValue,
     get_dotted_field_value,
+    get_dotted_field_values,
 )
 
 
@@ -57,16 +57,8 @@ class Concatenator(FieldManager):
         """
         rule = typing.cast(ConcatenatorRule, rule)
 
-        source_field_values = [
-            get_dotted_field_value(event, source_field) for source_field in rule.source_fields
-        ]
-
-        self._handle_missing_fields(
-            event,
-            rule,
-            rule.source_fields,
-            source_field_values,
-        )
+        source_field_values = get_dotted_field_values(event, rule.source_fields)
+        self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
 
         string_values = [
             field_value for field_value in source_field_values if isinstance(field_value, str)
