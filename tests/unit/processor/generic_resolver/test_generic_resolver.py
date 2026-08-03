@@ -3,7 +3,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 import json
-from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
 
@@ -16,7 +15,7 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter, RefreshableGetter
-from tests.conftest import mock_env
+from tests.conftest import mock_env, normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
 resolve_value_variants = [
@@ -90,7 +89,7 @@ resolve_value_variants = [
 CONTENT_FIELD_URL = "http://localhost/resolve-mapping"
 
 
-test_cases = [  # rule, event, expected, context
+test_cases = normalize_test_cases(
     pytest.param(
         {
             "filter": "to_resolve",
@@ -101,7 +100,6 @@ test_cases = [  # rule, event, expected, context
         },
         {"to_resolve": "something HELLO1"},
         {"to_resolve": "something HELLO1", "resolved": "Greeting"},
-        {},
         id="resolve_list matches a regex pattern",
     ),
     pytest.param(
@@ -114,7 +112,6 @@ test_cases = [  # rule, event, expected, context
         },
         {"to_resolve": "something HELLO1"},
         {"to_resolve": "something HELLO1", "resolved": {"Greeting": "Hello"}},
-        {},
         id="resolve_list can resolve to a mapping value",
     ),
     pytest.param(
@@ -127,7 +124,6 @@ test_cases = [  # rule, event, expected, context
         },
         {"to_resolve": "something without a match"},
         {"to_resolve": "something without a match"},
-        {},
         id="no match leaves the event unchanged",
     ),
     pytest.param(
@@ -140,7 +136,6 @@ test_cases = [  # rule, event, expected, context
         },
         {"to": {"resolve": "something HELLO1"}},
         {"to": {"resolve": "something HELLO1"}, "resolved": "Greeting"},
-        {},
         id="resolve a dotted source field",
     ),
     pytest.param(
@@ -156,7 +151,6 @@ test_cases = [  # rule, event, expected, context
             "to": {"other_field": "something without the source field"},
             "tags": ["_generic_resolver_missing_field_warning"],
         },
-        {},
         id="missing source field adds a warning tag",
     ),
     pytest.param(
@@ -238,7 +232,112 @@ test_cases = [  # rule, event, expected, context
         {CONTENT_FIELD_URL: {"body": {"ab": "ab_server_type"}}},
         id="empty content_field reads the resolve mapping from the root",
     ),
-]
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "re.solved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        },
+        {"to_resolve": "something HELLO1"},
+        {"to_resolve": "something HELLO1", "re": {"solved": "Greeting"}},
+        id="resolve into a dotted target field",
+    ),
+    pytest.param(
+        {
+            "filter": "to.resolve",
+            "generic_resolver": {
+                "field_mapping": {"to.resolve": "re.solved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        },
+        {"to": {"resolve": "something HELLO1"}},
+        {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}},
+        id="resolve from a dotted source into a dotted target field",
+    ),
+    pytest.param(
+        {
+            "filter": "to.resolve",
+            "generic_resolver": {
+                "field_mapping": {"to.resolve": "re.solved"},
+                "resolve_list": {
+                    ".*HELLO\\d": "Greeting",
+                    ".*HELL.\\d": "Greeting2",
+                    ".*HEL..\\d": "Greeting3",
+                },
+            },
+        },
+        {"to": {"resolve": "something HELLO1"}},
+        {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}},
+        id="only the first matching pattern is applied",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_resolver": {
+                "field_mapping": {"event.code": "event_description"},
+                "resolve_list": {
+                    "4624": "An account was successfully logged on.",
+                    "4625": "An account failed to log on.",
+                    "4634": "An account was logged off.",
+                },
+            },
+        },
+        {"event": {"code": 4625}},
+        {"event": {"code": 4625}, "event_description": "An account failed to log on."},
+        id="resolve a numeric source value",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_resolver": {
+                "field_mapping": {"event.code": "event_description"},
+                "resolve_list": {"4624": "An account was successfully logged on."},
+            },
+        },
+        {"event": {"code": None}},
+        {"event": {"code": None}, "tags": ["_generic_resolver_missing_field_warning"]},
+        id="a null source value adds a warning tag",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+            },
+        },
+        {"to_resolve": "not_in_list"},
+        {"to_resolve": "not_in_list"},
+        {"resolve_mapping.yml": {"body": {"ab": "ab_server_type", "de": "de_server_type"}}},
+        id="no match when resolving from a file",
+    ),
+    pytest.param(
+        {
+            "filter": "foo.bar",
+            "generic_resolver": {
+                "field_mapping": {"foo.bar": "foo"},
+                "resolve_from_file": {
+                    "path": "resolve_mapping_dict.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "merge_with_target": True,
+            },
+        },
+        {"foo": {"bar": "12ab34"}},
+        {"foo": {"bar": "12ab34", "foo": "ab"}},
+        {
+            "resolve_mapping_dict.yml": {
+                "body": {"ab": {"foo": "ab"}, "de": {"foo": "de", "bar": "de"}}
+            }
+        },
+        id="resolve a mapping value from a file and merge it into the target",
+    ),
+)
 
 # rule, context, error_message
 failure_test_cases = [
@@ -509,32 +608,6 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_field_no_conflict_no_match_from_file(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "resolve_list": {"FOO": "BAR"},
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {
-            "to_resolve": "not_in_list",
-        }
-
-        document = {"to_resolve": "not_in_list"}
-
-        self.object.process(document)
-
-        assert document == expected
-
     def test_resolve_dotted_field_no_conflict_match_from_file_and_list(
         self,
     ):
@@ -713,30 +786,6 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_field_no_conflict_match_from_file_to_dict(
-        self,
-    ):
-        rule = {
-            "filter": "foo.bar",
-            "generic_resolver": {
-                "field_mapping": {"foo.bar": "foo"},
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_dict.yml",
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "merge_with_target": True,
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"foo": {"bar": "12ab34", "foo": "ab"}}
-        document = {"foo": {"bar": "12ab34"}}
-
-        self.object.setup()
-        self.object.process(document)
-
-        assert document == expected
-
     @responses.activate
     def test_resolve_from_http(self, tmp_path):
         target = "localhost:123"
@@ -800,23 +849,6 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_dest_field_no_conflict_match(self):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "re.solved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "something HELLO1", "re": {"solved": "Greeting"}}
-        document = {"to_resolve": "something HELLO1"}
-
-        self.object.process(document)
-
-        assert document == expected
-
     def test_resolve_dotted_dest_field_no_conflict_no_match(self):
         rule = {
             "filter": "to_resolve",
@@ -829,25 +861,6 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         expected = {"to_resolve": "something no"}
         document = {"to_resolve": "something no"}
-
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_dotted_src_and_dest_field_no_conflict_match(
-        self,
-    ):
-        rule = {
-            "filter": "to.resolve",
-            "generic_resolver": {
-                "field_mapping": {"to.resolve": "re.solved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
-        document = {"to": {"resolve": "something HELLO1"}}
 
         self.object.process(document)
 
@@ -874,29 +887,6 @@ class TestGenericResolver(BaseProcessorTestCase):
         result = self.object.process(document)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
-        assert document == expected
-
-    def test_resolve_generic_and_multiple_match_first_only(self):
-        rule = {
-            "filter": "to.resolve",
-            "generic_resolver": {
-                "field_mapping": {"to.resolve": "re.solved"},
-                "resolve_list": OrderedDict(
-                    {
-                        ".*HELLO\\d": "Greeting",
-                        ".*HELL.\\d": "Greeting2",
-                        ".*HEL..\\d": "Greeting3",
-                    }
-                ),
-            },
-        }
-
-        self._load_rule(rule)
-        expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
-        document = {"to": {"resolve": "something HELLO1"}}
-
-        self.object.process(document)
-
         assert document == expected
 
     def test_resolve_from_cache_with_large_enough_cache(self):
@@ -1064,52 +1054,6 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert self.object.metrics.new_results == 3
         assert self.object.metrics.cached_results == 3
         assert self.object.metrics.num_cache_entries == 3
-
-    def test_resolve_with_numeric_key(self):
-        event = {"event": {"code": 4625}}
-        expected = {
-            "event": {"code": 4625},
-            "event_description": "An account failed to log on.",
-        }
-        rule = {
-            "filter": "*",
-            "generic_resolver": {
-                "field_mapping": {"event.code": "event_description"},
-                "resolve_list": {
-                    "4624": "An account was successfully logged on.",
-                    "4625": "An account failed to log on.",
-                    "4634": "An account was logged off.",
-                },
-            },
-        }
-        self._load_rule(rule)
-        result = self.object.process(event)
-        assert not result.errors
-        assert event == expected
-
-    def test_resolve_with_explicit_none_value(self):
-        event = {"event": {"code": None}}
-        expected = {
-            "event": {"code": None},
-            "tags": [
-                "_generic_resolver_missing_field_warning",
-            ],
-        }
-        rule = {
-            "filter": "*",
-            "generic_resolver": {
-                "field_mapping": {"event.code": "event_description"},
-                "resolve_list": {
-                    "4624": "An account was successfully logged on.",
-                    "4625": "An account failed to log on.",
-                    "4634": "An account was logged off.",
-                },
-            },
-        }
-        self._load_rule(rule)
-        result = self.object.process(event)
-        assert not result.errors
-        assert event == expected
 
     @pytest.mark.parametrize("suffix", ["json", "txt"])
     def test_resolve_from_file_with_content_field(self, suffix, tmp_path):

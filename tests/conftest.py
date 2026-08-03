@@ -3,7 +3,7 @@
 import contextlib
 import functools
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from multiprocessing import active_children, set_start_method
 from pathlib import Path
 from typing import Callable
@@ -11,6 +11,7 @@ from unittest import mock
 
 import pytest
 import responses
+from _pytest.mark.structures import ParameterSet
 from prometheus_client import REGISTRY
 
 from logprep.registry import Registry
@@ -135,3 +136,20 @@ def provision_context(tmp_path, monkeypatch) -> Generator[Callable[[dict], None]
                     file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
 
         yield _provision
+
+
+def normalize_test_cases(*cases: ParameterSet) -> Sequence[ParameterSet]:
+    """Pad ``test_cases`` entries that omit the trailing context.
+
+    Lets cases that need no provisioned content be written as
+    ``pytest.param(rule, event, expected, id=...)`` (three values); a missing
+    context is filled with an empty dict so all entries share the
+    ``rule, event, expected, context`` signature.
+    """
+    padded = []
+    for case in cases:
+        values = tuple(case.values)
+        if len(values) == 3:
+            values += ({},)
+        padded.append(pytest.param(*values, id=case.id, marks=case.marks))
+    return padded
