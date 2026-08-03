@@ -2,10 +2,15 @@
 
 import contextlib
 import functools
+import json
+from collections.abc import Generator
 from multiprocessing import active_children, set_start_method
+from pathlib import Path
+from typing import Callable
 from unittest import mock
 
 import pytest
+import responses
 from prometheus_client import REGISTRY
 
 from logprep.registry import Registry
@@ -100,3 +105,33 @@ def mock_env(env_dict):
     finally:
         _ENV_SNAPSHOT.clear()
         _ENV_SNAPSHOT.update(original)
+
+
+@pytest.fixture
+def provision_context(tmp_path, monkeypatch) -> Generator[Callable[[dict], None]]:
+    """Return a helper that provisions a ``test_cases`` context for a rule.
+
+    A context maps a path to ``{"body": <content>}``. The source is derived from
+    the path, matching how getters are resolved:
+
+    * ``http://`` / ``https://`` are registered as mocked ``GET`` responses.
+    * ``file://`` or a bare path is written into an isolated working directory the
+      test is switched into, so a rule's relative file path resolves to it without
+      any rewriting.
+
+    Response mocking is active for the whole test, so ``@responses.activate`` is
+    not needed. The working directory is only changed when a file is provisioned.
+    """
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
+
+        def _provision(context: dict) -> None:
+            for path, spec in context.items():
+                if path.startswith(("http://", "https://")):
+                    mocked_responses.add(responses.GET, path, json=spec["body"])
+                else:
+                    monkeypatch.chdir(tmp_path)
+                    file_path = Path(path.removeprefix("file://"))
+                    file_path.parent.mkdir(parents=True, exist_ok=True)
+                    file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
+
+        yield _provision
