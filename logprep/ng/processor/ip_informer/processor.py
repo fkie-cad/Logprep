@@ -25,6 +25,7 @@ Processor Configuration
 
 import ipaddress
 import typing
+from functools import partial
 from itertools import chain
 from typing import Iterable
 
@@ -34,6 +35,7 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.ip_informer.rule import IpInformerRule, get_ip_property_names
 from logprep.util.helper import (
     FieldValue,
+    get_dotted_field_value,
     get_dotted_field_values,
 )
 
@@ -66,8 +68,7 @@ class IpInformer(FieldManager):
     def _get_flat_ip_address_list(
         self, event: dict[str, FieldValue], rule: IpInformerRule
     ) -> Iterable:
-        source_field_values = get_dotted_field_values(event, rule.source_fields)
-
+        source_field_values = list(get_dotted_field_values(event, rule.source_fields).values())
         list_elements = [value for value in source_field_values if isinstance(value, list)]
         str_elements = [value for value in source_field_values if isinstance(value, str)]
 
