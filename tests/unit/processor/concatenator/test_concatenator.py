@@ -5,7 +5,7 @@ import pytest
 
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
-    ProcessingCriticalError,
+    ProcessingWarning,
 )
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -202,6 +202,10 @@ class TestConcatenator(BaseProcessorTestCase):
         document = {"field": {"a": "first", "b": True}, "other_field": {"c": "third"}}
         result = self.object.process(document)
 
-        assert len(result.errors) == 1
-        assert isinstance(result.errors[0], ProcessingCriticalError)
-        assert "sequence item 1: expected str instance, bool found" in result.errors[0].message
+        assert len(result.warnings) == 1
+        exception = result.warnings[0]
+        assert isinstance(exception, ProcessingWarning)
+        assert "Only string values are allowed as source field values in Concatenator" in str(
+            exception
+        )
+        assert document["tags"] == ["_concatenator_failure"]

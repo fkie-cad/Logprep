@@ -28,6 +28,7 @@ Processor Configuration
 import typing
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.concatenator.rule import ConcatenatorRule
 from logprep.util.helper import (
@@ -65,7 +66,12 @@ class Concatenator(FieldManager):
 
         try:
             target_value = f"{rule.separator}".join(source_field_values)  # type: ignore[arg-type]
-        except:
-            raise
+        except TypeError as ex:
+            raise ProcessingWarning(
+                f"Only string values are allowed as source field values in {self.__class__.__name__}",
+                rule=rule,
+                event=event,
+                tags=rule.failure_tags,
+            ) from ex
 
         self._write_target_field(event, rule, target_value)
