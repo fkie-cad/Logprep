@@ -31,7 +31,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.getter import RefreshableGetter
-from logprep.util.helper import add_fields_to
+from logprep.util.helper import FieldValue, add_fields_to
 
 
 class GenericAdder(Processor):
@@ -49,7 +49,7 @@ class GenericAdder(Processor):
         for rule in self.rules:
             rule.init_generic_adder(self._job_tag_for_cleanup)
 
-    def _apply_rules(self, event: dict, rule: GenericAdderRule):
+    def _apply_rules(self, event: dict[str, FieldValue], rule: GenericAdderRule):
         try:
             for items_to_add in rule.additions(event):
                 if items_to_add:

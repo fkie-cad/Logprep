@@ -99,7 +99,10 @@ from logprep.util.helper import (
 
 @define(kw_only=True, frozen=True)
 class UriConfig:
-    """Configuration for adding values loaded from an URI, which can be HTTP(S) URLs or file paths"""
+    """
+    Configuration for adding values loaded from an URI,
+    which can be HTTP(S) URLs or file paths
+    """
 
     uri: str = field(validator=validators.and_(validators.instance_of(str), validators.min_len(1)))
     """The URI to load values from.
@@ -320,25 +323,15 @@ class GenericAdderRule(Rule):
                     f"only_first_existing_file does not support event-dependent paths: {config!r}"
                 )
 
-            self._uri_sources.append(source)
-
             try:
                 self._init_static_source(source, raise_on_error=True)
-                if source.error is not None:
-                    raise InvalidRuleDefinitionError(
-                        f"Could not load generic_adder URI {config.uri!r}: {source.error}"
-                    ) from source.error
             except InvalidRuleDefinitionError as error:
-                self._uri_sources.pop()
-
                 if isinstance(error.__cause__, FileNotFoundError):
                     missing_files.append(config.uri)
                     continue
-
                 raise
-
+            self._uri_sources.append(source)
             return
-
         raise InvalidRuleDefinitionError(f"None of the configured files exist: {missing_files!r}")
 
     def _create_uri_source(self, config: UriConfig) -> _UriSource:
@@ -354,23 +347,23 @@ class GenericAdderRule(Rule):
         )
 
     def _init_static_source(self, source: _UriSource, raise_on_error: bool):
-        resolved_uri = source.template.substitute()
-        getter = GetterFactory.from_string(resolved_uri)
+        assert source.static_uri is not None
+        getter = GetterFactory.from_string(source.static_uri)
 
         assert self._callback_tag
 
-        self._update_static_content(source, getter, resolved_uri)
+        self._update_static_content(source, getter, source.static_uri)
         if source.error and raise_on_error:
             raise InvalidRuleDefinitionError(
-                f"Could not load generic_adder URI {resolved_uri!r}: {source.error}"
+                f"Could not load generic_adder URI {source.static_uri!r}: {source.error}"
             ) from source.error
 
         if isinstance(getter, RefreshableGetter):
             getter.add_callback(
                 self._callback_tag,
                 self._update_static_content,
-                deduplication_key=(self._callback_tag, resolved_uri, id(source)),
-                fnc_args=[source, getter, resolved_uri],
+                deduplication_key=(self._callback_tag, source.static_uri, id(source)),
+                fnc_args=[source, getter, source.static_uri],
             )
 
     def _get_cached_or_dynamic_content(
@@ -389,7 +382,6 @@ class GenericAdderRule(Rule):
                 raise ValueError(
                     f"value for generic adder field {identifier!r} is not a scalar value"
                 )
-            pass
 
         resolved_uri = source.template.substitute(values)
 
@@ -442,20 +434,18 @@ class GenericAdderRule(Rule):
         if isinstance(content, dict):
             return content
 
-        raise ValueError(
-            f"URI source {config.uri!r} without target_field must contain a mapping, got {type(content).__name__}"
-        )
+        raise ValueError(f"""URI source {config.uri!r} without target_field must contain a mapping,
+            got {type(content).__name__}""")
 
     def _fetch_and_cache_uri(self, source: _UriSource, getter: Getter, resolved_uri: str):
         content = getter.get_collection(content_field=self.config.content_field)
-
         source.content_by_uri[resolved_uri] = content
         return content
 
     def _update_static_content(self, source: _UriSource, getter: Getter, uri: str) -> None:
         try:
             self._fetch_and_cache_uri(source, getter, uri)
-        except Exception as error:
+        except Exception as error:  # pylint: disable=broad-except
             source.error = error
         else:
             source.error = None
@@ -470,12 +460,12 @@ class GenericAdderRule(Rule):
         elif len(errors) == 1:
             self.mark_failed(errors[0])
         else:
-            self.mark_failed(ExceptionGroup("generic-adder URI loading failed", errors))
+            self.mark_failed(ExceptionGroup("generic_adder URI loading failed", errors))
 
     def _cleanup(self, source: _UriSource, resolved_uri: str) -> None:
         source.content_by_uri.pop(resolved_uri, None)
 
-    def additions(self, event: dict) -> Iterator[dict[str, FieldValue]]:
+    def additions(self, event: dict[str, FieldValue]) -> Iterator[dict[str, FieldValue]]:
         if self.config.add:
             yield self.config.add
 
@@ -483,6 +473,6 @@ class GenericAdderRule(Rule):
             content = self._content_for_source(source, event)
             yield self._content_to_items_to_add(source.config, content)
 
-    def add(self, event: dict) -> dict:
+    def add(self, event: dict[str, FieldValue]) -> dict[str, FieldValue]:
         """Returns the fields to add"""
         return {key: value for items in self.additions(event) for key, value in items.items()}
