@@ -63,21 +63,25 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         assert event == expected
 
     async def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
-        with pytest.raises(InvalidRuleDefinitionError, match=r"Could not load generic-adder URI"):
+        with pytest.raises(InvalidRuleDefinitionError, match=r"Could not load generic_adder URI"):
             config = deepcopy(self.CONFIG)
             config["rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
             await Factory.create(configuration).setup()
 
     async def test_add_generic_fields_from_file_invalid(self):
-        with pytest.raises(
-            InvalidRuleDefinitionError,
-            match=r"without target_field must contain a mapping",
-        ):
-            config = deepcopy(self.CONFIG)
-            config["rules"] = [RULES_DIR_INVALID]
-            configuration = {"test processor": config}
-            await Factory.create(configuration).setup()
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [RULES_DIR_INVALID]
+        configuration = {"test processor": config}
+        processor = Factory.create(configuration)
+        await processor.setup()
+
+        event = {"add_list_invalid_generic_test": True}
+        result = await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
+
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert "without target_field must contain a mapping" in str(result.warnings[0])
 
     async def test_add_only_copies(self):
         instance = self._create_test_instance(

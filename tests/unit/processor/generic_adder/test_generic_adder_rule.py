@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import responses
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.generic_adder.rule import GenericAdderRule, UriConfig
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetter
@@ -229,12 +230,9 @@ class TestGenericAdderRule:
         assert rule.add({"tenant": "acme"}) == {"enrichment": response_content["payload"]}
 
     @responses.activate
-    def test_static_url_recovers_after_failed_initial_load(self, tmp_path):
+    def test_static_url_failed_initial_load_raises(self):
         url = "https://values.example/static"
-        response_content = {"risk": {"score": 7}}
         responses.add(responses.GET, url, status=500)
-        getter_config = tmp_path / "http_getter.json"
-        getter_config.write_text(json.dumps({url: {"refresh_interval": 1}}))
         rule = GenericAdderRule.create_from_dict(
             {
                 "filter": "*",
@@ -247,21 +245,11 @@ class TestGenericAdderRule:
             }
         )
 
-        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(getter_config)}):
+        with pytest.raises(
+            InvalidRuleDefinitionError,
+            match=r"Could not load generic_adder URI 'https://values.example/static'",
+        ):
             rule.init_generic_adder("generic-adder-test")
-            getter = GetterFactory.from_string(url)
-            assert isinstance(getter, HttpGetter)
-            assert getter.scheduler is not None
-
-            assert rule.data_error is not None
-            assert len(getter.shared.callbacks) == 1
-            assert len(getter.shared.cleanup_callbacks) == 0
-
-            responses.replace(responses.GET, url, json=response_content)
-            getter.scheduler.run_all()
-
-        assert rule.data_error is None
-        assert rule.add({}) == {"enrichment": response_content}
 
     def test_merges_inline_and_ordered_file_uri_sources(self, tmp_path):
         first_file = tmp_path / "first.json"

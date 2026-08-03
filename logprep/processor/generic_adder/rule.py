@@ -123,7 +123,7 @@ def _convert_uri_config(
     values: Sequence[str | dict[str, object] | UriConfig]
 
     if isinstance(value, (str, dict, UriConfig)):
-        values = (value,)
+        values = [value]
     else:
         values = value
 
@@ -137,7 +137,8 @@ def _convert_uri_config(
 class _UriSource:
     config: UriConfig
     template: DottedTemplate
-    identifiers: tuple[str, ...]
+    static_uri: str | None
+    identifiers: Sequence[str]
     content_by_uri: dict[str, FieldValue] = field(factory=dict)
     error: Exception | None = None
 
@@ -307,7 +308,7 @@ class GenericAdderRule(Rule):
             self._uri_sources.append(source)
 
             if not source.identifiers:
-                self._init_static_source(source)
+                self._init_static_source(source, raise_on_error=True)
 
     def _init_first_existing_file(self) -> None:
         missing_files: list[str] = []
@@ -322,10 +323,10 @@ class GenericAdderRule(Rule):
             self._uri_sources.append(source)
 
             try:
-                self._init_static_source(source)
+                self._init_static_source(source, raise_on_error=True)
                 if source.error is not None:
                     raise InvalidRuleDefinitionError(
-                        f"Could not load generic-adder URI {config.uri!r}: {source.error}"
+                        f"Could not load generic_adder URI {config.uri!r}: {source.error}"
                     ) from source.error
             except InvalidRuleDefinitionError as error:
                 self._uri_sources.pop()
@@ -343,32 +344,34 @@ class GenericAdderRule(Rule):
     def _create_uri_source(self, config: UriConfig) -> _UriSource:
         template = DottedTemplate(DottedTemplate(config.uri).safe_substitute(ENV_VARS))
 
+        identifiers = template.get_identifiers()
+
         return _UriSource(
-            config=config, template=template, identifiers=tuple(template.get_identifiers())
+            config=config,
+            template=template,
+            identifiers=tuple(identifiers),
+            static_uri=None if identifiers else template.substitute(),
         )
 
-    def _init_static_source(self, source: _UriSource):
+    def _init_static_source(self, source: _UriSource, raise_on_error: bool):
         resolved_uri = source.template.substitute()
         getter = GetterFactory.from_string(resolved_uri)
 
         assert self._callback_tag
 
+        self._update_static_content(source, getter, resolved_uri)
+        if source.error and raise_on_error:
+            raise InvalidRuleDefinitionError(
+                f"Could not load generic_adder URI {resolved_uri!r}: {source.error}"
+            ) from source.error
+
         if isinstance(getter, RefreshableGetter):
-            self._update_static_content(source, getter, resolved_uri)
             getter.add_callback(
                 self._callback_tag,
                 self._update_static_content,
                 deduplication_key=(self._callback_tag, resolved_uri, id(source)),
                 fnc_args=[source, getter, resolved_uri],
             )
-            return
-
-        try:
-            self._fetch_and_cache_uri(source, getter, resolved_uri)
-        except (FileNotFoundError, ValueError) as error:
-            raise InvalidRuleDefinitionError(
-                f"Could not load generic-adder URI {resolved_uri!r}: {error}"
-            ) from error
 
     def _get_cached_or_dynamic_content(
         self, source: _UriSource, event: dict[str, FieldValue]
@@ -396,7 +399,9 @@ class GenericAdderRule(Rule):
 
         getter = GetterFactory.from_string(resolved_uri)
         if not isinstance(getter, RefreshableGetter):
-            return getter.get_collection()
+            raise InvalidRuleDefinitionError(
+                f"Dynamic file URIs are not supported, uri {resolved_uri!r}"
+            )
 
         getter.keep_alive()
         content = self._fetch_and_cache_uri(source, getter, resolved_uri)
@@ -425,8 +430,8 @@ class GenericAdderRule(Rule):
         if source.identifiers:
             return self._get_cached_or_dynamic_content(source, event)
 
-        resolved_uri = source.template.substitute()
-        return source.content_by_uri[resolved_uri]
+        assert source.static_uri
+        return source.content_by_uri[source.static_uri]
 
     def _content_to_items_to_add(
         self, config: UriConfig, content: FieldValue
@@ -435,7 +440,7 @@ class GenericAdderRule(Rule):
             return {config.target_field: content}
 
         if isinstance(content, dict):
-            return dict(content)
+            return content
 
         raise ValueError(
             f"URI source {config.uri!r} without target_field must contain a mapping, got {type(content).__name__}"
@@ -444,7 +449,6 @@ class GenericAdderRule(Rule):
     def _fetch_and_cache_uri(self, source: _UriSource, getter: Getter, resolved_uri: str):
         content = getter.get_collection(content_field=self.config.content_field)
 
-        self._content_to_items_to_add(source.config, content)
         source.content_by_uri[resolved_uri] = content
         return content
 
