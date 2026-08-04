@@ -4,7 +4,7 @@ import logging
 import typing
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Type
+from typing import Any, ClassVar
 
 from attrs import define, field, validators
 
@@ -13,6 +13,7 @@ from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
 from logprep.ng.abc.event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.processor.base.rule import Rule
 from logprep.util.environ import ENV_VARS
 from logprep.util.helper import (
     FieldValue,
@@ -23,9 +24,6 @@ from logprep.util.helper import (
     pop_dotted_field_value,
 )
 from logprep.util.rule_loader import RuleLoader
-
-if TYPE_CHECKING:
-    from logprep.processor.base.rule import Rule  # pragma: no cover
 
 
 @define
@@ -76,7 +74,7 @@ class Processor(Component):
         "_bypass_rule_tree",
     ]
 
-    rule_class: ClassVar[Type["Rule"] | None] = None
+    rule_class: ClassVar[type[Rule] | None] = None
     _event: LogEvent
     _rule_tree: RuleTree
     _strategy = None
@@ -116,6 +114,11 @@ class Processor(Component):
             "name": self.name,
         }
 
+    async def has_asyncio(self) -> bool:
+        """Return whether the processor performs asynchronous I/O operations."""
+
+        return False
+
     async def process(self, event: LogEvent) -> LogEvent:
         """Process a log event.
 
@@ -135,50 +138,50 @@ class Processor(Component):
         self._event = event
         logger.debug("%s processing event %s", self.description, event)
         if self._bypass_rule_tree:
-            self._process_all_rules(event.data)
+            await self._process_all_rules(event.data)
             return self._event
-        self._process_rule_tree(event.data, self._rule_tree)
+        await self._process_rule_tree(event.data, self._rule_tree)
         return self._event
 
-    @Metric.measure_time(self_arg=1)
-    def _process_rule(self, rule, event):
-        self._apply_rules_wrapper(event, rule)
+    @Metric.measure_time_async(self_arg=1)
+    async def _process_rule(self, rule, event):
+        await self._apply_rules_wrapper(event, rule)
         rule.metrics.number_of_processed_events += 1
         return event
 
-    def _process_rule_tree_multiple_times(self, tree: RuleTree, event: dict) -> None:
+    async def _process_rule_tree_multiple_times(self, tree: RuleTree, event: dict) -> None:
         applied_rules = set()
         matching_rules: Iterable[Rule] = tree.get_matching_rules(event)
         while matching_rules:
             for rule in matching_rules:
-                self._process_rule(rule, event)
+                await self._process_rule(rule, event)
                 applied_rules.add(rule)
             matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
-    def _process_rule_tree_once(self, tree: RuleTree, event: dict) -> None:
+    async def _process_rule_tree_once(self, tree: RuleTree, event: dict) -> None:
         matching_rules = tree.get_matching_rules(event)
         for rule in matching_rules:
-            self._process_rule(rule, event)
+            await self._process_rule(rule, event)
 
-    def _process_rule_tree(self, event: dict, tree: RuleTree) -> None:
+    async def _process_rule_tree(self, event: dict, tree: RuleTree) -> None:
         if self.config.apply_multiple_times:
-            self._process_rule_tree_multiple_times(tree, event)
+            await self._process_rule_tree_multiple_times(tree, event)
         else:
-            self._process_rule_tree_once(tree, event)
+            await self._process_rule_tree_once(tree, event)
 
-    def _process_all_rules(self, event: dict) -> None:
+    async def _process_all_rules(self, event: dict) -> None:
         for rule in self.rules:
             if rule.matches(event):
-                self._process_rule(rule, event)
+                await self._process_rule(rule, event)
 
-    def _apply_rules_wrapper(self, event: dict[str, FieldValue], rule: "Rule") -> None:
+    async def _apply_rules_wrapper(self, event: dict[str, FieldValue], rule: "Rule") -> None:
         try:
             data_error = rule.data_error
             if data_error is not None:
                 self._handle_warning_error(event=event, rule=rule, error=data_error)
                 return
 
-            self._apply_rules(event, rule)
+            await self._apply_rules(event, rule)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
@@ -196,7 +199,7 @@ class Processor(Component):
                 pop_dotted_field_value(self._event.data, dotted_field)
 
     @abstractmethod
-    def _apply_rules(self, event: dict, rule: "Rule"): ...  # pragma: no cover
+    async def _apply_rules(self, event: dict, rule: "Rule"): ...  # pragma: no cover
 
     def test_rules(self) -> dict | None:
         """Perform custom rule tests.
@@ -227,7 +230,7 @@ class Processor(Component):
     def _handle_warning_error(
         self,
         event: dict[str, FieldValue],
-        rule: "Rule",
+        rule: Rule,
         error: Exception,
         failure_tags: list[str] | None = None,
     ) -> None:

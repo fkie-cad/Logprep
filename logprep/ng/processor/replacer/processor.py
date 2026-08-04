@@ -23,13 +23,16 @@ Processor Configuration
 .. automodule:: logprep.processor.replacer.rule
 """
 
+import typing
+
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.rule import Rule
 from logprep.processor.replacer.rule import (
     Replacement,
     ReplacementTemplate,
     ReplacerRule,
 )
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 
 class Replacer(FieldManager):
@@ -37,7 +40,8 @@ class Replacer(FieldManager):
 
     rule_class = ReplacerRule
 
-    def _apply_rules(self, event: dict, rule: ReplacerRule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
+        rule = typing.cast(ReplacerRule, rule)
         for source_field in rule.mapping:
             template = rule.templates.get(source_field)
             if template is None:
@@ -45,7 +49,7 @@ class Replacer(FieldManager):
 
             value_to_replace = get_dotted_field_value(event, source_field)
             if value_to_replace is None and not rule.ignore_missing_fields:
-                error = BaseException(f"replacer: mapping field '{source_field}' does not exist")
+                error = Exception(f"replacer: mapping field '{source_field}' does not exist")
                 self._handle_warning_error(event, rule, error)
             value_to_replace = str(value_to_replace)
 

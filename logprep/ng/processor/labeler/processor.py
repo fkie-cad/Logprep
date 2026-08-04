@@ -33,7 +33,7 @@ from logprep.ng.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 
 class Labeler(Processor):
@@ -79,7 +79,7 @@ class Labeler(Processor):
                 rule.add_parent_labels_from_schema(self._schema)
             rule.conforms_to_schema(self._schema)
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """Applies the rule to the current event"""
         rule = typing.cast(LabelerRule, rule)
         add_fields_to(event, rule.prefixed_label, rule=rule, merge_with_target=True)

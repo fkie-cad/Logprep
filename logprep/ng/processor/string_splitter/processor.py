@@ -32,7 +32,7 @@ from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.string_splitter.rule import StringSplitterRule
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import FieldValue, get_dotted_field_value
 
 
 class StringSplitter(FieldManager):
@@ -41,7 +41,7 @@ class StringSplitter(FieldManager):
     rule_class = StringSplitterRule
 
     @override
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(StringSplitterRule, rule)
 
         source_field = rule.source_fields[0]

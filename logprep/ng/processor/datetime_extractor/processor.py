@@ -30,7 +30,7 @@ from datetime import datetime, tzinfo
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import FieldValue, get_dotted_field_value
 from logprep.util.time import TimeParser
 
 
@@ -49,7 +49,7 @@ class DatetimeExtractor(FieldManager):
             local_timezone_name += f"{tz_name[:-2]}:{tz_name[-2:]}"
         return local_timezone_name
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(DatetimeExtractorRule, rule)
         datetime_field = rule.source_fields[0]
         destination_field = rule.target_field

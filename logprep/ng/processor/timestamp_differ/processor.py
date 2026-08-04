@@ -29,7 +29,7 @@ from datetime import datetime, timedelta
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
-from logprep.util.helper import get_source_fields_dict
+from logprep.util.helper import FieldValue, get_source_fields_dict
 from logprep.util.time import UTC, TimeParser, TimeParserException
 
 
@@ -38,7 +38,7 @@ class TimestampDiffer(FieldManager):
 
     rule_class = TimestampDifferRule
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(TimestampDifferRule, rule)
         source_field_formats = rule.source_field_formats
         source_field_dict = get_source_fields_dict(event, rule)

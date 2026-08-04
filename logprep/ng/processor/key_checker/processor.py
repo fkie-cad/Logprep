@@ -24,20 +24,21 @@ Processor Configuration
 .. automodule:: logprep.processor.key_checker.rule
 """
 
-from typing import Iterable
+import typing
 
 from logprep.ng.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.key_checker.rule import KeyCheckerRule
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import FieldValue, get_dotted_field_value
 
 
 class KeyChecker(Processor):
     """Checks if all keys of a given List are in the event"""
 
-    rule_class: Rule = KeyCheckerRule
+    rule_class = KeyCheckerRule
 
-    def _apply_rules(self, event: dict, rule: KeyCheckerRule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
+        rule = typing.cast(KeyCheckerRule, rule)
         not_existing_fields = list(
             {
                 dotted_field
@@ -51,7 +52,7 @@ class KeyChecker(Processor):
 
         output_value = get_dotted_field_value(event, rule.target_field)
 
-        if isinstance(output_value, Iterable):
+        if isinstance(output_value, typing.Iterable):
             output_value = list({*not_existing_fields, *output_value})
         else:
             output_value = not_existing_fields

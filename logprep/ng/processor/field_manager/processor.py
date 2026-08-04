@@ -44,9 +44,9 @@ from logprep.util.helper import (
 class FieldManager(Processor):
     """A processor that copies, moves or merges source fields to one target field"""
 
-    rule_class = FieldManagerRule
+    rule_class: typing.ClassVar[type[FieldManagerRule]] = FieldManagerRule
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(FieldManagerRule, rule)
         rule_args = (
             rule.source_fields,

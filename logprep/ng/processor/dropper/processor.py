@@ -29,7 +29,7 @@ import typing
 from logprep.ng.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.dropper.rule import DropperRule
-from logprep.util.helper import pop_dotted_field_value
+from logprep.util.helper import FieldValue, pop_dotted_field_value
 
 
 class Dropper(Processor):
@@ -37,7 +37,7 @@ class Dropper(Processor):
 
     rule_class = DropperRule
 
-    def _apply_rules(self, event: dict, rule: Rule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """Drops fields from event Logs."""
         rule = typing.cast(DropperRule, rule)
         for dotted_field in rule.fields_to_drop:

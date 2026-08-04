@@ -34,7 +34,7 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.calculator.fourFn import BNF
 from logprep.processor.calculator.rule import CalculatorRule
 from logprep.util.decorators import timeout
-from logprep.util.helper import get_source_fields_dict, resolve_template
+from logprep.util.helper import FieldValue, get_source_fields_dict, resolve_template
 
 
 class Calculator(FieldManager):
@@ -42,7 +42,7 @@ class Calculator(FieldManager):
 
     rule_class = CalculatorRule
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(CalculatorRule, rule)
         source_field_dict = get_source_fields_dict(event, rule)
         if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):

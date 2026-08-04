@@ -302,3 +302,6 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         ]
         with pytest.raises(InvalidRuleDefinitionError):
             self.object.load_rules(rules_targets=rule_definitions)
+
+    async def test_has_async_io(self):
+        assert await self.object.has_asyncio() is False

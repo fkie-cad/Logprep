@@ -3,7 +3,10 @@
 
 import pytest
 
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingWarning,
+)
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -182,3 +185,27 @@ class TestConcatenator(BaseProcessorTestCase):
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
         assert document.get("tags") == ["_concatenator_failure"]
+
+    def test_failing_if_any_field_value_in_not_a_string(self):
+        rule = {
+            "filter": "field.a",
+            "concatenator": {
+                "source_fields": ["field.a", "field.b", "other_field.c"],
+                "target_field": "target_field",
+                "separator": "-",
+                "overwrite_target": False,
+                "delete_source_fields": False,
+            },
+        }
+        self._load_rule(rule)
+
+        document = {"field": {"a": "first", "b": True}, "other_field": {"c": "third"}}
+        result = self.object.process(document)
+
+        assert len(result.warnings) == 1
+        exception = result.warnings[0]
+        assert isinstance(exception, ProcessingWarning)
+        assert "Only string values are allowed as source field values in Concatenator" in str(
+            exception
+        )
+        assert document["tags"] == ["_concatenator_failure"]

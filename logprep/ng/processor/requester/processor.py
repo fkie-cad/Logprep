@@ -44,6 +44,7 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.requester.rule import RequesterRule
 from logprep.util.helper import (
+    FieldValue,
     add_fields_to,
     create_template_resolver,
     get_source_fields_dict,
@@ -59,7 +60,7 @@ class Requester(FieldManager):
 
     rule_class = RequesterRule
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(RequesterRule, rule)
         source_field_dict = get_source_fields_dict(event, rule)
         if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):

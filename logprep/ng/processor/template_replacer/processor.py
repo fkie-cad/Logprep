@@ -41,7 +41,7 @@ from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 
 class TemplateReplacerError(Exception):
@@ -90,7 +90,7 @@ class TemplateReplacer(FieldManager):
         """Provides the properly typed configuration object"""
         return typing.cast(TemplateReplacer.Config, self._config)
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(TemplateReplacerRule, rule)
         source_field_values = self._get_field_values(event, self._fields)
         if self._handle_missing_fields(event, rule, self._fields, source_field_values):

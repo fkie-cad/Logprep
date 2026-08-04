@@ -25,6 +25,9 @@ Processor Configuration
 .. automodule:: logprep.processor.concatenator.rule
 """
 
+import typing
+
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.concatenator.rule import ConcatenatorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import get_dotted_field_value
@@ -48,6 +51,7 @@ class Concatenator(FieldManager):
         rule :
             Currently applied concatenator rule.
         """
+        rule = typing.cast(ConcatenatorRule, rule)
         source_field_values = []
         for source_field in rule.source_fields:
             field_value = get_dotted_field_value(event, source_field)
@@ -55,6 +59,15 @@ class Concatenator(FieldManager):
         self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
 
         source_field_values = [field for field in source_field_values if field is not None]
-        target_value = f"{rule.separator}".join(source_field_values)
+
+        try:
+            target_value = f"{rule.separator}".join(source_field_values)  # type: ignore[arg-type]
+        except TypeError as ex:
+            raise ProcessingWarning(
+                f"Only string values are allowed as source field values in {self.__class__.__name__}",
+                rule=rule,
+                event=event,
+                tags=rule.failure_tags,
+            ) from ex
 
         self._write_target_field(event, rule, target_value)

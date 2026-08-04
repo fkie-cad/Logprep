@@ -33,7 +33,7 @@ from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
 from logprep.ng.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.processor.base.rule import Rule
-from logprep.util.helper import add_fields_to, get_source_fields_dict
+from logprep.util.helper import FieldValue, add_fields_to, get_source_fields_dict
 
 
 class SelectiveExtractor(FieldManager):
@@ -41,7 +41,7 @@ class SelectiveExtractor(FieldManager):
 
     rule_class = SelectiveExtractorRule
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """
         Generates a filtered event based on the incoming event and the configured
         extraction_fields list in processor configuration or from rule.

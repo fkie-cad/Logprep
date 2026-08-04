@@ -30,7 +30,7 @@ from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.timestamper.rule import TimestamperRule
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import FieldValue, get_dotted_field_value
 from logprep.util.time import TimeParser, TimeParserException
 
 
@@ -39,7 +39,7 @@ class Timestamper(FieldManager):
 
     rule_class = TimestamperRule
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(TimestamperRule, rule)
         source_value = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [source_value]):
