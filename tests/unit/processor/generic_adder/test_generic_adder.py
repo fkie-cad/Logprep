@@ -7,10 +7,16 @@ import typing
 from copy import deepcopy
 
 import pytest
+import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.base.exceptions import (
+    InvalidRuleDefinitionError,
+    ProcessingWarning,
+)
 from logprep.processor.generic_adder.processor import GenericAdder
+from logprep.util.getter import HttpGetter
+from tests.conftest import mock_env
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
@@ -18,6 +24,139 @@ RULES_DIR_INVALID = "tests/testdata/unit/generic_adder/rules_invalid"
 RULES_DIR_FIRST_EXISTING = "tests/testdata/unit/generic_adder/rules_first_existing"
 
 test_cases = [  # testcase, rule, event, expected
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": {
+                    "uri": "tests/testdata/unit/generic_adder/additions_file.yml",
+                    "target_field": "uri_content",
+                }
+            },
+        },
+        {"event_id": 123},
+        {
+            "event_id": 123,
+            "uri_content": {
+                "some_added_field": "some value",
+                "another_added_field": "another_value",
+                "dotted.added.field": "yet_another_value",
+            },
+        },
+        id="Add from URI to target field",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": {
+                    "uri": "tests/testdata/unit/generic_adder/additions_list_1.yml",
+                    "target_field": "enrichment.values",
+                }
+            },
+        },
+        {},
+        {"enrichment": {"values": ["first_uri_value"]}},
+        id="Add non-mapping URI response to dotted target field",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add": {"shared_field": {"from_inline_add": True}},
+                "add_from_file": "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {
+            "shared_field": {
+                "from_inline_add": True,
+                "from_first_source": True,
+            }
+        },
+        id="Merge same field from add and add_from_file",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add": {"shared_field": {"from_inline_add": True}},
+                "add_from_uri": "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {
+            "shared_field": {
+                "from_inline_add": True,
+                "from_first_source": True,
+            }
+        },
+        id="Merge same field from add and add_from_uri",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_file": [
+                    "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                    "tests/testdata/unit/generic_adder/additions_merge_2.yml",
+                ],
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {
+            "shared_field": {
+                "from_first_source": True,
+                "from_second_source": True,
+            }
+        },
+        id="Merge same field from two add_from_file sources",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": [
+                    "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                    "tests/testdata/unit/generic_adder/additions_merge_2.yml",
+                ],
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {
+            "shared_field": {
+                "from_first_source": True,
+                "from_second_source": True,
+            }
+        },
+        id="Merge same field from two add_from_uri sources",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add": {"shared_list": ["inline_value"]},
+                "add_from_uri": [
+                    {
+                        "uri": "tests/testdata/unit/generic_adder/additions_list_1.yml",
+                        "target_field": "shared_list",
+                    },
+                    {
+                        "uri": "tests/testdata/unit/generic_adder/additions_list_2.yml",
+                        "target_field": "shared_list",
+                    },
+                ],
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {"shared_list": ["inline_value", "first_uri_value", "second_uri_value"]},
+        id="Merge lists from inline add and ordered URI sources",
+    ),
     pytest.param(
         {
             "filter": "add_list_generic_test",
@@ -295,7 +434,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "add_generic_test": "Test",
             "event_id": 123,
-            "\\u\\0\\1\\x\\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
+            "\\u\\0\\1\\x\\z": "whatever",
         },
         {
             "add_generic_test": "Test",
@@ -303,8 +442,8 @@ test_cases = [  # testcase, rule, event, expected
             "comp\\lex.field": "value",
             "comp\\lex.nested": {"field": 42},
             "nested": {"comp\\lex.field": 1337},
-            "\\u\\0\\1\\x\y": 1338,  # pylint: disable=anomalous-backslash-in-string
-            "\\u\\0\\1\\x\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
+            "\\u\\0\\1\\x\\y": 1338,
+            "\\u\\0\\1\\x\\z": "whatever",
         },
         id="Add from rule definition with escaping",
     ),
@@ -389,6 +528,37 @@ failure_test_cases = [
     ),
 ]
 
+dynamic_uri_failure_test_cases = [
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": {
+                    "uri": "https://values.example/${tenant}",
+                    "target_field": "enrichment",
+                }
+            },
+        },
+        {"tenant": ["not", "scalar"]},
+        "value for generic adder field 'tenant' is not a scalar value",
+        id="Reject non-scalar dynamic URI field",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": {
+                    "uri": "tests/testdata/unit/generic_adder/${filename}.yml",
+                    "target_field": "enrichment",
+                }
+            },
+        },
+        {"filename": "additions_file"},
+        "Dynamic file URIs are not supported",
+        id="Reject dynamic file URI",
+    ),
+]
+
 
 class TestGenericAdder(BaseProcessorTestCase):
 
@@ -400,6 +570,7 @@ class TestGenericAdder(BaseProcessorTestCase):
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     def test_generic_adder_testcases(self, rule, event, expected):
         self._load_rule(rule)
+        self.object.setup()
         self.object.process(event)
         assert event == expected
 
@@ -411,22 +582,37 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))
         assert event == expected
 
+    @pytest.mark.parametrize("rule, event, error_message", dynamic_uri_failure_test_cases)
+    def test_dynamic_uri_failure_handling(self, rule, event, error_message):
+        self._load_rule(rule)
+        self.object.setup()
+
+        result = self.object.process(event)
+
+        assert result.errors == []
+        assert len(result.warnings) == 1
+        assert error_message in str(result.warnings[0])
+        assert event["tags"] == ["_generic_adder_failure"]
+
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
-        with pytest.raises(InvalidRuleDefinitionError, match=r"files do not exist"):
+        with pytest.raises(InvalidRuleDefinitionError, match=r"Could not load generic_adder URI"):
             config = deepcopy(self.CONFIG)
             config["rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
-            Factory.create(configuration)
+            Factory.create(configuration).setup()
 
     def test_add_generic_fields_from_file_invalid(self):
-        with pytest.raises(
-            InvalidRuleDefinitionError,
-            match=r"must be a dictionary with string values",
-        ):
-            config = deepcopy(self.CONFIG)
-            config["rules"] = [RULES_DIR_INVALID]
-            configuration = {"test processor": config}
-            Factory.create(configuration)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [RULES_DIR_INVALID]
+        configuration = {"test processor": config}
+        processor = Factory.create(configuration)
+        processor.setup()
+
+        result = processor.process({"add_list_invalid_generic_test": True})
+
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert "without target_field must contain a mapping" in str(result.warnings[0])
 
     def test_add_only_copies(self):
         instance = typing.cast(
@@ -454,10 +640,181 @@ class TestGenericAdder(BaseProcessorTestCase):
         event = {}
         instance.process(event)
 
-        rule_add = instance.rules[0].add
+        rule_add = instance.rules[0].add({})
 
         assert event["some_list_field"] == ["some_value"]
         assert event["some_list_field"] is not rule_add["some_list_field"], "only copies in events"
 
         assert event["some_dict_field"] == {"some_key": "some_value"}
         assert event["some_dict_field"] is not rule_add["some_dict_field"], "only copies in events"
+
+    @responses.activate
+    def test_adds_response_from_event_templated_url(self):
+        resolved_url = "https://values.example/acme"
+        response_content = {"user": {"name": "Alice"}, "risk": {"score": 7}}
+        responses.add(responses.GET, resolved_url, json=response_content)
+        configuration = {
+            "dynamic_generic_adder": {
+                "type": "generic_adder",
+                "rules": [
+                    {
+                        "filter": "*",
+                        "generic_adder": {
+                            "add_from_uri": {
+                                "uri": "https://${GENERIC_ADDER_HOST}/${tenant.id}",
+                                "target_field": "enrichment",
+                            }
+                        },
+                    }
+                ],
+            }
+        }
+
+        with mock_env({"GENERIC_ADDER_HOST": "values.example"}):
+            processor = typing.cast(GenericAdder, self._create_test_instance(configuration))
+            processor.setup()
+
+            first_event = {"tenant": {"id": "acme"}}
+            second_event = {"tenant": {"id": "acme"}}
+            first_result = processor.process(first_event)
+            second_result = processor.process(second_event)
+
+            processor.shut_down()
+
+        assert first_result.errors == []
+        assert second_result.errors == []
+        assert first_event == {
+            "tenant": {"id": "acme"},
+            "enrichment": response_content,
+        }
+        assert second_event == first_event
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == resolved_url
+
+    @responses.activate
+    def test_shutdown_removes_dynamic_uri_callbacks(self):
+        url = "https://values.example/acme"
+        responses.add(responses.GET, url, json={"value": 1})
+        processor = typing.cast(
+            GenericAdder,
+            self._create_test_instance(
+                {
+                    "dynamic_generic_adder": {
+                        "type": "generic_adder",
+                        "rules": [
+                            {
+                                "filter": "*",
+                                "generic_adder": {
+                                    "add_from_uri": {
+                                        "uri": "https://values.example/${tenant}",
+                                        "target_field": "enrichment",
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                }
+            ),
+        )
+        processor.setup()
+
+        processor.process({"tenant": "acme"})
+
+        shared = HttpGetter._target_to_data_caches[url]
+        assert len(shared.callbacks) == 1
+        assert len(shared.cleanup_callbacks) == 1
+
+        processor.shut_down()
+
+        assert shared.callbacks == []
+        assert shared.cleanup_callbacks == []
+
+    @responses.activate
+    def test_dynamic_url_failure_is_event_scoped(self):
+        failed_url = "https://values.example/acme"
+        successful_url = "https://values.example/beta"
+        responses.add(responses.GET, failed_url, status=500)
+        responses.add(responses.GET, successful_url, json={"risk": {"score": 7}})
+        processor = typing.cast(
+            GenericAdder,
+            self._create_test_instance(
+                {
+                    "dynamic_generic_adder": {
+                        "type": "generic_adder",
+                        "rules": [
+                            {
+                                "filter": "*",
+                                "generic_adder": {
+                                    "add_from_uri": {
+                                        "uri": "https://values.example/${tenant}",
+                                        "target_field": "enrichment",
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                }
+            ),
+        )
+        processor.setup()
+        rule = processor.rules[0]
+        failed_event = {"tenant": "acme"}
+        successful_event = {"tenant": "beta"}
+
+        failed_result = processor.process(failed_event)
+        successful_result = processor.process(successful_event)
+
+        assert failed_result.errors == []
+        assert len(failed_result.warnings) == 1
+        assert isinstance(failed_result.warnings[0], ProcessingWarning)
+        assert failed_event == {
+            "tenant": "acme",
+            "tags": ["_generic_adder_failure"],
+        }
+        assert rule.data_error is None
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+
+        assert successful_result.errors == []
+        assert successful_result.warnings == []
+        assert successful_event == {
+            "tenant": "beta",
+            "enrichment": {"risk": {"score": 7}},
+        }
+
+        processor.shut_down()
+
+    def test_missing_dynamic_url_field_adds_warning_without_clearing_event(self):
+        processor = typing.cast(
+            GenericAdder,
+            self._create_test_instance(
+                {
+                    "dynamic_generic_adder": {
+                        "type": "generic_adder",
+                        "rules": [
+                            {
+                                "filter": "*",
+                                "generic_adder": {
+                                    "add_from_uri": {
+                                        "uri": "https://values.example/${tenant.id}",
+                                        "target_field": "enrichment",
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                }
+            ),
+        )
+        processor.setup()
+        event = {"message": "preserved"}
+
+        result = processor.process(event)
+
+        assert result.errors == []
+        assert len(result.warnings) == 1
+        assert "missing event field 'tenant.id'" in str(result.warnings[0])
+        assert event == {
+            "message": "preserved",
+            "tags": ["_generic_adder_failure"],
+        }

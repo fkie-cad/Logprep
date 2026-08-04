@@ -25,11 +25,13 @@ Processor Configuration
 """
 
 import typing
+from collections.abc import Sequence
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.rule import Rule
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.util.helper import add_fields_to
+from logprep.util.getter import RefreshableGetter
+from logprep.util.helper import FieldValue, add_fields_to
 
 
 class GenericAdder(Processor):
@@ -37,8 +39,26 @@ class GenericAdder(Processor):
 
     rule_class = GenericAdderRule
 
-    def _apply_rules(self, event: dict, rule: Rule):
-        rule = typing.cast(GenericAdderRule, rule)
-        items_to_add = rule.add
-        if items_to_add:
-            add_fields_to(event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target)
+    @property
+    def rules(self) -> Sequence[GenericAdderRule]:
+        """Returns all rules"""
+        return typing.cast(Sequence[GenericAdderRule], super().rules)
+
+    def setup(self):
+        super().setup()
+        for rule in self.rules:
+            rule.init_generic_adder(self._job_tag_for_cleanup)
+
+    def _apply_rules(self, event: dict[str, FieldValue], rule: GenericAdderRule):
+        try:
+            for items_to_add in rule.additions(event):
+                if items_to_add:
+                    add_fields_to(
+                        event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target
+                    )
+        except Exception as error:
+            raise ProcessingWarning(str(error), rule, event) from error
+
+    def _shut_down(self) -> None:
+        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
+        return super()._shut_down()

@@ -114,10 +114,14 @@ class Getter(ABC):
         content = self._resolve_content(raw)
         return self._parse_json(content)
 
-    def get_collection(self) -> dict | list:
+    def get_collection(self, content_field: str | None = None) -> dict | list:
         """Gets and parses the raw content to yaml or json"""
         content = self._resolve_content_by_content_type()
 
+        if isinstance(content, str):
+            content = self._parse_yaml_or_json(content)
+
+        content = Getter._apply_content_field(content, content_field)
         if isinstance(content, str):
             content = self._parse_yaml_or_json(content)
 
@@ -131,9 +135,9 @@ class Getter(ABC):
             logger.debug("parsing yaml failed, falling back to json for content: %s", content)
             return self._parse_json(content)
 
-    def get_dict(self) -> dict:
+    def get_dict(self, content_field: str | None = None) -> dict:
         """Gets dict and fails otherwise"""
-        result = self.get_collection()
+        result = self.get_collection(content_field=content_field)
         if not isinstance(result, dict):
             raise ValueError(f"Expected a dict, got {type(result)}")
         return result
@@ -143,17 +147,26 @@ class Getter(ABC):
         """Helper which tries to convert content to list"""
         return content.splitlines()
 
-    def get_list(self, content_field: str | None = None) -> list:
-        """Gets list and fails otherwise"""
-
-        content = self._resolve_content_by_content_type()
-
+    @staticmethod
+    def _apply_content_field(
+        content: dict | list | str, content_field: str | None = None
+    ) -> dict | list | str:
         if isinstance(content, dict) and content_field is not None:
             content = content[content_field]
         elif content_field is not None:
             raise ValueError(
                 f"Expected mapping type when content_field is set, got {type(content)}"
             )
+
+        return content
+
+    def get_list(self, content_field: str | None = None) -> list:
+        """Gets list and fails otherwise"""
+        content = self._resolve_content_by_content_type()
+        if content_field is not None and isinstance(content, str):
+            content = self._parse_yaml_or_json(content)
+
+        content = Getter._apply_content_field(content, content_field)
 
         if isinstance(content, str):
             content = self._parse_newline_separated_list(content)
