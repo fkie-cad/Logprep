@@ -101,6 +101,7 @@ doc = [
   "sphinx>=8.2.0,<9",
   "sphinx_rtd_theme",
   "sphinxcontrib.datatemplates",
+  "sphinx-design",
   "sphinxcontrib-mermaid",
   "sphinx-copybutton",
   "nbsphinx>=0.9",

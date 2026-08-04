@@ -1,44 +1,63 @@
 .. -*- mode: rst -*-
 
-{% macro code_block(label, value) %}
-.. code-block:: yaml
+{% macro block(label, lang, code) %}
+.. code-block:: {{ lang }}
    :caption: {{ label }}
 
-   {{ value | yaml_pretty | indent(width=3, first=False) }}
+   {% if lang == "yaml" %}
+   {{ code | yaml_pretty | indent(width=3) }}
+   {%- elif lang == "json" -%}
+   {{ code | json_pretty | indent(width=3) }}
+   {%- endif -%}
 {% endmacro %}
 
-{% for item in data.test_cases %}
+{% macro events(before, after) %}
+.. container:: side-by-side
 
-{% if item.values %}{# handles pytest.param #}
+   {{ block("Event before processing", "json", before) | indent(width=3) }}
+   {{ block("Event after processing", "json", after) | indent(width=3) }}
+{% endmacro %}
 
-.. admonition:: Example: {{ item.id }}
-   :collapsible: open
-   :class: example
-
-{{ code_block("Rule configuration", item.values[0]) | indent(width=3, first=True) }}
-{% if item.values | length > 3 and item.values[3] is mapping %}
-{% for path, spec in item.values[3].items() %}
-{% if spec is mapping and spec.body is defined %}
-{{ code_block("Content at ``" ~ path ~ "``", spec.body) | indent(width=3, first=True) }}
+{% macro render_case(title, icon, rule, before, after, context, is_open) %}
+.. dropdown:: {{ title }}
+   :icon: {{ icon }}
+{%- if is_open %}
+   :open:
 {% endif %}
+
+   {{ block("Rule configuration", "yaml", rule) | indent(width=3) }}
+   {% if context %}
+      {% for path, spec in context.items() %}
+         {% if spec is mapping and spec.body is defined %}
+            {{- block("Content of ``" ~ path ~ "``", "yaml", spec.body) | indent(width=3) }}
+         {% endif %}
+      {% endfor %}
+   {% endif %}
+   {{ events(before, after) | indent(width=3) }}
+{% endmacro %}
+
+{% macro case_from_item(item, is_open) %}
+   {% if item.values %}{# handles pytest.param #}
+      {% set context = item.values[3] if (item.values | length > 3 and item.values[3] is mapping) else None %}
+      {{- render_case("Example: " ~ item.id, "light-bulb", item.values[0], item.values[1], item.values[2], context, is_open) }}
+   {% else %}{# handles legacy tuple-based style #}
+      {{- render_case("Example: " ~ item[0], "light-bulb", item[1], item[2], item[3], None, is_open) }}
+   {% endif %}
+{% endmacro %}
+
+{% set primary = data.example_test_cases if data.example_test_cases is defined else data.test_cases %}
+{% set primary_ids = data.example_test_cases | map(attribute="id") | list %}
+{% set extra = data.test_cases | rejectattr("id", "in", primary_ids) | list %}
+
+{% for item in primary %}
+   {{- case_from_item(item, false) }}
 {% endfor %}
+
+{% if extra %}
+.. dropdown:: Additional test cases
+   :icon: list-unordered
+
+   {% for item in extra %}
+      {{- case_from_item(item, false) | indent(width=3, first=True) }}
+   {% endfor %}
 {% endif %}
-
-   .. container:: side-by-side
-{{ code_block("Event before processing", item.values[1]) | indent(width=6, first=True) }}
-{{ code_block("Event after processing", item.values[2]) | indent(width=6, first=True) }}
-
-{% else %}{# handles legacy tuple style #}
-
-.. admonition:: Example: {{ item[0] }}
-   :collapsible: open
-   :class: example
-
-{{ code_block("Rule configuration", item[1]) | indent(width=3, first=True) }}
-
-   .. container:: side-by-side
-{{ code_block("Event before processing", item[2]) | indent(width=6, first=True) }}
-{{ code_block("Event after processing", item[3]) | indent(width=6, first=True) }}
-
-{% endif %}
-{% endfor %}

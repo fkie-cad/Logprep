@@ -115,7 +115,10 @@ def provision_context(tmp_path, monkeypatch) -> Generator[Callable[[dict], None]
     A context maps a path to ``{"body": <content>}``. The source is derived from
     the path, matching how getters are resolved:
 
-    * ``http://`` / ``https://`` are registered as mocked ``GET`` responses.
+    * ``http://`` / ``https://`` are registered as mocked ``GET`` responses. The
+      response is served as ``application/json`` unless the spec sets a
+      ``content_type`` (e.g. ``text/plain``), in which case the body is still
+      JSON-serialized but sent under that content type.
     * ``file://`` or a bare path is written into an isolated working directory the
       test is switched into, so a rule's relative file path resolves to it without
       any rewriting.
@@ -123,12 +126,18 @@ def provision_context(tmp_path, monkeypatch) -> Generator[Callable[[dict], None]
     Response mocking is active for the whole test, so ``@responses.activate`` is
     not needed. The working directory is only changed when a file is provisioned.
     """
+
     with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
 
         def _provision(context: dict) -> None:
             for path, spec in context.items():
                 if path.startswith(("http://", "https://")):
-                    mocked_responses.add(responses.GET, path, json=spec["body"])
+                    mocked_responses.add(
+                        responses.GET,
+                        path,
+                        body=json.dumps(spec["body"]),
+                        content_type=spec.get("content_type", "application/json"),
+                    )
                 else:
                     monkeypatch.chdir(tmp_path)
                     file_path = Path(path.removeprefix("file://"))

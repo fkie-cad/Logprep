@@ -89,7 +89,7 @@ resolve_value_variants = [
 CONTENT_FIELD_URL = "http://localhost/resolve-mapping"
 
 
-test_cases = normalize_test_cases(
+example_test_cases = [
     pytest.param(
         {
             "filter": "to_resolve",
@@ -140,21 +140,6 @@ test_cases = normalize_test_cases(
     ),
     pytest.param(
         {
-            "filter": "to.other_field",
-            "generic_resolver": {
-                "field_mapping": {"to.resolve": "resolved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
-            },
-        },
-        {"to": {"other_field": "something without the source field"}},
-        {
-            "to": {"other_field": "something without the source field"},
-            "tags": ["_generic_resolver_missing_field_warning"],
-        },
-        id="missing source field adds a warning tag",
-    ),
-    pytest.param(
-        {
             "filter": "to_resolve",
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
@@ -179,27 +164,6 @@ test_cases = normalize_test_cases(
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "resolve_mapping.yml",
-                    "pattern": r"\d*(?P<mapping>[a-zA-Z]+)\d*",
-                },
-                "ignore_case": True,
-            },
-        },
-        {"to_resolve": "Ab"},
-        {"to_resolve": "Ab", "resolved": "ab_server_type"},
-        {
-            "resolve_mapping.yml": {
-                "body": {"ab": "ab_server_type", "de": "de_server_type"},
-            }
-        },
-        id="resolve from a file, case-insensitive",
-    ),
-    pytest.param(
-        {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
                     "path": CONTENT_FIELD_URL,
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
@@ -214,6 +178,46 @@ test_cases = normalize_test_cases(
             }
         },
         id="content_field selects the nested resolve mapping",
+    ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    pytest.param(
+        {
+            "filter": "to.other_field",
+            "generic_resolver": {
+                "field_mapping": {"to.resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        },
+        {"to": {"other_field": "something without the source field"}},
+        {
+            "to": {"other_field": "something without the source field"},
+            "tags": ["_generic_resolver_missing_field_warning"],
+        },
+        id="missing source field adds a warning tag",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-zA-Z]+)\d*",
+                },
+                "ignore_case": True,
+            },
+        },
+        {"to_resolve": "Ab"},
+        {"to_resolve": "Ab", "resolved": "ab_server_type"},
+        {
+            "resolve_mapping.yml": {
+                "body": {"ab": "ab_server_type", "de": "de_server_type"},
+            }
+        },
+        id="resolve from a file, case-insensitive",
     ),
     pytest.param(
         {

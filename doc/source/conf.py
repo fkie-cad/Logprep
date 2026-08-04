@@ -10,6 +10,7 @@
 
 # -- Path setup --------------------------------------------------------------
 
+import json
 import os
 import sys
 from datetime import date
@@ -54,11 +55,16 @@ def _yaml_pretty(value):
     return stream.getvalue()
 
 
+def _json_pretty(value):
+    return json.dumps(value, indent=2, ensure_ascii=False)
+
+
 def _register_template_filters(app):
     templates = getattr(app.builder, "templates", None)
     environment = getattr(templates, "environment", None)
     if environment is not None:
         environment.filters["yaml_pretty"] = _yaml_pretty
+        environment.filters["json_pretty"] = _json_pretty
 
 
 def setup(app):
@@ -98,6 +104,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
     "sphinxcontrib.datatemplates",
+    "sphinx_design",
     "nbsphinx",
     "IPython.sphinxext.ipython_console_highlighting",
     "sphinx_copybutton",
