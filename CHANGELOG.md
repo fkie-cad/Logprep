@@ -11,9 +11,12 @@
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
 * docs: change processor natural naming to capital cased with whitespace (e.g. "Generic Resolver")
 * docs: use processor name placeholders for most usages
+* getter: handle "text/yaml" in content type resolution
+* getter: remove noisy debug log
 
 ### Bugfix
 * chart: fix command handling
+* fix ng input timeout to also accept int parameters
 
 ## 20.0.0
 ### Breaking

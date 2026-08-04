@@ -68,7 +68,7 @@ class Getter(ABC):
         match content_type:
             case "application/json":
                 return self._parse_json(content)
-            case "application/yaml":
+            case "application/yaml" | "text/yaml":
                 return self._parse_yaml(content)
             case "text/plain" | None:
                 return content

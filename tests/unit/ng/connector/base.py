@@ -69,6 +69,13 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
     async def test_component_is_input(self):
         assert isinstance(self.object, Input)
 
+    @pytest.mark.parametrize(
+        ("timeout"), [pytest.param(3, id="int"), pytest.param(3.5, id="float")]
+    )
+    async def test_accepts_timeout_type(self, timeout):
+        self.object = self._create_test_instance(config_patch={"timeout": timeout})
+        assert self.object.config.timeout == float(timeout)
+
     @pytest.fixture(name="default_hmac_config")
     def _add_default_hmac_config(self):
         # TODO refactor to patch CONFIG instead
