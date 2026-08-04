@@ -551,7 +551,6 @@ class RefreshableGetter(Getter, ABC):
     @classmethod
     def refresh(cls):
         """Run pending refresh schedulers and cleanup timed-out targets."""
-        rg_logger.debug("refreshing all cached getters")
         for target, shared_target_data in list(cls._target_to_data_caches.items()):
             if cls.timed_out_for_target(target):
                 rg_logger.debug("target has timed out and will be cleaned up: %s", target)
