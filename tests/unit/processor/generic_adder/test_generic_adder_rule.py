@@ -359,6 +359,112 @@ class TestGenericAdderRule:
 
         assert source.content_by_uri == {}
 
+    @responses.activate
+    def test_dynamic_uri_refresh_failure_keeps_last_value_and_later_recovers(self, tmp_path):
+        url = "https://values.example/acme"
+        responses.add(responses.GET, url, json={"value": 1})
+        getter_config = tmp_path / "http_getter.json"
+        getter_config.write_text(json.dumps({url: {"refresh_interval": 1}}))
+        rule = GenericAdderRule.create_from_dict(
+            {
+                "filter": "*",
+                "generic_adder": {
+                    "add_from_uri": {
+                        "uri": "https://values.example/${tenant}",
+                        "target_field": "enrichment",
+                    }
+                },
+            }
+        )
+
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(getter_config)}):
+            rule.init_generic_adder("generic-adder-test")
+            assert rule.add({"tenant": "acme"}) == {"enrichment": {"value": 1}}
+            getter = GetterFactory.from_string(url)
+            assert isinstance(getter, HttpGetter)
+            assert getter.scheduler is not None
+
+            responses.replace(responses.GET, url, status=500)
+            getter.scheduler.run_all()
+
+            assert rule.add({"tenant": "acme"}) == {"enrichment": {"value": 1}}
+            assert rule.data_error is None
+
+            responses.replace(responses.GET, url, json={"value": 2})
+            getter.scheduler.run_all()
+
+            assert rule.add({"tenant": "acme"}) == {"enrichment": {"value": 2}}
+            assert rule.data_error is None
+
+    @responses.activate
+    def test_static_uri_refresh_failures_are_aggregated_and_recover(self, tmp_path):
+        first_url = "https://values.example/first"
+        second_url = "https://values.example/second"
+        responses.add(responses.GET, first_url, json={"value": 1})
+        responses.add(responses.GET, second_url, json={"value": 2})
+        getter_config = tmp_path / "http_getter.json"
+        getter_config.write_text(
+            json.dumps(
+                {
+                    first_url: {"refresh_interval": 1},
+                    second_url: {"refresh_interval": 1},
+                }
+            )
+        )
+        rule = GenericAdderRule.create_from_dict(
+            {
+                "filter": "*",
+                "generic_adder": {
+                    "add_from_uri": [
+                        {"uri": first_url, "target_field": "first"},
+                        {"uri": second_url, "target_field": "second"},
+                    ]
+                },
+            }
+        )
+
+        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(getter_config)}):
+            rule.init_generic_adder("generic-adder-test")
+            first_getter = GetterFactory.from_string(first_url)
+            second_getter = GetterFactory.from_string(second_url)
+            assert isinstance(first_getter, HttpGetter)
+            assert isinstance(second_getter, HttpGetter)
+            assert first_getter.scheduler is not None
+            assert second_getter.scheduler is not None
+
+            responses.replace(
+                responses.GET,
+                first_url,
+                body="{invalid",
+                content_type="application/json",
+            )
+            responses.replace(
+                responses.GET,
+                second_url,
+                body="{invalid",
+                content_type="application/json",
+            )
+            first_getter.scheduler.run_all()
+            second_getter.scheduler.run_all()
+
+            assert isinstance(rule.data_error, ExceptionGroup)
+            assert len(rule.data_error.exceptions) == 2
+
+            responses.replace(responses.GET, first_url, json={"value": 3})
+            first_getter.scheduler.run_all()
+
+            assert rule.data_error is not None
+            assert not isinstance(rule.data_error, ExceptionGroup)
+
+            responses.replace(responses.GET, second_url, json={"value": 4})
+            second_getter.scheduler.run_all()
+
+            assert rule.data_error is None
+            assert rule.add({}) == {
+                "first": {"value": 3},
+                "second": {"value": 4},
+            }
+
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
         [

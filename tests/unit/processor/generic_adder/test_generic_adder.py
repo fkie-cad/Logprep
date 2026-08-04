@@ -26,6 +26,139 @@ RULES_DIR_FIRST_EXISTING = "tests/testdata/unit/generic_adder/rules_first_existi
 test_cases = [  # testcase, rule, event, expected
     pytest.param(
         {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": {
+                    "uri": "tests/testdata/unit/generic_adder/additions_file.yml",
+                    "target_field": "uri_content",
+                }
+            },
+        },
+        {"event_id": 123},
+        {
+            "event_id": 123,
+            "uri_content": {
+                "some_added_field": "some value",
+                "another_added_field": "another_value",
+                "dotted.added.field": "yet_another_value",
+            },
+        },
+        id="Add from URI to target field",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": {
+                    "uri": "tests/testdata/unit/generic_adder/additions_list_1.yml",
+                    "target_field": "enrichment.values",
+                }
+            },
+        },
+        {},
+        {"enrichment": {"values": ["first_uri_value"]}},
+        id="Add non-mapping URI response to dotted target field",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add": {"shared_field": {"from_inline_add": True}},
+                "add_from_file": "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {
+            "shared_field": {
+                "from_inline_add": True,
+                "from_first_source": True,
+            }
+        },
+        id="Merge same field from add and add_from_file",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add": {"shared_field": {"from_inline_add": True}},
+                "add_from_uri": "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {
+            "shared_field": {
+                "from_inline_add": True,
+                "from_first_source": True,
+            }
+        },
+        id="Merge same field from add and add_from_uri",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_file": [
+                    "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                    "tests/testdata/unit/generic_adder/additions_merge_2.yml",
+                ],
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {
+            "shared_field": {
+                "from_first_source": True,
+                "from_second_source": True,
+            }
+        },
+        id="Merge same field from two add_from_file sources",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": [
+                    "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                    "tests/testdata/unit/generic_adder/additions_merge_2.yml",
+                ],
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {
+            "shared_field": {
+                "from_first_source": True,
+                "from_second_source": True,
+            }
+        },
+        id="Merge same field from two add_from_uri sources",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add": {"shared_list": ["inline_value"]},
+                "add_from_uri": [
+                    {
+                        "uri": "tests/testdata/unit/generic_adder/additions_list_1.yml",
+                        "target_field": "shared_list",
+                    },
+                    {
+                        "uri": "tests/testdata/unit/generic_adder/additions_list_2.yml",
+                        "target_field": "shared_list",
+                    },
+                ],
+                "merge_with_target": True,
+            },
+        },
+        {},
+        {"shared_list": ["inline_value", "first_uri_value", "second_uri_value"]},
+        id="Merge lists from inline add and ordered URI sources",
+    ),
+    pytest.param(
+        {
             "filter": "add_list_generic_test",
             "generic_adder": {
                 "add_from_file": "tests/testdata/unit/generic_adder/additions_file.yml"
@@ -395,6 +528,37 @@ failure_test_cases = [
     ),
 ]
 
+dynamic_uri_failure_test_cases = [
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": {
+                    "uri": "https://values.example/${tenant}",
+                    "target_field": "enrichment",
+                }
+            },
+        },
+        {"tenant": ["not", "scalar"]},
+        "value for generic adder field 'tenant' is not a scalar value",
+        id="Reject non-scalar dynamic URI field",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": {
+                    "uri": "tests/testdata/unit/generic_adder/${filename}.yml",
+                    "target_field": "enrichment",
+                }
+            },
+        },
+        {"filename": "additions_file"},
+        "Dynamic file URIs are not supported",
+        id="Reject dynamic file URI",
+    ),
+]
+
 
 class TestGenericAdder(BaseProcessorTestCase):
 
@@ -417,6 +581,18 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert len(result.warnings) == 1
         assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))
         assert event == expected
+
+    @pytest.mark.parametrize("rule, event, error_message", dynamic_uri_failure_test_cases)
+    def test_dynamic_uri_failure_handling(self, rule, event, error_message):
+        self._load_rule(rule)
+        self.object.setup()
+
+        result = self.object.process(event)
+
+        assert result.errors == []
+        assert len(result.warnings) == 1
+        assert error_message in str(result.warnings[0])
+        assert event["tags"] == ["_generic_adder_failure"]
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
         with pytest.raises(InvalidRuleDefinitionError, match=r"Could not load generic_adder URI"):
@@ -514,6 +690,44 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert second_event == first_event
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == resolved_url
+
+    @responses.activate
+    def test_shutdown_removes_dynamic_uri_callbacks(self):
+        url = "https://values.example/acme"
+        responses.add(responses.GET, url, json={"value": 1})
+        processor = typing.cast(
+            GenericAdder,
+            self._create_test_instance(
+                {
+                    "dynamic_generic_adder": {
+                        "type": "generic_adder",
+                        "rules": [
+                            {
+                                "filter": "*",
+                                "generic_adder": {
+                                    "add_from_uri": {
+                                        "uri": "https://values.example/${tenant}",
+                                        "target_field": "enrichment",
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                }
+            ),
+        )
+        processor.setup()
+
+        processor.process({"tenant": "acme"})
+
+        shared = HttpGetter._target_to_data_caches[url]
+        assert len(shared.callbacks) == 1
+        assert len(shared.cleanup_callbacks) == 1
+
+        processor.shut_down()
+
+        assert shared.callbacks == []
+        assert shared.cleanup_callbacks == []
 
     @responses.activate
     def test_dynamic_url_failure_is_event_scoped(self):

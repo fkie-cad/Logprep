@@ -21,6 +21,9 @@ from logprep.processor.base.exceptions import (
 from logprep.util.getter import HttpGetter
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
+    dynamic_uri_failure_test_cases as non_ng_dynamic_uri_failure_test_cases,
+)
+from tests.unit.processor.generic_adder.test_generic_adder import (
     failure_test_cases as non_ng_failure_test_cases,
 )
 from tests.unit.processor.generic_adder.test_generic_adder import (
@@ -34,6 +37,7 @@ RULES_DIR_FIRST_EXISTING = "tests/testdata/unit/generic_adder/rules_first_existi
 
 test_cases = deepcopy(non_ng_test_cases)
 failure_test_cases = deepcopy(non_ng_failure_test_cases)
+dynamic_uri_failure_test_cases = deepcopy(non_ng_dynamic_uri_failure_test_cases)
 
 
 class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
@@ -61,6 +65,19 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         assert len(result.warnings) == 1
         assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))
         assert event == expected
+
+    @pytest.mark.parametrize("rule, event, error_message", dynamic_uri_failure_test_cases)
+    async def test_dynamic_uri_failure_handling(self, rule, event, error_message):
+        await self._load_rule(rule)
+        await self.object.setup()
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        result = await self.object.process(log_event)
+
+        assert result.errors == []
+        assert len(result.warnings) == 1
+        assert error_message in str(result.warnings[0])
+        assert event["tags"] == ["_generic_adder_failure"]
 
     async def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
         with pytest.raises(InvalidRuleDefinitionError, match=r"Could not load generic_adder URI"):
@@ -144,6 +161,39 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             "enrichment": response_content,
         }
         assert responses.calls[0].request.url == resolved_url
+
+    @responses.activate
+    async def test_shutdown_removes_dynamic_uri_callbacks(self):
+        url = "https://values.example/acme"
+        responses.add(responses.GET, url, json={"value": 1})
+        processor = self._create_test_instance(
+            {
+                "rules": [
+                    {
+                        "filter": "*",
+                        "generic_adder": {
+                            "add_from_uri": {
+                                "uri": "https://values.example/${tenant}",
+                                "target_field": "enrichment",
+                            }
+                        },
+                    }
+                ]
+            }
+        )
+        await processor.setup()
+        event = {"tenant": "acme"}
+
+        await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
+
+        shared = HttpGetter._target_to_data_caches[url]
+        assert len(shared.callbacks) == 1
+        assert len(shared.cleanup_callbacks) == 1
+
+        await processor.shut_down()
+
+        assert shared.callbacks == []
+        assert shared.cleanup_callbacks == []
 
     @responses.activate
     async def test_dynamic_url_failure_is_event_scoped(self):

@@ -77,6 +77,12 @@ In the following example two files are being used, but only the first existing f
    :undoc-members:
    :inherited-members:
    :noindex:
+
+Examples for generic_adder:
+---------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.generic_adder.test_generic_adder
+   :template: testcase-renderer.tmpl
 """
 
 import typing
