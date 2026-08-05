@@ -49,6 +49,8 @@
 {% set primary_ids = data.example_test_cases | map(attribute="id") | list %}
 {% set extra = data.test_cases | rejectattr("id", "in", primary_ids) | list %}
 
+{# --- actual template --- #}
+
 {% for item in primary %}
    {{- case_from_item(item, false) }}
 {% endfor %}
@@ -58,6 +60,6 @@
    :icon: list-unordered
 
    {% for item in extra %}
-      {{- case_from_item(item, false) | indent(width=3, first=True) }}
+      {{- case_from_item(item, false) | indent(width=3) }}
    {% endfor %}
 {% endif %}
