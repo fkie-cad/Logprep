@@ -98,6 +98,7 @@ import zlib
 from abc import ABC
 from base64 import b64encode
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from functools import cached_property
 
 import aiohttp
@@ -218,7 +219,8 @@ class HttpEndpoint(ABC):
         """Puts message to internal queue"""
         if self.metafield_name in event:
             logger.warning("metadata field was in event and got overwritten")
-        await self.messages.put(event | metadata)
+        event.update(deepcopy(metadata))
+        await self.messages.put(event)
 
 
 class JSONHttpEndpoint(HttpEndpoint):

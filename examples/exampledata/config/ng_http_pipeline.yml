@@ -49,6 +49,9 @@ input:
       /json: json
       /lab/123/(ABC|DEF)/pl.*: plaintext
       /lab/123/ABC/auditlog: jsonl
+    preprocessing:
+      version_info_target_field: "@metadata.konnektor"
+      log_arrival_time_target_field: "event.created"
 output:
   kafka:
     type: confluentkafka_output
