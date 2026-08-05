@@ -24,15 +24,15 @@ Processor Configuration
 .. automodule:: logprep.processor.geoip_enricher.rule
 """
 
+import asyncio
 import logging
 import tempfile
 import typing
-from functools import cached_property
 from ipaddress import ip_address
 from pathlib import Path
 
 from attrs import define, field, validators
-from filelock import FileLock
+from filelock import AsyncFileLock
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
@@ -60,6 +60,10 @@ class GeoipEnricher(FieldManager):
             This product includes GeoLite2 data created by MaxMind, available from
             https://www.maxmind.com."""
 
+    __slots__ = ["_city_db"]
+
+    _city_db: database.Reader
+
     rule_class = GeoipEnricherRule
 
     @property
@@ -67,39 +71,47 @@ class GeoipEnricher(FieldManager):
         """Provides the properly typed rule configuration object"""
         return typing.cast(GeoipEnricher.Config, self._config)
 
-    @cached_property
-    def _city_db(self) -> database.Reader:
+    async def _load_city_db(self) -> database.Reader:
         db_path = Path(self.config.db_path)
 
-        if not db_path.exists():
+        if not await asyncio.to_thread(db_path.exists):
             logger.debug("start geoip database download...")
 
             logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-            logprep_tmp_dir.mkdir(parents=True, exist_ok=True)
+            await asyncio.to_thread(
+                logprep_tmp_dir.mkdir,
+                parents=True,
+                exist_ok=True,
+            )
 
             db_path_file = logprep_tmp_dir / f"{self.name}.mmdb"
-            lock = FileLock(str(db_path_file) + ".lock")
+            lock = AsyncFileLock(str(db_path_file) + ".lock")
 
-            with lock:
-                if not db_path_file.exists():
+            async with lock:
+                if not await asyncio.to_thread(db_path_file.exists):
                     tmp = db_path_file.with_suffix(".tmp")
-                    tmp.write_bytes(GetterFactory.from_string(self.config.db_path).get_raw())
-                    tmp.replace(db_path_file)
+                    getter = GetterFactory.from_string(self.config.db_path)
+
+                    # TODO: await get_raw() once the getter supports async operations.
+                    # raw = await getter.get_raw()
+                    raw = await asyncio.to_thread(getter.get_raw)
+                    await asyncio.to_thread(tmp.write_bytes, raw)
+                    await asyncio.to_thread(tmp.replace, db_path_file)
 
             db_path = db_path_file
             logger.debug("finished geoip database download.")
 
         try:
-            return database.Reader(db_path)
+            return await asyncio.to_thread(database.Reader, db_path)
         except Exception:
             logger.exception("failed to load GeoIP database")
             raise
 
     async def setup(self) -> None:
         await super().setup()
-        _ = self._city_db  # trigger download
+        self._city_db = await self._load_city_db()
 
-    def _try_getting_geoip_data(self, ip_string: str) -> dict:
+    async def _try_getting_geoip_data(self, ip_string: str) -> dict:
         try:
             ip_addr = str(ip_address(ip_string))
             ip_data = self._city_db.city(ip_addr)
@@ -143,7 +155,7 @@ class GeoipEnricher(FieldManager):
             return
         if not isinstance(ip_string, str):
             raise ValueError("ip_string is not a string type")
-        geoip_data = self._try_getting_geoip_data(ip_string)
+        geoip_data = await self._try_getting_geoip_data(ip_string)
         if not geoip_data:
             return
         fields = {
