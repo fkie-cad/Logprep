@@ -7,15 +7,19 @@
 * add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
 * introduce API-level support for asynchronous rule processing and I/O capability detection in `ng` processors
 * generic_adder: add support for templated http urls & content_field
+* generic_resolver: add content_field support
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
 * docs: change processor natural naming to capital cased with whitespace (e.g. "Generic Resolver")
 * docs: use processor name placeholders for most usages
 * docs: hide non-init fields in docs
+* docs: add examples for generic_resolver
+* docs: improve example rendering
 * getter: handle "text/yaml" in content type resolution
 * getter: remove noisy debug log
 * vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
+* tests: add context handling framework for `test_cases`
 
 ### Bugfix
 * chart: fix command handling
