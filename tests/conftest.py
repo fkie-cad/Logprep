@@ -162,3 +162,25 @@ def normalize_test_cases(*cases: ParameterSet) -> Sequence[ParameterSet]:
             values += ({},)
         padded.append(pytest.param(*values, id=case.id, marks=case.marks))
     return padded
+
+
+field_value_test_cases = [
+    pytest.param(0, id="int_0_falsy"),
+    pytest.param(42, id="int_positive"),
+    pytest.param(-1, id="int_negative_1"),
+    pytest.param(-42, id="int_negative"),
+    pytest.param(0.0, id="float_0.0_falsy"),
+    pytest.param(42.1337, id="float_positive"),
+    pytest.param(-42.1337, id="float_negative"),
+    pytest.param(True, id="bool_true"),
+    pytest.param(False, id="bool_false"),
+    pytest.param([], id="list_empty_falsy"),
+    pytest.param([1, 2, "string", 0.5, [1, 2, 3], {"key": "value"}], id="list_mixed_types"),
+    pytest.param({}, id="dict_empty_falsy"),
+    pytest.param({"key": "value"}, id="dict_simple"),
+    pytest.param(
+        {"key": {"str": "value", "int": 0, "float": 0.1, "bool": True, "list": [1, 2]}},
+        id="dict_complex",
+    ),
+    pytest.param(None, id="None"),
+]

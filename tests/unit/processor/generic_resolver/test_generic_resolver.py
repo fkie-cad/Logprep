@@ -14,77 +14,9 @@ from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter, RefreshableGetter
-from tests.conftest import mock_env, normalize_test_cases
+from logprep.util.getter import HttpGetter
+from tests.conftest import field_value_test_cases, mock_env, normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
-
-resolve_value_variants = [
-    pytest.param(
-        0,
-        id="int_0_falsy",
-    ),
-    pytest.param(
-        42,
-        id="int_42",
-    ),
-    pytest.param(
-        -1,
-        id="int_neg_1",
-    ),
-    pytest.param(
-        -42,
-        id="int_neg_42",
-    ),
-    pytest.param(
-        -42,
-        id="int_neg_42",
-    ),
-    pytest.param(
-        0.0,
-        id="float_0",
-    ),
-    pytest.param(
-        42.1337,
-        id="float_greater_0",
-    ),
-    pytest.param(
-        -42.1337,
-        id="float_lower_0",
-    ),
-    pytest.param(
-        True,
-        id="bool_true",
-    ),
-    pytest.param(
-        False,
-        id="bool_false",
-    ),
-    pytest.param(
-        [],
-        id="list_empty_falsy",
-    ),
-    pytest.param(
-        [1, 2, "string", 0.5, [1, 2, 3], {"key": "value"}],
-        id="list_mixed_types",
-    ),
-    pytest.param(
-        {},
-        id="dict_empty_falsy",
-    ),
-    pytest.param(
-        {"key": "value"},
-        id="dict_simple",
-    ),
-    pytest.param(
-        {"key": {"str": "value", "int": 0, "float": 0.1, "bool": True, "list": [1, 2]}},
-        id="dict_nested",
-    ),
-    pytest.param(
-        None,
-        id="None",
-    ),
-]
-
 
 CONTENT_FIELD_URL = "http://localhost/resolve-mapping"
 
@@ -341,6 +273,332 @@ test_cases = normalize_test_cases(
         },
         id="resolve a mapping value from a file and merge it into the target",
     ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        },
+        {"to_resolve": "something hello1"},
+        {"to_resolve": "something hello1"},
+        id="resolve_list is case-sensitive by default",
+    ),
+    pytest.param(
+        {
+            "filter": r"to\.resolve.s\\ub",
+            "generic_resolver": {
+                "field_mapping": {r"to\.resolve.s\\ub": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        },
+        {"to.resolve": {"s\\ub": "something HELLO1"}},
+        {"to.resolve": {"s\\ub": "something HELLO1"}, "resolved": "Greeting"},
+        id="an escaped dotted field name is resolved correctly",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-zA-Z]+)\d*",
+                },
+            },
+        },
+        {"to_resolve": "Ab"},
+        {"to_resolve": "Ab"},
+        {"resolve_mapping.yml": {"body": {"ab": "ab_server_type", "de": "de_server_type"}}},
+        id="resolve_from_file is case-sensitive by default",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve_1 AND to_resolve_2",
+            "generic_resolver": {
+                "field_mapping": {
+                    "to_resolve_1": "resolved_1",
+                    "to_resolve_2": "resolved_2",
+                },
+                "resolve_from_file": {
+                    "path": "resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "resolve_list": {"fg": "fg_server_type"},
+            },
+        },
+        {"to_resolve_1": "ab", "to_resolve_2": "fg"},
+        {
+            "to_resolve_1": "ab",
+            "to_resolve_2": "fg",
+            "resolved_1": "ab_server_type",
+            "resolved_2": "fg_server_type",
+        },
+        {"resolve_mapping.yml": {"body": {"ab": "ab_server_type", "de": "de_server_type"}}},
+        id="resolve_from_file and resolve_list combined for different fields",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "merge_with_target": True,
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": ["ab_server_type"]},
+        {"resolve_mapping.yml": {"body": {"ab": "ab_server_type", "de": "de_server_type"}}},
+        id="merge_with_target wraps a new resolved value in a list",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "merge_with_target": True,
+            },
+        },
+        {"to_resolve": "12ab34", "resolved": ["aa_server_type"]},
+        {"to_resolve": "12ab34", "resolved": ["aa_server_type", "ab_server_type"]},
+        {"resolve_mapping.yml": {"body": {"ab": "ab_server_type", "de": "de_server_type"}}},
+        id="merge_with_target appends a new resolved value to an existing list",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"resolved.foo": "resolved"},
+                "resolve_list": {"bar": {"baz": "test"}},
+                "merge_with_target": True,
+            },
+        },
+        {"to_resolve": "12ab34", "resolved": {"foo": "bar"}},
+        {"to_resolve": "12ab34", "resolved": {"foo": "bar", "baz": "test"}},
+        id="merge_with_target merges a resolved mapping into an existing dict",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {"12ab34": {"baz": "test"}},
+            },
+        },
+        {"to_resolve": "12ab34", "resolved": "foo"},
+        {
+            "to_resolve": "12ab34",
+            "resolved": "foo",
+            "tags": ["_generic_resolver_failure"],
+        },
+        id="an existing destination field without overwrite_target causes a failure tag",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {"12ab34": {"baz": "test"}},
+                "overwrite_target": True,
+            },
+        },
+        {"to_resolve": "12ab34", "resolved": "foo"},
+        {"to_resolve": "12ab34", "resolved": {"baz": "test"}},
+        id="overwrite_target replaces an existing destination field",
+    ),
+    pytest.param(
+        {
+            "filter": "to.resolve",
+            "generic_resolver": {
+                "field_mapping": {"to.resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        },
+        {"to": {"resolve": "something no"}},
+        {"to": {"resolve": "something no"}},
+        id="a dotted source field without a match is left untouched",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "re.solved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        },
+        {"to_resolve": "something no"},
+        {"to_resolve": "something no"},
+        id="a dotted destination field without a match is left untouched",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+                "ignore_case": True,
+            },
+        },
+        {"to_resolve": "something HELLO1"},
+        {"to_resolve": "something HELLO1", "resolved": "Greeting"},
+        id="ignore_case still matches the original case in resolve_list",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+                "ignore_case": True,
+            },
+        },
+        {"to_resolve": "something hello1"},
+        {"to_resolve": "something hello1", "resolved": "Greeting"},
+        id="ignore_case matches a different case in resolve_list",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting", ".*BYE\\d": "Farewell"},
+            },
+        },
+        {"to_resolve": "something HELLO1"},
+        {"to_resolve": "something HELLO1", "resolved": "Greeting"},
+        id="the first of several independent resolve_list patterns can match",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting", ".*BYE\\d": "Farewell"},
+            },
+        },
+        {"to_resolve": "something BYE1"},
+        {"to_resolve": "something BYE1", "resolved": "Farewell"},
+        id="the second of several independent resolve_list patterns can match",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve.json",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type"},
+        {"resolve.json": {"body": {"ab": "ab_server_type"}}},
+        id="content_field defaults to the mapping root when omitted",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve.txt",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type"},
+        {"resolve.txt": {"body": {"content": {"ab": "ab_server_type"}}}},
+        id="content_field works regardless of the file's suffix",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve.json",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "b",
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": "from_b"},
+        {"resolve.json": {"body": {"a": {"ab": "from_a"}, "b": {"ab": "from_b"}}}},
+        id="content_field selects among multiple sibling keys",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve.json",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+                "ignore_case": True,
+            },
+        },
+        {"to_resolve": "12AB34"},
+        {"to_resolve": "12AB34", "resolved": "ab_server_type"},
+        {"resolve.json": {"body": {"content": {"ab": "ab_server_type"}}}},
+        id="content_field works together with ignore_case",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve.json",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type"},
+        {
+            "resolve.json": {
+                "body": {"content": [{"ab": "ab_server_type"}, {"de": "de_server_type"}]}
+            }
+        },
+        id="content_field also accepts a list of single-key mappings",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "http://localhost/resolve-mapping-text-plain",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type"},
+        {
+            "http://localhost/resolve-mapping-text-plain": {
+                "body": {"content": {"ab": "ab_server_type"}},
+                "content_type": "text/plain",
+            }
+        },
+        id="content_field also works when the server sends text/plain",
+    ),
 )
 
 # rule, context, error_message
@@ -395,21 +653,25 @@ class TestGenericResolver(BaseProcessorTestCase):
     ]
 
     def test_resolve_generic_instantiates(self):
-        rule = {"filter": "anything", "generic_resolver": {"field_mapping": {}}}
-        self._load_rule(rule)
+        self._load_rule(
+            {
+                "filter": "anything",
+                "generic_resolver": {"field_mapping": {}},
+            }
+        )
         assert isinstance(self.object, GenericResolver)
 
-    @pytest.mark.parametrize(["resolve_value"], resolve_value_variants)
+    @pytest.mark.parametrize(["resolve_value"], field_value_test_cases)
     def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".*HELLO\\d": resolve_value},
-            },
-        }
-
-        self._load_rule(rule)
+        self._load_rule(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_list": {".*HELLO\\d": resolve_value},
+                },
+            }
+        )
 
         expected = {"to_resolve": "something HELLO1", "resolved": resolve_value}
         document = {"to_resolve": "something HELLO1"}
@@ -418,22 +680,12 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    @pytest.mark.parametrize(["resolve_value"], resolve_value_variants)
+    @pytest.mark.parametrize(["resolve_value"], field_value_test_cases)
     def test_resolve_not_dotted_field_no_conflict_different_values_match_from_file(
         self, resolve_value, tmp_path
     ):
         resolve_file_path = tmp_path / "rule.json"
 
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": str(resolve_file_path),
-                    "pattern": r"(?P<mapping>.+)",
-                },
-            },
-        }
         resolve_dict = {"abc": resolve_value}
         expected = {"to_resolve": "abc", "resolved": resolve_value}
         document = {"to_resolve": "abc"}
@@ -441,222 +693,19 @@ class TestGenericResolver(BaseProcessorTestCase):
         with open(resolve_file_path, mode="w+", encoding="utf8") as stream:
             stream.write(json.dumps(resolve_dict))
 
-        self._load_rule(rule)
-
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_from_mapping_with_ignore_case(self):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
-                "ignore_case": True,
-            },
-        }
-
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
-        document = {"to_resolve": "something HELLO1"}
-        self.object.process(document)
-        assert document == expected
-
-        expected = {"to_resolve": "something hello1", "resolved": "Greeting"}
-        document = {"to_resolve": "something hello1"}
-        self.object.process(document)
-        assert document == expected
-
-    def test_resolve_not_dotted_field_no_conflict_no_match_case_sensitive(self):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
-            },
-        }
-
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "something hello1"}
-        document = {"to_resolve": "something hello1"}
-
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_not_dotted_field_no_conflict_and_to_list_entries_match(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".*HELLO\\d": "Greeting", ".*BYE\\d": "Farewell"},
-            },
-        }
-
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
-
-        document = {"to_resolve": "something HELLO1"}
-        self.object.process(document)
-        assert document == expected
-
-        expected = {"to_resolve": "something BYE1", "resolved": "Farewell"}
-
-        document = {"to_resolve": "something BYE1"}
-        self.object.process(document)
-        assert document == expected
-
-    def test_resolve_escaped_dotted_field_no_conflict_match(self):
-        rule = {
-            "filter": r"to\.resolve.s\\ub",
-            "generic_resolver": {
-                "field_mapping": {r"to\.resolve.s\\ub": "resolved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"to.resolve": {"s\\ub": "something HELLO1"}, "resolved": "Greeting"}
-
-        document = {"to.resolve": {"s\\ub": "something HELLO1"}}
-
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_dotted_field_no_conflict_no_match_from_file_case_sensitive(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                    "pattern": r"\d*(?P<mapping>[a-zA-Z]+)\d*",
+        self._load_rule(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_from_file": {
+                        "path": str(resolve_file_path),
+                        "pattern": r"(?P<mapping>.+)",
+                    },
                 },
-                "resolve_list": {"FOO": "BAR"},
-            },
-        }
-        self._load_rule(rule)
+            }
+        )
 
-        expected = {"to_resolve": "Ab"}
-        document = {"to_resolve": "Ab"}
-
-        self.object.setup()
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_from_file_with_ignore_case(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "ignore_case": True,
-                "resolve_list": {"FOO": "BAR"},
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "ab", "resolved": "ab_server_type"}
-        document = {"to_resolve": "ab"}
-        self.object.process(document)
-        assert document == expected
-
-        expected = {"to_resolve": "AB", "resolved": "ab_server_type"}
-        document = {"to_resolve": "AB"}
-        self.object.process(document)
-        assert document == expected
-
-    def test_resolve_from_file_and_from_list(self):
-        rule = {
-            "filter": "to_resolve_1 AND to_resolve_2",
-            "generic_resolver": {
-                "field_mapping": {
-                    "to_resolve_1": "resolved_1",
-                    "to_resolve_2": "resolved_2",
-                },
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "resolve_list": {"fg": "fg_server_type"},
-            },
-        }
-
-        self._load_rule(rule)
-
-        expected = {
-            "to_resolve_1": "ab",
-            "to_resolve_2": "fg",
-            "resolved_1": "ab_server_type",
-            "resolved_2": "fg_server_type",
-        }
-
-        document = {"to_resolve_1": "ab", "to_resolve_2": "fg"}
-
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_dotted_field_no_conflict_match_from_file_and_list(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "merge_with_target": True,
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
-
-        document = {"to_resolve": "12ab34"}
-
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_dotted_field_to_list_match_from_file_and_list(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "merge_with_target": True,
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "12ab34", "resolved": ["aa_server_type", "ab_server_type"]}
-
-        document = {"to_resolve": "12ab34", "resolved": ["aa_server_type"]}
-
-        self.object.setup()
         self.object.process(document)
 
         assert document == expected
@@ -664,18 +713,19 @@ class TestGenericResolver(BaseProcessorTestCase):
     def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict(
         self,
     ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+        self._load_rule(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_from_file": {
+                        "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                        "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                    },
+                    "merge_with_target": True,
                 },
-                "merge_with_target": True,
-            },
-        }
-        self._load_rule(rule)
+            }
+        )
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
 
@@ -689,21 +739,22 @@ class TestGenericResolver(BaseProcessorTestCase):
     def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict_and_diff_inputs(
         self,
     ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {
-                    "to_resolve": "resolved",
-                    "other_to_resolve": "resolved",
+        self._load_rule(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {
+                        "to_resolve": "resolved",
+                        "other_to_resolve": "resolved",
+                    },
+                    "resolve_from_file": {
+                        "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                        "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                    },
+                    "merge_with_target": True,
                 },
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "merge_with_target": True,
-            },
-        }
-        self._load_rule(rule)
+            }
+        )
 
         expected = {
             "to_resolve": "12ab34",
@@ -714,78 +765,6 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to_resolve": "12ab34", "other_to_resolve": "00de11"}
 
         self.object.process(document)
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_dotted_field_no_conflict_match_from_list_to_dict(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"resolved.foo": "resolved"},
-                "resolve_list": {"bar": {"baz": "test"}},
-                "merge_with_target": True,
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "12ab34", "resolved": {"foo": "bar", "baz": "test"}}
-
-        document = {"to_resolve": "12ab34", "resolved": {"foo": "bar"}}
-
-        self.object.setup()
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_dotted_field_conflict_match_from_list_to_dict(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {"12ab34": {"baz": "test"}},
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {
-            "to_resolve": "12ab34",
-            "resolved": "foo",
-            "tags": ["_generic_resolver_failure"],
-        }
-
-        document = {"to_resolve": "12ab34", "resolved": "foo"}
-
-        self.object.setup()
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_dotted_field_conflict_match_from_list_to_dict_with_overwrite(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {"12ab34": {"baz": "test"}},
-                "overwrite_target": True,
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {
-            "to_resolve": "12ab34",
-            "resolved": {"baz": "test"},
-        }
-
-        document = {"to_resolve": "12ab34", "resolved": "foo"}
-
-        self.object.setup()
         self.object.process(document)
 
         assert document == expected
@@ -809,8 +788,6 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         responses.add(responses.GET, url, json={"ab": {"new1": "1"}})
         responses.add(responses.GET, url, json={"ab": {"new1": "1", "new2": "2"}})
-
-        RefreshableGetter.reset()
 
         getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
@@ -836,41 +813,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             self.object.process(document)
             assert document == expected_2
 
-    def test_resolve_dotted_field_no_conflict_no_match(self):
-        rule = {
-            "filter": "to.resolve",
-            "generic_resolver": {
-                "field_mapping": {"to.resolve": "resolved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"to": {"resolve": "something no"}}
-        document = {"to": {"resolve": "something no"}}
-
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_dotted_dest_field_no_conflict_no_match(self):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "re.solved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
-            },
-        }
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "something no"}
-        document = {"to_resolve": "something no"}
-
-        self.object.process(document)
-
-        assert document == expected
-
-    def test_resolve_dotted_src_and_dest_field_and_conflict_match(self, caplog):
+    def test_resolve_dotted_src_and_dest_field_and_conflict_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -1058,159 +1001,6 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert self.object.metrics.new_results == 3
         assert self.object.metrics.cached_results == 3
         assert self.object.metrics.num_cache_entries == 3
-
-    @pytest.mark.parametrize("suffix", ["json", "txt"])
-    def test_resolve_from_file_with_content_field(self, suffix, tmp_path):
-        resolve_file = tmp_path / f"resolve.{suffix}"
-        resolve_file.write_text(json.dumps({"content": {"ab": "ab_server_type"}}))
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": str(resolve_file),
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "content_field": "content",
-            },
-        }
-        self._load_rule(rule)
-        self.object.setup()
-
-        document = {"to_resolve": "12ab34"}
-        self.object.process(document)
-
-        assert document == {"to_resolve": "12ab34", "resolved": "ab_server_type"}
-
-    @responses.activate
-    @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
-    def test_resolve_from_http_with_content_field(self, content_type):
-        url = "http://localhost:8123/resolve"
-        responses.add(
-            responses.GET,
-            url,
-            body=json.dumps({"content": {"ab": "ab_server_type"}}),
-            content_type=content_type,
-        )
-        RefreshableGetter.reset()
-
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": url,
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "content_field": "content",
-            },
-        }
-        self._load_rule(rule)
-        self.object.setup()
-
-        document = {"to_resolve": "12ab34"}
-        self.object.process(document)
-
-        assert document == {"to_resolve": "12ab34", "resolved": "ab_server_type"}
-
-    @pytest.mark.parametrize(
-        "content_field_config",
-        [
-            pytest.param({"content_field": ""}, id="empty_string"),
-            pytest.param({"content_field": None}, id="null"),
-            pytest.param({}, id="omitted"),
-        ],
-    )
-    def test_resolve_content_field_unset_reads_root(self, content_field_config, tmp_path):
-        resolve_file = tmp_path / "resolve.json"
-        resolve_file.write_text(json.dumps({"ab": "ab_server_type"}))
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": str(resolve_file),
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                **content_field_config,
-            },
-        }
-        self._load_rule(rule)
-        self.object.setup()
-
-        document = {"to_resolve": "12ab34"}
-        self.object.process(document)
-
-        assert document == {"to_resolve": "12ab34", "resolved": "ab_server_type"}
-
-    def test_resolve_content_field_selects_sibling_key(self, tmp_path):
-        resolve_file = tmp_path / "resolve.json"
-        resolve_file.write_text(json.dumps({"a": {"ab": "from_a"}, "b": {"ab": "from_b"}}))
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": str(resolve_file),
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "content_field": "b",
-            },
-        }
-        self._load_rule(rule)
-        self.object.setup()
-
-        document = {"to_resolve": "12ab34"}
-        self.object.process(document)
-
-        assert document == {"to_resolve": "12ab34", "resolved": "from_b"}
-
-    def test_resolve_content_field_with_ignore_case(self, tmp_path):
-        resolve_file = tmp_path / "resolve.json"
-        resolve_file.write_text(json.dumps({"content": {"ab": "ab_server_type"}}))
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": str(resolve_file),
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "content_field": "content",
-                "ignore_case": True,
-            },
-        }
-        self._load_rule(rule)
-        self.object.setup()
-
-        document = {"to_resolve": "12AB34"}
-        self.object.process(document)
-
-        assert document == {"to_resolve": "12AB34", "resolved": "ab_server_type"}
-
-    def test_resolve_content_field_list_of_single_key_dicts(self, tmp_path):
-        resolve_file = tmp_path / "resolve.json"
-        resolve_file.write_text(
-            json.dumps({"content": [{"ab": "ab_server_type"}, {"de": "de_server_type"}]})
-        )
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": str(resolve_file),
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "content_field": "content",
-            },
-        }
-        self._load_rule(rule)
-        self.object.setup()
-
-        document = {"to_resolve": "12ab34"}
-        self.object.process(document)
-
-        assert document == {"to_resolve": "12ab34", "resolved": "ab_server_type"}
 
     @pytest.mark.parametrize("rule, event, expected, context", test_cases)
     def test_testcases(self, rule, event, expected, context, provision_context):
