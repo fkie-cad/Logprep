@@ -110,23 +110,38 @@ def mock_env(env_dict):
 
 @pytest.fixture
 def provision_context(tmp_path, monkeypatch) -> Generator[Callable[[dict], None]]:
-    """Return a helper that provisions a ``test_cases`` context for a rule.
+    """
+    Return a helper that provisions a ``test_cases`` context for a rule.
 
-    A context maps a path to ``{"body": <content>}``. The source is derived from
-    the path, matching how getters are resolved:
+    The context is expected to have the following structure:
+    .. code-block:: json
 
-    * ``http://`` / ``https://`` are registered as mocked ``GET`` responses. The
+    {
+        "http://example.tld/any/path": {
+            "body": {
+                "any": "json serializable content"
+            },
+            "content_type": "application/json", # default content_type
+        }
+        "https://...": { }, # same as http://
+        "file://some/path/contents.txt": {
+            "body": {
+                "any": "json serializable content"
+            }
+        }
+        "some/path/contents.txt": { } # same as file://
+    }
+
+    The helper covers the most relevant aspects of mocking and provisioning:
+    - ``http://`` / ``https://`` are registered as mocked ``GET`` responses. The
       response is served as ``application/json`` unless the spec sets a
       ``content_type`` (e.g. ``text/plain``), in which case the body is still
-      JSON-serialized but sent under that content type.
-    * ``file://`` or a bare path is written into an isolated working directory the
+      JSON-serialized but sent under that content type. Requests are automatically mocked
+      using `responses`.
+    - ``file://`` or a bare path is written into an isolated working directory the
       test is switched into, so a rule's relative file path resolves to it without
-      any rewriting.
-
-    Response mocking is active for the whole test, so ``@responses.activate`` is
-    not needed. The working directory is only changed when a file is provisioned.
+      any rewriting. The working directory is only changed when a file path is provided.
     """
-
     with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
 
         def _provision(context: dict) -> None:
@@ -148,18 +163,12 @@ def provision_context(tmp_path, monkeypatch) -> Generator[Callable[[dict], None]
 
 
 def normalize_test_cases(*cases: ParameterSet) -> Sequence[ParameterSet]:
-    """Pad ``test_cases`` entries that omit the trailing context.
-
-    Lets cases that need no provisioned content be written as
-    ``pytest.param(rule, event, expected, id=...)`` (three values); a missing
-    context is filled with an empty dict so all entries share the
-    ``rule, event, expected, context`` signature.
-    """
+    """Pad ``test_cases`` entries that omit the trailing context."""
     padded = []
     for case in cases:
         values = tuple(case.values)
         if len(values) == 3:
-            values += ({},)
+            values = (*case.values, {})
         padded.append(pytest.param(*values, id=case.id, marks=case.marks))
     return padded
 

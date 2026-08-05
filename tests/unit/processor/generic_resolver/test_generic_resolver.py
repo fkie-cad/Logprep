@@ -661,6 +661,23 @@ class TestGenericResolver(BaseProcessorTestCase):
         )
         assert isinstance(self.object, GenericResolver)
 
+    @pytest.mark.parametrize("rule, event, expected, context", test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
+
+        self._load_rule(rule)
+        self.object.setup()
+        self.object.process(event)
+
+        assert event == expected
+
+    @pytest.mark.parametrize("rule, context, error_message", failure_test_cases)
+    def test_testcases_failure_handling(self, rule, context, error_message, provision_context):
+        provision_context(context)
+
+        with pytest.raises(InvalidConfigurationError, match=error_message):
+            self._load_rule(rule)
+
     @pytest.mark.parametrize(["resolve_value"], field_value_test_cases)
     def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
         self._load_rule(
@@ -774,18 +791,6 @@ class TestGenericResolver(BaseProcessorTestCase):
         target = "localhost:123"
         url = f"http://{target}"
 
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": url,
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "overwrite_target": True,
-            },
-        }
-
         responses.add(responses.GET, url, json={"ab": {"new1": "1"}})
         responses.add(responses.GET, url, json={"ab": {"new1": "1", "new2": "2"}})
 
@@ -794,7 +799,19 @@ class TestGenericResolver(BaseProcessorTestCase):
         http_getter_conf.write_text(json.dumps(getter_file_content))
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
-            self._load_rule(rule)
+            self._load_rule(
+                {
+                    "filter": "to_resolve",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_from_file": {
+                            "path": url,
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                        "overwrite_target": True,
+                    },
+                }
+            )
 
             expected_1 = {"to_resolve": "12ab34", "resolved": {"new1": "1"}}
             expected_2 = {"to_resolve": "12ab34", "resolved": {"new1": "1", "new2": "2"}}
@@ -814,14 +831,15 @@ class TestGenericResolver(BaseProcessorTestCase):
             assert document == expected_2
 
     def test_resolve_dotted_src_and_dest_field_and_conflict_match(self):
-        rule = {
-            "filter": "to.resolve",
-            "generic_resolver": {
-                "field_mapping": {"to.resolve": "re.solved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
-            },
-        }
-        self._load_rule(rule)
+        self._load_rule(
+            {
+                "filter": "to.resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to.resolve": "re.solved"},
+                    "resolve_list": {".*HELLO\\d": "Greeting"},
+                },
+            }
+        )
         document = {
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
@@ -843,15 +861,16 @@ class TestGenericResolver(BaseProcessorTestCase):
         config["max_cache_entries"] = 10
         self.object = Factory.create({"generic_resolver": config})
 
-        rule_dict = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-            },
-        }
         event = {"to_resolve": "foo"}
-        self._load_rule(rule_dict)
+        self._load_rule(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+                },
+            }
+        )
         self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -883,15 +902,16 @@ class TestGenericResolver(BaseProcessorTestCase):
         config["max_cache_entries"] = 1
         self.object = Factory.create({"generic_resolver": config})
 
-        rule_dict = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-            },
-        }
         event = {"to_resolve": "foo"}
-        self._load_rule(rule_dict)
+        self._load_rule(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+                },
+            }
+        )
         self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -921,15 +941,16 @@ class TestGenericResolver(BaseProcessorTestCase):
         config["max_cache_entries"] = 0
         self.object = Factory.create({"generic_resolver": config})
 
-        rule_dict = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-            },
-        }
         event = {"to_resolve": "foo"}
-        self._load_rule(rule_dict)
+        self._load_rule(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+                },
+            }
+        )
         self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -962,16 +983,17 @@ class TestGenericResolver(BaseProcessorTestCase):
         config["max_cache_entries"] = 10
         self.object = Factory.create({"generic_resolver": config})
 
-        rule_dict = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-            },
-        }
         event = {"to_resolve": "foo"}
         other_event = {"to_resolve": "bar"}
-        self._load_rule(rule_dict)
+        self._load_rule(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+                },
+            }
+        )
         self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -1001,20 +1023,3 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert self.object.metrics.new_results == 3
         assert self.object.metrics.cached_results == 3
         assert self.object.metrics.num_cache_entries == 3
-
-    @pytest.mark.parametrize("rule, event, expected, context", test_cases)
-    def test_testcases(self, rule, event, expected, context, provision_context):
-        provision_context(context)
-
-        self._load_rule(rule)
-        self.object.setup()
-        self.object.process(event)
-
-        assert event == expected
-
-    @pytest.mark.parametrize("rule, context, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, rule, context, error_message, provision_context):
-        provision_context(context)
-
-        with pytest.raises(InvalidConfigurationError, match=error_message):
-            self._load_rule(rule)
