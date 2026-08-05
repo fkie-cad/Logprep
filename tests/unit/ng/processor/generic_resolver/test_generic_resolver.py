@@ -17,7 +17,7 @@ from logprep.ng.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter
-from tests.conftest import field_value_test_cases, mock_env
+from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_resolver.test_generic_resolver import (
     failure_test_cases as non_ng_failure_testcases,
@@ -64,7 +64,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         with pytest.raises(InvalidConfigurationError, match=error_message):
             await self._load_rule(rule)
 
-    @pytest.mark.parametrize(["resolve_value"], field_value_test_cases)
+    @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     async def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
         await self._load_rule(
             {
@@ -85,7 +85,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         assert document.data == expected
 
-    @pytest.mark.parametrize(["resolve_value"], field_value_test_cases)
+    @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     async def test_resolve_not_dotted_field_no_conflict_different_values_match_from_file(
         self, resolve_value, tmp_path
     ):

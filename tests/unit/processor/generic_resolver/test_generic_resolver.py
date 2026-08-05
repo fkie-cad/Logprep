@@ -16,10 +16,10 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter
-from tests.conftest import field_value_test_cases, mock_env, normalize_test_cases
+from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env, normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-CONTENT_FIELD_URL = "http://localhost/resolve-mapping"
+EXAMPLE_URL = "http://localhost/resolve-mapping"
 
 
 example_test_cases = [
@@ -97,7 +97,7 @@ example_test_cases = [
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": CONTENT_FIELD_URL,
+                    "path": EXAMPLE_URL,
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "content_field": "content",
@@ -106,11 +106,11 @@ example_test_cases = [
         {"to_resolve": "12ab34"},
         {"to_resolve": "12ab34", "resolved": "ab_server_type"},
         {
-            CONTENT_FIELD_URL: {
+            EXAMPLE_URL: {
                 "body": {"content": {"ab": "ab_server_type", "de": "de_server_type"}},
             }
         },
-        id="content_field selects the nested resolve mapping",
+        id="resolve from an URL and content field",
     ),
 ]
 
@@ -158,7 +158,7 @@ test_cases = normalize_test_cases(
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": CONTENT_FIELD_URL,
+                    "path": EXAMPLE_URL,
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "content_field": "",
@@ -166,7 +166,7 @@ test_cases = normalize_test_cases(
         },
         {"to_resolve": "12ab34"},
         {"to_resolve": "12ab34", "resolved": "ab_server_type"},
-        {CONTENT_FIELD_URL: {"body": {"ab": "ab_server_type"}}},
+        {EXAMPLE_URL: {"body": {"ab": "ab_server_type"}}},
         id="empty content_field reads the resolve mapping from the root",
     ),
     pytest.param(
@@ -602,7 +602,6 @@ test_cases = normalize_test_cases(
     ),
 )
 
-# rule, context, error_message
 failure_test_cases = [
     pytest.param(
         {
@@ -610,13 +609,13 @@ failure_test_cases = [
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": CONTENT_FIELD_URL,
+                    "path": EXAMPLE_URL,
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "content_field": "content",
             },
         },
-        {CONTENT_FIELD_URL: {"body": ["ab", "de"]}},
+        {EXAMPLE_URL: {"body": ["ab", "de"]}},
         "Expected mapping type when content_field is set",
         id="content_field set but content root is a list",
     ),
@@ -626,13 +625,13 @@ failure_test_cases = [
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": CONTENT_FIELD_URL,
+                    "path": EXAMPLE_URL,
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "content_field": "missing",
             },
         },
-        {CONTENT_FIELD_URL: {"body": {"content": {"ab": "ab_server_type"}}}},
+        {EXAMPLE_URL: {"body": {"content": {"ab": "ab_server_type"}}}},
         "Error loading additions",
         id="content_field key absent from the loaded mapping",
     ),
@@ -679,7 +678,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         with pytest.raises(InvalidConfigurationError, match=error_message):
             self._load_rule(rule)
 
-    @pytest.mark.parametrize(["resolve_value"], field_value_test_cases)
+    @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
         self._load_rule(
             {
@@ -698,7 +697,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    @pytest.mark.parametrize(["resolve_value"], field_value_test_cases)
+    @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     def test_resolve_not_dotted_field_no_conflict_different_values_match_from_file(
         self, resolve_value, tmp_path
     ):

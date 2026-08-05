@@ -14,7 +14,7 @@ from logprep.processor.generic_resolver.rule import (
 )
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter, RefreshableGetter
-from tests.conftest import mock_env
+from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env
 
 
 @pytest.fixture(name="rule_definition")
@@ -339,11 +339,7 @@ class TestGenericResolverRule:
 
     @pytest.mark.parametrize(
         "bad_value",
-        [
-            pytest.param(123, id="int"),
-            pytest.param(["content"], id="list"),
-            pytest.param({"key": "value"}, id="dict"),
-        ],
+        [c for c in FIELD_VALUE_TEST_CASES if not isinstance(c.values[0], (str, type(None)))],
     )
     def test_content_field_rejects_non_string(self, bad_value):
         with pytest.raises(TypeError, match="'content_field' must be"):

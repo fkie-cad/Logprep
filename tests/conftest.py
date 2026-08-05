@@ -173,7 +173,7 @@ def normalize_test_cases(*cases: ParameterSet) -> Sequence[ParameterSet]:
     return padded
 
 
-field_value_test_cases = [
+FIELD_VALUE_TEST_CASES = [
     pytest.param(0, id="int_0_falsy"),
     pytest.param(42, id="int_positive"),
     pytest.param(-1, id="int_negative_1"),
