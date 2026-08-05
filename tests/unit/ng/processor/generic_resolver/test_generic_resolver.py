@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
+# pylint: disable=too-many-lines,too-many-arguments,too-many-positional-arguments
 import json
 from copy import deepcopy
 from pathlib import Path
