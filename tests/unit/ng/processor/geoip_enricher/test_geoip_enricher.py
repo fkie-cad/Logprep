@@ -21,7 +21,6 @@ import pytest
 import responses
 from geoip2.errors import AddressNotFoundError
 
-from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.geoip_enricher.processor import GeoipEnricher
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -120,14 +119,18 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
     async def test_no_geoip_data_added_if_source_field_is_none(self):
         document = {"client": {"ip": None}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+
         await self.object.process(event)
+
         assert document.get("geoip") is None
 
     async def test_source_field_is_none_emits_missing_fields_warning(self):
         document = {"client": {"ip": None}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
+
         result = await self.object.process(event)
+
         assert document == expected
         assert len(result.warnings) == 1
         assert re.match(r".*missing source_fields: \['client\.ip'].*", str(result.warnings[0]))
@@ -137,6 +140,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(event)
+
         assert "geoip" not in document
 
     async def test_geoip_data_added_not_valid(self):
@@ -169,7 +173,9 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
     async def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+
         result = await self.object.process(event)
+
         assert len(result.warnings) == 1
         assert re.match(".*FieldExistsWarning.*geoip.type", str(result.warnings[0]))
 
@@ -178,6 +184,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         await self.object.process(event)
+
         assert document.get("source", {}).get("geo", {}).get("ip") is not None
 
     async def test_delete_source_field(self):
@@ -194,8 +201,10 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             },
             "description": "",
         }
+
         await self._load_rule(rule_dict)
         await self.object.process(event)
+
         assert "client" in document
         assert "ip" not in document.get("client")
 
@@ -211,8 +220,10 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             },
             "description": "",
         }
+
         await self._load_rule(rule_dict)
         await self.object.process(event)
+
         assert "client" in document
         assert document.get("client").get("ip").get("type") is not None
 
@@ -241,8 +252,10 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             },
             "description": "",
         }
+
         await self._load_rule(rule_dict)
         await self.object.process(event)
+
         expected_event = {
             "client": {
                 "custom_output": {
@@ -282,8 +295,10 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             },
             "description": "",
         }
+
         await self._load_rule(rule_dict)
         await self.object.process(event)
+
         expected_event = {
             "client": {
                 "custom_output": {
@@ -321,6 +336,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             },
             "description": "",
         }
+
         with pytest.raises(ValueError, match=r"\'customize_target_subfields\' must be in"):
             await self._load_rule(rule_dict)
 
@@ -334,8 +350,10 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             },
             "description": "",
         }
+
         await self._load_rule(rule_dict)
         await self.object.process(event)
+
         expected_event = {
             "client": {"ip": "13.21.21.37"},
             "geoip": {
@@ -360,8 +378,10 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             },
             "description": "",
         }
+
         await self._load_rule(rule_dict)
         await self.object.process(event)
+
         expected_event = {
             "client": {"ip": source_ip},
             "geoip": {
@@ -380,15 +400,19 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         responses.add(responses.GET, geoip_database_path, db_path_content)
         config = copy.deepcopy(self.CONFIG)
         config["db_path"] = geoip_database_path
-        self.object = Factory.create({"geoip_enricher": config})
-        await self.object.setup()
+
+        instance = self._create_test_instance(config)
+        await instance.setup()
+
         logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-        downloaded_file = logprep_tmp_dir / f"{self.object.name}.mmdb"
+        downloaded_file = logprep_tmp_dir / f"{instance.name}.mmdb"
         assert downloaded_file.exists()
         downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
         assert expected_checksum == downloaded_checksum
         # delete testfile
         shutil.rmtree(logprep_tmp_dir)
+
+        await instance.shut_down()
 
     @responses.activate
     async def test_setup_doesnt_overwrite_already_existing_geomap_file(self):
@@ -405,9 +429,13 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         temporary_file.write_bytes(pre_existing_content.encode("utf8"))
         config = copy.deepcopy(self.CONFIG)
         config["db_path"] = mmdb_file_path
-        self.object = Factory.create({"geoip_enricher": config})
-        await self.object.setup()
+
+        instance = self._create_test_instance(config)
+        await instance.setup()
+
         assert temporary_file.exists()
         assert temporary_file.read_bytes().decode("utf8") == pre_existing_content
         assert temporary_file.read_bytes().decode("utf8") != new_content
         shutil.rmtree(logprep_tmp_dir)  # delete testfile
+
+        await instance.shut_down()
