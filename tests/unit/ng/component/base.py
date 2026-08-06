@@ -3,6 +3,8 @@
 import itertools
 import typing
 from abc import ABC
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from functools import partial
 from logging import getLogger
 from typing import Callable, Generic, Iterable, TypeVar
@@ -43,6 +45,22 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
     @object.setter
     def object(self, value: ComponentTypeT) -> None:
         self._object = value
+
+    @asynccontextmanager
+    async def create_and_setup_processor(
+        self,
+        *,
+        config_patch: dict | None = None,
+        override_shared: bool = False,
+    ) -> AsyncGenerator[ComponentTypeT]:
+        instance = self._create_test_instance(config_patch=config_patch)
+        await instance.setup()
+
+        if override_shared:
+            self.object = instance
+
+        yield instance
+        await instance.shut_down()
 
     def _create_test_instance(self, config_patch: dict | None = None) -> ComponentTypeT:
         config = self.CONFIG | (config_patch if config_patch is not None else {})
