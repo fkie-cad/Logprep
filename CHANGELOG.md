@@ -14,6 +14,7 @@
 * docs: use processor name placeholders for most usages
 * getter: handle "text/yaml" in content type resolution
 * getter: remove noisy debug log
+* vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
 
 ### Bugfix
 * chart: fix command handling
