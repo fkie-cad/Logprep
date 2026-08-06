@@ -104,7 +104,8 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         document = {"client": {"ip": "1.2.3.4"}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        await self.object.process(event)
+        async with self.create_and_setup_processor() as instance:
+            await instance.process(event)
 
         assert document.get("geoip")
 
@@ -155,7 +156,8 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         document = {"client": {"ip": "8.8.8.8"}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        await self.object.process(event)
+        async with self.create_and_setup_processor() as instance:
+            await instance.process(event)
 
         geoip = document.get("geoip")
         assert isinstance(geoip, dict)
@@ -174,7 +176,8 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        result = await self.object.process(event)
+        async with self.create_and_setup_processor() as instance:
+            result = await instance.process(event)
 
         assert len(result.warnings) == 1
         assert re.match(".*FieldExistsWarning.*geoip.type", str(result.warnings[0]))
@@ -183,7 +186,8 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         document = {"source": {"ip": "8.8.8.8"}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        await self.object.process(event)
+        async with self.create_and_setup_processor() as instance:
+            await instance.process(event)
 
         assert document.get("source", {}).get("geo", {}).get("ip") is not None
 
@@ -221,8 +225,10 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             "description": "",
         }
 
-        await self._load_rule(rule_dict)
-        await self.object.process(event)
+        async with self.create_and_setup_processor(override_shared=True) as instance:
+            self.object = instance
+            await self._load_rule(rule_dict)
+            await self.object.process(event)
 
         assert "client" in document
         assert document.get("client").get("ip").get("type") is not None
@@ -253,8 +259,9 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             "description": "",
         }
 
-        await self._load_rule(rule_dict)
-        await self.object.process(event)
+        async with self.create_and_setup_processor(override_shared=True):
+            await self._load_rule(rule_dict)
+            await self.object.process(event)
 
         expected_event = {
             "client": {
@@ -296,8 +303,10 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             "description": "",
         }
 
-        await self._load_rule(rule_dict)
-        await self.object.process(event)
+        async with self.create_and_setup_processor() as instance:
+            self.object = instance
+            await self._load_rule(rule_dict)
+            await self.object.process(event)
 
         expected_event = {
             "client": {
@@ -351,8 +360,9 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             "description": "",
         }
 
-        await self._load_rule(rule_dict)
-        await self.object.process(event)
+        async with self.create_and_setup_processor(override_shared=True):
+            await self._load_rule(rule_dict)
+            await self.object.process(event)
 
         expected_event = {
             "client": {"ip": "13.21.21.37"},
@@ -379,8 +389,9 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             "description": "",
         }
 
-        await self._load_rule(rule_dict)
-        await self.object.process(event)
+        async with self.create_and_setup_processor(override_shared=True):
+            await self._load_rule(rule_dict)
+            await self.object.process(event)
 
         expected_event = {
             "client": {"ip": source_ip},
@@ -401,18 +412,18 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         config = copy.deepcopy(self.CONFIG)
         config["db_path"] = geoip_database_path
 
-        instance = self._create_test_instance(config)
-        await instance.setup()
+        async with self.create_and_setup_processor(
+            config_patch=config,
+            override_shared=True,
+        ):
+            logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
+            downloaded_file = logprep_tmp_dir / f"{self.object.name}.mmdb"
 
-        logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-        downloaded_file = logprep_tmp_dir / f"{instance.name}.mmdb"
         assert downloaded_file.exists()
         downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
         assert expected_checksum == downloaded_checksum
         # delete testfile
         shutil.rmtree(logprep_tmp_dir)
-
-        await instance.shut_down()
 
     @responses.activate
     async def test_setup_doesnt_overwrite_already_existing_geomap_file(self):
@@ -430,12 +441,10 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         config = copy.deepcopy(self.CONFIG)
         config["db_path"] = mmdb_file_path
 
-        instance = self._create_test_instance(config)
-        await instance.setup()
+        async with self.create_and_setup_processor(config_patch=config):
+            pass
 
         assert temporary_file.exists()
         assert temporary_file.read_bytes().decode("utf8") == pre_existing_content
         assert temporary_file.read_bytes().decode("utf8") != new_content
         shutil.rmtree(logprep_tmp_dir)  # delete testfile
-
-        await instance.shut_down()
