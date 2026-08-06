@@ -72,6 +72,7 @@ extensions = [
     "sphinx_copybutton",
     "security_best_practices",
     "resolve_placeholders",
+    "hide_non_init_fields",
 ]
 
 extensions.append("sphinx.ext.todo")
