@@ -12,6 +12,7 @@ from logprep.util.helper import (
     Missing,
     Skip,
     camel_to_snake,
+    field_value_validator,
     get_dotted_field_list,
     get_dotted_field_value,
     get_versions_string,
@@ -496,3 +497,23 @@ class TestReduceFieldValue:
         value = typing.cast(FieldValue, tuple([1, 2, 3]))
         with pytest.raises(ValueError, match="unexpected type"):
             reduce_field_value(self.collect_node_type_or_leaf_value, value, [])
+
+
+class TestFieldValueValidator:
+    @pytest.mark.parametrize(
+        "value, expected_error",
+        [
+            ({"nested": ["value", 42, 13.37, True, None, {"child": False}]}, None),
+            ({1: "value"}, "add must have string keys"),
+            ({"nested": [object()]}, "add must be a FieldValue, got object"),
+        ],
+    )
+    def test_validates_recursive_field_values(self, value, expected_error):
+        attribute = mock.Mock()
+        attribute.name = "add"
+
+        if expected_error:
+            with pytest.raises(TypeError, match=expected_error):
+                field_value_validator(None, attribute, value)
+        else:
+            field_value_validator(None, attribute, value)

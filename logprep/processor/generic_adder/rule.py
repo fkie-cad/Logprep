@@ -93,6 +93,7 @@ from attrs import define, field, validators
 from logprep.abc.getter import Getter
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
+from logprep.util import helper
 from logprep.util.converters import convert_from_dict
 from logprep.util.environ import ENV_VARS
 from logprep.util.getter import GetterFactory, RefreshableGetter
@@ -167,10 +168,10 @@ class GenericAdderRule(Rule):
         of the source fields.
         """
 
-        add: dict = field(
+        add: dict[str, FieldValue] = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of((str, bool, list, dict, int, float)),
+                value_validator=helper.field_value_validator,
             ),
             factory=dict,
         )

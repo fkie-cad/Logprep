@@ -25,6 +25,7 @@
 * chart: fix command handling
 * ng: fix input timeout to also accept int parameters
 * ng: fix `http_input` `collect_meta` leading to shared dicts between events
+* generic_adder: allow None as valid input via `add`
 
 ## 20.0.0
 ### Breaking
