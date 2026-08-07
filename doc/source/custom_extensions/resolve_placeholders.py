@@ -58,13 +58,11 @@ import itertools
 import re
 import typing
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from docutils.parsers.rst.states import Body
+from sphinx.application import Sphinx
 from sphinx.util import logging
-
-if TYPE_CHECKING:
-    from sphinx.application import Sphinx
 
 logger = logging.getLogger(__name__)
 
