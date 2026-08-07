@@ -1,21 +1,65 @@
 .. -*- mode: rst -*-
-{% for item in data.test_cases %}
 
-{% if item.values %}
-{# handles pytest.param #}
-*{{ item.id }}:*
+{% macro block(label, lang, code) %}
+.. code-block:: {{ lang }}
+   :caption: {{ label }}
 
-- rule: :code:`{{ item.values[0] }}`
-- message: :code:`{{ item.values[1] }}`
-- processed: :code:`{{ item.values[2] }}`
+   {% if lang == "yaml" %}
+   {{ code | yaml_pretty | indent(width=3) }}
+   {%- elif lang == "json" -%}
+   {{ code | json_pretty | indent(width=3) }}
+   {%- endif -%}
+{% endmacro %}
 
-{% else %}
-{# handles legacy tuple style #}
-*{{ item[0] }}:*
+{% macro events(before, after) %}
+.. container:: side-by-side
 
-- rule: :code:`{{ item[1] }}`
-- message: :code:`{{ item[2] }}`
-- processed: :code:`{{ item[3] }}`
+   {{ block("Event before processing", "json", before) | indent(width=3) }}
+   {{ block("Event after processing", "json", after) | indent(width=3) }}
+{% endmacro %}
+
+{% macro render_case(title, icon, rule, before, after, context, is_open) %}
+.. dropdown:: {{ title }}
+   :icon: {{ icon }}
+{%- if is_open %}
+   :open:
 {% endif %}
 
+   {{ block("Rule configuration", "yaml", rule) | indent(width=3) }}
+   {% if context %}
+      {% for path, spec in context.items() %}
+         {% if spec is mapping and spec.body is defined %}
+            {{- block("Content of ``" ~ path ~ "``", "yaml", spec.body) | indent(width=3) }}
+         {% endif %}
+      {% endfor %}
+   {% endif %}
+   {{ events(before, after) | indent(width=3) }}
+{% endmacro %}
+
+{% macro case_from_item(item, is_open) %}
+   {% if item.values %}{# handles pytest.param #}
+      {% set context = item.values[3] if (item.values | length > 3 and item.values[3] is mapping) else None %}
+      {{- render_case("Example: " ~ item.id, "light-bulb", item.values[0], item.values[1], item.values[2], context, is_open) }}
+   {% else %}{# handles legacy tuple-based style #}
+      {{- render_case("Example: " ~ item[0], "light-bulb", item[1], item[2], item[3], None, is_open) }}
+   {% endif %}
+{% endmacro %}
+
+{% set primary = data.example_test_cases if data.example_test_cases is defined else data.test_cases %}
+{% set primary_ids = data.example_test_cases | map(attribute="id") | list %}
+{% set extra = data.test_cases | rejectattr("id", "in", primary_ids) | list %}
+
+{# --- actual template --- #}
+
+{% for item in primary %}
+   {{- case_from_item(item, false) }}
 {% endfor %}
+
+{% if extra %}
+.. dropdown:: Additional examples
+   :icon: list-unordered
+
+   {% for item in extra %}
+      {{- case_from_item(item, false) | indent(width=3) }}
+   {% endfor %}
+{% endif %}

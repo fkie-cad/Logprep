@@ -14,7 +14,7 @@ from logprep.processor.generic_resolver.rule import (
 )
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter, RefreshableGetter
-from tests.conftest import mock_env
+from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env
 
 
 @pytest.fixture(name="rule_definition")
@@ -297,3 +297,121 @@ class TestGenericResolverRule:
             assert rule.additions == from_http_2
             scheduler.run_all()
             assert rule.additions == from_http_3
+
+    @pytest.mark.parametrize(
+        ["content_field_config", "expected"],
+        [
+            pytest.param({}, None, id="omitted_defaults_to_none"),
+            pytest.param({"content_field": ""}, None, id="empty_string_converted_to_none"),
+            pytest.param({"content_field": None}, None, id="null_stays_none"),
+            pytest.param({"content_field": "content"}, "content", id="string_kept_verbatim"),
+        ],
+    )
+    def test_content_field_default_and_converter(self, content_field_config, expected):
+        rule = GenericResolverRule.create_from_dict(
+            {
+                "filter": "message",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_list": {"pattern": "result"},
+                    **content_field_config,
+                },
+            }
+        )
+        assert rule.config.content_field == expected
+
+    def test_content_field_affects_rule_equality(self):
+        def _make(content_field):
+            generic_resolver = {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {"pattern": "result"},
+            }
+            if content_field is not None:
+                generic_resolver["content_field"] = content_field
+            return GenericResolverRule.create_from_dict(
+                {"filter": "message", "generic_resolver": generic_resolver}
+            )
+
+        assert _make("content") == _make("content")
+        assert _make("content") != _make("other")
+        assert _make("content") != _make(None)
+        assert _make("") == _make(None)  # both are converted to None
+
+    @pytest.mark.parametrize(
+        "bad_value",
+        [c for c in FIELD_VALUE_TEST_CASES if not isinstance(c.values[0], (str, type(None)))],
+    )
+    def test_content_field_rejects_non_string(self, bad_value):
+        with pytest.raises(TypeError, match="'content_field' must be"):
+            GenericResolverRule.create_from_dict(
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_list": {"pattern": "result"},
+                        "content_field": bad_value,
+                    },
+                }
+            )
+
+    @responses.activate
+    def test_content_field_loads_nested_additions_from_http(self):
+        url = "http://localhost:12345/resolve"
+        responses.add(
+            responses.GET,
+            url,
+            json={"content": {"ab": "ab_server_type", "de": "de_server_type"}},
+            content_type="application/json",
+        )
+
+        rule = GenericResolverRule.create_from_dict(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_from_file": {
+                        "path": url,
+                        "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                    },
+                    "content_field": "content",
+                },
+            }
+        )
+        assert rule.additions == {"ab": "ab_server_type", "de": "de_server_type"}
+
+    @responses.activate
+    @pytest.mark.parametrize(
+        ["body", "content_field", "match"],
+        [
+            pytest.param(
+                ["ab", "de"],
+                "content",
+                "Expected mapping type when content_field is set",
+                id="content_root_is_a_list",
+            ),
+            pytest.param(
+                {"content": {"ab": "ab_server_type"}},
+                "missing",
+                "Error loading additions",
+                id="content_field_key_absent",
+            ),
+        ],
+    )
+    def test_content_field_load_failures_from_http(self, body, content_field, match):
+        url = "http://localhost:12346/resolve"
+        responses.add(responses.GET, url, json=body, content_type="application/json")
+
+        with pytest.raises(InvalidConfigurationError, match=match):
+            GenericResolverRule.create_from_dict(
+                {
+                    "filter": "to_resolve",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_from_file": {
+                            "path": url,
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                        "content_field": content_field,
+                    },
+                }
+            )

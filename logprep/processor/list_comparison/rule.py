@@ -236,7 +236,7 @@ class ListComparisonRule(FieldManagerRule):
             default=None,
         )
         """
-        Optional JSON key used to extract the list values from loaded content.
+        Optional key used to extract the list values from loaded content.
 
         Example:
             Given the following JSON content:

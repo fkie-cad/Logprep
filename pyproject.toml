@@ -101,6 +101,7 @@ doc = [
   "sphinx>=8.2.0,<9",
   "sphinx_rtd_theme",
   "sphinxcontrib.datatemplates",
+  "sphinx-design",
   "sphinxcontrib-mermaid",
   "sphinx-copybutton",
   "nbsphinx>=0.9",
@@ -149,7 +150,7 @@ max-line-length=100
 [tool.pylint.BASIC]
 no-docstring-rgx="^test_|^.*TestCase|^_|^Test"
 
-[tool.pylint."MESAGES CONTROL"]
+[tool.pylint."MESSAGES CONTROL"]
 disable="too-few-public-methods,unsupported-membership-test"
 
 [tool.pylint.DESIGN]

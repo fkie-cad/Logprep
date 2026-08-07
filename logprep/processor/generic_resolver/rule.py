@@ -1,4 +1,4 @@
-r"""
+"""
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^
 
@@ -30,7 +30,8 @@ the value in :code:`to_resolve`.
 
 For YAML compliance, it is possible to declare the resolve list as follows
 to maintain ordering when using the configuration file with different programs.
-Both styles will be supported in future; however, this one is recommended for clarity and YAML compliance.
+Both styles will be supported in future; however, this one is recommended
+for clarity and YAML compliance.
 
 ..  code-block:: yaml
     :linenos:
@@ -131,6 +132,13 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
    :undoc-members:
    :inherited-members:
    :noindex:
+
+Examples for generic_resolver:
+------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.generic_resolver.test_generic_resolver
+   :template: testcase-renderer.tmpl
+
 """
 
 import re
@@ -164,6 +172,7 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
+
         resolve_list: dict[str, FieldValue] = field(
             validator=validators.deep_mapping(
                 value_validator=validators.instance_of(
@@ -177,8 +186,11 @@ class GenericResolverRule(FieldManagerRule):
             ),
             factory=dict,
         )
-        """lookup mapping in form of
-        :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`"""
+        """
+        Lookup mapping in form of
+        :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`
+        """
+
         resolve_from_file: dict[typing.Literal["path"] | typing.Literal["pattern"], str] = field(
             validator=[
                 validators.instance_of(dict),
@@ -189,7 +201,8 @@ class GenericResolverRule(FieldManagerRule):
             ],
             factory=dict,
         )
-        """Mapping with a `path` key to a YML file (for string format see :ref:`getters`)
+        """
+        Mapping with a `path` key to a YML file (for string format see :ref:`getters`)
         with a resolve list and a `pattern` key with
         a regex pattern which can be used to resolve values.
         The resolve list in the file at :code:`path` is then used in conjunction with
@@ -209,6 +222,49 @@ class GenericResolverRule(FieldManagerRule):
            authenticity and integrity of the loaded values.
 
         """
+
+        content_field: str | None = field(
+            validator=validators.optional(validators.instance_of(str)),
+            converter=lambda value: None if value == "" else value,
+            default=None,
+        )
+        """
+        Optional key used to extract the resolve mapping from loaded content.
+
+        Example:
+            Given the following JSON content:
+
+            .. code-block:: json
+
+               {
+                   "content": {"ab": "ab_server_type", "de": "de_server_type"}
+               }
+
+            Set ``content_field`` to ``"content"`` to use the value of this key
+            as the resolve mapping.
+
+        Note:
+            Setting ``content_field`` requires mapping-like content. Content that
+            does not resolve to a mapping (for example a list at the root) fails with
+            an error.
+
+            An empty ``content_field`` is treated as unset, so the resolve mapping is
+            expected at the root of the loaded content.
+
+            Examples:
+                ``content_field: ""``
+                    Is converted to ``None`` and reads the resolve mapping from the
+                    content root.
+
+                ``content_field: null``
+                    Is treated as ``None`` and reads the resolve mapping from the
+                    content root.
+
+                ``content_field: "content"``
+                    Reads the resolve mapping from the ``"content"`` key of the
+                    loaded mapping.
+        """
+
         ignore_case: bool = field(validator=validators.instance_of(bool), default=False)
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
@@ -240,9 +296,11 @@ class GenericResolverRule(FieldManagerRule):
 
         def _get_additions_from_path(self, path: str) -> dict[str, FieldValue]:
             try:
-                additions = GetterFactory.from_string(path).get_collection()
+                additions = GetterFactory.from_string(path).get_collection(
+                    content_field=self.content_field
+                )
                 return convert_ordered_mapping_or_keep_mapping(additions)
-            except ValueError as error:
+            except (ValueError, KeyError) as error:
                 raise InvalidConfigurationError(
                     f"Error loading additions from '{path}': {error}"
                 ) from error

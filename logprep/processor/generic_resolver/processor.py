@@ -55,7 +55,8 @@ class GenericResolver(FieldManager):
         """Config for |PROCESSOR|"""
 
         max_cache_entries: int = field(validator=validators.instance_of(int), default=0)
-        """(Optional) Size of cache for results when resolving from a list.
+        """
+        (Optional) Size of cache for results when resolving from a list.
         The cache can be disabled by setting this option to :code:`0`.
 
         .. security-best-practice::
@@ -65,10 +66,13 @@ class GenericResolver(FieldManager):
            and OOM situations caused by the |PROCESSOR_NAME| cache.
 
         """
+
         cache_metrics_interval: int = field(validator=validators.instance_of(int), default=1)
-        """(Optional) Cache metrics won't be updated immediately.
+        """
+        (Optional) Cache metrics won't be updated immediately.
         Instead updating is skipped for a number of events before it's next update.
-        :code:`cache_metrics_interval` sets the number of events between updates (default: 1)."""
+        :code:`cache_metrics_interval` sets the number of events between updates (default: 1).
+        """
 
     @define(kw_only=True)
     class Metrics(FieldManager.Metrics):
@@ -89,6 +93,7 @@ class GenericResolver(FieldManager):
             )
         )
         """Number of resolved values from cache"""
+
         num_cache_entries: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Number of resolved values in cache",
@@ -96,6 +101,7 @@ class GenericResolver(FieldManager):
             )
         )
         """Number of values in cache"""
+
         cache_load: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Relative cache load.",
