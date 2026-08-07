@@ -26,6 +26,7 @@ from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.connector.http.input import HttpInput
 from logprep.ng.util.workflow.worker import SizeLimitedQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from logprep.util.helper import FieldValue, reduce_field_value
 from tests.conftest import mock_env
 from tests.unit.ng.connector.base import BaseInputTestCase
 
@@ -293,6 +294,31 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
             assert message["custom"]["url"].endswith("/json")
             assert re.search(r"\d+\.\d+\.\d+\.\d+", message["custom"]["remote_addr"])
             assert isinstance(message["custom"]["user_agent"], str)
+
+    async def test_collect_meta_produces_disjoint_events(self):
+        instance = self._create_test_instance({"collect_meta": True})
+        await instance.setup()
+        data = """
+        {"message": "1"}
+        {"message": "2"}
+        """
+
+        async with testing.ASGIConductor(instance.app) as client:
+            await client.post("/jsonl", body=data)
+
+        def _collect_ids(value: FieldValue, ids: set[int]) -> set[int]:
+            if isinstance(value, (list, dict)):
+                ids.add(id(value))
+            return ids
+
+        msg_1 = await instance.get_next(1)
+        msg_2 = await instance.get_next(1)
+        assert isinstance(msg_1, LogEvent) and isinstance(msg_2, LogEvent)
+        assert not msg_1.is_failed() and not msg_2.is_failed()
+
+        ids_1 = reduce_field_value(_collect_ids, msg_1.data, set())
+        ids_2 = reduce_field_value(_collect_ids, msg_2.data, set())
+        assert ids_1.isdisjoint(ids_2), "no shared object references between events allowed"
 
     async def test_original_event_field_with_event_as_dict(self):
         message = {"message": "my message"}

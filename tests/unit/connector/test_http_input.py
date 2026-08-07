@@ -22,6 +22,7 @@ from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.framework.pipeline_manager import ThrottlingQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from logprep.util.helper import FieldValue, reduce_field_value
 from tests.conftest import mock_env
 from tests.unit.connector.base import BaseInputTestCase
 
@@ -277,6 +278,32 @@ class TestHttpConnector(BaseInputTestCase):
         assert message["custom"]["url"].endswith("/json")
         assert re.search(r"\d+\.\d+\.\d+\.\d+", message["custom"]["remote_addr"])
         assert isinstance(message["custom"]["user_agent"], str)
+
+    def test_collect_meta_produces_disjoint_events(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["collect_meta"] = True
+        connector = Factory.create({"test connector": connector_config})
+        connector.pipeline_index = 1
+        connector.setup()
+        client = testing.TestClient(connector.app)
+
+        data = """
+        {"message": "1"}
+        {"message": "2"}
+        """
+        client.post("/jsonl", body=data)
+
+        def _collect_ids(value: FieldValue, ids: set[int]) -> set[int]:
+            if isinstance(value, (list, dict)):
+                ids.add(id(value))
+            return ids
+
+        msg_1 = connector.get_next(1)
+        msg_2 = connector.get_next(1)
+
+        ids_1 = reduce_field_value(_collect_ids, msg_1, set())
+        ids_2 = reduce_field_value(_collect_ids, msg_2, set())
+        assert ids_1.isdisjoint(ids_2), "no shared object references between events allowed"
 
     def test_get_no_metadata_when_collect_meta_false(self):
         message = {"message": "my message"}

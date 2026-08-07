@@ -18,7 +18,8 @@
 
 ### Bugfix
 * chart: fix command handling
-* fix ng input timeout to also accept int parameters
+* ng: fix input timeout to also accept int parameters
+* ng: fix `http_input` `collect_meta` leading to shared dicts between events
 
 ## 20.0.0
 ### Breaking
