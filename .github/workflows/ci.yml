@@ -1,7 +1,4 @@
 name: PR CI
-# only run tests for pull requests cause no file has to be changed without review
-# open -> open the pull request
-# synchronize -> push to branch of pull request
 on:
   pull_request:
     types: [opened, synchronize]
@@ -106,3 +103,20 @@ jobs:
       tags: "${{ github.head_ref }}"
   check-examples:
     uses: ./.github/workflows/check-examples.yml
+  check-pr-ci-successful:
+    runs-on: ubuntu-24.04
+    if: always()
+    needs:
+      - check-uv-lockfile
+      - enforce-changelog-update
+      - protect-changelog
+      - test
+      - build-docs
+      - documentation-preview
+      - code-quality
+      - containerbuild
+      - check-examples
+    steps:
+      - name: Fail if any dependency failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
