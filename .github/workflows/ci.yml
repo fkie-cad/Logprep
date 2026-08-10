@@ -19,6 +19,15 @@ jobs:
           enable-cache: true
       - name: Check lockfile is consistent with pyproject.toml
         run: uv lock --check
+  enforce-changelog-update:
+    runs-on: ubuntu-24.04
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog-update') }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Check if changes are limited to upcoming changes
+        run: "! git diff origin/main --exit-code -- CHANGELOG.md"
   protect-changelog:
     runs-on: ubuntu-24.04
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-history-fix') && !startsWith(github.event.pull_request.title, 'release:') }}
@@ -27,7 +36,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check if changes are limited to upcoming changes
-        if:
         run: |
           if git diff origin/main --exit-code -- CHANGELOG.md; then
             echo "CHANGELOD.md not changed"
