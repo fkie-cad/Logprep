@@ -1,11 +1,35 @@
 name: PR CI
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, reopened, synchronize, ready_for_review]
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  check-pr-todos:
+    runs-on: ubuntu-24.04
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Check for open TODOs in PR description
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -u
+
+          if todos=$(grep -E -e "TODO: " -e "- \[\s?\]" <<< "$PR_BODY"); then
+            todo_count=$(wc -l <<< "$todos")
+            echo "::error::Open ${todo_count} TODO(s) in PR description:"
+            echo "$todos"
+            exit 1
+          else
+            grep_exit=$?
+            if [ "$grep_exit" -eq 2 ]; then
+              echo "::error::grep failed while scanning the PR description"
+              exit 1
+            fi
+          fi
+
+          echo "No open TODOs found."
   check-uv-lockfile:
     runs-on: ubuntu-24.04
     steps:
@@ -107,6 +131,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: always()
     needs:
+      - check-pr-todos
       - check-uv-lockfile
       - enforce-changelog-update
       - protect-changelog
