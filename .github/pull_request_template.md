@@ -8,6 +8,7 @@
 - [ ] The changes adhere to the [contribution guidelines](https://github.com/fkie-cad/Logprep/blob/main/CONTRIBUTING.md)
 - [ ] I have performed a self-review of my code
 - [ ] My changes generate no new warnings (e.g. flake8/mypy/pytest/...) other than deprecations
+- [ ] Relevant changes are applied to non-ng and ng
 
 ### Documentation
 - [ ] [README.md](https://github.com/fkie-cad/Logprep/blob/main/README.md) is up-to-date
