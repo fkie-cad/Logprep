@@ -20,6 +20,7 @@
 * getter: remove noisy debug log
 * vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
 * tests: add context handling framework for `test_cases`
+* ci: enforce CHANGELOG.md is updated
 
 ### Bugfix
 * chart: fix command handling
