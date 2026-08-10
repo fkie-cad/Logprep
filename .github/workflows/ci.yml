@@ -117,6 +117,38 @@ jobs:
       - containerbuild
       - check-examples
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Verify needs list covers every job in this file
+        run: |
+          # fail step if anything goes wrong
+          set -euo pipefail
+
+          # fkie-cad/Logprep/WORKFLOW_FILE_PATH@refs/heads/...
+          workflow_ref="${{ github.workflow_ref }}"
+          path="${workflow_ref#${{ github.repository }}/}"  # strip owner/repo prefix
+          workflow_file_path="${path%%@*}"                  # strip @refs/... suffix
+          echo "Resolved workflow file: ${workflow_file_path}"
+
+          all_jobs=$(yq -o=json -I=0 '.jobs | keys' "$workflow_file_path")
+          dep_jobs=$(echo "$NEEDS_JSON" | jq -c 'keys')
+
+          missing=$(jq -n \
+            --argjson all_jobs "$all_jobs" \
+            --argjson dep_jobs "$dep_jobs" \
+            --arg     own_job  "$OWN_JOB_ID" \
+            ' $all_jobs - ($dep_jobs + [$own_job])'
+          )
+
+          if [ "$missing" != "[]" ]; then
+            echo "Missing job(s) in \`needs\` declaration: ${missing}"
+            exit 1
+          fi
+          echo "Check successful: relevant jobs of ${all_jobs} are included in needs ${dep_jobs}"
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+          OWN_JOB_ID: ${{ github.job }}
       - name: Fail if any dependency failed or was cancelled
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
