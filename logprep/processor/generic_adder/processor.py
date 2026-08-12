@@ -54,7 +54,12 @@ class GenericAdder(Processor):
             for items_to_add in rule.additions(event):
                 if items_to_add:
                     add_fields_to(
-                        event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target
+                        event,
+                        items_to_add,
+                        rule,
+                        rule.merge_with_target,
+                        rule.overwrite_target,
+                        skip_none=False,
                     )
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error

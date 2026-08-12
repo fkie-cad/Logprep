@@ -16,7 +16,7 @@ from logprep.processor.base.exceptions import (
 )
 from logprep.processor.generic_adder.processor import GenericAdder
 from logprep.util.getter import HttpGetter
-from tests.conftest import mock_env
+from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
@@ -399,6 +399,15 @@ test_cases = [  # testcase, rule, event, expected
         {"float_value_test": "Test", "float_field": 12.3},
         id="Add float value",
     ),
+    *[
+        pytest.param(
+            {"filter": "*", "generic_adder": {"add": {"some_field": test_case.values[0]}}},
+            {"message": "Test"},
+            {"message": "Test", "some_field": test_case.values[0]},
+            id=f"Add single value: {test_case.id}",
+        )
+        for test_case in FIELD_VALUE_TEST_CASES
+    ],
     pytest.param(
         {
             "filter": "add_list_generic_test",

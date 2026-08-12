@@ -23,6 +23,8 @@ from typing import (
     cast,
 )
 
+from attrs import Attribute
+
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
@@ -939,3 +941,23 @@ def transform_field_value(
             return transform_value(data)
         case _:
             raise ValueError(f"unexpected type encountered: {type(data)}")
+
+
+def field_value_validator(_: object, attribute: Attribute, value: object) -> None:
+    """Validate that an attrs attribute recursively contains only ``FieldValue`` values.
+
+    Dictionaries must use strings as keys. Unsupported values raise :class:`TypeError`.
+    """
+    match value:
+        case None | str() | bool() | int() | float():
+            return
+        case list():
+            for item in value:
+                field_value_validator(_, attribute, item)
+        case dict():
+            if not all(isinstance(key, str) for key in value):
+                raise TypeError(f"{attribute.name} must have string keys")
+            for item in value.values():
+                field_value_validator(_, attribute, item)
+        case _:
+            raise TypeError(f"{attribute.name} must be a FieldValue, got {type(value).__name__}")

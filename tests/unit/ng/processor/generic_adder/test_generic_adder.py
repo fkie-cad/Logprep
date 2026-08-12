@@ -19,6 +19,7 @@ from logprep.processor.base.exceptions import (
     ProcessingWarning,
 )
 from logprep.util.getter import HttpGetter
+from tests.conftest import FIELD_VALUE_TEST_CASES
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
     dynamic_uri_failure_test_cases as non_ng_dynamic_uri_failure_test_cases,
