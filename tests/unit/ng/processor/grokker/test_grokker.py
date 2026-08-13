@@ -66,7 +66,7 @@ class TestGrokker(BaseProcessorTestCase[Grokker]):
         archive_data = GetterFactory.from_string(
             "tests/testdata/unit/grokker/patterns.zip"
         ).get_raw()
-        with mock.patch("logprep.util.getter.HttpGetter.get_raw") as mock_getter:
+        with mock.patch("logprep.ng.util.getter.HttpGetter.get_raw") as mock_getter:
             mock_getter.return_value = archive_data
             config = deepcopy(self.CONFIG)
             config["custom_patterns_dir"] = (
