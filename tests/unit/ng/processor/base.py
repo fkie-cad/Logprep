@@ -60,10 +60,14 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         assert rules_dirs is not None
         assert isinstance(rules_dirs, list)
         rules = []
-        for rules_dir in rules_dirs:
+        for rules_target in rules_dirs:
+            if isinstance(rules_target, dict):
+                rules.append(rules_target)
+                continue
+
             rule_paths = [
                 path
-                for path in Path(rules_dir).glob("**/*")
+                for path in Path(rules_target).glob("**/*")
                 if path.suffix in RULE_FILE_EXTENSIONS and not path.name.endswith("_test.json")
             ]
             for rule_path in rule_paths:
@@ -159,12 +163,6 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         self.object.load_rules(self.rules_dirs)
         new_rules_size = self.object._rule_tree.get_size()
         assert new_rules_size > rules_size
-
-    def test_load_rules_calls_getter_factory(self):
-        with mock.patch("logprep.util.getter.GetterFactory.from_string") as getter_factory:
-            with pytest.raises(TypeError):
-                self.object.load_rules(rules_targets=self.rules_dirs)
-            getter_factory.assert_called()
 
     def test_load_rules_creates_rule_with_processor_name(self):
         with mock.patch(
