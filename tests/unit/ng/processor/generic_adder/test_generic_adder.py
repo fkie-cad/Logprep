@@ -18,7 +18,7 @@ from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
     ProcessingWarning,
 )
-from logprep.util.getter import HttpGetter
+from logprep.util.getter import HttpGetter, RefreshableGetter
 from tests.conftest import FIELD_VALUE_TEST_CASES
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
@@ -47,6 +47,12 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         "type": "generic_adder",
         "rules": ["tests/testdata/unit/generic_adder/rules"],
     }
+
+    @pytest.fixture(autouse=True)
+    def reset_refreshable_getters(self):
+        RefreshableGetter.reset()
+        yield
+        RefreshableGetter.reset()
 
     @pytest.mark.parametrize("rule, event, expected, context", test_cases)
     async def test_generic_adder_testcases(self, rule, event, expected, context, provision_context):
@@ -86,7 +92,8 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             config = deepcopy(self.CONFIG)
             config["rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
-            await Factory.create(configuration).setup()
+            instance = Factory.create(configuration)
+            await instance.setup()
 
     async def test_add_generic_fields_from_file_invalid(self):
         config = deepcopy(self.CONFIG)
@@ -124,7 +131,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         await instance.process(log_event)
 
-        rule_add = instance.rules[0].add({})
+        rule_add = await instance.rules[0].add({})
 
         assert event["some_list_field"] == ["some_value"]
         assert event["some_list_field"] is not rule_add["some_list_field"], "only copies in events"
@@ -276,3 +283,6 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             "message": "preserved",
             "tags": ["_generic_adder_failure"],
         }
+
+    async def test_has_async_io(self):
+        assert await self.object.has_asyncio() is True

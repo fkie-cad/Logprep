@@ -96,11 +96,11 @@ from attrs import define, field, validators
 
 from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
 from logprep.processor.amides.rule import AmidesRule
 from logprep.processor.base.rule import Rule
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import FieldValue, get_dotted_field_value
 
 logger = logging.getLogger("Amides")
@@ -220,14 +220,9 @@ class Amides(FieldManager):
         if not await asyncio.to_thread(Path(models_path).exists):
             logger.debug("Getting AMIDES models archive...")
             models_archive = Path(f"{current_process().name}-{self.name}.zip")
-
             getter = GetterFactory.from_string(str(models_path))
-
-            # TODO: await get_raw() once the getter supports async operations.
-            # raw = await getter.get_raw()
-            models_data = await asyncio.to_thread(getter.get_raw)
-            await asyncio.to_thread(models_archive.write_bytes, models_data)
-
+            raw = await getter.get_raw()
+            await asyncio.to_thread(models_archive.write_bytes, raw)
             logger.debug("Finished getting AMIDES models archive...")
             models_path = str(models_archive.absolute())
 
