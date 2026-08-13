@@ -42,10 +42,10 @@ from zipfile import ZipFile
 from attrs import define, field, validators
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.grokker.rule import GrokkerRule
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("Grokker")
@@ -165,15 +165,12 @@ class Grokker(FieldManager):
         logger.debug("start grok pattern download...")
 
         getter = GetterFactory.from_string(source_file)
-
-        # TODO: await get_raw() once the getter supports async operations.
-        archive_content = await asyncio.to_thread(getter.get_raw)
-
+        raw = await getter.get_raw()
         logger.debug("finished grok pattern download.")
 
         await asyncio.to_thread(
             self._extract_zip_file,
-            archive_content,
+            raw,
             target_dir,
         )
 

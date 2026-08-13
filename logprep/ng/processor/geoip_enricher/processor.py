@@ -37,9 +37,9 @@ from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.base.rule import Rule
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("GeoipEnricher")
@@ -91,10 +91,7 @@ class GeoipEnricher(FieldManager):
                 if not await asyncio.to_thread(db_path_file.exists):
                     tmp = db_path_file.with_suffix(".tmp")
                     getter = GetterFactory.from_string(self.config.db_path)
-
-                    # TODO: await get_raw() once the getter supports async operations.
-                    # raw = await getter.get_raw()
-                    raw = await asyncio.to_thread(getter.get_raw)
+                    raw = await getter.get_raw()
                     await asyncio.to_thread(tmp.write_bytes, raw)
                     await asyncio.to_thread(tmp.replace, db_path_file)
 
