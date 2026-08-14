@@ -1,5 +1,6 @@
 ## Description
 
+<!-- TODO: fill out and remove this -->
 * Briefly summarize your changes in a few bullet points (can and should correspond to [CHANGELOG.md](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md))
 * Relates to #XXX (insert issue number here), if there is a corresponding GH issue
 
@@ -7,6 +8,7 @@
 - [ ] The changes adhere to the [contribution guidelines](https://github.com/fkie-cad/Logprep/blob/main/CONTRIBUTING.md)
 - [ ] I have performed a self-review of my code
 - [ ] My changes generate no new warnings (e.g. flake8/mypy/pytest/...) other than deprecations
+- [ ] Relevant changes are applied to non-ng and ng
 
 ### Documentation
 - [ ] [README.md](https://github.com/fkie-cad/Logprep/blob/main/README.md) is up-to-date
@@ -22,9 +24,10 @@
 
 ### How did you verify that the changes work in practice?
 
+<!-- TODO: fill out and remove this -->
 * List of (preferably easy reproducible) tests including OS
 
 ## Reviewer
-- [ ] The code is readable/maintainable and follows the [contribution guidelines](https://github.com/fkie-cad/Logprep/blob/main/CONTRIBUTING.md)
-- [ ] [Documentation](#documentation) is up-to-date
-- [ ] Tests (unit & acceptance) are meaningful and not over-mocked
+- The code is readable/maintainable and follows the [contribution guidelines](https://github.com/fkie-cad/Logprep/blob/main/CONTRIBUTING.md)
+- [Documentation](#documentation) is up-to-date
+- Tests (unit & acceptance) are meaningful and not over-mocked

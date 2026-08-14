@@ -1,14 +1,35 @@
 name: PR CI
-# only run tests for pull requests cause no file has to be changed without review
-# open -> open the pull request
-# synchronize -> push to branch of pull request
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, reopened, synchronize, ready_for_review]
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  check-pr-todos:
+    runs-on: ubuntu-24.04
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Check for open TODOs in PR description
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -u
+
+          if todos=$(grep -E -e "TODO: " -e "- \[\s?\]" <<< "$PR_BODY"); then
+            todo_count=$(wc -l <<< "$todos")
+            echo "::error::Open ${todo_count} TODO(s) in PR description:"
+            echo "$todos"
+            exit 1
+          else
+            grep_exit=$?
+            if [ "$grep_exit" -eq 2 ]; then
+              echo "::error::grep failed while scanning the PR description"
+              exit 1
+            fi
+          fi
+
+          echo "No open TODOs found."
   check-uv-lockfile:
     runs-on: ubuntu-24.04
     steps:
@@ -19,6 +40,15 @@ jobs:
           enable-cache: true
       - name: Check lockfile is consistent with pyproject.toml
         run: uv lock --check
+  enforce-changelog-update:
+    runs-on: ubuntu-24.04
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog-update') }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Check if changes are limited to upcoming changes
+        run: "! git diff origin/main --exit-code -- CHANGELOG.md"
   protect-changelog:
     runs-on: ubuntu-24.04
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-history-fix') && !startsWith(github.event.pull_request.title, 'release:') }}
@@ -27,7 +57,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check if changes are limited to upcoming changes
-        if:
         run: |
           if git diff origin/main --exit-code -- CHANGELOG.md; then
             echo "CHANGELOD.md not changed"
@@ -98,3 +127,53 @@ jobs:
       tags: "${{ github.head_ref }}"
   check-examples:
     uses: ./.github/workflows/check-examples.yml
+  check-pr-ci-successful:
+    runs-on: ubuntu-24.04
+    if: always()
+    needs:
+      - check-pr-todos
+      - check-uv-lockfile
+      - enforce-changelog-update
+      - protect-changelog
+      - test
+      - build-docs
+      - documentation-preview
+      - code-quality
+      - containerbuild
+      - check-examples
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Verify needs list covers every job in this file
+        run: |
+          # fail step if anything goes wrong
+          set -euo pipefail
+
+          # fkie-cad/Logprep/WORKFLOW_FILE_PATH@refs/heads/...
+          workflow_ref="${{ github.workflow_ref }}"
+          path="${workflow_ref#${{ github.repository }}/}"  # strip owner/repo prefix
+          workflow_file_path="${path%%@*}"                  # strip @refs/... suffix
+          echo "Resolved workflow file: ${workflow_file_path}"
+
+          all_jobs=$(yq -o=json -I=0 '.jobs | keys' "$workflow_file_path")
+          dep_jobs=$(echo "$NEEDS_JSON" | jq -c 'keys')
+
+          missing=$(jq -n \
+            --argjson all_jobs "$all_jobs" \
+            --argjson dep_jobs "$dep_jobs" \
+            --arg     own_job  "$OWN_JOB_ID" \
+            ' $all_jobs - ($dep_jobs + [$own_job])'
+          )
+
+          if [ "$missing" != "[]" ]; then
+            echo "Missing job(s) in \`needs\` declaration: ${missing}"
+            exit 1
+          fi
+          echo "Check successful: relevant jobs of ${all_jobs} are included in needs ${dep_jobs}"
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+          OWN_JOB_ID: ${{ github.job }}
+      - name: Fail if any dependency failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
