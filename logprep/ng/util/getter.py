@@ -41,6 +41,7 @@ rg_logger = logging.getLogger("RefreshableGetter")
 AsyncCallback: TypeAlias = Callable[..., Awaitable[Any]]
 CleanupCallback: TypeAlias = Callable[..., None]
 
+
 class GetterNotFoundError(LogprepException):
     """Is raised if getter is not found"""
 
@@ -296,15 +297,15 @@ class RefreshableGetter(Getter, ABC):
     @staticmethod
     def _build_callback(
         tag: str,
-        callback: Callable[..., Any],
-        callback_args: Iterable[Any] | None,
-        callback_kwargs: dict[str, Any] | None,
+        fnc: Callable[..., Any],
+        fnc_args: Iterable[Any] | None,
+        fnc_kwargs: dict[str, Any] | None,
     ) -> dict[str, Any]:
         return {
             "tag": tag,
-            "function": callback,
-            "args": callback_args or [],
-            "kwargs": callback_kwargs or {},
+            "function": fnc,
+            "args": fnc_args or [],
+            "kwargs": fnc_kwargs or {},
         }
 
     @classmethod
@@ -313,13 +314,13 @@ class RefreshableGetter(Getter, ABC):
         shared: DataSharedPerTarget,
         callback_list_name: str,
         tag: str,
-        callback: Callable[..., Any],
+        fnc: Callable[..., Any],
         deduplication_key: tuple | None,
-        callback_args: Iterable[Any] | None,
-        callback_kwargs: dict[str, Any] | None,
+        fnc_args: Iterable[Any] | None,
+        fnc_kwargs: dict[str, Any] | None,
     ) -> None:
         callbacks = getattr(shared, callback_list_name)
-        callback = cls._build_callback(tag, callback, callback_args, callback_kwargs)
+        callback = cls._build_callback(tag, fnc, fnc_args, fnc_kwargs)
 
         if deduplication_key is not None:
             if any(existing.get("key") == deduplication_key for existing in callbacks):
@@ -331,11 +332,11 @@ class RefreshableGetter(Getter, ABC):
     def add_callback(
         self,
         tag: str,
-        callback: AsyncCallback,
+        fnc: AsyncCallback,
         *,
         deduplication_key: tuple | None = None,
-        callback_args: Iterable[Any] | None = None,
-        callback_kwargs: dict[str, Any] | None = None,
+        fnc_args: Iterable[Any] | None = None,
+        fnc_kwargs: dict[str, Any] | None = None,
     ):
         """Register a callback for successful refreshed data.
 
@@ -347,10 +348,10 @@ class RefreshableGetter(Getter, ABC):
             self.shared,
             "callbacks",
             tag,
-            callback,
+            fnc,
             deduplication_key,
-            callback_args,
-            callback_kwargs,
+            fnc_args,
+            fnc_kwargs,
         )
 
     @classmethod
@@ -358,11 +359,11 @@ class RefreshableGetter(Getter, ABC):
         cls,
         target: str,
         tag: str,
-        callback: AsyncCallback,
+        fnc: AsyncCallback,
         *,
         deduplication_key: tuple | None = None,
-        callback_args: Iterable[Any] | None = None,
-        callback_kwargs: dict[str, Any] | None = None,
+        fnc_args: Iterable[Any] | None = None,
+        fnc_kwargs: dict[str, Any] | None = None,
     ):
         """Register a refresh callback for an already initialized target.
 
@@ -377,20 +378,20 @@ class RefreshableGetter(Getter, ABC):
             shared,
             "callbacks",
             tag,
-            callback,
+            fnc,
             deduplication_key,
-            callback_args,
-            callback_kwargs,
+            fnc_args,
+            fnc_kwargs,
         )
 
     def add_cleanup_callback(
         self,
         tag: str,
-        callback: CleanupCallback,
+        fnc: CleanupCallback,
         *,
         deduplication_key: tuple | None = None,
-        callback_args: Iterable[Any] | None = None,
-        callback_kwargs: dict[str, Any] | None = None,
+        fnc_args: Iterable[Any] | None = None,
+        fnc_kwargs: dict[str, Any] | None = None,
     ):
         """Register a callback that runs when the target times out and is removed.
 
@@ -401,10 +402,10 @@ class RefreshableGetter(Getter, ABC):
             self.shared,
             "cleanup_callbacks",
             tag,
-            callback,
+            fnc,
             deduplication_key,
-            callback_args,
-            callback_kwargs,
+            fnc_args,
+            fnc_kwargs,
         )
 
     async def _ensure_initialized(self) -> None:
@@ -418,23 +419,17 @@ class RefreshableGetter(Getter, ABC):
         timeout_interval = config.get("timeout_interval", 60)
 
         if refresh_interval < 0:
-            raise ValueError(
-                f"'refresh_interval' must be >= 0: {refresh_interval}"
-            )
+            raise ValueError(f"'refresh_interval' must be >= 0: {refresh_interval}")
 
         if timeout_interval < 0:
-            raise ValueError(
-                f"'timeout_interval' must be >= 0: {timeout_interval}"
-            )
+            raise ValueError(f"'timeout_interval' must be >= 0: {timeout_interval}")
 
         self.shared.refresh_interval = refresh_interval
         self.shared.timeout_interval = timeout_interval
 
         default_return_value = config.get("default_return_value")
         self.shared.default_return_value = (
-            default_return_value.encode("utf-8")
-            if default_return_value is not None
-            else None
+            default_return_value.encode("utf-8") if default_return_value is not None else None
         )
 
         self.shared.initialized = True
