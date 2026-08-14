@@ -205,11 +205,11 @@ from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
 
-from logprep.abc.getter import Getter
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.component import NgComponent
+from logprep.ng.abc.getter import Getter
 from logprep.ng.abc.processor import Processor
 from logprep.ng.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
@@ -219,17 +219,17 @@ from logprep.ng.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
     MIN_CONFIG_REFRESH_INTERVAL,
 )
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util import http
-from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
-from logprep.util.environ import ENV_VARS, del_env_var, set_env_var
-from logprep.util.getter import (
+from logprep.ng.util.getter import (
     FileGetter,
     GetterFactory,
     GetterNotFoundError,
     RefreshableGetter,
     RefreshableGetterError,
 )
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.util import http
+from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
+from logprep.util.environ import ENV_VARS, del_env_var, set_env_var
 from logprep.util.rule_loader import RuleLoader
 
 logger = logging.getLogger("Config")
@@ -776,7 +776,7 @@ class Configuration:
         # pylint: enable=protected-access
 
     @classmethod
-    def from_source(cls, config_path: str) -> "Configuration":
+    async def from_source(cls, config_path: str) -> "Configuration":
         """Create configuration from an uri source.
 
         Parameters
@@ -792,7 +792,7 @@ class Configuration:
         """
         try:
             config_getter = GetterFactory.from_string(config_path)
-            config_dict = config_getter.get_dict()
+            config_dict = await config_getter.get_dict()
             config = Configuration(**(config_dict | {"getter": config_getter}))
         except TypeError as error:
             raise InvalidConfigurationError(
@@ -826,7 +826,7 @@ class Configuration:
         configs: List[Configuration] = []
         for config_path in config_paths:
             try:
-                config = Configuration.from_source(config_path)
+                config = await Configuration.from_source(config_path)
                 configs.append(config)
             except (GetterNotFoundError, RequestException, CredentialsEnvNotFoundError) as error:
                 raise ConfigGetterException(f"{config_path} {error}") from error

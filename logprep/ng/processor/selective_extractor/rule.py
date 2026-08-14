@@ -105,10 +105,10 @@ from collections.abc import Sequence
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import OutputSpec
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_ordered_tuples_with_factory
-from logprep.util.getter import GetterFactory
 
 
 class SelectiveExtractorRuleError(InvalidRuleDefinitionError):

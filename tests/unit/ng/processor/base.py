@@ -20,13 +20,13 @@ from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.abc.processor import Processor
+from logprep.ng.util.getter import RefreshableGetter, RefreshableGetterError
 from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
     ProcessingCriticalError,
 )
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
-from logprep.util.getter import RefreshableGetter, RefreshableGetterError
 from tests.unit.ng.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
