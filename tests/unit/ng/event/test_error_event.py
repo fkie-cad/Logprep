@@ -43,6 +43,6 @@ class TestErrorEvents(TestEventClass):
         assert error_event.data["original"] == "raw"
         assert isinstance(error_event.data["event"], str)
         assert error_event.data["event"] == '{"foo": "bar"}'
-        assert isinstance(error_event.data["reason"], str)
-        assert "Some value is wrong" in error_event.data["reason"]
+        assert isinstance(error_event.data["errors"], str)
+        assert "Some value is wrong" in error_event.data["errors"]
         assert error_event.data["event"] == json.dumps(self.log_event.data)

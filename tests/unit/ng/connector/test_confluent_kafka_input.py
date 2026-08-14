@@ -375,7 +375,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         error_event = await self.object.get_next(1)
         assert isinstance(error_event, ErrorEvent)
-        assert "Input record value is not a valid json string" in error_event.data["reason"]
+        assert "Input record value is not a valid json string" in error_event.data["errors"]
 
     async def test_commit_callback_raises_warning_error_and_counts_failures(self):
         self.object.metrics.commit_failures = 0
