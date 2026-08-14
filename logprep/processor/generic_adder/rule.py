@@ -90,13 +90,13 @@ from collections.abc import Iterator, Sequence
 
 from attrs import define, field, validators
 
+from logprep.abc.getter import Getter
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.ng.abc.getter import Getter
-from logprep.ng.util.getter import GetterFactory, RefreshableGetter
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 from logprep.util import helper
 from logprep.util.converters import convert_from_dict
 from logprep.util.environ import ENV_VARS
+from logprep.util.getter import GetterFactory, RefreshableGetter
 from logprep.util.helper import (
     DottedTemplate,
     FieldValue,
@@ -304,7 +304,6 @@ class GenericAdderRule(Rule):
         super().__init__(filter_rule, config, processor_name)
         self._callback_tag: str | None = None
         self._uri_sources: list[_UriSource] = []
-
 
     def init_generic_adder(self, job_tag: str) -> None:
         """Initializes the generic adder and assignes the job_tag for callback cleanup"""

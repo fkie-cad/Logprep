@@ -14,8 +14,8 @@ import pytest
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.grokker.processor import Grokker
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.base.exceptions import ProcessingCriticalError
-from logprep.util.getter import GetterFactory
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.grokker.test_grokker import (
     failure_test_cases as non_ng_failure_test_cases,

@@ -16,11 +16,11 @@ from logprep.ng.util.async_helpers import StoppableTask
 from logprep.ng.util.config_refresh import StopConfigRefresh, wait_for_refreshed_config
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.ng.util.getter import RefreshableGetter
 from logprep.ng.util.logging_helpers import (
     decouple_logging_via_queue,
     inject_task_names_in_log_records,
 )
-from logprep.util.getter import RefreshableGetter
 
 logger = logging.getLogger("Runner")
 
