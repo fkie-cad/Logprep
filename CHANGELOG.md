@@ -1,5 +1,6 @@
 ## Upcoming Changes
 ### Breaking
+* ng: drop support for older consumer protocols than next-gen consumer protocol
 
 ### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
@@ -51,6 +52,9 @@
 * metrics: avoid heavy time context manager and hardwire passthrough metric collector methods on wrapper class
 * metrics: remove `__add__` interface from metrics and use the passthrough instead
 * metrics: consolidate `measure_time` and `measure_time_async` in single decorator
+* ng: implement support for next-gen consumer protocol for kafka input
+* ng: use cached sub-metrics for kafka input
+* ng: avoid duplicates on rebalance by gracefully draining revoked messages
 
 ### Bugfix
 * chart: fix command handling
