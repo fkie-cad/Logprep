@@ -4,6 +4,7 @@
 * domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
 * domain_resolver: remove `debug_cache`
 * domain_resolver: `source_fields` must be a list with exactly one element
+* ng: drop support for older consumer protocols than next-gen consumer protocol
 
 ### Features
 
@@ -26,6 +27,9 @@
 * ci: remove deprecated GHA dependency for doc preview links; do it ourselves
 * ci: fail on warnings during doc build
 * docs: fix several formatting issues
+* ng: implement support for next-gen consumer protocol for kafka input
+* ng: use cached sub-metrics for kafka input
+* ng: avoid duplicates on rebalance by gracefully draining revoked messages
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
