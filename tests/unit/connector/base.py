@@ -662,7 +662,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         self.object.get_next(0.01)
         assert isinstance(self.object.metrics.processing_time_per_event, mock.MagicMock)
         # asserts entering context manager in metrics.metrics.Metric.measure_time
-        mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
+        mock_metric.assert_has_calls([mock.call.time().__enter__()])
 
     def test_add_full_event_to_target_field_without_clear(self):
         preprocessing_config = {

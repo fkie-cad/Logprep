@@ -870,7 +870,7 @@ class TestJsonInput(BaseInputTestCase):
             connector.get_next(0.01)
             assert isinstance(connector.metrics.processing_time_per_event, mock.MagicMock)
             # asserts entering context manager in metrics.metrics.Metric.measure_time
-            mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
+            mock_metric.assert_has_calls([mock.call.time().__enter__()])
 
     async def test_raises_exception_if_not_a_dict(self):
         return_value = ["no dict"]
