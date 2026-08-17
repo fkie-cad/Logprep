@@ -142,8 +142,6 @@ class PipelineManager:
             factory=lambda: CounterMetric(
                 description="Number of pipeline starts",
                 name="number_of_pipeline_starts",
-                labels={"component": "manager"},
-                inject_label_values=False,
             )
         )
         """Number of pipeline starts"""

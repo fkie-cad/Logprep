@@ -68,8 +68,8 @@ class TestMetric:
         metric1.init_tracker()
         metric2.init_tracker()
 
-        assert metric1.tracker == metric2.tracker
-        assert REGISTRY._names_to_collectors[metric1.fullname] == metric1.tracker
+        assert metric1._base_tracker == metric2._base_tracker
+        assert REGISTRY._names_to_collectors[metric1.fullname] == metric1._base_tracker
 
     def test_counter_metric_sets_labels(self):
         metric = CounterMetric(
@@ -163,7 +163,7 @@ class TestMetric:
         metric1.init_tracker()
         metric2.init_tracker()
 
-        assert metric1.tracker == metric2.tracker
+        assert metric1._base_tracker == metric2._base_tracker
         metric1 += 1
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
         result = re.findall(r'.*logprep_bla_total\{pipeline="1"\} 1\.0.*', metric_output)
