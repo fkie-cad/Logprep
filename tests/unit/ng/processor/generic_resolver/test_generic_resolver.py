@@ -10,13 +10,14 @@ from pathlib import Path
 import pytest
 import responses
 
+from logprep.async_scheduler import AsyncScheduler
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_resolver.processor import GenericResolver
+from logprep.ng.util.getter import HttpGetter
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter
 from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_resolver.test_generic_resolver import (
@@ -69,6 +70,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         with pytest.raises(InvalidConfigurationError, match=error_message):
             await self._load_rule(rule)
+            await self.object.setup()
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     async def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
@@ -87,6 +89,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             {"to_resolve": "something HELLO1"}, original=b"", input_meta=InputMeta()
         )
 
+        await self.object.setup()
         await self.object.process(document)
 
         assert document.data == expected
@@ -116,7 +119,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
                 },
             }
         )
-
+        await self.object.setup()
         await self.object.process(document)
 
         assert document.data == expected
@@ -139,10 +142,9 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         )
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
-
         document = LogEvent({"to_resolve": "12ab34"}, original=b"", input_meta=InputMeta())
 
-        await self.object.process(document)
+        await self.object.setup()
         await self.object.process(document)
 
         assert document.data == expected
@@ -166,20 +168,18 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
                 },
             }
         )
-
+        document = LogEvent(
+            {"to_resolve": "12ab34", "other_to_resolve": "00de11"},
+            original=b"",
+            input_meta=InputMeta(),
+        )
         expected = {
             "to_resolve": "12ab34",
             "other_to_resolve": "00de11",
             "resolved": ["ab_server_type", "de_server_type"],
         }
 
-        document = LogEvent(
-            {"to_resolve": "12ab34", "other_to_resolve": "00de11"},
-            original=b"",
-            input_meta=InputMeta(),
-        )
-
-        await self.object.process(document)
+        await self.object.setup()
         await self.object.process(document)
 
         assert document.data == expected
@@ -195,8 +195,8 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps(getter_file_content))
+
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
-            scheduler = HttpGetter(protocol="http", target=url).scheduler
             await self._load_rule(
                 {
                     "filter": "to_resolve",
@@ -210,21 +210,33 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
                     },
                 }
             )
-
-            expected_1 = {"to_resolve": "12ab34", "resolved": {"new1": "1"}}
-            expected_2 = {"to_resolve": "12ab34", "resolved": {"new1": "1", "new2": "2"}}
-            document = LogEvent({"to_resolve": "12ab34"}, original=b"", input_meta=InputMeta())
-
             await self.object.setup()
 
+            expected_1 = {
+                "to_resolve": "12ab34",
+                "resolved": {"new1": "1"},
+            }
+            expected_2 = {
+                "to_resolve": "12ab34",
+                "resolved": {"new1": "1", "new2": "2"},
+            }
+            document = LogEvent(
+                {"to_resolve": "12ab34"},
+                original=b"",
+                input_meta=InputMeta(),
+            )
+
+            http_getter = HttpGetter(protocol="http", target=url)
+            assert isinstance(http_getter.scheduler, AsyncScheduler)
+
             await self.object.process(document)
             assert document.data == expected_1
 
-            HttpGetter.refresh()  # Try refresh, but no time to update yet
+            await HttpGetter.refresh()  # Try refresh, but no time to update yet
             await self.object.process(document)
             assert document.data == expected_1
 
-            scheduler.run_all()  # Force update
+            await http_getter.scheduler.run_all()  # Force update
             await self.object.process(document)
             assert document.data == expected_2
 
@@ -251,6 +263,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
         }
+        await self.object.setup()
         result = await self.object.process(document)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
