@@ -162,17 +162,22 @@ class SelectiveExtractorRule(FieldManagerRule):
 
         def __attrs_post_init__(self):
             super().__attrs_post_init__()
-            if not self.extract_from_file:
-                return
-            try:
-                content = GetterFactory.from_string(self.extract_from_file).get()
-            except FileNotFoundError as error:
-                raise SelectiveExtractorRuleError(
-                    "extract_from_file is not a valid file handle"
-                ) from error
-            self.source_fields = list({*self.source_fields, *content.splitlines()})
-            if len(self.source_fields) < 1:
-                raise InvalidRuleDefinitionError("no field to extract")
+
+    async def setup(self) -> None:
+        if not self.config.extract_from_file:
+            return
+
+        try:
+            content = await GetterFactory.from_string(self.config.extract_from_file).get()
+        except FileNotFoundError as error:
+            raise SelectiveExtractorRuleError(
+                "extract_from_file is not a valid file handle"
+            ) from error
+
+        self.config.source_fields = list({*self.config.source_fields, *content.splitlines()})
+
+        if len(self.config.source_fields) < 1:
+            raise InvalidRuleDefinitionError("no field to extract")
 
     @property
     def config(self) -> Config:
