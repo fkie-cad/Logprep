@@ -9,7 +9,7 @@ import re
 from copy import deepcopy
 
 import pytest
-import responses
+from aiohttp import web
 
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
@@ -143,11 +143,23 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         assert event["some_dict_field"] == {"some_key": "some_value"}
         assert event["some_dict_field"] is not rule_add["some_dict_field"], "only copies in events"
 
-    @responses.activate
-    async def test_adds_response_from_event_templated_url(self):
-        resolved_url = "https://values.example/acme"
-        response_content = {"user": {"name": "Alice"}, "risk": {"score": 7}}
-        responses.add(responses.GET, resolved_url, json=response_content)
+    async def test_adds_response_from_event_templated_url(self, aiohttp_server):
+        response_content = {
+            "user": {"name": "Alice"},
+            "risk": {"score": 7},
+        }
+
+        async def handler(request: web.Request) -> web.Response:
+            assert request.match_info["tenant_id"] == "acme"
+            return web.json_response(response_content)
+
+        app = web.Application()
+        app.router.add_get("/{tenant_id}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+        uri = f"{base_url}/${{tenant.id}}"
+
         processor = self._create_test_instance(
             {
                 "rules": [
@@ -155,7 +167,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                         "filter": "*",
                         "generic_adder": {
                             "add_from_uri": {
-                                "uri": "https://values.example/${tenant.id}",
+                                "uri": uri,
                                 "target_field": "enrichment",
                             }
                         },
@@ -163,7 +175,9 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                 ]
             }
         )
+
         await processor.setup()
+
         event = {"tenant": {"id": "acme"}}
 
         result = await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
@@ -173,12 +187,18 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             "tenant": {"id": "acme"},
             "enrichment": response_content,
         }
-        assert responses.calls[0].request.url == resolved_url
 
-    @responses.activate
-    async def test_shutdown_removes_dynamic_uri_callbacks(self):
-        url = "https://values.example/acme"
-        responses.add(responses.GET, url, json={"value": 1})
+    async def test_shutdown_removes_dynamic_uri_callbacks(self, aiohttp_server):
+        async def handler(_: web.Request) -> web.Response:
+            return web.json_response({"value": 1})
+
+        app = web.Application()
+        app.router.add_get("/acme", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+        url = f"{base_url}/acme"
+
         processor = self._create_test_instance(
             {
                 "rules": [
@@ -186,7 +206,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                         "filter": "*",
                         "generic_adder": {
                             "add_from_uri": {
-                                "uri": "https://values.example/${tenant}",
+                                "uri": f"{base_url}/${{tenant}}",
                                 "target_field": "enrichment",
                             }
                         },
@@ -194,12 +214,15 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                 ]
             }
         )
+
         await processor.setup()
+
         event = {"tenant": "acme"}
 
         await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
 
         shared = HttpGetter._target_to_data_caches[url]
+
         assert len(shared.callbacks) == 1
         assert len(shared.cleanup_callbacks) == 1
 
@@ -208,12 +231,23 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         assert shared.callbacks == []
         assert shared.cleanup_callbacks == []
 
-    @responses.activate
-    async def test_dynamic_url_failure_is_event_scoped(self):
-        failed_url = "https://values.example/acme"
-        successful_url = "https://values.example/beta"
-        responses.add(responses.GET, failed_url, status=500)
-        responses.add(responses.GET, successful_url, json={"risk": {"score": 7}})
+    async def test_dynamic_url_failure_is_event_scoped(self, aiohttp_server):
+        async def handler(request: web.Request) -> web.Response:
+            tenant = request.match_info["tenant"]
+
+            if tenant == "acme":
+                return web.Response(status=500)
+
+            return web.json_response({"risk": {"score": 7}})
+
+        app = web.Application()
+        app.router.add_get("/{tenant}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+        failed_url = f"{base_url}/acme"
+        successful_url = f"{base_url}/beta"
+
         processor = self._create_test_instance(
             {
                 "rules": [
@@ -221,7 +255,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                         "filter": "*",
                         "generic_adder": {
                             "add_from_uri": {
-                                "uri": "https://values.example/${tenant}",
+                                "uri": f"{base_url}/${{tenant}}",
                                 "target_field": "enrichment",
                             }
                         },
@@ -229,7 +263,9 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                 ]
             }
         )
+
         await processor.setup()
+
         rule = processor.rules[0]
         failed_event = {"tenant": "acme"}
         successful_event = {"tenant": "beta"}
@@ -258,6 +294,9 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             "tenant": "beta",
             "enrichment": {"risk": {"score": 7}},
         }
+        assert rule.data_error is None
+        assert len(HttpGetter._target_to_data_caches[successful_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[successful_url].cleanup_callbacks) == 1
 
     async def test_missing_dynamic_url_field_adds_warning_without_clearing_event(self):
         processor = self._create_test_instance(

@@ -12,6 +12,7 @@ from unittest import mock
 
 import pytest
 import responses
+from aiohttp import web
 from attrs import asdict
 from ruamel.yaml import YAML
 
@@ -238,26 +239,42 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         with pytest.raises(FileNotFoundError):
             await processor.setup()
 
-    @responses.activate
-    async def test_accepts_tree_config_from_http(self):
-        config = deepcopy(self.CONFIG)
-        config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
+    async def test_accepts_tree_config_from_http(self, aiohttp_server):
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text("utf-8")
-        responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
+
+        async def handler(_: web.Request) -> web.Response:
+            return web.Response(
+                text=tree_config,
+                content_type="application/json",
+            )
+
+        app = web.Application()
+        app.router.add_get("/tree_config.yml", handler)
+        server = await aiohttp_server(app)
+
+        config = deepcopy(self.CONFIG)
+        config["tree_config"] = str(server.make_url("/tree_config.yml"))
+
         processor = Factory.create({"test instance": config})
         await processor.setup()
-        tree_config = json.loads(tree_config)
-        assert processor._rule_tree.tree_config.priority_dict == tree_config.get("priority_dict")
 
-    @responses.activate
-    async def test_raises_http_error_raises_getter_error(self):
-        config = deepcopy(self.CONFIG)
-        config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
-        responses.add(
-            responses.GET,
-            "http://does.not.matter.bla/tree_config.yml",
-            status=404,
+        tree_config_dict = json.loads(tree_config)
+
+        assert processor._rule_tree.tree_config.priority_dict == tree_config_dict.get(
+            "priority_dict"
         )
+
+    async def test_raises_http_error_raises_getter_error(self, aiohttp_server):
+        async def handler(_: web.Request) -> web.Response:
+            return web.Response(status=404)
+
+        app = web.Application()
+        app.router.add_get("/tree_config.yml", handler)
+        server = await aiohttp_server(app)
+
+        config = deepcopy(self.CONFIG)
+        config["tree_config"] = str(server.make_url("/tree_config.yml"))
+
         RefreshableGetter.reset()
 
         processor = Factory.create({"test instance": config})
