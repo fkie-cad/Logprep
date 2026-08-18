@@ -19,9 +19,9 @@ from urllib.parse import urlparse
 import requests
 from attrs import define, field, validators
 from requests import Response
-from schedule import Scheduler
 
 from logprep.abc.exceptions import LogprepException
+from logprep.async_scheduler import AsyncScheduler
 from logprep.ng.abc.getter import ContentType, Getter
 from logprep.util.credentials import (
     Credentials,
@@ -118,7 +118,7 @@ class DataSharedPerTarget:
     content_type: ContentType | None = None
     """Content type of the resource when it was last obtained"""
 
-    scheduler: Scheduler | None = None
+    scheduler: AsyncScheduler | None = None
     """Scheduler used to trigger getter refreshes"""
 
     refresh_interval: int | None = None
@@ -170,15 +170,16 @@ class RefreshableGetter(Getter, ABC):
     _target_to_data_caches: ClassVar[dict[str, DataSharedPerTarget]] = {}
     """Dictionary to store DataSharedPerTarget objects per getter target"""
 
-    def _init_scheduler(self):
+    def _init_scheduler(self) -> None:
         if self._refresh_interval < 0:
             raise ValueError(f"'refresh_interval' must be >= 0: {self._refresh_interval}")
+
         if self._timeout_interval < 0:
             raise ValueError(f"'timeout_interval' must be >= 0: {self._timeout_interval}")
-        if self._refresh_interval > 0:
-            if self.scheduler is None:
-                self.scheduler = Scheduler()
-                self.scheduler.every(self._refresh_interval).seconds.do(self._refresh)
+
+        if self._refresh_interval > 0 and self.scheduler is None:
+            self.scheduler = AsyncScheduler()
+            self.scheduler.every(self._refresh_interval).seconds.do(self._refresh)  # type: ignore[attr-defined]
 
     @property
     def shared(self) -> DataSharedPerTarget:
@@ -193,12 +194,12 @@ class RefreshableGetter(Getter, ABC):
         self._target_to_data_caches[self.target] = value
 
     @property
-    def scheduler(self) -> Scheduler | None:
+    def scheduler(self) -> AsyncScheduler | None:
         """Returns the scheduler for the current target"""
         return self.shared.scheduler
 
     @scheduler.setter
-    def scheduler(self, value: Scheduler) -> None:
+    def scheduler(self, value: AsyncScheduler) -> None:
         """Sets the scheduler for the target"""
         self.shared.scheduler = value
 
@@ -432,6 +433,7 @@ class RefreshableGetter(Getter, ABC):
             default_return_value.encode("utf-8") if default_return_value is not None else None
         )
 
+        self._init_scheduler()
         self.shared.initialized = True
 
     async def _get_getter_config_entry(self) -> dict:
@@ -518,7 +520,7 @@ class RefreshableGetter(Getter, ABC):
         await self._ensure_initialized()
 
         if self._refresh_interval > 0 and self.scheduler:
-            self.scheduler.run_pending()
+            await self.scheduler.run_pending()
             if self.cache is None:
                 try:
                     self._update_cache()
