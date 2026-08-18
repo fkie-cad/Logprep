@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import typing
 from copy import deepcopy
 from multiprocessing import context
 from pathlib import Path
@@ -7,7 +8,7 @@ from unittest import mock
 
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
-from logprep.processor.domain_resolver.processor import ResolveStatus
+from logprep.processor.domain_resolver.processor import DomainResolver, ResolveStatus
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -36,7 +37,7 @@ class TestDomainResolver(BaseProcessorTestCase):
 
     def setup_method(self) -> None:
         super().setup_method()
-        self.object._cache.clear()
+        typing.cast(DomainResolver, self.object)._cache.clear()
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     def test_domain_to_ip_resolved_and_added(self, mock_gethostbyname):
@@ -214,14 +215,21 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_configured_dotted_subfield(self, _):
         document = {"source": "google.de"}
         expected = {"source": "google.de", "resolved": {"ip": "1.2.3.4"}}
-        self.object.process(document)
+
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
+
         assert document == expected
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     def test_field_exits_warning(self, _):
         document = {"client": "google.de"}
 
-        result = self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        result = processor.process(document)
+
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
 
@@ -231,7 +239,10 @@ class TestDomainResolver(BaseProcessorTestCase):
         expected = {"client_2": "google.de", "resolved_ip": "1.2.3.4"}
 
         # Rules have same effect, but are equal and thus one is ignored
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
+
         assert document == expected
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")

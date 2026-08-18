@@ -578,9 +578,15 @@ class TestGenericAdder(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     def test_generic_adder_testcases(self, rule, event, expected):
-        self._load_rule(rule)
-        self.object.setup()
-        self.object.process(event)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        processor = Factory.create({"test instance": config})
+
+        processor.setup()
+        processor.process(event)
+        processor.shut_down()
+
         assert event == expected
 
     @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
@@ -647,6 +653,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         )
 
         event = {}
+        instance.setup()
         instance.process(event)
 
         rule_add = instance.rules[0].add({})

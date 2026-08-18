@@ -85,13 +85,15 @@ class TestClusterer(BaseProcessorTestCase):
     @mock.patch("logprep.processor.clusterer.processor.Clusterer._is_clusterable")
     @mock.patch("logprep.processor.clusterer.processor.Clusterer._cluster")
     def test_only_clusterable_logs_are_clustered(self, mock_cluster, mock_is_clusterable):
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
         mock_is_clusterable.return_value = False
-        self.object.process({"message": "test_message"})
+        processor.process({"message": "test_message"})
         mock_is_clusterable.assert_called()
         mock_cluster.assert_not_called()
 
         mock_is_clusterable.return_value = True
-        self.object.process({"message": "test_message"})
+        processor.process({"message": "test_message"})
         mock_is_clusterable.assert_called()
         assert mock_cluster.call_count == 2
 
