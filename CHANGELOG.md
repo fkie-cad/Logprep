@@ -19,6 +19,9 @@
 * generic_adder: add support for templated http urls & content_field
 * generic_resolver: add content_field support
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
+* ng: add asynchronous getter and refresh scheduling support
+* ng: move rule tree configuration and rule loading into processor setup with asynchronous initialization support
+* ng: make getter-backed setup and processing asynchronous for `geoip_enricher`, `grokker`, `requester`, `amides`, `generic_adder`, `list_comparison`, `network_comparison`, `selective_extractor`, `pseudonymizer`, and `template_replacer`
 * filter: add support for `*` (open boundary) in range expressions
 * filter: allow mixed numeric range boundaries and type coercion for range matching
 
