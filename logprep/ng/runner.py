@@ -47,12 +47,14 @@ class Runner:
         )
 
     async def _refresh_getters(self):
+        """Periodically refresh refreshable getters until the runner is stopped"""
         while True:
-            # TODO make getters async
-            RefreshableGetter.refresh()
+            await RefreshableGetter.refresh()
+
             try:
                 async with asyncio.timeout(self._config.refreshable_getter_base_interval_s):
                     await self._stop_event.wait()
+
                 logger.debug("stopped refreshing getters as the stop_event has been set")
                 return
             except TimeoutError:

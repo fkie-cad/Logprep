@@ -467,25 +467,37 @@ class RefreshableGetter(Getter, ABC):
         return configured_target in candidates
 
     async def _refresh(self) -> None:
-        """Refresh the current http getter"""
+        """Refresh the current HTTP getter."""
         await self._ensure_initialized()
 
         if self.shared.refreshing:
             return
+
         self.shared.refreshing = True
+
         try:
-            was_modified = self._update_cache()
-        except RefreshableGetterError as error:
-            self._log_cache_warning(error)
-            was_modified = False
-        if not was_modified:
-            rg_logger.debug("target has not been modified, cache is up-to-date: %s", self.target)
+            try:
+                was_modified = self._update_cache()
+            except RefreshableGetterError as error:
+                self._log_cache_warning(error)
+                was_modified = False
+
+            if not was_modified:
+                rg_logger.debug(
+                    "target has not been modified, cache is up-to-date: %s",
+                    self.target,
+                )
+                return
+
+            rg_logger.debug(
+                "target was modified, cache updated and running callbacks: %s",
+                self.target,
+            )
+
+            for callback in self._callbacks:
+                await callback["function"](*callback["args"], **callback["kwargs"])
+        finally:
             self.shared.refreshing = False
-            return
-        rg_logger.debug("target was modified, cache updated and running callbacks: %s", self.target)
-        for callback in self._callbacks:
-            await callback["function"](*callback["args"], **callback["kwargs"])
-        self.shared.refreshing = False
 
     def _update_cache(self) -> bool:
         """Update the cache of the current http getter"""
@@ -586,18 +598,20 @@ class RefreshableGetter(Getter, ABC):
         shared.keep_alive()
 
     @classmethod
-    def refresh(cls):
-        """Run pending refresh schedulers and cleanup timed-out targets"""
+    async def refresh(cls) -> None:
+        """Run pending refresh schedulers and clean up timed-out targets"""
         for target, shared_target_data in list(cls._target_to_data_caches.items()):
             if cls.timed_out_for_target(target):
                 rg_logger.debug("target has timed out and will be cleaned up: %s", target)
                 del cls._target_to_data_caches[target]
+
                 for callback in shared_target_data.cleanup_callbacks:
                     callback["function"](*callback["args"], **callback["kwargs"])
+
                 continue
 
             if shared_target_data.scheduler:
-                shared_target_data.scheduler.run_pending()
+                await shared_target_data.scheduler.run_pending()
 
     @classmethod
     def reset(cls, cleanup: bool = False):
@@ -737,6 +751,6 @@ class HttpGetter(RefreshableGetter):
         ) from error
 
 
-def refresh_getters():
+async def refresh_getters():
     """Refreshes all refreshable getters"""
-    RefreshableGetter.refresh()
+    await RefreshableGetter.refresh()
