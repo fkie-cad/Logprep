@@ -230,30 +230,40 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         with pytest.raises(TypeError, match=r"must be \(<class 'str'>"):
             Factory.create({"test instance": config})
 
-    def test_validation_raises_if_tree_config_is_not_exist(self):
+    async def test_validation_raises_if_tree_config_is_not_exist(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "/i/am/not/a/file/path"})
+        processor = Factory.create({"test instance": config})
+
         with pytest.raises(FileNotFoundError):
-            Factory.create({"test instance": config})
+            await processor.setup()
 
     @responses.activate
-    def test_accepts_tree_config_from_http(self):
+    async def test_accepts_tree_config_from_http(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text("utf-8")
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
         processor = Factory.create({"test instance": config})
+        await processor.setup()
         tree_config = json.loads(tree_config)
         assert processor._rule_tree.tree_config.priority_dict == tree_config.get("priority_dict")
 
     @responses.activate
-    def test_raises_http_error_raises_getter_error(self):
+    async def test_raises_http_error_raises_getter_error(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
-        responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
+        responses.add(
+            responses.GET,
+            "http://does.not.matter.bla/tree_config.yml",
+            status=404,
+        )
         RefreshableGetter.reset()
+
+        processor = Factory.create({"test instance": config})
+
         with pytest.raises(RefreshableGetterError, match="404"):
-            Factory.create({"test instance": config})
+            await processor.setup()
 
     @pytest.mark.parametrize(
         "metric_name, metric_class",
@@ -264,13 +274,20 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
             ("number_of_errors", CounterMetric),
         ],
     )
-    def test_rule_has_metric(self, metric_name, metric_class):
-        metric_instance = getattr(self.object.rules[0].metrics, metric_name)
+    async def test_rule_has_metric(self, metric_name, metric_class):
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        await processor.setup()
+
+        metric_instance = getattr(processor.rules[0].metrics, metric_name)
+
         assert isinstance(metric_instance, metric_class)
 
-    def test_no_metrics_with_same_name(self):
+    async def test_no_metrics_with_same_name(self):
+        processor = self._create_test_instance(deepcopy(self.CONFIG))
+        await processor.setup()
+
         metric_attributes = asdict(
-            self.object.rules[0].metrics, filter=self.asdict_filter, recurse=False
+            processor.rules[0].metrics, filter=self.asdict_filter, recurse=False
         )
         pairs = itertools.combinations(metric_attributes.values(), 2)
         for metric1, metric2 in pairs:
@@ -282,12 +299,16 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         assert isinstance(result, LogEvent)
 
     async def test_process_collects_errors_in_event_object(self):
+        processor = self._create_test_instance(deepcopy(self.CONFIG))
+        await processor.setup()
+
         with mock.patch.object(
-            self.object,
+            processor,
             "_apply_rules",
-            side_effect=ProcessingCriticalError("side effect", rule=self.object.rules[0]),
+            side_effect=ProcessingCriticalError("side effect", rule=processor.rules[0]),
         ):
-            result = await self.object.process(self.match_all_event)
+            result = await processor.process(self.match_all_event)
+
         assert len(result.errors) > 0, "minimum one error should be in result object"
 
     def test_invalid_rule_raises(self, caplog):

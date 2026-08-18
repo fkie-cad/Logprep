@@ -130,6 +130,7 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
 
+        await self.object.setup()
         result = await self.object.process(event)
 
         assert document == expected

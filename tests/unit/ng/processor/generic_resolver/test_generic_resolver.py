@@ -46,12 +46,18 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
     @pytest.mark.parametrize("rule, event, expected, context", test_cases)
     async def test_testcases(self, rule, event, expected, context, provision_context):
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+        if config.get("tree_config"):
+            config["tree_config"] = str(Path(config["tree_config"]).resolve())
+
         provision_context(context)
+
+        processor = Factory.create({"test instance": config})
         log_event = LogEvent(event, original=b"", input_meta=InputMeta())
 
-        await self._load_rule(rule)
-        await self.object.setup()
-        await self.object.process(log_event)
+        await processor.setup()
+        await processor.process(log_event)
 
         assert log_event.data == expected
 
