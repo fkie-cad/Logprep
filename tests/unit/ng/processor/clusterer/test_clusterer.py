@@ -91,6 +91,7 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
         event = LogEvent(
             {"message": "test_message"}, original=b"test_message", input_meta=InputMeta()
         )
+        await self.object.setup()
         await self.object.process(event)
         mock_is_clusterable.assert_called()
         mock_cluster.assert_not_called()

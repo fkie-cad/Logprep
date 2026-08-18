@@ -844,13 +844,16 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 ],
             }
         )
-        rule = processor.rules[0]
-        assert rule.data_error is None
 
         with mock.patch.object(
-            HttpGetter, "_get_requests_session", autospec=True, side_effect=capture_session
+            HttpGetter,
+            "_get_requests_session",
+            autospec=True,
+            side_effect=capture_session,
         ):
             await processor.setup()
+
+        rule = processor.rules[0]
 
         assert isinstance(rule.data_error, RefreshableGetterError)
         assert captured_sessions
