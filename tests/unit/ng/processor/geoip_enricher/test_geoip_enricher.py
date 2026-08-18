@@ -19,6 +19,7 @@ from unittest import mock
 
 import pytest
 import responses
+from aiohttp import web
 from geoip2.errors import AddressNotFoundError
 
 from logprep.ng.abc.event import InputMeta, LogEvent
@@ -403,13 +404,23 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         }
         assert document == expected_event
 
-    @responses.activate
-    async def test_setup_downloads_geoip_database_if_not_exits(self):
-        geoip_database_path = "http://db-path-target/db_file.mmdb"
+    async def test_setup_downloads_geoip_database_if_not_exits(self, aiohttp_server):
         db_path = Path("/usr/bin/ls") if Path("/usr/bin/ls").exists() else Path("/bin/ls")
         db_path_content = db_path.read_bytes()
-        expected_checksum = hashlib.md5(db_path_content).hexdigest()  # nosemgrep
-        responses.add(responses.GET, geoip_database_path, db_path_content)
+        expected_checksum = hashlib.md5(db_path_content).hexdigest()
+
+        async def handler(_: web.Request) -> web.Response:
+            return web.Response(
+                body=db_path_content,
+                content_type="application/octet-stream",
+            )
+
+        app = web.Application()
+        app.router.add_get("/db_file.mmdb", handler)
+        server = await aiohttp_server(app)
+
+        geoip_database_path = str(server.make_url("/db_file.mmdb"))
+
         config = copy.deepcopy(self.CONFIG)
         config["db_path"] = geoip_database_path
 
@@ -421,10 +432,9 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             downloaded_file = logprep_tmp_dir / f"{self.object.name}.mmdb"
 
         assert downloaded_file.exists()
-        downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
+
+        downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()
         assert expected_checksum == downloaded_checksum
-        # delete testfile
-        shutil.rmtree(logprep_tmp_dir)
 
     @responses.activate
     async def test_setup_doesnt_overwrite_already_existing_geomap_file(self):
