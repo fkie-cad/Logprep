@@ -1,0 +1,376 @@
+"""
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
+
+The generic resolver requires the additional field :code:`generic_resolver`.
+Configurable fields are being checked by regex patterns and a configurable value will be added
+if a pattern matches.
+The parameters within :code:`generic_resolver` must be of the form
+:code:`field_mapping: {SOURCE_FIELD: DESTINATION_FIELD},
+resolve_list: {REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`.
+SOURCE_FIELD will be checked by the regex patterns REGEX_PATTERN_[0-N] and
+a new field DESTINATION_FIELD with the value ADDED_VALUE_[0-N] will be added if there is a match.
+Adding the option :code:`"merge_with_target": True` makes the generic resolver write resolved values
+into a list so that multiple different values can be written into the same field.
+
+In the following example :code:`to_resolve` will be checked by the regex pattern :code:`.*Hello.*`.
+:code:`"resolved": "Greeting"` will be added to the event if the pattern matches
+the value in :code:`to_resolve`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        .*Hello.*: Greeting
+
+For YAML compliance, it is possible to declare the resolve list as follows
+to maintain ordering when using the configuration file with different programs.
+Both styles will be supported in future; however, this one is recommended
+for clarity and YAML compliance.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        - .*Hello.*: Greeting
+        - .*error.*: Error
+        - never_match: Panic
+
+Alternatively, a YML file with a resolve list and a regex pattern can be used to resolve values.
+For this, a field :code:`resolve_from_file` with the subfields :code:`path` and :code:`pattern`
+must be added.
+The resolve list in the file at :code:`path` is then used in conjunction with the regex pattern
+in :code:`pattern`.
+:code:`pattern` must be a regex pattern with a capture group that is named :code:`mapping`.
+The resolver will check for the pattern and get value captured by the :code:`mapping` group.
+This captured value is then used in the list from the file.
+
+:code:`ignore_case` can be set to ignore the case when matching values that will be resolved.
+It is disabled by default. In the following example :code:`to_resolve: heLLo` would be resolved,
+since :code:`ignore_case` is set to true.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        .*Hello.*: Greeting
+      ignore_case: true
+
+It is furthermore possible to resolve into dictionaries. In the following example
+:code:`{"to_resolve": "Hello!"}` would be resolved to :code:`{"resolved": {"Greeting": "Hello"}}`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        .*Hello.*: {"Greeting": "Hello"}
+
+Resolved dictionaries can be merged into existing dictionaries. In the following example
+:code:`{"to": {"resolve": "Hello!"}}` would be resolved to
+:code:`{"to": {"Greeting": "Hello", "resolve": "Hello!"}}`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to.resolve: to
+      resolve_list:
+        .*Hello.*: {"Greeting": "Hello"}
+
+In the following example :code:`to_resolve` will be checked by the
+regex pattern :code:`\\d*(?P<mapping>[a-z]+)\\d*` and the list in
+:code:`path/to/resolve_mapping.yml` will be used to add new fields.
+:code:`"resolved": "resolved foo"` will be added to the event if the value
+in :code:`to_resolve` begins with number, ends with numbers and contains foo.
+Furthermore, :code:`"resolved": "resolved bar"` will be added to the event
+if the value in :code:`to_resolve` begins with number, ends with numbers and contains bar.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example resolving with list from file
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_from_file:
+        path: path/to/resolve_mapping.yml
+        pattern: \d*(?P<mapping>[a-z]+)\d*
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example file with resolve list
+
+    foo: resolved foo
+    bar: resolved bar
+
+.. autoclass:: logprep.ng.processor.generic_resolver.rule.GenericResolverRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+Examples for generic_resolver:
+------------------------------
+
+.. datatemplate:import-module:: tests.unit.ng.processor.generic_resolver.test_generic_resolver
+   :template: testcase-renderer.tmpl
+
+"""
+
+import asyncio
+import re
+import typing
+from functools import cached_property, partial
+from pathlib import Path
+
+from attrs import define, field, validators
+
+from logprep.factory_error import InvalidConfigurationError
+from logprep.ng.util.getter import GetterFactory, RefreshableGetter
+from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.util.converters import convert_ordered_mapping_or_keep_mapping
+from logprep.util.helper import FieldValue
+
+
+class GenericResolverRule(FieldManagerRule):
+    """Check if documents match a filter."""
+
+    @define(kw_only=True)
+    class Config(FieldManagerRule.Config):
+        """RuleConfig for GenericResolver"""
+
+        field_mapping: dict[str, str] = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ]
+        )
+        """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
+
+        resolve_list: dict[str, FieldValue] = field(
+            validator=validators.deep_mapping(
+                value_validator=validators.instance_of(
+                    dict | list | str | int | float | bool | None
+                ),
+                key_validator=validators.instance_of(str),
+                mapping_validator=validators.instance_of(dict),
+            ),
+            converter=lambda x: convert_ordered_mapping_or_keep_mapping(
+                typing.cast(dict[str, FieldValue] | list[dict[str, FieldValue]], x)
+            ),
+            factory=dict,
+        )
+        """
+        Lookup mapping in form of
+        :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`
+        """
+
+        resolve_from_file: dict[typing.Literal["path"] | typing.Literal["pattern"], str] = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.in_(["path", "pattern"]),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
+        )
+        """
+        Mapping with a `path` key to a YML file (for string format see :ref:`getters`)
+        with a resolve list and a `pattern` key with
+        a regex pattern which can be used to resolve values.
+        The resolve list in the file at :code:`path` is then used in conjunction with
+        the regex pattern in :code:`pattern`.
+
+        .. security-best-practice::
+           :title: |PROCESSOR| - Resolve From File Memory Consumption
+
+           Be aware that all values of the remote file were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: |PROCESSOR| - Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
+        """
+
+        content_field: str | None = field(
+            validator=validators.optional(validators.instance_of(str)),
+            converter=lambda value: None if value == "" else value,
+            default=None,
+        )
+        """
+        Optional key used to extract the resolve mapping from loaded content.
+
+        Example:
+            Given the following JSON content:
+
+            .. code-block:: json
+
+               {
+                   "content": {"ab": "ab_server_type", "de": "de_server_type"}
+               }
+
+            Set ``content_field`` to ``"content"`` to use the value of this key
+            as the resolve mapping.
+
+        Note:
+            Setting ``content_field`` requires mapping-like content. Content that
+            does not resolve to a mapping (for example a list at the root) fails with
+            an error.
+
+            An empty ``content_field`` is treated as unset, so the resolve mapping is
+            expected at the root of the loaded content.
+
+            Examples:
+                ``content_field: ""``
+                    Is converted to ``None`` and reads the resolve mapping from the
+                    content root.
+
+                ``content_field: null``
+                    Is treated as ``None`` and reads the resolve mapping from the
+                    content root.
+
+                ``content_field: "content"``
+                    Reads the resolve mapping from the ``"content"`` key of the
+                    loaded mapping.
+        """
+
+        ignore_case: bool = field(validator=validators.instance_of(bool), default=False)
+        """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
+
+        additions: dict[str, FieldValue] = field(default={}, eq=False, init=False)
+        """Contains a dictionary of field names and values that should be added."""
+
+    async def setup(self) -> None:
+        """Initialize additions from the configured resolve file."""
+        path = self._file_path
+        if not path:
+            return
+
+        getter = GetterFactory.from_string(path)
+
+        if isinstance(getter, RefreshableGetter):
+            getter.add_callback(
+                f"generic_resolver:{self.id}:{path}",
+                partial(self._add_from_path, path),
+            )
+
+        await self._add_from_path(path)
+
+    @property
+    def _file_path(self) -> None | str:
+        """Returns the file path"""
+        return self.resolve_from_file.get("path")
+
+    async def _add_from_path(self, path: str) -> None:
+        self._raise_if_pattern_is_invalid()
+        await self._raise_if_file_does_not_exist(path)
+
+        additions = await self._get_additions_from_path(path)
+
+        if self.ignore_case:
+            additions = {key.upper(): value for key, value in additions.items()}
+
+        self.config.additions = additions
+
+    async def _get_additions_from_path(self, path: str) -> dict[str, FieldValue]:
+        try:
+            getter = GetterFactory.from_string(path)
+            additions = await getter.get_collection(content_field=self.config.content_field)
+
+            return convert_ordered_mapping_or_keep_mapping(additions)
+        except (ValueError, KeyError) as error:
+            raise InvalidConfigurationError(
+                f"Error loading additions from '{path}': {error}"
+            ) from error
+
+    def _raise_if_pattern_is_invalid(self) -> None:
+        if "?P<mapping>" not in self.resolve_from_file["pattern"]:
+            raise InvalidConfigurationError(
+                f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
+            )
+
+    async def _raise_if_file_does_not_exist(self, path: str) -> None:
+        if path.startswith("http"):
+            return
+
+        if not await asyncio.to_thread(Path(path).is_file):
+            raise InvalidConfigurationError(
+                f"Additions file '{path}' not found! (Rule ID: '{self.id}')",
+            )
+
+    @property
+    def config(self) -> Config:
+        """Returns the typed GenericResolverRule.Config"""
+        return typing.cast(GenericResolverRule.Config, self._config)
+
+    @property
+    def field_mapping(self) -> dict[str, str]:
+        """Returns the field mapping"""
+        return self.config.field_mapping
+
+    @property
+    def resolve_list(self) -> dict[str, FieldValue]:
+        """Returns the resolve list"""
+        return self.config.resolve_list
+
+    @cached_property
+    def compiled_resolve_list(self) -> list[tuple[re.Pattern, FieldValue]]:
+        """Returns the resolve list with tuple pairs of compiled patterns and values"""
+        return [
+            (re.compile(pattern, re.I if self.ignore_case else 0), val)
+            for pattern, val in self.config.resolve_list.items()
+        ]
+
+    @property
+    def resolve_from_file(
+        self,
+    ) -> dict[typing.Literal["path"] | typing.Literal["pattern"], str]:
+        """Returns the resolve file"""
+        return self.config.resolve_from_file
+
+    @property
+    def ignore_case(self) -> bool:
+        """Returns if the matching should be case-sensitive or not"""
+        return self.config.ignore_case
+
+    @cached_property
+    def pattern(self) -> re.Pattern:
+        """Pattern used to resolve from file"""
+        return re.compile(f'^{self.resolve_from_file["pattern"]}$', re.I if self.ignore_case else 0)
+
+    @property
+    def additions(self) -> dict[str, FieldValue]:
+        """Returns additions from the resolve file"""
+        return self.config.additions
