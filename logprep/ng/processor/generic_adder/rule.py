@@ -410,7 +410,7 @@ class GenericAdderRule(Rule):
                     source.static_uri,
                     id(source),
                 ),
-                callback_args=[
+                fnc_args=[
                     source,
                     getter,
                     source.static_uri,
@@ -472,7 +472,7 @@ class GenericAdderRule(Rule):
             self._callback_tag,
             self._fetch_and_cache_uri,
             deduplication_key=key,
-            callback_args=[
+            fnc_args=[
                 source,
                 getter,
                 resolved_uri,
@@ -483,7 +483,7 @@ class GenericAdderRule(Rule):
             self._callback_tag,
             self._cleanup,
             deduplication_key=key,
-            callback_args=[
+            fnc_args=[
                 source,
                 resolved_uri,
             ],
