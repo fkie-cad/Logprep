@@ -11,14 +11,15 @@ import responses
 
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.list_comparison.processor import ListComparison
-from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import (
+from logprep.ng.processor.list_comparison.rule import ListComparisonRule
+from logprep.ng.util.getter import (
     HttpGetter,
     RefreshableGetter,
     RefreshableGetterError,
     refresh_getters,
 )
+from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from tests.conftest import mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.list_comparison.test_list_comparison import (
@@ -26,7 +27,6 @@ from tests.unit.processor.list_comparison.test_list_comparison import (
     HTTP_DYNAMIC_BASE_PATH,
     LOCAL_BASE_PATH,
     NOT_SET,
-    _compare_sets,
 )
 from tests.unit.processor.list_comparison.test_list_comparison import (
     failure_test_cases as non_ng_failure_test_cases,
@@ -42,6 +42,18 @@ def _warning_str(warning) -> str:
 
 test_cases = deepcopy(non_ng_test_cases)
 failure_test_cases = deepcopy(non_ng_failure_test_cases)
+
+
+async def _compare_sets(
+    rule: ListComparisonRule,
+    event: dict | None = None,
+) -> dict[str, set[str]]:
+    """Materialize a rule's compare sets via its public ``iter_compare_sets`` API.
+
+    Local and static lists are available with an empty event; dynamic lists
+    require the event fields that resolve their target URI.
+    """
+    return {name: content async for name, content in rule.iter_compare_sets(event or {})}
 
 
 class TestListComparison(BaseProcessorTestCase[ListComparison]):
@@ -147,7 +159,9 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 }
             ]
         )
-        assert _compare_sets(processor.rules[0]) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {
+            "bad_users.list": {"Franz", "Heinz", "Hans"}
+        }
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -182,7 +196,9 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         processor = await self._create_lister(
             [{"filter": "user", "list_comparison": list_comparison}]
         )
-        assert _compare_sets(processor.rules[0]) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {
+            "bad_users.list": {"Franz", "Heinz", "Hans"}
+        }
 
     @pytest.mark.parametrize(
         ("yaml_content", "content_field"),
@@ -214,7 +230,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         processor = await self._create_lister(
             [{"filter": "user", "list_comparison": list_comparison}]
         )
-        assert _compare_sets(processor.rules[0]) == {"hosts.yml": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {"hosts.yml": {"Franz", "Heinz", "Hans"}}
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -243,7 +259,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         processor = await self._create_lister(
             [{"filter": "user", "list_comparison": list_comparison}]
         )
-        assert _compare_sets(processor.rules[0]) == {"file.json": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {"file.json": {"Franz", "Heinz", "Hans"}}
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -305,10 +321,12 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 ]
             )
             rule = processor.rules[0]
-            assert _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+            assert await _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
-            HttpGetter(target=url, protocol="http").scheduler.run_all()
-            assert _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz"}}
+            getter = HttpGetter(target=url, protocol="http")
+            await getter._refresh()
+
+            assert await _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz"}}
 
     @responses.activate
     async def test_resolves_dynamic_http_template_from_event_lazily(self):
@@ -336,7 +354,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
         assert document["user_results"] == {"in_list": ["bad_users.list"]}
-        assert _compare_sets(rule, {"tenant": "acme"}) == {"bad_users.list": {"Foo", "Bar"}}
+        assert await _compare_sets(rule, {"tenant": "acme"}) == {"bad_users.list": {"Foo", "Bar"}}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
@@ -378,7 +396,9 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
             await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-            assert _compare_sets(rule, {"tenant": {"id": "acme"}}) == {list_path: {"Foo", "Bar"}}
+            assert await _compare_sets(rule, {"tenant": {"id": "acme"}}) == {
+                list_path: {"Foo", "Bar"}
+            }
 
         assert document["user_results"] == {"in_list": [list_path]}
         assert len(responses.calls) == 1
@@ -404,7 +424,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 ]
             )
 
-        assert _compare_sets(processor.rules[0]) == {
+        assert await _compare_sets(processor.rules[0]) == {
             "${LIST_TENANT}/bad_users.list": {"Foo", "Bar"}
         }
         assert len(responses.calls) == 1
@@ -433,7 +453,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         )
         rule = processor.rules[0]
 
-        assert _compare_sets(rule, {"tenant": {"id": "acme"}}) == {
+        assert await _compare_sets(rule, {"tenant": {"id": "acme"}}) == {
             "common.list": {"Foo"},
             "${tenant.id}/bad_users.list": {"Foo", "Bar"},
         }
@@ -611,7 +631,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             ]
         )
 
-        with mock.patch("logprep.util.getter.time.monotonic", side_effect=[100.0, 125.0]):
+        with mock.patch("logprep.ng.util.getter.time.monotonic", side_effect=[100.0, 125.0]):
             await processor.process(LogEvent(first_document, original=b"", input_meta=InputMeta()))
             assert HttpGetter._target_to_data_caches[url].last_called == 100.0
 
@@ -652,8 +672,8 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert first_document["user_results"] == {"in_list": [list_name]}
         assert second_document["user_results"] == {"not_in_list": [list_name]}
-        assert _compare_sets(rule, {"tenant": "acme"}) == {list_name: {"Foo"}}
-        assert _compare_sets(rule, {"tenant": "beta"}) == {list_name: {"Bar"}}
+        assert await _compare_sets(rule, {"tenant": "acme"}) == {list_name: {"Foo"}}
+        assert await _compare_sets(rule, {"tenant": "beta"}) == {list_name: {"Bar"}}
 
     @responses.activate
     async def test_dynamic_empty_http_list_is_used_for_not_in_list(self):
@@ -684,7 +704,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             "user": "Foo",
             "user_results": {"not_in_list": [list_name]},
         }
-        assert _compare_sets(rule, {"tenant": "acme"}) == {list_name: set()}
+        assert await _compare_sets(rule, {"tenant": "acme"}) == {list_name: set()}
 
     @responses.activate
     async def test_dynamic_http_failure_does_not_mark_rule_failed(self):
@@ -734,7 +754,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             "user_results": {"in_list": [list_name]},
         }
         assert rule.data_error is None
-        assert _compare_sets(rule, {"tenant": "beta"}) == {list_name: {"Foo"}}
+        assert await _compare_sets(rule, {"tenant": "beta"}) == {list_name: {"Foo"}}
 
     @responses.activate
     async def test_removes_timed_out_dynamic_compare_set(self):
@@ -808,7 +828,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         assert document == {"user": "Foo", "user_results": {"not_in_list": [list_name]}}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
-        assert _compare_sets(rule) == {list_name: expected_content}
+        assert await _compare_sets(rule) == {list_name: expected_content}
 
     @responses.activate
     async def test_process_adds_failure_tag_if_http_list_returns_500(self, caplog):
@@ -911,7 +931,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert rule.data_error is None
         assert document == {"user": "Foo", "user_results": {"in_list": [list_name]}}
-        assert _compare_sets(rule) == {list_name: {"Foo"}}
+        assert await _compare_sets(rule) == {list_name: {"Foo"}}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 200
 
@@ -952,10 +972,10 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
             responses.replace(responses.GET, url=url, body="Foo\n", status=200)
 
-            time.sleep(2)
-            refresh_getters()
+            getter = HttpGetter(target=url, protocol="http")
+            await getter._refresh()
 
             assert rule.data_error is None
-            assert _compare_sets(rule) == {list_name: {"Foo"}}
+            assert await _compare_sets(rule) == {list_name: {"Foo"}}
             assert responses.calls[-1].request.url == url
             assert responses.calls[-1].response.status_code == 200
