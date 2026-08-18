@@ -7,6 +7,7 @@ import multiprocessing.queues
 import random
 import sys
 import time
+from queue import Empty
 from typing import Any
 
 from attrs import define, field, validators
@@ -109,8 +110,12 @@ class OutputQueueListener:
         component.shut_down()
 
     def _drain_queue(self, target):
-        while not self.queue.empty():
-            item = self.queue.get()
+        while True:
+            try:
+                item = self.queue.get(timeout=0.1)
+            except Empty:
+                break
+
             if item == 1:  # first queue item, added for process synchronization
                 continue
             if item is self.sentinel:
@@ -122,6 +127,7 @@ class OutputQueueListener:
                 logger.error(
                     f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{item}'"
                 )
+
         self.queue.close()  # close queue after draining to prevent message loss
 
     def stop(self):
