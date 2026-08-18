@@ -19,13 +19,13 @@ Processor Configuration
             - tests/testdata/rules/rules
         list_search_base_path: /path/to/list/dir
 
-.. autoclass:: logprep.processor.list_comparison.processor.ListComparison.Config
+.. autoclass:: logprep.ng.processor.list_comparison.processor.ListComparison.Config
    :members:
    :undoc-members:
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.processor.list_comparison.rule
+.. automodule:: logprep.ng.processor.list_comparison.rule
 """
 
 import typing
@@ -34,10 +34,10 @@ from collections.abc import Sequence
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
+from logprep.ng.processor.list_comparison.rule import ListComparisonRule
 from logprep.ng.util.getter import RefreshableGetter
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
-from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import (
     FieldValue,
     add_fields_to,
@@ -82,7 +82,9 @@ class ListComparison(Processor):
     async def setup(self) -> None:
         await super().setup()
         for rule in self.rules:
-            rule.init_list_comparison(self._job_tag_for_cleanup, self.config.list_search_base_path)
+            await rule.init_list_comparison(
+                self._job_tag_for_cleanup, self.config.list_search_base_path
+            )
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """
@@ -100,12 +102,12 @@ class ListComparison(Processor):
 
         """
         rule = typing.cast(ListComparisonRule, rule)
-        comparison_result, comparison_key = self._list_comparison(rule, event)
+        comparison_result, comparison_key = await self._list_comparison(rule, event)
         if comparison_result is not None:
             fields = {join_dotted_fields((rule.target_field, comparison_key)): comparison_result}
             add_fields_to(event, fields, rule=rule, merge_with_target=True)
 
-    def _list_comparison(
+    async def _list_comparison(
         self, rule: ListComparisonRule, event: dict[str, FieldValue]
     ) -> tuple[Sequence[str], str]:
         """Check if field value violates block or allow list.
@@ -125,12 +127,14 @@ class ListComparison(Processor):
             else [field_value_to_be_checked]
         )
 
-        matching_keys, all_keys = self._get_lists_matching_with_values(rule, value_list, event)
+        matching_keys, all_keys = await self._get_lists_matching_with_values(
+            rule, value_list, event
+        )
         if not matching_keys:
             return list(all_keys), "not_in_list"
         return matching_keys, "in_list"
 
-    def _get_lists_matching_with_values(
+    async def _get_lists_matching_with_values(
         self, rule: ListComparisonRule, values: Sequence[FieldValue], event: dict[str, FieldValue]
     ) -> tuple[Sequence[str], Sequence[str]]:
         """Return matching comparison-list identifiers and the evaluated compare set names.
@@ -144,7 +148,7 @@ class ListComparison(Processor):
         try:
             matches = [
                 set_name
-                for set_name, set_values in rule.iter_compare_sets(event)
+                async for set_name, set_values in rule.iter_compare_sets(event)
                 if self._matches_compare_set(prepared_values, set_values)
             ]
         except Exception as error:
