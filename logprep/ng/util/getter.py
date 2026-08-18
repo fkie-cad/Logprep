@@ -5,6 +5,7 @@ They are returned by the GetterFactory.
 import asyncio
 import logging
 import re
+import ssl
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -16,6 +17,7 @@ from string import Template
 from typing import Any, ClassVar, Iterable, TypeAlias
 from urllib.parse import urlparse
 
+import aiohttp
 import requests
 from attrs import define, field, validators
 from requests import Response
@@ -467,7 +469,7 @@ class RefreshableGetter(Getter, ABC):
         return configured_target in candidates
 
     async def _refresh(self) -> None:
-        """Refresh the current HTTP getter."""
+        """Refresh the current HTTP getter"""
         await self._ensure_initialized()
 
         if self.shared.refreshing:
@@ -477,7 +479,7 @@ class RefreshableGetter(Getter, ABC):
 
         try:
             try:
-                was_modified = self._update_cache()
+                was_modified = await self._update_cache()
             except RefreshableGetterError as error:
                 self._log_cache_warning(error)
                 was_modified = False
@@ -499,18 +501,23 @@ class RefreshableGetter(Getter, ABC):
         finally:
             self.shared.refreshing = False
 
-    def _update_cache(self) -> bool:
+    async def _update_cache(self) -> bool:
         """Update the cache of the current http getter"""
-        content, content_type, was_modified = self._get_from_target()
+        content, content_type, was_modified = await self._get_from_target()
+
         if was_modified and content is not None:
             self.content_type = content_type
             self.cache = content
+
         if self.cache is None:
             raise ValueError(f"{type(self).__name__} cache is empty")
+
         return was_modified
 
     @abstractmethod
-    def _get_from_target(self) -> tuple[bytes | None, ContentType | None, bool]:
+    async def _get_from_target(
+        self,
+    ) -> tuple[bytes | None, ContentType | None, bool]:
         """Get value from target and return if it changed or not since it was last obtained"""
 
     def _handle_cache_error(self, error: RefreshableGetterError | ValueError):
@@ -533,21 +540,25 @@ class RefreshableGetter(Getter, ABC):
 
         if self._refresh_interval > 0 and self.scheduler:
             await self.scheduler.run_pending()
+
             if self.cache is None:
                 try:
-                    self._update_cache()
+                    await self._update_cache()
                 except RefreshableGetterError as error:
                     self._handle_cache_error(error)
                     self._log_cache_warning(error)
         else:
             try:
-                self._update_cache()
+                await self._update_cache()
             except RefreshableGetterError as error:
                 if self.cache is None:
                     self._handle_cache_error(error)
+
                 self._log_cache_warning(error)
+
         if self.cache is None:
             raise ValueError(f"Cache is empty for {type(self).__name__} with URI '{self.uri}'")
+
         return self.cache, self.content_type
 
     def keep_alive(self):
@@ -701,31 +712,135 @@ class HttpGetter(RefreshableGetter):
             creds = CredentialsFactory.from_target(self.uri)
         return creds if creds else Credentials()
 
-    def _get_from_target(self) -> tuple[bytes | None, ContentType | None, bool]:
-        response = self._do_request()
-        content_type = response.headers.get("Content-Type")
-        was_modified = response.status_code != 304
-        return response.content, content_type, was_modified
+    async def _get_aiohttp_request_kwargs(self) -> dict[str, Any]:
+        """Build aiohttp request arguments from the configured credentials"""
+        return await asyncio.to_thread(self._get_aiohttp_request_kwargs_sync)
 
-    def _do_request(self) -> Response:
-        """Gets the content from a http server via a URI"""
-        if self.hash:
-            self._headers.update({"If-None-Match": self.hash})
-        try:
-            session = self._get_requests_session()
-            resp = session.get(url=self.uri, timeout=5, allow_redirects=True, headers=self._headers)
-        except requests.exceptions.RequestException as error:
-            raise RefreshableGetterError(str(error)) from error
-        try:
-            resp.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            self._handle_http_error(error)
-        logger.debug(
-            "querying %s with etag=%s yielded status=%d", self.uri, self.hash, resp.status_code
+    @staticmethod
+    def _create_ssl_context(
+        verify: bool | str,
+        cert: str | tuple[str, str] | None,
+    ) -> ssl.SSLContext | bool | None:
+        """Convert requests TLS settings to aiohttp SSL settings"""
+        if verify is True and cert is None:
+            return None
+
+        if verify is False and cert is None:
+            return False
+
+        if isinstance(verify, str):
+            ssl_context = ssl.create_default_context(cafile=verify)
+        else:
+            ssl_context = ssl.create_default_context()
+
+        if verify is False:
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+        if cert:
+            if isinstance(cert, tuple):
+                cert_file, key_file = cert
+                ssl_context.load_cert_chain(
+                    certfile=cert_file,
+                    keyfile=key_file,
+                )
+            else:
+                ssl_context.load_cert_chain(certfile=cert)
+
+        return ssl_context
+
+    def _get_aiohttp_request_kwargs_sync(self) -> dict[str, Any]:
+        """Build aiohttp request arguments from the configured credentials"""
+        domain = urlparse(self.uri).netloc
+        scheme = urlparse(self.uri).scheme
+        domain_uri = f"{scheme}://{domain}"
+
+        if domain_uri not in self._credentials_registry:
+            self._credentials_registry[domain_uri] = self.credentials
+
+        credentials = self._credentials_registry[domain_uri]
+        session = credentials.get_session()
+
+        request_kwargs: dict[str, Any] = {}
+
+        if session.auth:
+            username, password = session.auth
+            request_kwargs["auth"] = aiohttp.BasicAuth(username, password)
+
+        authorization = session.headers.get("Authorization")
+        if authorization:
+            request_kwargs["headers"] = {"Authorization": authorization}
+
+        ssl_context = self._create_ssl_context(
+            verify=session.verify,
+            cert=session.cert,
         )
-        if "etag" in resp.headers:
-            self.hash = resp.headers["etag"]
-        return resp
+        if ssl_context is not None:
+            request_kwargs["ssl"] = ssl_context
+
+        return request_kwargs
+
+    async def _get_from_target(
+        self,
+    ) -> tuple[bytes | None, ContentType | None, bool]:
+        content, content_type, status = await self._do_request()
+        return content, content_type, status != 304
+
+    async def _do_request(
+        self,
+    ) -> tuple[bytes, ContentType | None, int]:
+        """Gets the content from a http server via a URI"""
+        request_kwargs = await self._get_aiohttp_request_kwargs()
+
+        credential_headers = request_kwargs.pop("headers", {})
+        headers = credential_headers | self._headers
+
+        if self.hash:
+            headers["If-None-Match"] = self.hash
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    url=self.uri,
+                    timeout=aiohttp.ClientTimeout(total=5),
+                    allow_redirects=True,
+                    headers=headers,
+                    **request_kwargs,
+                ) as response:
+                    if response.status == 401:
+                        if ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
+                            raise RefreshableGetterError(
+                                f"{response.status}, message={response.reason!r}, url={self.uri!r}"
+                            )
+
+                        raise CredentialsEnvNotFoundError(
+                            "Credentials file not found. Please set the environment variable "
+                            f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
+                        )
+
+                    try:
+                        response.raise_for_status()
+                    except aiohttp.ClientResponseError as error:
+                        raise RefreshableGetterError(str(error)) from error
+
+                    logger.debug(
+                        "querying %s with etag=%s yielded status=%d",
+                        self.uri,
+                        self.hash,
+                        response.status,
+                    )
+
+                    if "ETag" in response.headers:
+                        self.hash = response.headers["ETag"]
+
+                    return (
+                        await response.read(),
+                        response.content_type,
+                        response.status,
+                    )
+
+        except aiohttp.ClientError as error:
+            raise RefreshableGetterError(str(error)) from error
 
     def _get_requests_session(self) -> requests.Session:
         domain = urlparse(self.uri).netloc
