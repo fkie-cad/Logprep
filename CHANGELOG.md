@@ -21,6 +21,10 @@
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
 * ng: add asynchronous getter and refresh scheduling support
 * ng: move rule tree configuration and rule loading into processor setup with asynchronous initialization support
+* ng: make getter-backed setup and processing asynchronous for:
+  - `geoip_enricher`, `grokker`, `requester`, `amides`
+  - `generic_adder`, `generic_resolver`, `list_comparison`, `network_comparison`
+  - `selective_extractor`, `pseudonymizer`, `template_replacer`
 * ng: make getter-backed setup and processing asynchronous for `geoip_enricher`, `grokker`, `requester`, `amides`, `generic_adder`, `list_comparison`, `network_comparison`, `selective_extractor`, `pseudonymizer`, and `template_replacer`
 * filter: add support for `*` (open boundary) in range expressions
 * filter: allow mixed numeric range boundaries and type coercion for range matching
@@ -46,6 +50,9 @@
 * ng: fix input timeout to also accept int parameters
 * ng: fix `http_input` `collect_meta` leading to shared dicts between events
 * ng: fix error output structure to stay consistent with non-ng
+* generic_adder: allow None as valid input via `add`
+* framework: fix race condition when draining output queues during shutdown
+* ng: fix asynchronous refreshable getter scheduling in the runner
 * generic_adder: allow `None` as valid input via `add`
 * grokker: allow fallback matches without named fields
 * filter: fix lucene range expressions not matching on mixed-type scenarios
