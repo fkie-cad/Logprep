@@ -17,6 +17,7 @@ from logprep.processor.base.exceptions import (
     ProcessingWarning,
 )
 from logprep.util.environ import ENV_VARS
+from logprep.util.getter import GetterFactory
 from logprep.util.helper import (
     FieldValue,
     add_and_overwrite,
@@ -122,8 +123,8 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
-        self._rule_tree = RuleTree(config=self.config.tree_config)
-        self.load_rules(rules_targets=self.config.rules)
+        self._rule_tree = RuleTree()
+
         self._result = None
         self._bypass_rule_tree = False
         if ENV_VARS.get("LOGPREP_BYPASS_RULE_TREE"):
@@ -329,5 +330,12 @@ class Processor(Component):
 
     def setup(self):
         super().setup()
+
+        self._rule_tree.init(
+            self.config.tree_config,
+            GetterFactory,
+        )
+        self.load_rules(rules_targets=self.config.rules)
+
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup

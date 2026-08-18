@@ -12,6 +12,7 @@ from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
 from logprep.ng.abc.event import LogEvent
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.util.environ import ENV_VARS
@@ -82,8 +83,7 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config") -> None:
         super().__init__(name, configuration)
-        self._rule_tree = RuleTree(config=self.config.tree_config)
-        self.load_rules(rules_targets=self.config.rules)
+        self._rule_tree = RuleTree()
         self._bypass_rule_tree = False
         if ENV_VARS.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
@@ -278,6 +278,12 @@ class Processor(Component):
         """Set up the processor."""
 
         await super().setup()
+
+        await self._rule_tree.init_async(
+            self.config.tree_config,
+            GetterFactory,
+        )
+        self.load_rules(rules_targets=self.config.rules)
 
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup
