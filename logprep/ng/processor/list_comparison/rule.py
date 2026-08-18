@@ -466,18 +466,25 @@ class ListComparisonRule(FieldManagerRule):
     async def iter_compare_sets(self, event: dict) -> AsyncGenerator[tuple[ListName, ListContent]]:
         """Return the compare sets relevant for the current event.
 
-        For local and static lists, this returns the already initialized compare sets.
+        For local and static lists, this yields the already initialized compare sets.
         For dynamic HTTP(S) templates, event fields are used to resolve the target URL
         and missing compare sets are loaded lazily.
+
+        Yields
+        ------
+        tuple[ListName, ListContent]
+            The name and content of each compare set relevant for the event.
 
         Raises
         ------
         ValueError
-            If a required event field is missing or is not a scalar value.
+            If a required event field is missing or is not a scalar value, or if a
+            static compare set is in an invalid state.
         Exception
-            Re-raises the stored data loading error if a dynamic HTTP(S) list cannot be
-            loaded, so the processor can apply the rule's failure tags.
+            Propagates errors raised while loading a dynamic HTTP(S) compare set.
         """
+
+        dynamic_values = {}
 
         if self._all_dynamic_identifiers:
             dynamic_values = {
@@ -501,13 +508,13 @@ class ListComparisonRule(FieldManagerRule):
             yield static_compare_set.name, static_compare_set.content
 
         for dynamic_compare_set in self._dynamic_sets:
-            assert dynamic_values
             uri = dynamic_compare_set.uri_template.substitute(dynamic_values)
-            content = dynamic_compare_set.uri_to_content.get(uri)
-            if content is None:
+
+            if uri not in dynamic_compare_set.uri_to_content:
                 await self._load_and_refresh_uri(dynamic_compare_set, uri)
             else:
                 RefreshableGetter.keep_alive_for_target(uri)
+
             yield dynamic_compare_set.name, dynamic_compare_set.uri_to_content[uri]
 
     @property
