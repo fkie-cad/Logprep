@@ -228,6 +228,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         document = {"source": "google.de"}
         expected = {"source": "google.de", "resolved": {"ip": "1.2.3.4"}}
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
         assert log_event.data == expected
 
@@ -236,6 +237,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         document = {"client": "google.de"}
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
+        await self.object.setup()
         result = await self.object.process(log_event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
@@ -247,6 +249,7 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
         # Rules have same effect, but are equal and thus one is ignored
+        await self.object.setup()
         await self.object.process(log_event)
         assert log_event.data == expected
 
