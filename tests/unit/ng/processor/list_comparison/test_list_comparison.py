@@ -776,14 +776,14 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             ]
         )
 
-        with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
+        with mock.patch("logprep.ng.util.getter.time.monotonic", return_value=100.0):
             await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
         assert url in HttpGetter._target_to_data_caches
         assert len(responses.calls) == 1
 
-        with mock.patch("logprep.util.getter.time.monotonic", return_value=161.1):
-            refresh_getters()
+        with mock.patch("logprep.ng.util.getter.time.monotonic", return_value=161.1):
+            await refresh_getters()
 
         assert url not in HttpGetter._target_to_data_caches
 
