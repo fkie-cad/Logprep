@@ -8,7 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-import responses
+from aiohttp import web
 
 from logprep.async_scheduler import AsyncScheduler
 from logprep.factory import Factory
@@ -46,13 +46,49 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
     ]
 
     @pytest.mark.parametrize("rule, event, expected, context", test_cases)
-    async def test_testcases(self, rule, event, expected, context, provision_context):
+    async def test_testcases(
+        self,
+        rule,
+        event,
+        expected,
+        context,
+        provision_context,
+        aiohttp_server,
+    ):
         config = deepcopy(self.CONFIG)
-        config["rules"] = [rule]
+        rule = deepcopy(rule)
+
         if config.get("tree_config"):
             config["tree_config"] = str(Path(config["tree_config"]).resolve())
 
-        provision_context(context)
+        http_context = {
+            path: response
+            for path, response in context.items()
+            if path.startswith(("http://", "https://"))
+        }
+        file_context = {
+            path: response
+            for path, response in context.items()
+            if not path.startswith(("http://", "https://"))
+        }
+
+        provision_context(file_context)
+
+        if http_context:
+            _, response = next(iter(http_context.items()))
+
+            async def handler(_: web.Request) -> web.Response:
+                return web.json_response(response["body"])
+
+            app = web.Application()
+            app.router.add_get("/resolve-mapping", handler)
+            server = await aiohttp_server(app)
+
+            rule["generic_resolver"]["resolve_from_file"]["path"] = str(
+                server.make_url("/resolve-mapping")
+            )
+
+        config["rules"] = [rule]
 
         processor = Factory.create({"test instance": config})
         log_event = LogEvent(event, original=b"", input_meta=InputMeta())
@@ -64,9 +100,42 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
     @pytest.mark.parametrize("rule, context, error_message", failure_test_cases)
     async def test_testcases_failure_handling(
-        self, rule, context, error_message, provision_context
+        self,
+        rule,
+        context,
+        error_message,
+        provision_context,
+        aiohttp_server,
     ):
-        provision_context(context)
+        rule = deepcopy(rule)
+
+        http_context = {
+            path: response
+            for path, response in context.items()
+            if path.startswith(("http://", "https://"))
+        }
+        file_context = {
+            path: response
+            for path, response in context.items()
+            if not path.startswith(("http://", "https://"))
+        }
+
+        if file_context:
+            provision_context(file_context)
+
+        if http_context:
+            _, response = next(iter(http_context.items()))
+
+            async def handler(_: web.Request) -> web.Response:
+                return web.json_response(response["body"])
+
+            app = web.Application()
+            app.router.add_get("/resolve-mapping", handler)
+            server = await aiohttp_server(app)
+
+            rule["generic_resolver"]["resolve_from_file"]["path"] = str(
+                server.make_url("/resolve-mapping")
+            )
 
         with pytest.raises(InvalidConfigurationError, match=error_message):
             await self._load_rule(rule)
@@ -184,13 +253,26 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         assert document.data == expected
 
-    @responses.activate
-    async def test_resolve_from_http(self, tmp_path):
-        target = "localhost:123"
-        url = f"http://{target}"
+    async def test_resolve_from_http(self, tmp_path, aiohttp_server):
+        response_contents = [
+            {"ab": {"new1": "1"}},
+            {"ab": {"new1": "1", "new2": "2"}},
+        ]
+        request_count = 0
 
-        responses.add(responses.GET, url, json={"ab": {"new1": "1"}})
-        responses.add(responses.GET, url, json={"ab": {"new1": "1", "new2": "2"}})
+        async def handler(_: web.Request) -> web.Response:
+            nonlocal request_count
+
+            content = response_contents[min(request_count, len(response_contents) - 1)]
+            request_count += 1
+
+            return web.json_response(content)
+
+        app = web.Application()
+        app.router.add_get("/resolve-mapping", handler)
+        server = await aiohttp_server(app)
+
+        url = str(server.make_url("/resolve-mapping"))
 
         getter_file_content = {url: {"refresh_interval": 10}}
         http_getter_conf: Path = tmp_path / "http_getter.json"
@@ -210,7 +292,11 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
                     },
                 }
             )
+
             await self.object.setup()
+
+            http_getter = HttpGetter(protocol="http", target=url)
+            assert isinstance(http_getter.scheduler, AsyncScheduler)
 
             expected_1 = {
                 "to_resolve": "12ab34",
@@ -225,9 +311,6 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
                 original=b"",
                 input_meta=InputMeta(),
             )
-
-            http_getter = HttpGetter(protocol="http", target=url)
-            assert isinstance(http_getter.scheduler, AsyncScheduler)
 
             await self.object.process(document)
             assert document.data == expected_1

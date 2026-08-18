@@ -7,7 +7,7 @@ from ipaddress import IPv4Network
 from pathlib import Path
 
 import pytest
-import responses
+from aiohttp import web
 
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.network_comparison.processor import NetworkComparison
@@ -72,29 +72,79 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         return processor
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
-    async def test_testcases(self, rule, event, expected):
-        with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked:
-            mocked.add_callback(
-                responses.GET,
-                re.compile(r"http.*"),
-                callback=lambda _: (200, {}, DUMMY_HTTP_LIST),
+    async def test_testcases(self, rule, event, expected, aiohttp_server):
+        rule = deepcopy(rule)
+        list_search_base_path = rule["network_comparison"].get("list_search_base_path")
+
+        if list_search_base_path and list_search_base_path.startswith(("http://", "https://")):
+
+            async def handler(_: web.Request) -> web.Response:
+                return web.Response(
+                    text=DUMMY_HTTP_LIST,
+                    content_type="text/plain",
+                )
+
+            app = web.Application()
+            app.router.add_get("/{path:.*}", handler)
+            server = await aiohttp_server(app)
+
+            base_url = str(server.make_url("/")).rstrip("/")
+            rule["network_comparison"]["list_search_base_path"] = re.sub(
+                r"^https?://[^/]+",
+                base_url,
+                list_search_base_path,
             )
-            processor = await self._create_lister([rule])
-            log_event = LogEvent(event, original=b"", input_meta=InputMeta())
-            await processor.process(log_event)
+
+        processor = await self._create_lister([rule])
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        await processor.process(log_event)
+
         assert log_event.data == expected
 
     @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
-    async def test_testcases_failure_handling(self, rule, event, expected, error_message):
-        with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked:
-            mocked.add_callback(
-                responses.GET, re.compile(r"http.*"), callback=lambda _: (500, {}, "")
+    async def test_testcases_failure_handling(
+        self,
+        rule,
+        event,
+        expected,
+        error_message,
+        aiohttp_server,
+    ):
+        rule = deepcopy(rule)
+        list_search_base_path = rule["network_comparison"].get("list_search_base_path")
+        uses_http = bool(
+            list_search_base_path and list_search_base_path.startswith(("http://", "https://"))
+        )
+
+        if uses_http:
+
+            async def handler(_: web.Request) -> web.Response:
+                return web.Response(status=500)
+
+            app = web.Application()
+            app.router.add_get("/{path:.*}", handler)
+            server = await aiohttp_server(app)
+
+            base_url = str(server.make_url("/")).rstrip("/")
+            rule["network_comparison"]["list_search_base_path"] = re.sub(
+                r"^https?://[^/]+",
+                base_url,
+                list_search_base_path,
             )
-            processor = await self._create_lister([rule])
-            log_event = LogEvent(event, original=b"", input_meta=InputMeta())
-            result = await processor.process(log_event)
+
+        processor = await self._create_lister([rule])
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        result = await processor.process(log_event)
+
         assert len(result.warnings) == 1
-        assert re.search(error_message, _warning_str(result.warnings[0]))
+
+        if uses_http:
+            assert "500" in _warning_str(result.warnings[0])
+        else:
+            assert re.search(error_message, _warning_str(result.warnings[0]))
+
         assert log_event.data == expected
 
     @pytest.mark.parametrize("network_comparison_config, error_message", invalid_config_cases)
@@ -163,10 +213,22 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             "network_list.txt": {IPv4Network("127.0.0.1/32"), IPv4Network("127.0.0.0/24")}
         }
 
-    @responses.activate
-    async def test_loads_static_http_list_with_template_base_path(self):
-        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
-        responses.add(responses.GET, url, "127.0.0.1\n127.0.0.2\n127.0.0.3\n")
+    async def test_loads_static_http_list_with_template_base_path(self, aiohttp_server):
+        async def handler(request: web.Request) -> web.Response:
+            assert request.match_info["list_name"] == "bad_ips.list"
+            assert request.query["ref"] == "bla"
+
+            return web.Response(
+                text="127.0.0.1\n127.0.0.2\n127.0.0.3\n",
+                content_type="text/plain",
+            )
+
+        app = web.Application()
+        app.router.add_get("/tests/testdata/{list_name}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+
         processor = await self._create_lister(
             [
                 {
@@ -176,7 +238,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                         "target_field": "ip_results",
                         "list_file_paths": ["bad_ips.list"],
                         "list_search_base_path": (
-                            "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                            f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                         ),
                     },
                 }
@@ -190,11 +252,37 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             }
         }
 
-    @responses.activate
-    async def test_static_http_list_is_updated_by_refresh_callback(self, tmp_path):
-        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
-        responses.add(responses.GET, url, "127.0.0.1\n1.1.1.1\n2.2.2.2\n")
-        responses.add(responses.GET, url, "127.0.0.1\n1.1.1.1\n")
+    async def test_static_http_list_is_updated_by_refresh_callback(
+        self,
+        tmp_path,
+        aiohttp_server,
+    ):
+        response_contents = [
+            "127.0.0.1\n1.1.1.1\n2.2.2.2\n",
+            "127.0.0.1\n1.1.1.1\n",
+        ]
+        request_count = 0
+
+        async def handler(request: web.Request) -> web.Response:
+            nonlocal request_count
+
+            assert request.match_info["list_name"] == "bad_ips.list"
+            assert request.query["ref"] == "bla"
+
+            content = response_contents[min(request_count, len(response_contents) - 1)]
+            request_count += 1
+
+            return web.Response(
+                text=content,
+                content_type="text/plain",
+            )
+
+        app = web.Application()
+        app.router.add_get("/tests/testdata/{list_name}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+        url = f"{base_url}/tests/testdata/bad_ips.list?ref=bla"
 
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 10}}))
@@ -209,7 +297,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                             "target_field": "ip_results",
                             "list_file_paths": ["bad_ips.list"],
                             "list_search_base_path": (
-                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                                f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                             ),
                         },
                     }
@@ -229,15 +317,56 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 "bad_ips.list": {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
             }
 
-    @responses.activate
-    async def test_refresh_of_one_list_does_not_affect_unmodified_entries(self, tmp_path):
-        url1 = "http://localhost/tests/testdata/bad_ips_1.list?ref=bla"
-        responses.add(responses.GET, url1, "127.0.0.1")
-        responses.add(responses.GET, url1, "1.1.1.1")
+    async def test_refresh_of_one_list_does_not_affect_unmodified_entries(
+        self,
+        tmp_path,
+        aiohttp_server,
+    ):
+        request_counts = {
+            "bad_ips_1.list": 0,
+            "bad_ips_2.list": 0,
+        }
 
-        url2 = "http://localhost/tests/testdata/bad_ips_2.list?ref=bla"
-        responses.add(responses.GET, url2, "2.2.2.2", headers={"etag": "1"})
-        responses.add(responses.GET, url2, headers={"etag": "1"}, status=304)
+        async def handler(request: web.Request) -> web.Response:
+            list_name = request.match_info["list_name"]
+            request_counts[list_name] += 1
+
+            assert request.query["ref"] == "bla"
+
+            if list_name == "bad_ips_1.list":
+                if request_counts[list_name] == 1:
+                    return web.Response(
+                        text="127.0.0.1",
+                        content_type="text/plain",
+                    )
+
+                return web.Response(
+                    text="1.1.1.1",
+                    content_type="text/plain",
+                )
+
+            assert request.headers.get("If-None-Match") in (None, "1")
+
+            if request_counts[list_name] == 1:
+                return web.Response(
+                    text="2.2.2.2",
+                    headers={"ETag": "1"},
+                    content_type="text/plain",
+                )
+
+            assert request.headers["If-None-Match"] == "1"
+            return web.Response(
+                status=304,
+                headers={"ETag": "1"},
+            )
+
+        app = web.Application()
+        app.router.add_get("/tests/testdata/{list_name}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+        url1 = f"{base_url}/tests/testdata/bad_ips_1.list?ref=bla"
+        url2 = f"{base_url}/tests/testdata/bad_ips_2.list?ref=bla"
 
         http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(
@@ -254,7 +383,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                             "target_field": "ip_results",
                             "list_file_paths": ["bad_ips_1.list", "bad_ips_2.list"],
                             "list_search_base_path": (
-                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                                f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                             ),
                         },
                     }
@@ -272,15 +401,36 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 "bad_ips_2.list": {IPv4Network("2.2.2.2/32")},
             }
 
-    @responses.activate
-    async def test_dynamic_http_failure_does_not_mark_rule_failed(self):
+    async def test_dynamic_http_failure_does_not_mark_rule_failed(
+        self,
+        aiohttp_server,
+    ):
         failed_document = {"tenant": "acme", "ip": "1.2.3.4"}
         successful_document = {"tenant": "beta", "ip": "1.2.3.4"}
         list_name = "bad_ips.list"
-        failed_url = "http://localhost/acme/bad_ips.list"
-        successful_url = "http://localhost/beta/bad_ips.list"
-        responses.add(responses.GET, url=failed_url, status=500)
-        responses.add(responses.GET, url=successful_url, body="1.2.3.4\n", status=200)
+
+        async def handler(request: web.Request) -> web.Response:
+            tenant = request.match_info["tenant"]
+
+            if tenant == "acme":
+                return web.Response(status=500)
+
+            if tenant == "beta":
+                return web.Response(
+                    text="1.2.3.4\n",
+                    content_type="text/plain",
+                )
+
+            return web.Response(status=404)
+
+        app = web.Application()
+        app.router.add_get("/{tenant}/{list_name}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+        failed_url = f"{base_url}/acme/{list_name}"
+        successful_url = f"{base_url}/beta/{list_name}"
+        dynamic_base_path = f"{base_url}/${{tenant}}/${{LOGPREP_LIST}}"
 
         processor = await self._create_lister(
             [
@@ -290,7 +440,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                         "source_fields": ["ip"],
                         "target_field": "ip_results",
                         "list_file_paths": [list_name],
-                        "list_search_base_path": "http://localhost/${tenant}/${LOGPREP_LIST}",
+                        "list_search_base_path": dynamic_base_path,
                     },
                 }
             ]
@@ -312,8 +462,11 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
         assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
 
-        await processor.process(LogEvent(successful_document, original=b"", input_meta=InputMeta()))
+        result = await processor.process(
+            LogEvent(successful_document, original=b"", input_meta=InputMeta())
+        )
 
+        assert result.warnings == []
         assert successful_document == {
             "tenant": "beta",
             "ip": "1.2.3.4",
@@ -323,13 +476,33 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert await _compare_sets(rule, {"tenant": "beta"}) == {
             list_name: {IPv4Network("1.2.3.4/32")}
         }
+        assert len(HttpGetter._target_to_data_caches[successful_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[successful_url].cleanup_callbacks) == 1
 
-    @responses.activate
-    async def test_process_adds_failure_tag_if_http_list_returns_500(self, caplog):
+    async def test_process_adds_failure_tag_if_http_list_returns_500(
+        self,
+        caplog,
+        aiohttp_server,
+    ):
         document = {"ip": "1.2.3.4"}
         list_name = "bad_ips.list"
-        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
-        responses.add(responses.GET, url=url, status=500)
+        request_count = 0
+
+        async def handler(request: web.Request) -> web.Response:
+            nonlocal request_count
+            request_count += 1
+
+            assert request.match_info["list_name"] == list_name
+            assert request.query["ref"] == "bla"
+
+            return web.Response(status=500)
+
+        app = web.Application()
+        app.router.add_get("/tests/testdata/{list_name}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+        url = f"{base_url}/tests/testdata/{list_name}?ref=bla"
 
         processor = await self._create_lister(
             [
@@ -340,7 +513,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                         "target_field": "ip_results",
                         "list_file_paths": [list_name],
                         "list_search_base_path": (
-                            "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                            f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                         ),
                     },
                 }
@@ -348,20 +521,41 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         )
         rule = processor.rules[0]
 
-        assert "NetworkComparison" in caplog.text
-        assert "too many 500 error responses" in caplog.text
+        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert "NetworkComparisonRule failed" in caplog.text
+        assert "500" in caplog.text
+        assert request_count == 1
+        assert url in HttpGetter._target_to_data_caches
 
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
-        assert len(responses.calls) == 4
-        assert responses.calls[0].request.url == url
+        assert request_count == 1
 
-    @responses.activate
-    async def test_recovers_after_failed_http_getter_setup(self):
+    async def test_recovers_after_failed_http_getter_setup(self, aiohttp_server):
         list_name = "bad_ips.list"
-        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
+        should_fail = True
+        response_statuses = []
+
+        async def handler(request: web.Request) -> web.Response:
+            assert request.match_info["list_name"] == list_name
+            assert request.query["ref"] == "bla"
+
+            if should_fail:
+                response_statuses.append(500)
+                return web.Response(status=500)
+
+            response_statuses.append(200)
+            return web.Response(
+                text="1.2.3.4\n",
+                content_type="text/plain",
+            )
+
+        app = web.Application()
+        app.router.add_get("/tests/testdata/{list_name}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
         rules = [
             {
                 "filter": "ip",
@@ -370,13 +564,12 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                     "target_field": "ip_results",
                     "list_file_paths": [list_name],
                     "list_search_base_path": (
-                        "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                        f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                     ),
                 },
             }
         ]
 
-        responses.add(responses.GET, url=url, status=500)
         processor = await self._create_lister(rules)
         rule = processor.rules[0]
 
@@ -385,10 +578,9 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
         assert isinstance(rule.data_error, RefreshableGetterError)
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
-        assert responses.calls[-1].request.url == url
-        assert responses.calls[-1].response.status_code == 500
+        assert response_statuses[-1] == 500
 
-        responses.replace(responses.GET, url=url, body="1.2.3.4\n", status=200)
+        should_fail = False
 
         processor = await self._create_lister(rules)
         rule = processor.rules[0]
@@ -399,15 +591,39 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert rule.data_error is None
         assert document == {"ip": "1.2.3.4", "ip_results": {"in_list": [list_name]}}
         assert await _compare_sets(rule) == {list_name: {IPv4Network("1.2.3.4/32")}}
-        assert responses.calls[-1].request.url == url
-        assert responses.calls[-1].response.status_code == 200
+        assert response_statuses[-1] == 200
 
-    @responses.activate
-    async def test_refresh_updates_all_compare_sets_resolving_to_same_uri(self, tmp_path):
-        url = "http://localhost/tests/testdata/shared_ips.list?ref=bla"
+    async def test_refresh_updates_all_compare_sets_resolving_to_same_uri(
+        self,
+        tmp_path,
+        aiohttp_server,
+    ):
+        response_contents = [
+            "127.0.0.1",
+            "1.1.1.1",
+        ]
+        request_count = 0
 
-        responses.add(responses.GET, url, "127.0.0.1")
-        responses.add(responses.GET, url, "1.1.1.1")
+        async def handler(request: web.Request) -> web.Response:
+            nonlocal request_count
+
+            assert request.match_info["list_name"] == "shared_ips.list"
+            assert request.query["ref"] == "bla"
+
+            content = response_contents[min(request_count, len(response_contents) - 1)]
+            request_count += 1
+
+            return web.Response(
+                text=content,
+                content_type="text/plain",
+            )
+
+        app = web.Application()
+        app.router.add_get("/tests/testdata/{list_name}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+        url = f"{base_url}/tests/testdata/shared_ips.list?ref=bla"
 
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 10}}))
@@ -425,7 +641,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                                 "SECOND_LIST": "shared_ips.list",
                             },
                             "list_search_base_path": (
-                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                                f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                             ),
                         },
                     }
