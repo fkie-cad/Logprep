@@ -142,8 +142,10 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
     def test_rule_tree(self):
         assert isinstance(self.object._rule_tree, RuleTree)
 
-    def test_rule_tree_not_empty(self):
-        assert self.object._rule_tree.get_size() > 0
+    async def test_rule_tree_not_empty(self):
+        instance = self._create_test_instance(deepcopy(self.CONFIG))
+        await instance.setup()
+        assert instance._rule_tree.get_size() > 0
 
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
@@ -193,9 +195,12 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         new_rules_size = self.object._rule_tree.get_size()
         assert new_rules_size == rules_size
 
-    def test_rules_returns_all_rules(self):
+    async def test_rules_returns_all_rules(self):
+        instance = self._create_test_instance(deepcopy(self.CONFIG))
+        await instance.setup()
+
         rules = self.rules
-        object_rules = self.object.rules
+        object_rules = instance.rules
         assert len(rules) == len(object_rules)
 
     @mock.patch("logging.Logger.debug")

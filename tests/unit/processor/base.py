@@ -4,6 +4,7 @@
 
 import itertools
 import json
+import typing
 from copy import deepcopy
 from logging import getLogger
 from pathlib import Path
@@ -14,6 +15,7 @@ import responses
 from attrs import asdict
 from ruamel.yaml import YAML
 
+from logprep.abc.component import Component
 from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -24,7 +26,7 @@ from logprep.processor.base.exceptions import (
 )
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
-from logprep.util.getter import RefreshableGetter, RefreshableGetterError
+from logprep.util.getter import GetterFactory, RefreshableGetterError
 from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -37,11 +39,20 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     logger = getLogger()
 
-    object: Processor | None = None
+    _object: Processor | None = None
 
     patchers: list | None = None
 
     rules: list
+
+    @property
+    def object(self) -> Processor:
+        assert isinstance(self._object, Processor)
+        return self._object
+
+    @object.setter
+    def object(self, value: Component | None) -> None:
+        self._object = typing.cast(Processor, value)
 
     @property
     def rules_dirs(self):
@@ -80,8 +91,11 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         return rules
 
     def _load_rule(self, rule: dict | Rule):
-        assert isinstance(self.object, Processor)
         self.object._rule_tree = RuleTree()
+        self.object._rule_tree.init(
+            self.object.config.tree_config,
+            GetterFactory,
+        )
         assert self.object.rule_class, "a rule_class should never be none for concrete processors"
         rule = self.object.rule_class.create_from_dict(rule) if isinstance(rule, dict) else rule
         self.object._rule_tree.add_rule(rule)
@@ -134,7 +148,9 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert isinstance(self.object._rule_tree, RuleTree)
 
     def test_rule_tree_not_empty(self):
-        assert self.object._rule_tree.get_size() > 0
+        instance = self._create_test_instance()
+        instance.setup()
+        assert instance._rule_tree.get_size() > 0
 
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
@@ -185,8 +201,10 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert new_rules_size == rules_size
 
     def test_rules_returns_all_rules(self):
+        instance = self._create_test_instance()
+        instance.setup()
         rules = self.rules
-        object_rules = self.object.rules
+        object_rules = instance.rules
         assert len(rules) == len(object_rules)
 
     @mock.patch("logging.Logger.debug")
@@ -219,8 +237,10 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_validation_raises_if_tree_config_is_not_exist(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "/i/am/not/a/file/path"})
+        processor = Factory.create({"test instance": config})
+
         with pytest.raises(FileNotFoundError):
-            Factory.create({"test instance": config})
+            processor.setup()
 
     @responses.activate
     def test_accepts_tree_config_from_http(self):
@@ -229,6 +249,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
         processor = Factory.create({"test instance": config})
+        processor.setup()
         tree_config = json.loads(tree_config)
         assert processor._rule_tree.tree_config.priority_dict == tree_config.get("priority_dict")
 
@@ -237,9 +258,9 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
-        RefreshableGetter.reset()
+        processor = Factory.create({"test instance": config})
         with pytest.raises(RefreshableGetterError, match="404"):
-            Factory.create({"test instance": config})
+            processor.setup()
 
     @pytest.mark.parametrize(
         "metric_name, metric_class",
@@ -251,12 +272,16 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         ],
     )
     def test_rule_has_metric(self, metric_name, metric_class):
-        metric_instance = getattr(self.object.rules[0].metrics, metric_name)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        metric_instance = getattr(processor.rules[0].metrics, metric_name)
         assert isinstance(metric_instance, metric_class)
 
     def test_no_metrics_with_same_name(self):
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
         metric_attributes = asdict(
-            self.object.rules[0].metrics, filter=self.asdict_filter, recurse=False
+            processor.rules[0].metrics, filter=self.asdict_filter, recurse=False
         )
         pairs = itertools.combinations(metric_attributes.values(), 2)
         for metric1, metric2 in pairs:
@@ -271,12 +296,14 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert result.processor_name == "Test Instance Name"
 
     def test_process_collects_errors_in_result_object(self):
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
         with mock.patch.object(
-            self.object,
+            processor,
             "_apply_rules",
-            side_effect=ProcessingCriticalError("side effect", rule=self.object.rules[0]),
+            side_effect=ProcessingCriticalError("side effect", rule=processor.rules[0]),
         ):
-            result = self.object.process(self.match_all_event)
+            result = processor.process(self.match_all_event)
         assert len(result.errors) > 0, "minimum one error should be in result object"
 
     def test_result_object_has_reference_to_event(self):

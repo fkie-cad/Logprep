@@ -1286,6 +1286,7 @@ class TestListComparison(BaseProcessorTestCase):
         document = {"user": "Foo"}
         list_name = "bad_users.list"
         url = "http://localhost/tests/testdata/bad_users.list?ref=bla"
+
         responses.add(responses.GET, url=url, status=500)
 
         captured_sessions = []
@@ -1297,6 +1298,7 @@ class TestListComparison(BaseProcessorTestCase):
             return session
 
         RefreshableGetter.reset()
+
         processor = self._create_test_instance(
             {
                 "custom_lister": {
@@ -1317,13 +1319,16 @@ class TestListComparison(BaseProcessorTestCase):
                 }
             }
         )
-        rule = processor.rules[0]
-        assert rule.data_error is None
 
         with mock.patch.object(
-            HttpGetter, "_get_requests_session", autospec=True, side_effect=capture_session
+            HttpGetter,
+            "_get_requests_session",
+            autospec=True,
+            side_effect=capture_session,
         ):
             processor.setup()
+
+        rule = processor.rules[0]
 
         assert isinstance(rule.data_error, RefreshableGetterError)
         assert captured_sessions
@@ -1335,9 +1340,15 @@ class TestListComparison(BaseProcessorTestCase):
         assert "Caused by ResponseError('too many 500 error responses'))" in caplog.text
         assert "ListComparisonRule failed" in caplog.text
 
-        processor.process(document)
+        try:
+            processor.process(document)
+        finally:
+            processor.shut_down()
 
-        assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
+        assert document == {
+            "user": "Foo",
+            "tags": ["_list_comparison_failure"],
+        }
         assert len(responses.calls) == retries.total + 1
         assert responses.calls[0].request.url == url
 
