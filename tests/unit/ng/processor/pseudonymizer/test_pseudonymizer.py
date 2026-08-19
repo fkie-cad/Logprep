@@ -142,7 +142,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         await self.object.setup()
         expected_pattern = re.compile("(.*)")
         assert self.object._rule_tree.rules[0].pseudonyms == {"something": expected_pattern}
-        self.object._replace_regex_keywords_by_regex_expression()  # Second Call
+        await self.object._replace_regex_keywords_by_regex_expression()  # Second Call
         assert self.object._rule_tree.rules[0].pseudonyms == {"something": expected_pattern}
 
     async def test_pseudonymize_string_adds_pseudonyms(self):
