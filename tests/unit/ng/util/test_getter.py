@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring,protected-access
+import typing
 from importlib.metadata import version
 from unittest import mock
 
@@ -329,3 +330,18 @@ class TestHttpGetter:
             keyfile="/path/to/client.key",
         )
         assert result is ssl_context
+
+    def test_credentials_registry_is_shared_between_http_getters(self):
+        first_getter: HttpGetter = typing.cast(
+            HttpGetter, GetterFactory.from_string("https://example.test/one")
+        )
+        second_getter: HttpGetter = typing.cast(
+            HttpGetter, GetterFactory.from_string("https://example.test/two")
+        )
+
+        credentials = mock.MagicMock()
+        HttpGetter._credentials_registry["https://example.test"] = credentials
+
+        assert first_getter._credentials_registry is second_getter._credentials_registry
+        assert first_getter._credentials_registry["https://example.test"] is credentials
+        assert second_getter._credentials_registry["https://example.test"] is credentials
