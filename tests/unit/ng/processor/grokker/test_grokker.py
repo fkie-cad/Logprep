@@ -129,11 +129,15 @@ class TestGrokker(BaseProcessorTestCase[Grokker]):
             },
             "normalized": "id-1",
         }
+
         config = deepcopy(self.CONFIG)
         config["custom_patterns_dir"] = "tests/testdata/unit/grokker/patterns/"
+        config["rules"] = [rule]
         self.object = Factory.create({"grokker": config})
-        await self._load_rule(rule)
-        await self.object.setup()
+
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        await self.object.setup()
         await self.object.process(event)
+
         assert event.data == expected

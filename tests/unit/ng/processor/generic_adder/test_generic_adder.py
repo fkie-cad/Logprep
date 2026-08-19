@@ -79,10 +79,13 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
 
     @pytest.mark.parametrize("rule, event, error_message", dynamic_uri_failure_test_cases)
     async def test_dynamic_uri_failure_handling(self, rule, event, error_message):
-        await self._load_rule(rule)
-        await self.object.setup()
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+        self.object = Factory.create({"test instance": config})
+
         log_event = LogEvent(event, original=b"", input_meta=InputMeta())
 
+        await self.object.setup()
         result = await self.object.process(log_event)
 
         assert result.errors == []

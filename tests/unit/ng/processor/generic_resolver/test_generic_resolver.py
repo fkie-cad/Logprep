@@ -137,106 +137,141 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
                 server.make_url("/resolve-mapping")
             )
 
+        processor = self._create_test_instance(
+            {
+                "rules": [rule],
+            }
+        )
+
         with pytest.raises(InvalidConfigurationError, match=error_message):
-            await self._load_rule(rule)
-            await self.object.setup()
+            await processor.setup()
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     async def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
-        await self._load_rule(
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": resolve_value},
+            },
+        }
+
+        processor = self._create_test_instance(
             {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_list": {".*HELLO\\d": resolve_value},
-                },
+                "rules": [rule],
             }
         )
 
         expected = {"to_resolve": "something HELLO1", "resolved": resolve_value}
         document = LogEvent(
-            {"to_resolve": "something HELLO1"}, original=b"", input_meta=InputMeta()
+            {"to_resolve": "something HELLO1"},
+            original=b"",
+            input_meta=InputMeta(),
         )
 
-        await self.object.setup()
-        await self.object.process(document)
+        await processor.setup()
+        await processor.process(document)
 
         assert document.data == expected
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     async def test_resolve_not_dotted_field_no_conflict_different_values_match_from_file(
-        self, resolve_value, tmp_path
+        self,
+        resolve_value,
+        tmp_path,
     ):
         resolve_file_path = tmp_path / "rule.json"
 
         resolve_dict = {"abc": resolve_value}
         expected = {"to_resolve": "abc", "resolved": resolve_value}
-        document = LogEvent({"to_resolve": "abc"}, original=b"", input_meta=InputMeta())
+        document = LogEvent(
+            {"to_resolve": "abc"},
+            original=b"",
+            input_meta=InputMeta(),
+        )
 
         with open(resolve_file_path, mode="w+", encoding="utf8") as stream:
             stream.write(json.dumps(resolve_dict))
 
-        await self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_from_file": {
-                        "path": str(resolve_file_path),
-                        "pattern": r"(?P<mapping>.+)",
-                    },
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": str(resolve_file_path),
+                    "pattern": r"(?P<mapping>.+)",
                 },
+            },
+        }
+
+        processor = self._create_test_instance(
+            {
+                "rules": [rule],
             }
         )
-        await self.object.setup()
-        await self.object.process(document)
+
+        await processor.setup()
+        await processor.process(document)
 
         assert document.data == expected
 
     async def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict(
         self,
     ):
-        await self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_from_file": {
-                        "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                        "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                    },
-                    "merge_with_target": True,
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
+                "merge_with_target": True,
+            },
+        }
+
+        processor = self._create_test_instance(
+            {
+                "rules": [rule],
             }
         )
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
-        document = LogEvent({"to_resolve": "12ab34"}, original=b"", input_meta=InputMeta())
+        document = LogEvent(
+            {"to_resolve": "12ab34"},
+            original=b"",
+            input_meta=InputMeta(),
+        )
 
-        await self.object.setup()
-        await self.object.process(document)
+        await processor.setup()
+        await processor.process(document)
 
         assert document.data == expected
 
     async def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict_and_diff_inputs(
         self,
     ):
-        await self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {
-                        "to_resolve": "resolved",
-                        "other_to_resolve": "resolved",
-                    },
-                    "resolve_from_file": {
-                        "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                        "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                    },
-                    "merge_with_target": True,
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {
+                    "to_resolve": "resolved",
+                    "other_to_resolve": "resolved",
                 },
+                "resolve_from_file": {
+                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "merge_with_target": True,
+            },
+        }
+
+        processor = self._create_test_instance(
+            {
+                "rules": [rule],
             }
         )
+
         document = LogEvent(
             {"to_resolve": "12ab34", "other_to_resolve": "00de11"},
             original=b"",
@@ -248,8 +283,8 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             "resolved": ["ab_server_type", "de_server_type"],
         }
 
-        await self.object.setup()
-        await self.object.process(document)
+        await processor.setup()
+        await processor.process(document)
 
         assert document.data == expected
 
@@ -279,17 +314,21 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         http_getter_conf.write_text(json.dumps(getter_file_content))
 
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
-            await self._load_rule(
-                {
-                    "filter": "to_resolve",
-                    "generic_resolver": {
-                        "field_mapping": {"to_resolve": "resolved"},
-                        "resolve_from_file": {
-                            "path": url,
-                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                        },
-                        "overwrite_target": True,
+            rule = {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_from_file": {
+                        "path": url,
+                        "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                     },
+                    "overwrite_target": True,
+                },
+            }
+
+            self.object = self._create_test_instance(
+                {
+                    "rules": [rule],
                 }
             )
 
@@ -324,15 +363,20 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             assert document.data == expected_2
 
     async def test_resolve_dotted_src_and_dest_field_and_conflict_match(self):
-        await self._load_rule(
+        rule = {
+            "filter": "to.resolve",
+            "generic_resolver": {
+                "field_mapping": {"to.resolve": "re.solved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        }
+
+        self.object = self._create_test_instance(
             {
-                "filter": "to.resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to.resolve": "re.solved"},
-                    "resolve_list": {".*HELLO\\d": "Greeting"},
-                },
+                "rules": [rule],
             }
         )
+
         document = LogEvent(
             {
                 "to": {"resolve": "something HELLO1"},
@@ -357,20 +401,20 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 10
-        self.object = Factory.create({"generic_resolver": config})
 
         event_1 = {"to_resolve": "foo"}
         event_2 = {"to_resolve": "bar"}
 
-        await self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-                },
-            }
-        )
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        config["rules"] = [rule]
+        self.object = Factory.create({"generic_resolver": config})
+
         await self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -400,20 +444,20 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 1
-        self.object = Factory.create({"generic_resolver": config})
 
         event_1 = {"to_resolve": "foo"}
         event_2 = {"to_resolve": "bar"}
 
-        await self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-                },
-            }
-        )
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        config["rules"] = [rule]
+        self.object = Factory.create({"generic_resolver": config})
+
         await self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -441,20 +485,20 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
     async def test_resolve_without_cache(self):
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 0
-        self.object = Factory.create({"generic_resolver": config})
 
         event_1 = {"to_resolve": "foo"}
         event_2 = {"to_resolve": "bar"}
 
-        await self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-                },
-            }
-        )
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        config["rules"] = [rule]
+        self.object = Factory.create({"generic_resolver": config})
+
         await self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -485,20 +529,20 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         config = deepcopy(self.CONFIG)
         config["cache_metrics_interval"] = 2
         config["max_cache_entries"] = 10
-        self.object = Factory.create({"generic_resolver": config})
 
         event_1 = {"to_resolve": "foo"}
         event_2 = {"to_resolve": "bar"}
 
-        await self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-                },
-            }
-        )
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        config["rules"] = [rule]
+        self.object = Factory.create({"generic_resolver": config})
+
         await self.object.setup()
 
         self.object.metrics.new_results = 0
