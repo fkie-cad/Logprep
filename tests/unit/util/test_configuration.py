@@ -788,10 +788,12 @@ output:
     dummy:
         type: dummy_output
 """)
-        with mock.patch.object(config._metrics.config_refresh_interval, "__add__") as mock_add:
-            config.reload()
+        config.reload()
         assert "Successfully reloaded" in caplog.text
-        mock_add.assert_called_once_with(66, {"logprep": "unset", "config": "unset"})
+        samples = config._metrics.config_refresh_interval.collect_samples()
+        assert [(sample.labels, sample.value) for sample in samples] == [
+            ({"logprep": "unset", "config": "unset"}, 66)
+        ]
 
     def test_reload_exposes_version_info_metric(self, config_path, caplog):
         caplog.set_level("INFO")
