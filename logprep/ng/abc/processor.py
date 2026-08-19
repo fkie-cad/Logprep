@@ -210,7 +210,11 @@ class Processor(Component):
 
         """
 
-    async def load_rules(self, rules_targets: Sequence[str | dict]) -> None:
+    async def load_rules(
+        self,
+        rules_targets: Sequence[str | dict],
+        rule_tree: RuleTree | None = None,
+    ) -> None:
         """method to add rules from directories or urls"""
         try:
             rules = await RuleLoader(
@@ -221,11 +225,13 @@ class Processor(Component):
             logger.error("Loading rules from %s failed: %s ", rules_targets, error)
             raise error
 
+        target_rule_tree = rule_tree if rule_tree is not None else self._rule_tree
+
         for rule in rules:
-            self._rule_tree.add_rule(rule)
+            target_rule_tree.add_rule(rule)
 
         if logger.isEnabledFor(logging.DEBUG):
-            number_rules = self._rule_tree.number_of_rules
+            number_rules = target_rule_tree.number_of_rules
             logger.debug("%s loaded %s rules", self.description, number_rules)
 
     @staticmethod
@@ -280,15 +286,22 @@ class Processor(Component):
             )
 
     async def setup(self) -> None:
-        """Set up the processor."""
+        """Set up the processor"""
 
         await super().setup()
 
-        await self._rule_tree.init_async(
+        rule_tree = RuleTree()
+
+        await rule_tree.init_async(
             self.config.tree_config,
             GetterFactory,
         )
-        await self.load_rules(rules_targets=self.config.rules)
+        await self.load_rules(
+            rules_targets=self.config.rules,
+            rule_tree=rule_tree,
+        )
+
+        self._rule_tree = rule_tree
 
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup
