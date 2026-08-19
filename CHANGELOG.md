@@ -66,6 +66,7 @@
 * filter: treat `inf`/`nan` as string values instead of numeric range boundaries
 * ng: prevent refresh callback failures from stopping subsequent refresh processing
 * ng: avoid duplicate getter refreshes while executing refresh callbacks
+* ng: share concurrent getter cache updates to avoid duplicate requests for the same target
 
 ## 20.0.0
 ### Breaking
