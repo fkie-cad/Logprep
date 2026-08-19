@@ -65,6 +65,7 @@
 * filter: fix lucene range expressions not matching on mixed-type scenarios
 * filter: treat `inf`/`nan` as string values instead of numeric range boundaries
 * ng: prevent refresh callback failures from stopping subsequent refresh processing
+* ng: avoid duplicate getter refreshes while executing refresh callbacks
 
 ## 20.0.0
 ### Breaking
