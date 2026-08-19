@@ -376,3 +376,35 @@ class TestRefreshableGetter:
 
         assert getter.shared.refreshing is False
         assert "refresh callback failed" in caplog.text
+
+    async def test_refresh_callback_reads_updated_cache_without_refreshing_again(self):
+        getter: HttpGetter = typing.cast(
+            HttpGetter,
+            GetterFactory.from_string("https://example.test/data"),
+        )
+
+        getter.shared.initialized = True
+        getter.shared.refresh_interval = 0
+        getter.shared.timeout_interval = 60
+        getter.cache = b'{"value": 1}'
+        getter.content_type = "application/json"
+
+        callback_result = None
+
+        async def callback():
+            nonlocal callback_result
+            callback_result = await getter.get_json()
+
+        getter.add_callback("test", callback)
+
+        update_cache = mock.AsyncMock(return_value=True)
+
+        with mock.patch.object(
+            HttpGetter,
+            "_update_cache",
+            new=update_cache,
+        ):
+            await getter._refresh()
+
+        update_cache.assert_awaited_once()
+        assert callback_result == {"value": 1}

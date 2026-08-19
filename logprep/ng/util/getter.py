@@ -546,6 +546,9 @@ class RefreshableGetter(Getter, ABC):
 
         await self._ensure_initialized()
 
+        if self.shared.refreshing and self.cache is not None:
+            return self.cache, self.content_type
+
         if self._refresh_interval > 0 and self.scheduler:
             await self.scheduler.run_pending()
 
