@@ -139,6 +139,12 @@ class DataSharedPerTarget:
     refreshing: bool = False
     """Used to check if getters are refreshing to prevent the scheduler running multiple times"""
 
+    update_task: asyncio.Task[bool] | None = field(
+        default=None,
+        repr=False,
+    )
+    """Currently running cache update task"""
+
     hash: str | None = None
     """Hash value of the obtained resource"""
 
@@ -510,6 +516,19 @@ class RefreshableGetter(Getter, ABC):
             self.shared.refreshing = False
 
     async def _update_cache(self) -> bool:
+        """Update the cache while sharing concurrent updates for the same target"""
+        if self.shared.update_task is None:
+            self.shared.update_task = asyncio.create_task(self._update_cache_once())
+
+        update_task = self.shared.update_task
+
+        try:
+            return await asyncio.shield(update_task)
+        finally:
+            if update_task.done() and self.shared.update_task is update_task:
+                self.shared.update_task = None
+
+    async def _update_cache_once(self) -> bool:
         """Update the cache of the current http getter"""
         content, content_type, was_modified = await self._get_from_target()
 
