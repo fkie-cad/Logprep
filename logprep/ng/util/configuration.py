@@ -828,7 +828,11 @@ class Configuration:
             try:
                 config = await Configuration.from_source(config_path)
                 configs.append(config)
-            except (GetterNotFoundError, RequestException, CredentialsEnvNotFoundError) as error:
+            except (
+                GetterNotFoundError,
+                RefreshableGetterError,
+                CredentialsEnvNotFoundError,
+            ) as error:
                 raise ConfigGetterException(f"{config_path} {error}") from error
             except FileNotFoundError as error:
                 raise ConfigGetterException(
