@@ -345,3 +345,34 @@ class TestHttpGetter:
         assert first_getter._credentials_registry is second_getter._credentials_registry
         assert first_getter._credentials_registry["https://example.test"] is credentials
         assert second_getter._credentials_registry["https://example.test"] is credentials
+
+
+class TestRefreshableGetter:
+    async def test_refresh_continues_after_callback_failure(self, caplog):
+        getter: HttpGetter = typing.cast(
+            HttpGetter,
+            GetterFactory.from_string("https://example.test/data"),
+        )
+
+        getter.shared.initialized = True
+        getter.shared.refresh_interval = 0
+        getter.shared.timeout_interval = 60
+
+        failing_callback = mock.AsyncMock(side_effect=RuntimeError("callback failed"))
+        succeeding_callback = mock.AsyncMock()
+
+        getter.add_callback("failing", failing_callback)
+        getter.add_callback("succeeding", succeeding_callback)
+
+        with mock.patch.object(
+            HttpGetter,
+            "_update_cache",
+            new=mock.AsyncMock(return_value=True),
+        ):
+            await getter._refresh()
+
+        failing_callback.assert_awaited_once()
+        succeeding_callback.assert_awaited_once()
+
+        assert getter.shared.refreshing is False
+        assert "refresh callback failed" in caplog.text

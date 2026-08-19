@@ -495,7 +495,17 @@ class RefreshableGetter(Getter, ABC):
             )
 
             for callback in self._callbacks:
-                await callback["function"](*callback["args"], **callback["kwargs"])
+                try:
+                    await callback["function"](
+                        *callback["args"],
+                        **callback["kwargs"],
+                    )
+                except Exception:  # pylint: disable=broad-except
+                    rg_logger.exception(
+                        "refresh callback failed for target '%s' with tag '%s'",
+                        self.target,
+                        callback["tag"],
+                    )
         finally:
             self.shared.refreshing = False
 
