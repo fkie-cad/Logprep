@@ -167,10 +167,14 @@ class Requester(FieldManager):
     @staticmethod
     def _convert_auth(kwargs: dict) -> None:
         """Convert basic authentication to aiohttp format."""
-        auth = kwargs.get("auth")
+        auth: tuple[str, str] | None = kwargs.pop("auth", None)
         if auth:
             username, password = auth
-            kwargs["auth"] = aiohttp.BasicAuth(username, password)
+            kwargs.setdefault("headers", {})
+            kwargs["headers"]["Authorization"] = aiohttp.encode_basic_auth(
+                username,
+                password,
+            )
 
     @staticmethod
     def _convert_timeout(kwargs: dict) -> None:
