@@ -70,6 +70,7 @@
 * ng: make processor rule tree setup atomic and safe for repeated initialization
 * ng: clean up and deduplicate GenericResolver refresh callbacks
 * ng: remove orphaned refreshable getter targets after callback cleanup
+* ng: make domain resolver DNS lookups non-blocking
 
 ## 20.0.0
 ### Breaking
