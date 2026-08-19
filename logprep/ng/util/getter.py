@@ -610,10 +610,15 @@ class RefreshableGetter(Getter, ABC):
 
     @classmethod
     def remove_callbacks_for_tag(cls, tag: str) -> None:
-        """Removes update and cleanup callbacks for the given tag"""
-        empty_targets = []
+        """Remove update and cleanup callbacks for the given tag and discard orphaned targets"""
+        orphaned_targets = []
 
         for target, shared in cls._target_to_data_caches.items():
+            had_tagged_callbacks = any(
+                callback.get("tag") == tag
+                for callback in shared.callbacks + shared.cleanup_callbacks
+            )
+
             shared.callbacks = [
                 callback for callback in shared.callbacks if callback.get("tag") != tag
             ]
@@ -621,10 +626,10 @@ class RefreshableGetter(Getter, ABC):
                 callback for callback in shared.cleanup_callbacks if callback.get("tag") != tag
             ]
 
-            if shared.cache is None and not shared.callbacks and not shared.cleanup_callbacks:
-                empty_targets.append(target)
+            if had_tagged_callbacks and not shared.callbacks and not shared.cleanup_callbacks:
+                orphaned_targets.append(target)
 
-        for target in empty_targets:
+        for target in orphaned_targets:
             cls._target_to_data_caches.pop(target, None)
 
     @classmethod

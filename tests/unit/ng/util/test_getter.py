@@ -14,6 +14,7 @@ from logprep.ng.util.getter import (
     RefreshableGetter,
     RefreshableGetterError,
 )
+from logprep.util.async_scheduler import AsyncScheduler
 from logprep.util.credentials import CredentialsEnvNotFoundError
 
 
@@ -455,3 +456,41 @@ class TestRefreshableGetter:
         assert first_result == {"value": 1}
         assert second_result == {"value": 1}
         assert get_from_target_mock.await_count == 1
+
+    async def test_remove_callbacks_for_tag_removes_orphaned_cached_target(self):
+        getter: HttpGetter = typing.cast(
+            HttpGetter,
+            GetterFactory.from_string("https://example.test/data"),
+        )
+
+        getter.shared.cache = b'{"value": 1}'
+        getter.shared.scheduler = AsyncScheduler()
+
+        callback = mock.AsyncMock()
+        getter.add_callback("processor", callback)
+
+        assert getter.target in RefreshableGetter._target_to_data_caches
+        assert getter.shared.cache is not None
+        assert getter.shared.scheduler is not None
+
+        RefreshableGetter.remove_callbacks_for_tag("processor")
+
+        assert getter.target not in RefreshableGetter._target_to_data_caches
+
+    async def test_remove_callbacks_for_tag_keeps_target_used_by_other_tag(self):
+        getter: HttpGetter = typing.cast(
+            HttpGetter,
+            GetterFactory.from_string("https://example.test/data"),
+        )
+
+        getter.shared.cache = b'{"value": 1}'
+        getter.shared.scheduler = AsyncScheduler()
+
+        getter.add_callback("processor-a", mock.AsyncMock())
+        getter.add_callback("processor-b", mock.AsyncMock())
+
+        RefreshableGetter.remove_callbacks_for_tag("processor-a")
+
+        assert getter.target in RefreshableGetter._target_to_data_caches
+        assert len(getter.shared.callbacks) == 1
+        assert getter.shared.callbacks[0]["tag"] == "processor-b"
