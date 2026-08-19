@@ -136,7 +136,7 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
     @property
     def reason(self) -> str:
         """Get the textual representation for the error which caused the `ErrorEvent`"""
-        return typing.cast(str, self.data["reason"])
+        return typing.cast(str, self.data["errors"])
 
     @classmethod
     def from_failed_event(cls, event: LogEvent) -> "ErrorEvent":
@@ -149,7 +149,7 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
         return cls(
             data={
                 "@timestamp": datetime.now(timezone.utc).isoformat(),
-                "reason": str(reason),
+                "errors": str(reason),
                 # TODO shouldnt we send the raw bytes? at least handle decoding failures properly
                 "original": (
                     event.original.decode("utf-8", errors="ignore")
@@ -169,7 +169,7 @@ class ErrorEvent(_BaseFailableEvent, OutputEvent):
         return cls(
             data={
                 "@timestamp": datetime.now(timezone.utc).isoformat(),
-                "reason": str(cause) if isinstance(cause, Exception) else cause,
+                "errors": str(cause) if isinstance(cause, Exception) else cause,
                 "original": (
                     original.decode("utf-8", errors="ignore") if original is not None else None
                 ),
