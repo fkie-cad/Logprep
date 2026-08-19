@@ -154,24 +154,30 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
     @mock.patch("logging.Logger.isEnabledFor", return_value=True)
     @mock.patch("logging.Logger.debug")
-    def test_load_rules_with_debug(self, mock_debug, _):
-        self.object.load_rules(
+    async def test_load_rules_with_debug(self, mock_debug, _):
+        await self.object.load_rules(
             rules_targets=self.rules_dirs,
         )
         mock_debug.assert_called()
 
-    def test_load_rules(self):
+    async def test_load_rules(self):
         self.object._rule_tree = RuleTree()
         rules_size = self.object._rule_tree.get_size()
-        self.object.load_rules(self.rules_dirs)
+        await self.object.load_rules(self.rules_dirs)
         new_rules_size = self.object._rule_tree.get_size()
         assert new_rules_size > rules_size
 
-    def test_load_rules_creates_rule_with_processor_name(self):
+    async def test_load_rules_calls_getter_factory(self):
+        with mock.patch("logprep.ng.util.getter.GetterFactory.from_string") as getter_factory:
+            with pytest.raises(TypeError):
+                await self.object.load_rules(rules_targets=self.rules_dirs)
+            getter_factory.assert_called()
+
+    async def test_load_rules_creates_rule_with_processor_name(self):
         with mock.patch(
             "logprep.processor.base.rule.Rule.create_from_dict"
         ) as mock_create_from_dict:
-            self.object.load_rules(rules_targets=self.rules_dirs)
+            await self.object.load_rules(rules_targets=self.rules_dirs)
             mock_create_from_dict.assert_called_with(mock.ANY, self.object.name)
 
     @responses.activate
@@ -184,15 +190,15 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         )
         assert isinstance(Factory.create({"http_rule_processor": myconfig}), Processor)
 
-    def test_no_redundant_rules_are_added_to_rule_tree(self):
+    async def test_no_redundant_rules_are_added_to_rule_tree(self):
         """
         prevents a kind of DDOS where a big amount of same rules are placed into
         in the rules directories
         ensures that every rule in rule tree is unique
         """
-        self.object.load_rules(rules_targets=self.rules_dirs)
+        await self.object.load_rules(rules_targets=self.rules_dirs)
         rules_size = self.object._rule_tree.get_size()
-        self.object.load_rules(rules_targets=self.rules_dirs)
+        await self.object.load_rules(rules_targets=self.rules_dirs)
         new_rules_size = self.object._rule_tree.get_size()
         assert new_rules_size == rules_size
 
@@ -328,21 +334,21 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
         assert len(result.errors) > 0, "minimum one error should be in result object"
 
-    def test_invalid_rule_raises(self, caplog):
+    async def test_invalid_rule_raises(self, caplog):
         rule_definition = {"filter": "test", "does_not_exist": "test"}
         with pytest.raises(ValueError):
             with caplog.at_level(10):
-                self.object.load_rules(rules_targets=[rule_definition])
+                await self.object.load_rules(rules_targets=[rule_definition])
         assert "ERROR" in caplog.text
         assert "Loading rules from" in caplog.text
 
-    def test_valid_rule_but_other_processor_raises(self):
+    async def test_valid_rule_but_other_processor_raises(self):
         rule_definitions = [
             {"filter": "test", "calculator": "1+1"},
             {"filter": "drop_me", "dropper": {"drop": ["drop_me"]}},
         ]
         with pytest.raises(InvalidRuleDefinitionError):
-            self.object.load_rules(rules_targets=rule_definitions)
+            await self.object.load_rules(rules_targets=rule_definitions)
 
     async def test_has_async_io(self):
         assert await self.object.has_asyncio() is False
