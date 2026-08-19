@@ -1,7 +1,7 @@
 import datetime
 from unittest import mock
 
-from logprep.async_scheduler import AsyncScheduler
+from logprep.util.async_scheduler import AsyncScheduler
 
 
 async def test_runs_async_job():
