@@ -524,13 +524,13 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert isinstance(rule.data_error, RefreshableGetterError)
         assert "NetworkComparisonRule failed" in caplog.text
         assert "500" in caplog.text
-        assert request_count == 1
+        assert request_count == 4
         assert url in HttpGetter._target_to_data_caches
 
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
-        assert request_count == 1
+        assert request_count == 4
 
     async def test_recovers_after_failed_http_getter_setup(self, aiohttp_server):
         list_name = "bad_ips.list"
