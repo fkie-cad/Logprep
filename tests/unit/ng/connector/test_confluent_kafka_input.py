@@ -515,8 +515,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     )
     async def test_offset_metrics_not_initialized_with_default_label_values(self, metric_name):
         metric = getattr(self.object.metrics, metric_name)
-        metric_object = metric.tracker.collect()[0]
-        assert len(metric_object.samples) == 0
+        assert len(metric.collect_samples()) == 0
 
     async def test_lost_callback_counts_warnings_and_logs(self, mock_consumer):
         await self.object.setup()

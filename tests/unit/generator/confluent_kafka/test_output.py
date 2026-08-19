@@ -106,9 +106,9 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
 
     def test_store_counting_batches(self):
         self.object.store("test_topic,test_payload")
-        assert self.object.metrics.processed_batches.tracker.collect()[0].samples[0].value == 1
+        assert self.object.metrics.processed_batches.collect_samples()[0].value == 1
         self.object.store("test_topic,test_payload")
-        assert self.object.metrics.processed_batches.tracker.collect()[0].samples[0].value == 2
+        assert self.object.metrics.processed_batches.collect_samples()[0].value == 2
 
     def test_store_handles_empty_payload(self):
         with mock.patch(

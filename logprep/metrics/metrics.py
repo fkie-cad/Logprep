@@ -125,6 +125,7 @@ from _socket import gethostname
 from attrs import define, field, validators
 from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge, Histogram
 from prometheus_client.metrics import MetricWrapperBase
+from prometheus_client.samples import Sample
 
 from logprep.util.environ import ENV_VARS
 from logprep.util.helper import _add_field_to_silent_fail
@@ -253,6 +254,12 @@ class Metric(ABC, Generic[M]):
     @abstractmethod
     def __add__(self, other):
         """Increment the metric by the given value"""
+
+    def collect_samples(self) -> list[Sample]:
+        """Return the samples of the whole collector, including every labelled child."""
+        metrics = self._base_tracker.collect()
+        assert isinstance(metrics, list) and len(metrics) == 1
+        return metrics[0].samples
 
     # TODO refactor measure_time for ng reducing implicit logic relying on hasattr
     @staticmethod
