@@ -1,4 +1,5 @@
 ## Upcoming Changes
+
 ### Breaking
 
 ### Features
@@ -20,7 +21,8 @@
 * generic_resolver: add content_field support
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
 * ng: add asynchronous getter and refresh scheduling support
-* ng: move rule tree configuration and rule loading into processor setup with asynchronous initialization support
+* ng: move rule tree configuration and rule loading into processor setup while preserving synchronous initialization for legacy processors
+* ng: load configuration sources, rule definitions, and processor rules asynchronously using NG getters
 * ng: make getter-backed setup and processing asynchronous for:
   - `geoip_enricher`, `grokker`, `requester`, `amides`
   - `generic_adder`, `generic_resolver`, `list_comparison`, `network_comparison`
@@ -39,7 +41,12 @@
 * getter: handle "text/yaml" in content type resolution
 * getter: remove noisy debug log
 * vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
+* requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
 * tests: add context handling framework for `test_cases`
+* tests: adapt NG processor tests to asynchronous setup, shutdown, getter, rule loading, and refresh lifecycles
+* tests: add async HTTP server coverage for getter-backed NG processors
+* tests: add coverage for asynchronous scheduler execution and pending jobs
+* tests: wait for finite acceptance pipelines to finish before collecting their output
 * ci: enforce CHANGELOG.md is updated
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
