@@ -163,15 +163,13 @@ def get_runner_outputs(
 
 def get_patched_runner(config_path):
     """
-    Creates a patched runner that bypasses check to obtain non singleton instance and the runner
-    won't continue iterating on an empty pipeline.
+    Creates a patched runner that bypasses check to obtain non singleton instance and waits
+    for the pipelines to finish processing.
 
     Parameters
     ----------
     config_path : str
         The logprep configuration that should be used for the patched runner
-    logger : Logger
-        The application logger the runner should use
 
     Returns
     -------
@@ -180,11 +178,16 @@ def get_patched_runner(config_path):
     """
     runner = Runner(Configuration.from_sources([config_path]))
 
-    # patch runner to stop on empty pipeline
+    # patch runner to wait for finite input pipelines to finish
     def keep_iterating():
-        """generator that stops on first iteration"""
-        return
-        yield
+        """Wait for all pipelines to finish and return an empty iterator"""
+        for pipeline in runner._manager._pipelines:
+            pipeline.join(timeout=10)
+
+            if pipeline.is_alive():
+                raise TimeoutError(f"Pipeline {pipeline.name} did not finish within 10 seconds")
+
+        return iter(())
 
     runner._keep_iterating = keep_iterating  # pylint: disable=protected-access
 
