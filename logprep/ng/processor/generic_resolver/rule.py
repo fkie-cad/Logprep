@@ -272,7 +272,7 @@ class GenericResolverRule(FieldManagerRule):
         additions: dict[str, FieldValue] = field(default={}, eq=False, init=False)
         """Contains a dictionary of field names and values that should be added."""
 
-    async def setup(self) -> None:
+    async def setup(self, callback_tag: str) -> None:
         """Initialize additions from the configured resolve file."""
         path = self._file_path
         if not path:
@@ -282,8 +282,13 @@ class GenericResolverRule(FieldManagerRule):
 
         if isinstance(getter, RefreshableGetter):
             getter.add_callback(
-                f"generic_resolver:{self.id}:{path}",
+                callback_tag,
                 partial(self._add_from_path, path),
+                deduplication_key=(
+                    callback_tag,
+                    self.id,
+                    path,
+                ),
             )
 
         await self._add_from_path(path)
