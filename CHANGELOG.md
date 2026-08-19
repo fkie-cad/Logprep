@@ -67,6 +67,8 @@
 * ng: prevent refresh callback failures from stopping subsequent refresh processing
 * ng: avoid duplicate getter refreshes while executing refresh callbacks
 * ng: share concurrent getter cache updates to avoid duplicate requests for the same target
+* ng: make processor rule tree setup atomic and safe for repeated initialization
+* ng: clean up and deduplicate GenericResolver refresh callbacks
 
 ## 20.0.0
 ### Breaking
