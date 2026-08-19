@@ -116,6 +116,7 @@ Processor Specific Metrics
 """
 
 import functools
+import inspect
 import time
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Generic, Self, TypeVar
@@ -266,111 +267,85 @@ class Metric(ABC, Generic[M]):
     def measure_time(metric_name: str = "processing_time_per_event", self_arg: int = 0):
         """Decorate function to measure execution time for function and add results to event."""
 
-        if not ENV_VARS.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
+        perf_counter = time.perf_counter
+        append_to_event = bool(ENV_VARS.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"))
 
-            def without_append(func):
+        def decorator(func):
+            is_async = inspect.iscoroutinefunction(func)
+
+            if not append_to_event:
+
                 @functools.wraps(func)
-                def inner(*args, **kwargs):  # nosemgrep
+                async def timed_async(*args, **kwargs):
                     self = args[self_arg]
-                    metric = getattr(self.metrics, metric_name)
-                    with metric.time():
-                        result = func(*args, **kwargs)
-                    return result
+                    begin = perf_counter()
+                    try:
+                        return await func(*args, **kwargs)
+                    finally:
+                        duration = perf_counter() - begin
+                        getattr(self.metrics, metric_name).observe(duration)
 
-                return inner
+                @functools.wraps(func)
+                def timed(*args, **kwargs):
+                    self = args[self_arg]
+                    begin = perf_counter()
+                    try:
+                        return func(*args, **kwargs)
+                    finally:
+                        duration = perf_counter() - begin
+                        getattr(self.metrics, metric_name).observe(duration)
 
-            return without_append
+                return timed_async if is_async else timed
 
-        def with_append(func):
+            def append_measurement(self, args, duration: float) -> None:
+                is_rule = hasattr(self, "rule_type")
+                is_pipeline = hasattr(self, "_logprep_config")
+                if not (is_rule or is_pipeline):
+                    return
+                event = args[self_arg + 1]
+                if not event:
+                    return
+                if is_rule:
+                    _add_field_to_silent_fail(
+                        event=event,
+                        field=(f"processing_times.{self.rule_type}", duration),
+                        rule=None,
+                    )
+                elif is_pipeline:
+                    _add_field_to_silent_fail(
+                        event=event, field=("processing_times.pipeline", duration), rule=None
+                    )
+                    _add_field_to_silent_fail(
+                        event=event, field=("processing_times.hostname", gethostname()), rule=None
+                    )
+
             @functools.wraps(func)
-            def inner(*args, **kwargs):  # nosemgrep
+            async def timed_and_appended_async(*args, **kwargs):
                 self = args[self_arg]
-                metric = getattr(self.metrics, metric_name)
-                begin = time.perf_counter()
-                result = func(*args, **kwargs)
-                duration = time.perf_counter() - begin
-                metric += duration
-
-                if hasattr(self, "rule_type"):
-                    event = args[self_arg + 1]
-                    if event:
-                        _add_field_to_silent_fail(
-                            event=event,
-                            field=(f"processing_times.{self.rule_type}", duration),
-                            rule=None,
-                        )
-                if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
-                    event = args[self_arg + 1]
-                    if event:
-                        _add_field_to_silent_fail(
-                            event=event, field=("processing_times.pipeline", duration), rule=None
-                        )
-                        _add_field_to_silent_fail(
-                            event=event,
-                            field=("processing_times.hostname", gethostname()),
-                            rule=None,
-                        )
+                begin = perf_counter()
+                try:
+                    result = await func(*args, **kwargs)
+                finally:
+                    duration = perf_counter() - begin
+                    getattr(self.metrics, metric_name).observe(duration)
+                append_measurement(self, args, duration)
                 return result
 
-            return inner
-
-        return with_append
-
-    @staticmethod
-    def measure_time_async(metric_name: str = "processing_time_per_event", self_arg: int = 0):
-        """Decorate function to measure execution time for function and add results to event."""
-
-        if not ENV_VARS.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
-
-            def without_append(func):
-                @functools.wraps(func)
-                async def inner(*args, **kwargs):  # nosemgrep
-                    self = args[self_arg]
-                    metric = getattr(self.metrics, metric_name)
-                    with metric.time():
-                        # TODO does this make sense for async functions?!
-                        result = await func(*args, **kwargs)
-                    return result
-
-                return inner
-
-            return without_append
-
-        def with_append(func):
             @functools.wraps(func)
-            async def inner(*args, **kwargs):  # nosemgrep
+            def timed_and_appended(*args, **kwargs):
                 self = args[self_arg]
-                metric = getattr(self.metrics, metric_name)
-                begin = time.perf_counter()
-                # TODO does this make sense for async functions?!
-                result = await func(*args, **kwargs)
-                duration = time.perf_counter() - begin
-                metric += duration
-
-                if hasattr(self, "rule_type"):
-                    event = args[self_arg + 1]
-                    if event:
-                        _add_field_to_silent_fail(
-                            event=event,
-                            field=(f"processing_times.{self.rule_type}", duration),
-                            rule=None,
-                        )
-                if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
-                    event = args[self_arg + 1]
-                    if event:
-                        _add_field_to_silent_fail(
-                            event=event, field=("processing_times.pipeline", duration), rule=None
-                        )
-                        _add_field_to_silent_fail(
-                            event=event,
-                            field=("processing_times.hostname", gethostname()),
-                            rule=None,
-                        )
+                begin = perf_counter()
+                try:
+                    result = func(*args, **kwargs)
+                finally:
+                    duration = perf_counter() - begin
+                    getattr(self.metrics, metric_name).observe(duration)
+                append_measurement(self, args, duration)
                 return result
 
-            return inner
+            return timed_and_appended_async if is_async else timed_and_appended
 
-        return with_append
+        return decorator
 
 
 @define(kw_only=True)

@@ -587,7 +587,7 @@ class OpensearchOutput(Output):
         chunk.shrink_to(retry_indices)
         return chunk.is_resolved
 
-    @Metric.measure_time_async(metric_name="send_time_per_bulk_request")
+    @Metric.measure_time(metric_name="send_time_per_bulk_request")
     async def _send(self, chunk: _Chunk) -> dict[str, Any]:
         """One bulk network request; counts requests, documents and bytes."""
         payload = chunk.payload
@@ -617,8 +617,8 @@ class OpensearchOutput(Output):
             logger.error("critical failure while sending bulk chunk", exc_info=True)
             chunk.fail_remaining(error)
 
-    @Metric.measure_time_async(metric_name="processing_time_per_event")
-    @Metric.measure_time_async(metric_name="send_time_per_batch")
+    @Metric.measure_time(metric_name="processing_time_per_event")
+    @Metric.measure_time(metric_name="send_time_per_batch")
     async def _store(self, events: Sequence[OutputEvent]) -> None:
         logger.debug("Flushing %d documents to opensearch", len(events))
         # TODO maybe introduce step-wise chunking in the future, if memory use becomes a problem

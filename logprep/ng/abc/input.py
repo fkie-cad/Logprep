@@ -142,7 +142,7 @@ class Input(Connector, AsyncIterator[LogEvent | ErrorEvent | None]):
         LogEvent | ErrorEvent | None
         """
 
-    @Metric.measure_time_async()
+    @Metric.measure_time()
     async def get_next(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Return the next document
 

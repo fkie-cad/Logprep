@@ -284,7 +284,7 @@ class ConfluentKafkaOutput(Output):
             target = event.output_target if event.output_target is not None else self.config.topic
             await self._store_single(event, target)
 
-    @Metric.measure_time_async()
+    @Metric.measure_time()
     async def _store_single(self, event: OutputEvent, target: str) -> None:
         """Write document to Kafka into target topic.
 
