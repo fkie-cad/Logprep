@@ -10,13 +10,13 @@ from pathlib import Path
 import pytest
 from aiohttp import web
 
-from logprep.async_scheduler import AsyncScheduler
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_resolver.processor import GenericResolver
 from logprep.ng.util.getter import HttpGetter
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.util.async_scheduler import AsyncScheduler
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
