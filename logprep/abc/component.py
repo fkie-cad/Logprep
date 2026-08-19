@@ -52,7 +52,7 @@ class Component(ABC):
                 attribute = getattr(self, attr_name)
                 if isinstance(attribute, Metric):
                     attribute.labels = self._labels
-                    attribute.init_tracker()
+                    attribute.init_collector()
 
     __slots__ = [
         "name",

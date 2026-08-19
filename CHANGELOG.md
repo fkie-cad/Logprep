@@ -24,6 +24,8 @@
 * ci: enforce CHANGELOG.md is updated
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
+* perf: improve metrics performance by caching labeled child collectors
+* refactor: consolidate `measure_time` and `measure_time_async` in single decorator
 
 ### Bugfix
 * chart: fix command handling

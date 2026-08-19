@@ -2,6 +2,7 @@
 
 import contextlib
 import functools
+import inspect
 import json
 from collections.abc import Generator, Sequence
 from multiprocessing import active_children, set_start_method
@@ -83,29 +84,62 @@ def cleanup_child_processes():
         child.join(timeout=2)
 
 
-@contextlib.contextmanager
-def mock_env(env_dict):
+class _MockEnv(contextlib.ContextDecorator, contextlib.AsyncContextDecorator):
+    """Context manager and decorator returned by :code:`mock_env`."""
+
+    def __init__(self, env_dict):
+        self._env_dict = env_dict
+        self._original = None
+        self._environ_patch = None
+
+    def _recreate_cm(self):
+        return type(self)(self._env_dict)
+
+    def __enter__(self):
+        self._original = dict(_ENV_SNAPSHOT)
+        _ENV_SNAPSHOT.clear()
+        _ENV_SNAPSHOT.update(self._env_dict)
+        self._environ_patch = mock.patch("os.environ", self._env_dict)
+        self._environ_patch.start()
+        return _ENV_SNAPSHOT
+
+    def __exit__(self, *exc_info):
+        self._environ_patch.stop()
+        _ENV_SNAPSHOT.clear()
+        _ENV_SNAPSHOT.update(self._original)
+        return False
+
+    async def __aenter__(self):
+        return self.__enter__()
+
+    async def __aexit__(self, *exc_info):
+        return self.__exit__(*exc_info)
+
+    def __call__(self, func):
+        if inspect.iscoroutinefunction(func):
+            return contextlib.AsyncContextDecorator.__call__(self, func)
+        return contextlib.ContextDecorator.__call__(self, func)
+
+
+def mock_env(env_dict: dict) -> _MockEnv:
     """
     Mock helper to update the env snapshot.
+    Supports sync / async and decorator / context manager use cases.
 
     Usage:
         @mock_env({"PYTEST_TEST_TOKEN": "mytoken"})
         def test_something():
             ...
 
+        @mock_env({"PYTEST_TEST_TOKEN": "mytoken"})
+        async def test_something_async():
+            ...
+
         def test_something_else():
             with mock_env({"PYTEST_TEST_TOKEN": "mytoken"}):
+                ...
     """
-
-    original = dict(_ENV_SNAPSHOT)
-    try:
-        _ENV_SNAPSHOT.clear()
-        _ENV_SNAPSHOT.update(env_dict)
-        with mock.patch("os.environ", env_dict):
-            yield _ENV_SNAPSHOT
-    finally:
-        _ENV_SNAPSHOT.clear()
-        _ENV_SNAPSHOT.update(original)
+    return _MockEnv(env_dict)
 
 
 @pytest.fixture

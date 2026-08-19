@@ -6,7 +6,6 @@
 from unittest import mock
 
 import pytest
-from prometheus_client import Counter, Gauge, Histogram
 
 from logprep.abc.output import CriticalOutputError
 from logprep.metrics.metrics import Metric
@@ -95,9 +94,7 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
             metric_name = expected_metric.replace("logprep_confluent_kafka_output_", "")
             metric_name = metric_name.replace("logprep_", "")
             metric_attribute = getattr(self.object.metrics, metric_name)
-            assert metric_attribute.tracker is not None
-            possible_tracker_types = (Counter, Gauge, Histogram)
-            assert isinstance(metric_attribute.tracker, possible_tracker_types)
+            assert metric_attribute.initialized
 
     def test_store_updates_topic(self):
         assert self.object._config.topic == "default"

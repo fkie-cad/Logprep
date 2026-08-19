@@ -134,13 +134,13 @@ from logprep.util.helper import _add_field_to_silent_fail
 M = TypeVar("M", bound=MetricWrapperBase)
 
 
-def _tracker_method(func):
+def _collector_method(func):
     """
-    Marks a metric method as a 1:1 wrapper of the underlying tracker method.
-    The wrapper is then automatically replaced with the bound tracker method.
-    This happens either eagerly on init or lazily (`_bind()`).
+    Marks a metric method as a 1:1 wrapper of the underlying collector method.
+    The wrapper is then automatically replaced with the bound child method.
+    This happens either eagerly on init or lazily (see :code:`Metric._bind(...)`).
     """
-    func.__tracker_method__ = True
+    func.__collector_method__ = True
     return func
 
 
@@ -161,37 +161,42 @@ class Metric(ABC, Generic[M]):
         factory=dict,
     )
     inject_label_values: bool = field(default=True)
-    tracker: M = field(default=None)
+    """
+    Registers the labels with metric 0 in :code:`init_collector`.
+    Otherwise registration takes place on first metric increment.
+    """
+
     _prefix: str = field(default="logprep_")
-    _base_tracker: M = field(default=None)
     _registry: CollectorRegistry | None = field(default=None)
 
-    _tracker_methods: ClassVar[set[str]] = set()
+    _collector: M = field(default=None, init=False)
+
+    _collector_methods: ClassVar[set[str]] = set()
     """Methods marked as tracked method collected on subclass init"""
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
-        cls._tracker_methods = {
+        cls._collector_methods = {
             name
             for klass in cls.__mro__
             for name, value in vars(klass).items()
-            if getattr(value, "__tracker_method__", False)
+            if getattr(value, "__collector_method__", False)
         }
 
     def __attrs_post_init__(self):
         if self._registry is not None:
             return
 
-        # When this environment variable is set, the prometheus_client will automatically run in multiprocessing mode
+        # When this environment variable is set,
+        # the prometheus_client will automatically run in multiprocessing mode
         # In that mode it is not allowed to set a Registry specifically.
-        # For the non multiprocessing mode, we need to set a Registry otherwise our custom metrics never get
+        # For the non multiprocessing mode,
+        # we need to set a Registry otherwise our custom metrics never get
         # registered and then subsequently cannot be exported
         if ENV_VARS.get("PROMETHEUS_MULTIPROC_DIR", "") != "":
             self._registry = None
         else:
             self._registry = REGISTRY
-        if self.tracker is not None:
-            self._bind(self.tracker)
 
     @property
     @abstractmethod
@@ -203,53 +208,56 @@ class Metric(ABC, Generic[M]):
         """returns the fullname"""
         return f"{self._prefix}{self.name}"
 
-    def init_tracker(self) -> None:
-        """initializes the tracker and adds it to the trackers dict"""
+    def init_collector(self) -> None:
+        """initializes the collector and registers it"""
         try:
-            self._base_tracker = self._init_tracker()
+            self._collector = self._init_collector()
         except ValueError as error:
             # pylint: disable=protected-access
-            tracker = None
+            collector = None
             if self._registry:
-                tracker = self._registry._names_to_collectors.get(self.fullname)
+                # recover by getting the existing instance, which is the likely error source
+                collector = self._registry._names_to_collectors.get(self.fullname)
             # pylint: enable=protected-access
-            if tracker is not None:
-                if not isinstance(tracker, self.collector_type):
-                    raise ValueError(
-                        f"Metric {self.fullname} already exists with different type"
-                    ) from error
-                self._base_tracker = tracker
+            if collector is None:
+                raise
+            if not isinstance(collector, self.collector_type):
+                raise ValueError(
+                    f"Metric {self.fullname} already exists with different type"
+                ) from error
+            self._collector = collector
         if self.inject_label_values:
-            self._bind(self._child_tracker(self.labels))
-        else:
-            self.tracker = self._base_tracker
+            self._bind(self._labeled_child(self.labels))
 
-    def _child_tracker(self, labels: dict[str, str]) -> M:
-        """Return the child tracker configured with the given labels"""
-        return self._base_tracker.labels(**(self.labels | labels))
+    @property
+    def initialized(self) -> bool:
+        """Whether :code:`init_collector` has been called successfully"""
+        return self._collector is not None
 
-    def _bind(self, tracker: M) -> None:
-        """Bind `tracker` and its exposed methods directly onto this instance.
+    def _labeled_child(self, labels: dict[str, str]) -> M:
+        """Return the labelled child of the collector for the given labels"""
+        return self._collector.labels(**(self.labels | labels))
 
-        The bound methods land in the instance dict, shadowing the fallback methods
-        defined on the class, so `metric.inc(1)` becomes a plain attribute lookup
-        followed by a call into prometheus with nothing in between.
-        """
-        self.tracker = tracker
-        for name in self._tracker_methods:
-            setattr(self, name, getattr(tracker, name))
+    def _bind(self, child: M) -> M:
+        """Bind the child's exposed methods directly onto this instance."""
+        for name in self._collector_methods:
+            setattr(self, name, getattr(child, name))
+        return child
 
     def _lazy_bind_default_child(self) -> M:
-        """Bind the default child on first use and return its tracker."""
-        self._bind(self._child_tracker(self.labels))
-        return self.tracker
+        """Bind the default child on first use and return it."""
+        return self._bind(self._labeled_child(self.labels))
 
-    def child(self, labels: dict[str, str]) -> Self:
+    def child_collector(self, labels: dict[str, str], inject_label_values: bool = True) -> Self:
         """Return a child metric configured with the given labels"""
-        return attrs.evolve(self, tracker=self._child_tracker(labels))
+        child = attrs.evolve(
+            self, labels=self.labels | labels, inject_label_values=inject_label_values
+        )
+        child.init_collector()
+        return child
 
     @abstractmethod
-    def _init_tracker(self) -> M:
+    def _init_collector(self) -> M:
         """Create the concrete prometheus metric object"""
 
     @abstractmethod
@@ -258,11 +266,10 @@ class Metric(ABC, Generic[M]):
 
     def collect_samples(self) -> list[Sample]:
         """Return the samples of the whole collector, including every labelled child."""
-        metrics = self._base_tracker.collect()
-        assert isinstance(metrics, list) and len(metrics) == 1
+        metrics = self._collector.collect()
+        assert isinstance(metrics, list) and len(metrics) == 1, ".collect() implementation changed"
         return metrics[0].samples
 
-    # TODO refactor measure_time for ng reducing implicit logic relying on hasattr
     @staticmethod
     def measure_time(metric_name: str = "processing_time_per_event", self_arg: int = 0):
         """Decorate function to measure execution time for function and add results to event."""
@@ -298,6 +305,7 @@ class Metric(ABC, Generic[M]):
                 return timed_async if is_async else timed
 
             def append_measurement(self, args, duration: float) -> None:
+                # TODO refactor measure_time for ng reducing implicit logic relying on hasattr
                 is_rule = hasattr(self, "rule_type")
                 is_pipeline = hasattr(self, "_logprep_config")
                 if not (is_rule or is_pipeline):
@@ -311,7 +319,7 @@ class Metric(ABC, Generic[M]):
                         field=(f"processing_times.{self.rule_type}", duration),
                         rule=None,
                     )
-                elif is_pipeline:
+                if is_pipeline:
                     _add_field_to_silent_fail(
                         event=event, field=("processing_times.pipeline", duration), rule=None
                     )
@@ -356,7 +364,7 @@ class CounterMetric(Metric[Counter]):
     def collector_type(self) -> type[Counter]:
         return Counter
 
-    def _init_tracker(self):
+    def _init_collector(self):
         return Counter(
             name=self.fullname,
             documentation=self.description,
@@ -364,9 +372,9 @@ class CounterMetric(Metric[Counter]):
             registry=self._registry,
         )
 
-    @_tracker_method
+    @_collector_method
     def inc(self, amount: float = 1, exemplar: dict[str, str] | None = None) -> None:
-        """Increment the counter. Rebinds to the tracker method on first call."""
+        """Increment the counter. Rebinds to the collector's method on first call."""
         self._lazy_bind_default_child().inc(amount, exemplar)
 
     def __add__(self, other: Any) -> Self:
@@ -375,7 +383,7 @@ class CounterMetric(Metric[Counter]):
 
     def add_with_labels(self, other: Any, labels: dict) -> None:
         """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
-        self._child_tracker(labels).inc(other)
+        self._labeled_child(labels).inc(other)
 
 
 @define(kw_only=True)
@@ -386,7 +394,7 @@ class HistogramMetric(Metric[Histogram]):
     def collector_type(self) -> type[Histogram]:
         return Histogram
 
-    def _init_tracker(self):
+    def _init_collector(self):
         return Histogram(
             name=self.fullname,
             documentation=self.description,
@@ -395,12 +403,12 @@ class HistogramMetric(Metric[Histogram]):
             registry=self._registry,
         )
 
-    @_tracker_method
+    @_collector_method
     def observe(self, amount: float, exemplar: dict[str, str] | None = None) -> None:
-        """Observe a value. Rebinds to the tracker method on first call."""
+        """Observe a value. Rebinds to the collector's method on first call."""
         self._lazy_bind_default_child().observe(amount, exemplar)
 
-    @_tracker_method
+    @_collector_method
     def time(self) -> Any:
         """Time a block or function. Rebinds on first call."""
         return self._lazy_bind_default_child().time()
@@ -411,7 +419,7 @@ class HistogramMetric(Metric[Histogram]):
 
     def add_with_labels(self, other: Any, labels: dict) -> None:
         """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
-        self._child_tracker(labels).observe(other)
+        self._labeled_child(labels).observe(other)
 
 
 @define(kw_only=True)
@@ -422,7 +430,7 @@ class GaugeMetric(Metric[Gauge]):
     def collector_type(self) -> type[Gauge]:
         return Gauge
 
-    def _init_tracker(self) -> Gauge:
+    def _init_collector(self) -> Gauge:
         return Gauge(
             name=self.fullname,
             documentation=self.description,
@@ -431,19 +439,19 @@ class GaugeMetric(Metric[Gauge]):
             multiprocess_mode="liveall",
         )
 
-    @_tracker_method
+    @_collector_method
     def set(self, value: float) -> None:
-        """Set the gauge. Rebinds to the tracker method on first call."""
+        """Set the gauge. Rebinds to the collector's method on first call."""
         self._lazy_bind_default_child().set(value)
 
-    @_tracker_method
+    @_collector_method
     def inc(self, amount: float = 1) -> None:
-        """Increment the gauge. Rebinds to the tracker method on first call."""
+        """Increment the gauge. Rebinds to the collector's method on first call."""
         self._lazy_bind_default_child().inc(amount)
 
-    @_tracker_method
+    @_collector_method
     def dec(self, amount: float = 1) -> None:
-        """Decrement the gauge. Rebinds to the tracker method on first call."""
+        """Decrement the gauge. Rebinds to the collector's method on first call."""
         self._lazy_bind_default_child().dec(amount)
 
     def __add__(self, other) -> Self:
@@ -452,4 +460,4 @@ class GaugeMetric(Metric[Gauge]):
 
     def add_with_labels(self, other: Any, labels: dict) -> None:
         """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
-        self._child_tracker(labels).set(other)
+        self._labeled_child(labels).set(other)
