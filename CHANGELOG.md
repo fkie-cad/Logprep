@@ -3,18 +3,11 @@
 
 ### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
-* field_manager: add flag for deactivating deduplication
-* calculator: extended expression functionality
 
 ### Improvements
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
-* calculator: optimized runtime expression evaluation
-* docs: improve documentation around dynamic templating for `generic_adder`
 
 ### Bugfix
-* decoder: corrected rfc 5324 in docs to 5424
-* field_manager: allow for copying fields only containing `false` and `0`
-* key_checker: remove configuration fields that were inherited but didnt do anything
 
 ## 21.0.0
 ### Breaking
@@ -48,7 +41,12 @@
 * getter: handle "text/yaml" in content type resolution
 * getter: remove noisy debug log
 * vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
+* requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
 * tests: add context handling framework for `test_cases`
+* tests: adapt NG processor tests to asynchronous setup, shutdown, getter, rule loading, and refresh lifecycles
+* tests: add async HTTP server coverage for getter-backed NG processors
+* tests: add coverage for asynchronous scheduler execution and pending jobs
+* tests: wait for finite acceptance pipelines to finish before collecting their output
 * tests: add mock_env decorator support for async functions
 * ci: enforce CHANGELOG.md is updated
 * ci: enforce PR TODOs are completed
