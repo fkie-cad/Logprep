@@ -352,3 +352,30 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
     async def test_has_async_io(self):
         assert await self.object.has_asyncio() is False
+
+    async def test_setup_is_idempotent_for_rule_tree(self):
+        await self.object.setup()
+
+        first_rules = list(self.object.rules)
+        first_rule_count = self.object._rule_tree.number_of_rules
+
+        await self.object.setup()
+
+        assert self.object._rule_tree.number_of_rules == first_rule_count
+        assert len(self.object.rules) == len(first_rules)
+
+    async def test_setup_keeps_rule_tree_if_rule_loading_fails(self):
+        await self.object.setup()
+
+        rule_tree = self.object._rule_tree
+        rules = list(self.object.rules)
+
+        with mock.patch(
+            "logprep.ng.abc.processor.RuleLoader.load_rules",
+            new=mock.AsyncMock(side_effect=ValueError("rule loading failed")),
+        ):
+            with pytest.raises(ValueError, match="rule loading failed"):
+                await self.object.setup()
+
+        assert self.object._rule_tree is rule_tree
+        assert list(self.object.rules) == rules
