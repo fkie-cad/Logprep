@@ -18,13 +18,11 @@ from typing import Any, ClassVar, Iterable, TypeAlias
 from urllib.parse import urlparse
 
 import aiohttp
-import requests
 from attrs import define, field, validators
-from requests import Response
 
 from logprep.abc.exceptions import LogprepException
-from logprep.async_scheduler import AsyncScheduler
 from logprep.ng.abc.getter import ContentType, Getter
+from logprep.util.async_scheduler import AsyncScheduler
 from logprep.util.credentials import (
     Credentials,
     CredentialsEnvNotFoundError,
@@ -687,9 +685,10 @@ class HttpGetter(RefreshableGetter):
         :no-index:
     """
 
-    _credentials_registry: dict[str, Credentials] = {}
-
+    _credentials_registry: ClassVar[dict[str, Credentials]] = {}
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    _MAX_RETRIES = 3
+    _RETRY_STATUS_CODES = {500, 502, 503, 504}
 
     def __attrs_post_init__(self):
         user_agent = f"Logprep version {version('logprep')}"
@@ -721,7 +720,7 @@ class HttpGetter(RefreshableGetter):
         verify: bool | str,
         cert: str | tuple[str, str] | None,
     ) -> ssl.SSLContext | bool | None:
-        """Convert requests TLS settings to aiohttp SSL settings"""
+        """Convert credential TLS settings to aiohttp SSL settings"""
         if verify is True and cert is None:
             return None
 
@@ -762,14 +761,21 @@ class HttpGetter(RefreshableGetter):
         session = credentials.get_session()
 
         request_kwargs: dict[str, Any] = {}
+        headers = {}
 
         if session.auth:
             username, password = session.auth
-            request_kwargs["auth"] = aiohttp.BasicAuth(username, password)
+            headers["Authorization"] = aiohttp.encode_basic_auth(
+                username,
+                password,
+            )
 
         authorization = session.headers.get("Authorization")
         if authorization:
-            request_kwargs["headers"] = {"Authorization": authorization}
+            headers["Authorization"] = authorization
+
+        if headers:
+            request_kwargs["headers"] = headers
 
         ssl_context = self._create_ssl_context(
             verify=session.verify,
@@ -800,70 +806,76 @@ class HttpGetter(RefreshableGetter):
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    url=self.uri,
-                    timeout=aiohttp.ClientTimeout(total=5),
-                    allow_redirects=True,
-                    headers=headers,
-                    **request_kwargs,
-                ) as response:
-                    if response.status == 401:
-                        if ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
-                            raise RefreshableGetterError(
-                                f"{response.status}, message={response.reason!r}, url={self.uri!r}"
+                for attempt in range(self._MAX_RETRIES + 1):
+                    try:
+                        async with session.get(
+                            url=self.uri,
+                            timeout=aiohttp.ClientTimeout(total=5),
+                            allow_redirects=True,
+                            headers=headers,
+                            **request_kwargs,
+                        ) as response:
+                            if (
+                                response.status in self._RETRY_STATUS_CODES
+                                and attempt < self._MAX_RETRIES
+                            ):
+                                logger.warning(
+                                    "retrying %s after status=%d (%d/%d)",
+                                    self.uri,
+                                    response.status,
+                                    attempt + 1,
+                                    self._MAX_RETRIES,
+                                )
+                                continue
+
+                            if response.status == 401:
+                                if ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
+                                    raise RefreshableGetterError(
+                                        f"{response.status}, "
+                                        f"message={response.reason!r}, "
+                                        f"url={self.uri!r}"
+                                    )
+
+                                raise CredentialsEnvNotFoundError(
+                                    "Credentials file not found. Please set the environment variable "
+                                    f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
+                                )
+
+                            response.raise_for_status()
+
+                            logger.debug(
+                                "querying %s with etag=%s yielded status=%d",
+                                self.uri,
+                                self.hash,
+                                response.status,
                             )
 
-                        raise CredentialsEnvNotFoundError(
-                            "Credentials file not found. Please set the environment variable "
-                            f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
+                            if "ETag" in response.headers:
+                                self.hash = response.headers["ETag"]
+
+                            return (
+                                await response.read(),
+                                response.content_type,
+                                response.status,
+                            )
+
+                    except (aiohttp.ClientConnectionError, asyncio.TimeoutError):
+                        if attempt >= self._MAX_RETRIES:
+                            raise
+
+                        logger.warning(
+                            "retrying %s after connection error (%d/%d)",
+                            self.uri,
+                            attempt + 1,
+                            self._MAX_RETRIES,
                         )
-
-                    try:
-                        response.raise_for_status()
-                    except aiohttp.ClientResponseError as error:
-                        raise RefreshableGetterError(str(error)) from error
-
-                    logger.debug(
-                        "querying %s with etag=%s yielded status=%d",
-                        self.uri,
-                        self.hash,
-                        response.status,
-                    )
-
-                    if "ETag" in response.headers:
-                        self.hash = response.headers["ETag"]
-
-                    return (
-                        await response.read(),
-                        response.content_type,
-                        response.status,
-                    )
 
         except aiohttp.ClientError as error:
             raise RefreshableGetterError(str(error)) from error
-
-    def _get_requests_session(self) -> requests.Session:
-        domain = urlparse(self.uri).netloc
-        scheme = urlparse(self.uri).scheme
-        domain_uri = f"{scheme}://{domain}"
-        if domain_uri not in self._credentials_registry:
-            self._credentials_registry.update({domain_uri: self.credentials})
-        creds = self._credentials_registry.get(domain_uri)
-        session = creds.get_session() if creds else requests.Session()
-        return session
-
-    @staticmethod
-    def _handle_http_error(error: requests.exceptions.HTTPError):
-        if not error.response.status_code == 401:
+        except asyncio.TimeoutError as error:
             raise RefreshableGetterError(str(error)) from error
-        if ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
-            raise RefreshableGetterError(str(error)) from error
-        raise CredentialsEnvNotFoundError(
-            (
-                "Credentials file not found. Please set the environment variable "
-                f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
-            )
-        ) from error
+
+        raise RuntimeError("HTTP request retry loop exited unexpectedly")
 
 
 async def refresh_getters():

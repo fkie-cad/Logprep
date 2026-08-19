@@ -1251,14 +1251,14 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         rule = processor.rules[0]
 
         assert isinstance(rule.data_error, RefreshableGetterError)
-        assert request_count == 1
+        assert request_count == 4
         assert "500" in caplog.text
         assert "ListComparisonRule failed" in caplog.text
 
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
         assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
-        assert request_count == 1
+        assert request_count == 4
 
     async def test_recovers_after_failed_http_getter_setup(self, aiohttp_server):
         list_name = "bad_users.list"
@@ -1306,7 +1306,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert isinstance(rule.data_error, RefreshableGetterError)
         assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
-        assert request_statuses == [500]
+        assert request_statuses == [500, 500, 500, 500]
 
         response_status = 200
 
@@ -1319,7 +1319,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         assert rule.data_error is None
         assert document == {"user": "Foo", "user_results": {"in_list": [list_name]}}
         assert await _compare_sets(rule) == {list_name: {"Foo"}}
-        assert request_statuses == [500, 200]
+        assert request_statuses == [500, 500, 500, 500, 200]
 
     async def test_recovers_after_failed_http_getter_while_processing(
         self,
@@ -1377,7 +1377,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
             assert isinstance(rule.data_error, RefreshableGetterError)
             assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
-            assert request_statuses == [500]
+            assert request_statuses == [500, 500, 500, 500]
 
             response_status = 200
 
@@ -1386,4 +1386,4 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
             assert rule.data_error is None
             assert await _compare_sets(rule) == {list_name: {"Foo"}}
-            assert request_statuses == [500, 200]
+            assert request_statuses == [500, 500, 500, 500, 200]
