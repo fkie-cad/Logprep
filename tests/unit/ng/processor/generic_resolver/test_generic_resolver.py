@@ -362,6 +362,93 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             await self.object.process(document)
             assert document.data == expected_2
 
+    async def test_setup_replaces_refresh_callback(self, aiohttp_server):
+        async def handler(_: web.Request) -> web.Response:
+            return web.json_response({"ab": {"new1": "1"}})
+
+        app = web.Application()
+        app.router.add_get("/resolve-mapping", handler)
+        server = await aiohttp_server(app)
+
+        url = str(server.make_url("/resolve-mapping"))
+
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": url,
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+            },
+        }
+
+        self.object = self._create_test_instance(
+            {
+                "rules": [rule],
+            }
+        )
+
+        await self.object.setup()
+        first_rule = self.object.rules[0]
+
+        await self.object.setup()
+        second_rule = self.object.rules[0]
+
+        http_getter = HttpGetter(protocol="http", target=url)
+        callbacks = [
+            callback
+            for callback in http_getter.shared.callbacks
+            if callback["tag"] == self.object._job_tag_for_cleanup
+        ]
+
+        assert first_rule is not second_rule
+        assert len(callbacks) == 1
+        assert callbacks[0]["function"].func.__self__ is second_rule
+
+    async def test_shutdown_removes_refresh_callbacks(self, aiohttp_server):
+        async def handler(_: web.Request) -> web.Response:
+            return web.json_response({"ab": {"new1": "1"}})
+
+        app = web.Application()
+        app.router.add_get("/resolve-mapping", handler)
+        server = await aiohttp_server(app)
+
+        url = str(server.make_url("/resolve-mapping"))
+
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": url,
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+            },
+        }
+
+        self.object = self._create_test_instance(
+            {
+                "rules": [rule],
+            }
+        )
+
+        await self.object.setup()
+
+        http_getter = HttpGetter(protocol="http", target=url)
+
+        assert any(
+            callback["tag"] == self.object._job_tag_for_cleanup
+            for callback in http_getter.shared.callbacks
+        )
+
+        self.object._shut_down()
+
+        assert not any(
+            callback["tag"] == self.object._job_tag_for_cleanup
+            for callback in http_getter.shared.callbacks
+        )
+
     async def test_resolve_dotted_src_and_dest_field_and_conflict_match(self):
         rule = {
             "filter": "to.resolve",
