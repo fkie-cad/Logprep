@@ -13,6 +13,7 @@ from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
 from logprep.ng.abc.event import LogEvent
 from logprep.ng.util.getter import GetterFactory
+from logprep.ng.util.rule_loader import RuleLoader
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.util.environ import ENV_VARS
@@ -24,7 +25,6 @@ from logprep.util.helper import (
     has_dotted_field,
     pop_dotted_field_value,
 )
-from logprep.util.rule_loader import RuleLoader
 
 
 @define
@@ -210,15 +210,20 @@ class Processor(Component):
 
         """
 
-    def load_rules(self, rules_targets: Sequence[str | dict]) -> None:
+    async def load_rules(self, rules_targets: Sequence[str | dict]) -> None:
         """method to add rules from directories or urls"""
         try:
-            rules = RuleLoader(rules_targets, self.name).rules
+            rules = await RuleLoader(
+                rules_targets,
+                self.name,
+            ).load_rules()
         except ValueError as error:
             logger.error("Loading rules from %s failed: %s ", rules_targets, error)
             raise error
+
         for rule in rules:
             self._rule_tree.add_rule(rule)
+
         if logger.isEnabledFor(logging.DEBUG):
             number_rules = self._rule_tree.number_of_rules
             logger.debug("%s loaded %s rules", self.description, number_rules)
@@ -283,7 +288,7 @@ class Processor(Component):
             self.config.tree_config,
             GetterFactory,
         )
-        self.load_rules(rules_targets=self.config.rules)
+        await self.load_rules(rules_targets=self.config.rules)
 
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup

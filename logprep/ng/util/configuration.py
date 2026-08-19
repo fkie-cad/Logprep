@@ -226,11 +226,11 @@ from logprep.ng.util.getter import (
     RefreshableGetter,
     RefreshableGetterError,
 )
+from logprep.ng.util.rule_loader import RuleLoader
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
 from logprep.util.environ import ENV_VARS, del_env_var, set_env_var
-from logprep.util.rule_loader import RuleLoader
 
 logger = logging.getLogger("Config")
 
@@ -844,7 +844,7 @@ class Configuration:
         configuration._configs = tuple(configs)
         configuration._set_attributes_from_configs()
         try:
-            configuration._build_merged_pipeline()
+            await configuration._build_merged_pipeline()
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         try:
@@ -953,14 +953,16 @@ class Configuration:
         versions = (config.version for config in self._configs if config.version)
         self.version = ", ".join(versions)
 
-    def _build_merged_pipeline(self) -> None:
+    async def _build_merged_pipeline(self) -> None:
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
         pipeline = list(chain(*pipelines))
         errors: list[Exception] = []
         pipeline_with_loaded_rules = []
         for processor_definition in pipeline:
             try:
-                processor_definition_with_rules = self._load_rule_definitions(processor_definition)
+                processor_definition_with_rules = await self._load_rule_definitions(
+                    processor_definition
+                )
                 pipeline_with_loaded_rules.append(processor_definition_with_rules)
             except (
                 FactoryError,
@@ -974,12 +976,13 @@ class Configuration:
             raise InvalidConfigurationErrors(errors)
         self.pipeline = pipeline_with_loaded_rules
 
-    def _load_rule_definitions(self, processor_definition: dict) -> dict:
+    @staticmethod
+    async def _load_rule_definitions(processor_definition: dict) -> dict:
         processor_definition = deepcopy(processor_definition)
         _ = Factory.create(processor_definition)
         processor_name, processor_config = processor_definition.popitem()
         rule_sources = processor_config.get("rules", [])
-        rules_definitions = RuleLoader(rule_sources, processor_name).rule_definitions
+        rules_definitions = await RuleLoader(rule_sources, processor_name).load_rule_definitions()
         processor_config["rules"] = rules_definitions
         return {processor_name: processor_config}
 
