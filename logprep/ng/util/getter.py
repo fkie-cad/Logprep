@@ -685,10 +685,12 @@ class HttpGetter(RefreshableGetter):
         :no-index:
     """
 
-    _credentials_registry: ClassVar[dict[str, Credentials]] = {}
+    # Intentionally shared across HttpGetter instances to reuse credentials per domain.
+    _credentials_registry: ClassVar[dict[str, Credentials]] = {}  # shared
+    _MAX_RETRIES: ClassVar[int] = 3
+    _RETRY_STATUS_CODES: ClassVar[frozenset[int]] = frozenset({500, 502, 503, 504})
+
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
-    _MAX_RETRIES = 3
-    _RETRY_STATUS_CODES = {500, 502, 503, 504}
 
     def __attrs_post_init__(self):
         user_agent = f"Logprep version {version('logprep')}"
