@@ -143,7 +143,7 @@ class Processor(Component):
         await self._process_rule_tree(event.data, self._rule_tree)
         return self._event
 
-    @Metric.measure_time_async(self_arg=1)
+    @Metric.measure_time(self_arg=1)
     async def _process_rule(self, rule, event):
         await self._apply_rules_wrapper(event, rule)
         rule.metrics.number_of_processed_events += 1
