@@ -69,6 +69,7 @@
 * ng: share concurrent getter cache updates to avoid duplicate requests for the same target
 * ng: make processor rule tree setup atomic and safe for repeated initialization
 * ng: clean up and deduplicate GenericResolver refresh callbacks
+* ng: remove orphaned refreshable getter targets after callback cleanup
 
 ## 20.0.0
 ### Breaking
