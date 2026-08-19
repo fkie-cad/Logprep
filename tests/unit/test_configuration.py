@@ -3,11 +3,16 @@ from typing import Optional
 from unittest import mock
 
 import pytest
+from aiohttp import web
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.configuration import Configuration
 from logprep.factory_error import NoTypeSpecifiedError, UnknownComponentTypeError
+from logprep.ng.util.configuration import (
+    ConfigGetterException,
+)
+from logprep.ng.util.configuration import Configuration as NgConfiguration
 from logprep.registry import Registry
 
 
@@ -134,3 +139,18 @@ class TestConfiguration:
         }
         config = Configuration.create("dummy name", test_config)
         assert config.tree_config == "tests/testdata/unit/tree_config.json"
+
+
+class TestNgConfiguration:
+    async def test_from_sources_wraps_http_getter_error(self, aiohttp_server):
+        async def handler(_: web.Request) -> web.Response:
+            return web.Response(status=404)
+
+        app = web.Application()
+        app.router.add_get("/config.yml", handler)
+        server = await aiohttp_server(app)
+
+        config_url = str(server.make_url("/config.yml"))
+
+        with pytest.raises(ConfigGetterException, match="404"):
+            await NgConfiguration.from_sources([config_url])
