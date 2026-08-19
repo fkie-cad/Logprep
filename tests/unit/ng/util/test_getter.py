@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring,protected-access
+import asyncio
 import typing
 from importlib.metadata import version
 from unittest import mock
@@ -408,3 +409,49 @@ class TestRefreshableGetter:
 
         update_cache.assert_awaited_once()
         assert callback_result == {"value": 1}
+
+    async def test_concurrent_cache_updates_share_single_request(self):
+        first_getter: HttpGetter = typing.cast(
+            HttpGetter,
+            GetterFactory.from_string("https://example.test/data"),
+        )
+        second_getter: HttpGetter = typing.cast(
+            HttpGetter,
+            GetterFactory.from_string("https://example.test/data"),
+        )
+
+        first_getter.shared.initialized = True
+        first_getter.shared.refresh_interval = 0
+        first_getter.shared.timeout_interval = 60
+
+        request_started = asyncio.Event()
+        release_request = asyncio.Event()
+
+        async def get_from_target():
+            request_started.set()
+            await release_request.wait()
+            return b'{"value": 1}', "application/json", True
+
+        with mock.patch.object(
+            HttpGetter,
+            "_get_from_target",
+            new=mock.AsyncMock(side_effect=get_from_target),
+        ) as get_from_target_mock:
+            first_request = asyncio.create_task(first_getter.get_json())
+
+            await request_started.wait()
+
+            second_request = asyncio.create_task(second_getter.get_json())
+
+            await asyncio.sleep(0)
+
+            release_request.set()
+
+            first_result, second_result = await asyncio.gather(
+                first_request,
+                second_request,
+            )
+
+        assert first_result == {"value": 1}
+        assert second_result == {"value": 1}
+        assert get_from_target_mock.await_count == 1
