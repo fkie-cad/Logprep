@@ -788,9 +788,7 @@ output:
     dummy:
         type: dummy_output
 """)
-        with mock.patch.object(
-            config._metrics.config_refresh_interval, "add_with_labels"
-        ) as mock_add:
+        with mock.patch.object(config._metrics.config_refresh_interval, "__add__") as mock_add:
             config.reload()
         assert "Successfully reloaded" in caplog.text
         mock_add.assert_called_once_with(66, {"logprep": "unset", "config": "unset"})
@@ -837,7 +835,7 @@ output:
 """)
         with mock.patch("logprep.util.configuration.GaugeMetric.add_with_labels") as mock_add:
             Configuration.from_sources([str(config_path)])
-        assert mock_add.call_count == 3, "version_info and config_refresh_interval and ???"
+        assert mock_add.call_count == 2, "version_info and config_refresh_interval"
 
     def test_reload_logs_error_on_invalid_processor_config(self, config_path, caplog):
         caplog.set_level("DEBUG")
