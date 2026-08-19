@@ -182,25 +182,25 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
     async def test_invalid_domain_with_unicode_error_is_resolved_to_none_and_returns_status(
         self, _
     ):
-        resolved_ip, status = self.object._resolve_ip("google..invalid.de")
+        resolved_ip, status = await self.object._resolve_ip("google..invalid.de")
         assert resolved_ip is None
         assert status is ResolveStatus.INVALID
 
     @mock.patch("socket.gethostbyname", side_effect=context.TimeoutError, return_value="1.2.3.4")
     async def test_valid_domain_with_timeout_error_is_resolved_to_none_and_returns_status(self, _):
-        resolved_ip, status = self.object._resolve_ip("google.de")
+        resolved_ip, status = await self.object._resolve_ip("google.de")
         assert resolved_ip is None
         assert status is ResolveStatus.TIMEOUT
 
     @mock.patch("socket.gethostbyname", side_effect=OSError, return_value="1.2.3.4")
     async def test_unknown_domain_with_os_error_is_resolved_to_none_and_returns_status(self, _):
-        resolved_ip, status = self.object._resolve_ip("google.de")
+        resolved_ip, status = await self.object._resolve_ip("google.de")
         assert resolved_ip is None
         assert status is ResolveStatus.UNKNOWN
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     async def test_existing_domain_is_resolved_to_and_returns_status(self, _):
-        resolved_ip, status = self.object._resolve_ip("google.de")
+        resolved_ip, status = await self.object._resolve_ip("google.de")
         assert resolved_ip == "1.2.3.4"
         assert status is ResolveStatus.SUCCESS
 
@@ -289,3 +289,21 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
         await self.object.process(log_event)
         assert log_event.data == expected
+
+    async def test_resolve_ip_waits_asynchronously(self):
+        result = mock.Mock()
+
+        self.object._thread_pool.apply_async = mock.Mock(return_value=result)
+
+        with mock.patch(
+            "logprep.ng.processor.domain_resolver.processor.asyncio.to_thread",
+            new=mock.AsyncMock(return_value="127.0.0.1"),
+        ) as to_thread:
+            resolved_ip, status = await self.object._resolve_ip("example.com")
+
+        assert resolved_ip == "127.0.0.1"
+        assert status is ResolveStatus.SUCCESS
+        to_thread.assert_awaited_once_with(
+            result.get,
+            self.object.config.timeout,
+        )

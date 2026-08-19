@@ -20,15 +20,16 @@ Processor Configuration
         cache_enabled: true
         debug_cache: false
 
-.. autoclass:: logprep.processor.domain_resolver.processor.DomainResolver.Config
+.. autoclass:: logprep.ng.processor.domain_resolver.processor.DomainResolver.Config
    :members:
    :undoc-members:
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.processor.domain_resolver.rule
+.. automodule:: logprep.ng.processor.domain_resolver.rule
 """
 
+import asyncio
 import datetime
 import logging
 import socket
@@ -191,18 +192,18 @@ class DomainResolver(Processor):
             return
         self.metrics.total_urls += 1
         if self.config.cache_enabled:
-            self._resolve_with_cache(domain, event, rule)
+            await self._resolve_with_cache(domain, event, rule)
         else:
-            resolved_ip, _ = self._resolve_ip(domain)
+            resolved_ip, _ = await self._resolve_ip(domain)
             self._add_resolve_infos_to_event(event, rule, resolved_ip)
 
-    def _resolve_with_cache(
+    async def _resolve_with_cache(
         self, domain: str, event: dict[str, FieldValue], rule: DomainResolverRule
     ) -> None:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
         requires_storing = self._cache.requires_storing(hash_string)
         if requires_storing:
-            resolved_ip, status = self._resolve_ip(domain)
+            resolved_ip, status = await self._resolve_ip(domain)
             if status in (ResolveStatus.SUCCESS, ResolveStatus.UNKNOWN, ResolveStatus.TIMEOUT):
                 self._domain_ip_map.update({hash_string: resolved_ip})
             self.metrics.resolved_new += 1
@@ -220,14 +221,19 @@ class DomainResolver(Processor):
         if resolved_ip:
             self._write_target_field(event, rule, resolved_ip)
 
-    def _resolve_ip(self, domain: str) -> tuple[str | None, int]:
+    async def _resolve_ip(self, domain: str) -> tuple[str | None, int]:
         """Resolve domain with timeout.
 
         Assumes socket default timeout is None and relies on threading to create a timeout.
+        The blocking wait for the thread result is executed in a worker thread to avoid
+        blocking the event loop.
         """
         try:
             result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
-            resolved_ip = result.get(timeout=self.config.timeout)
+            resolved_ip = await asyncio.to_thread(
+                result.get,
+                self.config.timeout,
+            )
             return resolved_ip, ResolveStatus.SUCCESS
         except ValueError:  # Makes no connection so does not need to be cached
             self.metrics.invalid_domains += 1
