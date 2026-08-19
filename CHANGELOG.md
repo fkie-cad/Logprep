@@ -64,6 +64,7 @@
 * grokker: allow fallback matches without named fields
 * filter: fix lucene range expressions not matching on mixed-type scenarios
 * filter: treat `inf`/`nan` as string values instead of numeric range boundaries
+* ng: prevent refresh callback failures from stopping subsequent refresh processing
 
 ## 20.0.0
 ### Breaking
