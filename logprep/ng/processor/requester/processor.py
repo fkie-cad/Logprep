@@ -76,7 +76,10 @@ class Requester(FieldManager):
     async def setup(self) -> None:
         """Set up the requester HTTP client session."""
         await super().setup()
-        self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None))
+        self._session = aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=None),
+            trust_env=True,
+        )
 
     async def shut_down(self) -> None:
         """Close the requester HTTP client session."""
@@ -180,12 +183,20 @@ class Requester(FieldManager):
     def _convert_timeout(kwargs: dict) -> None:
         """Convert the request timeout to aiohttp timeout settings."""
         timeout = kwargs.get("timeout")
-        if timeout is not None:
-            kwargs["timeout"] = aiohttp.ClientTimeout(
-                total=None,
-                connect=timeout,
-                sock_read=timeout,
-            )
+        if timeout is None:
+            return
+
+        if isinstance(timeout, (tuple, list)):
+            connect_timeout, read_timeout = timeout
+        else:
+            connect_timeout = timeout
+            read_timeout = timeout
+
+        kwargs["timeout"] = aiohttp.ClientTimeout(
+            total=None,
+            sock_connect=connect_timeout,
+            sock_read=read_timeout,
+        )
 
     @classmethod
     def _convert_proxies(cls, kwargs: dict) -> None:
@@ -228,23 +239,35 @@ class Requester(FieldManager):
     @staticmethod
     def _convert_ssl(kwargs: dict) -> None:
         """Convert requests SSL options to aiohttp SSL configuration."""
-        verify = kwargs.pop("verify", True)
-        cert: str | bytes | PathLike[str] | PathLike[bytes] | None = kwargs.pop("cert", None)
+        verify: bool | str = kwargs.pop("verify", True)
+        cert: str | tuple[str, str] | None = kwargs.pop("cert", None)
 
-        if verify and not cert:
+        if verify is True and cert is None:
             return
 
-        if not cert:
+        if verify is False and cert is None:
             kwargs["ssl"] = False
             return
 
-        ssl_context = ssl.create_default_context()
+        if isinstance(verify, str):
+            ssl_context = ssl.create_default_context(cafile=verify)
+        else:
+            ssl_context = ssl.create_default_context()
 
-        if not verify:
+        if verify is False:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
 
-        ssl_context.load_cert_chain(cert)
+        if cert:
+            if isinstance(cert, tuple):
+                cert_file, key_file = cert
+                ssl_context.load_cert_chain(
+                    certfile=cert_file,
+                    keyfile=key_file,
+                )
+            else:
+                ssl_context.load_cert_chain(certfile=cert)
+
         kwargs["ssl"] = ssl_context
 
     @staticmethod
