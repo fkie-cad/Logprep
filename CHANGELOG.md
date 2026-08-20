@@ -22,6 +22,7 @@
 * generic_resolver: add content_field support
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
 * ng: add asynchronous getter and refresh scheduling support
+* ng: load configuration, rule tree configuration, rule definitions, and processor rules asynchronously
 * ng: move rule tree configuration and rule loading into processor setup with asynchronous initialization support
 * ng: make getter-backed setup and processing asynchronous for:
   - `geoip_enricher`, `grokker`, `requester`, `amides`
@@ -46,8 +47,7 @@
 * vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
 * requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
 * tests: add context handling framework for `test_cases`
-* tests: adapt NG processor tests to asynchronous setup, shutdown, getter, rule loading, and refresh lifecycles
-* tests: add async HTTP server coverage for getter-backed NG processors
+* tests: adapt NG processor and HTTP getter coverage to asynchronous setup, shutdown, rule loading, and refresh lifecycles
 * tests: add coverage for asynchronous scheduler execution and pending jobs
 * tests: wait for finite acceptance pipelines to finish before collecting their output
 * tests: ensure NG processor test helpers always shut down instances after errors
