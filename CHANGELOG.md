@@ -79,6 +79,7 @@
 * ng: harden Requester setup against repeated initialization
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
 * ng: clean up shared getter update tasks after canceled waiters complete
+* ng: prevent running getter updates from recreating removed shared target state
 
 ## 20.0.0
 ### Breaking
