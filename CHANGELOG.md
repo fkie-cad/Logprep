@@ -28,6 +28,7 @@
   - `generic_adder`, `generic_resolver`, `list_comparison`, `network_comparison`
   - `selective_extractor`, `pseudonymizer`, `template_replacer`
 * ng: offload GeoIP database lookups from the async event loop
+* ng: initialize pseudonymizer public keys asynchronously during setup
 * ng: make getter-backed setup and processing asynchronous for `geoip_enricher`, `grokker`, `requester`, `amides`, `generic_adder`, `list_comparison`, `network_comparison`, `selective_extractor`, `pseudonymizer`, and `template_replacer`
 * filter: add support for `*` (open boundary) in range expressions
 * filter: allow mixed numeric range boundaries and type coercion for range matching

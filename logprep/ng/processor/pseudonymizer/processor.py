@@ -43,6 +43,7 @@ Processor Configuration
 .. automodule:: logprep.processor.pseudonymizer.rule
 """
 
+import asyncio
 import re
 import typing
 from collections.abc import Sequence
@@ -231,6 +232,11 @@ class Pseudonymizer(FieldManager):
 
     async def setup(self) -> None:
         await super().setup()
+
+        await asyncio.to_thread(
+            lambda: self._encrypter,
+        )
+
         await self._replace_regex_keywords_by_regex_expression()
 
     async def _replace_regex_keywords_by_regex_expression(self) -> None:
