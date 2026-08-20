@@ -307,3 +307,6 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
             result.get,
             self.object.config.timeout,
         )
+
+    async def test_has_async_io(self):
+        assert await self.object.has_asyncio() is True
