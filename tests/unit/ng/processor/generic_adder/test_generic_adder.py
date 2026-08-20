@@ -4,7 +4,7 @@
 # pylint: disable=line-too-long
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
-
+import asyncio
 import re
 from copy import deepcopy
 
@@ -332,3 +332,54 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
 
     async def test_has_async_io(self):
         assert await self.object.has_asyncio() is True
+
+    async def test_parallel_dynamic_uri_uses_single_getter_request(self, aiohttp_server):
+        request_count = 0
+
+        async def handler(_: web.Request) -> web.Response:
+            nonlocal request_count
+            request_count += 1
+            await asyncio.sleep(0.05)
+            return web.json_response({"value": "loaded"})
+
+        app = web.Application()
+        app.router.add_get("/{tenant}", handler)
+        server = await aiohttp_server(app)
+
+        base_url = str(server.make_url("/")).rstrip("/")
+
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [
+            {
+                "filter": "tenant",
+                "generic_adder": {
+                    "add_from_uri": {
+                        "uri": f"{base_url}/${{tenant}}",
+                    },
+                },
+            }
+        ]
+
+        processor = Factory.create({"test instance": config})
+        await processor.setup()
+
+        try:
+            first = LogEvent(
+                {"tenant": "same"},
+                original=b"",
+                input_meta=InputMeta(),
+            )
+            second = LogEvent(
+                {"tenant": "same"},
+                original=b"",
+                input_meta=InputMeta(),
+            )
+
+            await asyncio.gather(
+                processor.process(first),
+                processor.process(second),
+            )
+
+            assert request_count == 1
+        finally:
+            await processor.shut_down()
