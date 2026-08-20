@@ -1010,18 +1010,21 @@ class Configuration:
         return getattr(Configuration(), attribute)
 
     async def _verify(self) -> None:
-        """Verify the configuration."""
+        """Verify the configuration"""
         errors: list[Exception] = []
+
         try:
             self._verify_environment()
         except MissingEnvironmentError as error:
             errors.append(error)
+
         try:
             if not self.input:
                 raise RequiredConfigurationKeyMissingError("input")
             Factory.create(self.input)
         except Exception as error:  # pylint: disable=broad-except
             errors.append(error)
+
         if not self.output:
             errors.append(RequiredConfigurationKeyMissingError("output"))
         else:
@@ -1030,12 +1033,14 @@ class Configuration:
                     Factory.create({output_name: output_config})
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
+
             default_outputs = {
                 # TODO remove redundant default value for property "default"
                 name: config
                 for name, config in self.output.items()
                 if config.get("default", True)
             }
+
             if len(default_outputs) > 1:
                 errors.append(
                     InvalidConfigurationError(
@@ -1044,17 +1049,26 @@ class Configuration:
                         ", ".join(default_outputs.keys()),
                     )
                 )
+
         if self.error_output:
             for output_name, output_config in self.error_output.items():
                 try:
                     Factory.create({output_name: output_config})
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
+
         for processor_config in self.pipeline:
             try:
-                processor = typing.cast(Processor, Factory.create(deepcopy(processor_config)))
-                await processor.setup()
-                self._verify_rules(processor)
+                processor = typing.cast(
+                    Processor,
+                    Factory.create(deepcopy(processor_config)),
+                )
+
+                try:
+                    await processor.setup()
+                    self._verify_rules(processor)
+                finally:
+                    await processor.shut_down()
             except (
                 FactoryError,
                 TypeError,
@@ -1065,18 +1079,22 @@ class Configuration:
                 errors.append(error)
             except FileNotFoundError as error:
                 errors.append(InvalidConfigurationError(f"File not found: {error.filename}"))
+
             try:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
+
         if ENV_NAME_LOGPREP_CREDENTIALS_FILE in ENV_VARS:
             try:
                 credentials_file_path = ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
                 if credentials_file_path is None:
                     raise ValueError("credentials file path was None but expected it to be set")
+
                 _ = CredentialsFactory.get_content(Path(credentials_file_path))
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
+
         if errors:
             raise InvalidConfigurationErrors(errors)
 
