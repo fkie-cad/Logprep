@@ -76,10 +76,16 @@ class Requester(FieldManager):
     async def setup(self) -> None:
         """Set up the requester HTTP client session."""
         await super().setup()
+
+        previous_session = self._session
+
         self._session = aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=None),
             trust_env=True,
         )
+
+        if previous_session is not None and not previous_session.closed:
+            await previous_session.close()
 
     async def shut_down(self) -> None:
         """Close the requester HTTP client session."""
