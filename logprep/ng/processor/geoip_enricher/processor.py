@@ -111,7 +111,10 @@ class GeoipEnricher(FieldManager):
     async def _try_getting_geoip_data(self, ip_string: str) -> dict:
         try:
             ip_addr = str(ip_address(ip_string))
-            ip_data = self._city_db.city(ip_addr)
+            ip_data = await asyncio.to_thread(
+                self._city_db.city,
+                ip_addr,
+            )
 
             geoip_data = GEOIP_DATA_STUBS.copy()
 
