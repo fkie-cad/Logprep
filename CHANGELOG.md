@@ -58,10 +58,11 @@
 
 ### Bugfix
 * chart: fix command handling
+* generic_adder: allow None as valid input via `add`
+* generic_resolver: avoid sharing mutable additions between rule configurations
 * ng: fix input timeout to also accept int parameters
 * ng: fix `http_input` `collect_meta` leading to shared dicts between events
 * ng: fix error output structure to stay consistent with non-ng
-* generic_adder: allow None as valid input via `add`
 * ng: fix asynchronous refreshable getter scheduling in the runner
 * generic_adder: allow `None` as valid input via `add`
 * grokker: allow fallback matches without named fields
@@ -76,7 +77,7 @@
 * ng: make domain resolver DNS lookups non-blocking
 * ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
 * ng: harden Requester setup against repeated initialization
-* generic_resolver: avoid sharing mutable additions between rule configurations
+* ng: shut down temporary processors after configuration validation to avoid leaking resources
 
 ## 20.0.0
 ### Breaking
