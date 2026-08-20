@@ -8,9 +8,10 @@
 # pylint: disable=too-many-lines
 # pylint: disable=too-few-public-methods
 # pylint: disable=attribute-defined-outside-init
-
+import asyncio
 import re
 from copy import deepcopy
+from unittest import mock
 
 import pytest
 
@@ -400,6 +401,16 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         config["mode"] = mode
         object_with_encrypter = Factory.create({"pseudonymizer": config})
         assert isinstance(object_with_encrypter._encrypter, encrypter_class)
+
+    async def test_setup_initializes_encrypter_asynchronously(self):
+        with mock.patch(
+            "logprep.ng.processor.pseudonymizer.processor.asyncio.to_thread",
+            wraps=asyncio.to_thread,
+        ) as to_thread:
+            await self.object.setup()
+
+        assert any(call.args and callable(call.args[0]) for call in to_thread.await_args_list)
+        assert self.object._encrypter is not None
 
     async def test_setup_raises_invalid_configuration_on_missing_regex_mapping(self):
         rule_dict = {
