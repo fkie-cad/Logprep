@@ -494,3 +494,40 @@ class TestRefreshableGetter:
         assert getter.target in RefreshableGetter._target_to_data_caches
         assert len(getter.shared.callbacks) == 1
         assert getter.shared.callbacks[0]["tag"] == "processor-b"
+
+    async def test_cancelled_cache_update_is_cleaned_up_after_completion(self):
+        getter = HttpGetter(protocol="http", target="http://example.com/data")
+
+        update_started = asyncio.Event()
+        allow_update_to_finish = asyncio.Event()
+
+        async def update_cache_once(_):
+            update_started.set()
+            await allow_update_to_finish.wait()
+            return True
+
+        with mock.patch.object(
+            HttpGetter,
+            "_update_cache_once",
+            autospec=True,
+            side_effect=update_cache_once,
+        ):
+            task = asyncio.create_task(getter._update_cache())
+
+            await update_started.wait()
+
+            update_task = getter.shared.update_task
+            assert update_task is not None
+
+            task.cancel()
+
+            with pytest.raises(asyncio.CancelledError):
+                await task
+
+            assert getter.shared.update_task is update_task
+
+            allow_update_to_finish.set()
+            await update_task
+            await asyncio.sleep(0)
+
+            assert getter.shared.update_task is None
