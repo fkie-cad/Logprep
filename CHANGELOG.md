@@ -50,6 +50,7 @@
 * tests: add async HTTP server coverage for getter-backed NG processors
 * tests: add coverage for asynchronous scheduler execution and pending jobs
 * tests: wait for finite acceptance pipelines to finish before collecting their output
+* tests: ensure NG processor test helpers always shut down instances after errors
 * ci: enforce CHANGELOG.md is updated
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
