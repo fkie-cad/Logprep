@@ -49,7 +49,7 @@ class AsyncScheduler:
 
     def every(self, interval: int = 1) -> AsyncJob:
         """Create a new asynchronous job."""
-        return AsyncJob(interval, self._scheduler)
+        return AsyncJob(interval, self)  # type: ignore[arg-type]
 
     def get_jobs(self, tag: Hashable | None = None) -> list[Job]:
         """Return scheduled jobs, optionally filtered by tag."""
