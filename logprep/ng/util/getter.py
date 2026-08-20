@@ -10,7 +10,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
-from functools import cached_property
+from functools import cached_property, partial
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
@@ -515,18 +515,31 @@ class RefreshableGetter(Getter, ABC):
         finally:
             self.shared.refreshing = False
 
+    @staticmethod
+    def _clear_update_task(
+        shared: DataSharedPerTarget,
+        update_task: asyncio.Task[bool],
+    ) -> None:
+        """Clear the shared update task after it has finished"""
+        if shared.update_task is update_task:
+            shared.update_task = None
+
     async def _update_cache(self) -> bool:
         """Update the cache while sharing concurrent updates for the same target"""
-        if self.shared.update_task is None:
-            self.shared.update_task = asyncio.create_task(self._update_cache_once())
+        shared = self.shared
+        update_task = shared.update_task
 
-        update_task = self.shared.update_task
+        if update_task is None:
+            update_task = asyncio.create_task(self._update_cache_once())
+            shared.update_task = update_task
+            update_task.add_done_callback(
+                partial(
+                    self._clear_update_task,
+                    shared,
+                )
+            )
 
-        try:
-            return await asyncio.shield(update_task)
-        finally:
-            if update_task.done() and self.shared.update_task is update_task:
-                self.shared.update_task = None
+        return await asyncio.shield(update_task)
 
     async def _update_cache_once(self) -> bool:
         """Update the cache of the current http getter"""
