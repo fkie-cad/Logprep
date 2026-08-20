@@ -77,6 +77,7 @@
 * ng: make domain resolver DNS lookups non-blocking
 * ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
+* ng: roll back initialized pipeline components when pipeline manager setup fails
 
 ## 20.0.0
 ### Breaking
