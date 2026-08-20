@@ -588,3 +588,95 @@ class TestRefreshableGetter:
 
         with pytest.raises(asyncio.CancelledError):
             await update_task
+
+    async def test_concurrent_initialization_shares_single_config_load(self):
+        first_getter = HttpGetter(
+            protocol="http",
+            target="http://example.com/data",
+        )
+        second_getter = HttpGetter(
+            protocol="http",
+            target="http://example.com/data",
+        )
+
+        config_load_started = asyncio.Event()
+        allow_config_load_to_finish = asyncio.Event()
+        config_load_count = 0
+
+        async def get_getter_config_entry(_):
+            nonlocal config_load_count
+            config_load_count += 1
+            config_load_started.set()
+            await allow_config_load_to_finish.wait()
+
+            return {
+                "refresh_interval": 0,
+                "timeout_interval": 60,
+            }
+
+        with mock.patch.object(
+            HttpGetter,
+            "_get_getter_config_entry",
+            autospec=True,
+            side_effect=get_getter_config_entry,
+        ):
+            first_task = asyncio.create_task(first_getter._ensure_initialized())
+
+            await config_load_started.wait()
+
+            second_task = asyncio.create_task(second_getter._ensure_initialized())
+            await asyncio.sleep(0)
+
+            assert config_load_count == 1
+
+            allow_config_load_to_finish.set()
+
+            await asyncio.gather(
+                first_task,
+                second_task,
+            )
+
+        assert first_getter.shared is second_getter.shared
+        assert first_getter.shared.initialized is True
+
+    async def test_reset_cancels_running_shared_initialization(self):
+        getter = HttpGetter(
+            protocol="http",
+            target="http://example.com/data",
+        )
+
+        config_load_started = asyncio.Event()
+        allow_config_load_to_finish = asyncio.Event()
+
+        async def get_getter_config_entry(_):
+            config_load_started.set()
+            await allow_config_load_to_finish.wait()
+
+            return {
+                "refresh_interval": 0,
+                "timeout_interval": 60,
+            }
+
+        with mock.patch.object(
+            HttpGetter,
+            "_get_getter_config_entry",
+            autospec=True,
+            side_effect=get_getter_config_entry,
+        ):
+            initialization = asyncio.create_task(getter._ensure_initialized())
+
+            await config_load_started.wait()
+
+            shared = getter.shared
+
+            RefreshableGetter.reset()
+
+            assert getter.target not in RefreshableGetter._target_to_data_caches
+
+            with pytest.raises(asyncio.CancelledError):
+                await initialization
+
+            await asyncio.sleep(0)
+
+            assert shared.initialization_task is None
+            assert getter.target not in RefreshableGetter._target_to_data_caches
