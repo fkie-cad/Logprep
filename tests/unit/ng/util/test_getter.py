@@ -531,3 +531,60 @@ class TestRefreshableGetter:
             await asyncio.sleep(0)
 
             assert getter.shared.update_task is None
+
+    async def test_reset_does_not_recreate_target_during_running_refresh(self):
+        getter = HttpGetter(protocol="http", target="http://example.com/data")
+        shared = getter.shared
+        shared.initialized = True
+        shared.refresh_interval = 0
+        shared.timeout_interval = 60
+
+        update_started = asyncio.Event()
+        allow_update_to_finish = asyncio.Event()
+
+        async def get_from_target(_):
+            update_started.set()
+            await allow_update_to_finish.wait()
+            return b"updated", "text/plain", True
+
+        with mock.patch.object(
+            HttpGetter,
+            "_get_from_target",
+            autospec=True,
+            side_effect=get_from_target,
+        ):
+            refresh_task = asyncio.create_task(getter._refresh())
+
+            await update_started.wait()
+
+            RefreshableGetter.reset()
+
+            assert getter.target not in RefreshableGetter._target_to_data_caches
+
+            allow_update_to_finish.set()
+
+            with pytest.raises(asyncio.CancelledError):
+                await refresh_task
+
+            await asyncio.sleep(0)
+
+            assert getter.target not in RefreshableGetter._target_to_data_caches
+
+    async def test_refresh_keeps_timed_out_target_while_update_is_running(self):
+        getter = HttpGetter(protocol="http", target="http://example.com/data")
+        shared = getter.shared
+
+        shared.timeout_interval = 0
+        shared.last_called = 0
+
+        update_task = asyncio.create_task(asyncio.Event().wait())
+        shared.update_task = update_task
+
+        await RefreshableGetter.refresh()
+
+        assert getter.target in RefreshableGetter._target_to_data_caches
+
+        update_task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await update_task

@@ -476,10 +476,12 @@ class RefreshableGetter(Getter, ABC):
         """Refresh the current HTTP getter"""
         await self._ensure_initialized()
 
-        if self.shared.refreshing:
+        shared = self.shared
+
+        if shared.refreshing:
             return
 
-        self.shared.refreshing = True
+        shared.refreshing = True
 
         try:
             try:
@@ -500,7 +502,7 @@ class RefreshableGetter(Getter, ABC):
                 self.target,
             )
 
-            for callback in self._callbacks:
+            for callback in shared.callbacks:
                 try:
                     await callback["function"](
                         *callback["args"],
@@ -513,7 +515,7 @@ class RefreshableGetter(Getter, ABC):
                         callback["tag"],
                     )
         finally:
-            self.shared.refreshing = False
+            shared.refreshing = False
 
     @staticmethod
     def _clear_update_task(
@@ -624,7 +626,7 @@ class RefreshableGetter(Getter, ABC):
     @classmethod
     def remove_callbacks_for_tag(cls, tag: str) -> None:
         """Remove update and cleanup callbacks for the given tag and discard orphaned targets"""
-        orphaned_targets = []
+        orphaned_targets: list[tuple[str, DataSharedPerTarget]] = []
 
         for target, shared in cls._target_to_data_caches.items():
             had_tagged_callbacks = any(
@@ -640,10 +642,28 @@ class RefreshableGetter(Getter, ABC):
             ]
 
             if had_tagged_callbacks and not shared.callbacks and not shared.cleanup_callbacks:
-                orphaned_targets.append(target)
+                orphaned_targets.append((target, shared))
 
-        for target in orphaned_targets:
-            cls._target_to_data_caches.pop(target, None)
+        for target, shared in orphaned_targets:
+            cls._discard_target(target, shared)
+
+    @classmethod
+    def _discard_target(
+        cls,
+        target: str,
+        shared: DataSharedPerTarget,
+    ) -> bool:
+        """Remove shared target state and cancel its running cache update"""
+        if cls._target_to_data_caches.get(target) is not shared:
+            return False
+
+        cls._target_to_data_caches.pop(target, None)
+
+        update_task = shared.update_task
+        if update_task is not None and not update_task.done():
+            update_task.cancel()
+
+        return True
 
     @classmethod
     def keep_alive_for_target(cls, target: str):
@@ -660,9 +680,19 @@ class RefreshableGetter(Getter, ABC):
     async def refresh(cls) -> None:
         """Run pending refresh schedulers and clean up timed-out targets"""
         for target, shared_target_data in list(cls._target_to_data_caches.items()):
-            if cls.timed_out_for_target(target):
-                rg_logger.debug("target has timed out and will be cleaned up: %s", target)
-                del cls._target_to_data_caches[target]
+            if shared_target_data.timed_out:
+                update_task = shared_target_data.update_task
+
+                if update_task is not None and not update_task.done():
+                    continue
+
+                rg_logger.debug(
+                    "target has timed out and will be cleaned up: %s",
+                    target,
+                )
+
+                if not cls._discard_target(target, shared_target_data):
+                    continue
 
                 for callback in shared_target_data.cleanup_callbacks:
                     callback["function"](*callback["args"], **callback["kwargs"])
@@ -676,10 +706,15 @@ class RefreshableGetter(Getter, ABC):
     def reset(cls, cleanup: bool = False):
         """Wipe the cache and optionally run cleanup callbacks"""
         for target, shared_target_data in list(cls._target_to_data_caches.items()):
-            del cls._target_to_data_caches[target]
+            if not cls._discard_target(target, shared_target_data):
+                continue
+
             if cleanup:
                 for callback in shared_target_data.cleanup_callbacks:
-                    callback["function"](*callback["args"], **callback["kwargs"])
+                    callback["function"](
+                        *callback["args"],
+                        **callback["kwargs"],
+                    )
 
 
 @define(kw_only=True)
