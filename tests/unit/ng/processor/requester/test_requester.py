@@ -312,3 +312,16 @@ class TestRequester(BaseProcessorTestCase[Requester]):
 
         assert self.object._session is not None
         assert self.object._session.trust_env is True
+
+    async def test_setup_closes_existing_session_before_replacing_it(self):
+        await self.object.setup()
+        first_session = self.object._session
+
+        try:
+            await self.object.setup()
+
+            assert first_session is not None
+            assert first_session.closed is True
+            assert self.object._session is not first_session
+        finally:
+            await self.object.shut_down()

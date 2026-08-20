@@ -74,6 +74,7 @@
 * ng: remove orphaned refreshable getter targets after callback cleanup
 * ng: make domain resolver DNS lookups non-blocking
 * ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
+* ng: harden Requester setup against repeated initialization
 
 ## 20.0.0
 ### Breaking
