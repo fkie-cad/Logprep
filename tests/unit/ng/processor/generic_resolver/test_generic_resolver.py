@@ -14,6 +14,7 @@ from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_resolver.processor import GenericResolver
+from logprep.ng.processor.generic_resolver.rule import GenericResolverRule
 from logprep.ng.util.getter import HttpGetter
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.async_scheduler import AsyncScheduler
@@ -547,9 +548,9 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results.value == 1
-        assert self.object.metrics.cached_results.value == 1
-        assert self.object.metrics.num_cache_entries.value == 1
+        assert self.object.metrics.new_results == 2
+        assert self.object.metrics.cached_results == 1
+        assert self.object.metrics.num_cache_entries == 2
 
         await self.object.process(LogEvent(event_2, original=b"", input_meta=InputMeta()))
 
@@ -578,9 +579,9 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results.value == 0
-        assert self.object.metrics.cached_results.value == 0
-        assert self.object.metrics.num_cache_entries.value == 0
+        assert self.object.metrics.new_results == 0
+        assert self.object.metrics.cached_results == 0
+        assert self.object.metrics.num_cache_entries == 0
 
         await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
 
@@ -637,3 +638,15 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         assert self.object.metrics.new_results.value == 2
         assert self.object.metrics.cached_results.value == 2
         assert self.object.metrics.num_cache_entries.value == 2
+
+    def test_additions_are_not_shared_between_configs(self):
+        first = GenericResolverRule.Config(
+            field_mapping={"source": "target"},
+            resolve_list={},
+        )
+        second = GenericResolverRule.Config(
+            field_mapping={"source": "target"},
+            resolve_list={},
+        )
+
+        assert first.additions is not second.additions
