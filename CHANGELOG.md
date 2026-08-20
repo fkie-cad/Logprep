@@ -21,8 +21,7 @@
 * generic_resolver: add content_field support
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
 * ng: add asynchronous getter and refresh scheduling support
-* ng: move rule tree configuration and rule loading into processor setup while preserving synchronous initialization for legacy processors
-* ng: load configuration sources, rule definitions, and processor rules asynchronously using NG getters
+* ng: load configuration, rule tree configuration, rule definitions, and processor rules asynchronously
 * ng: make getter-backed setup and processing asynchronous for:
   - `geoip_enricher`, `grokker`, `requester`, `amides`
   - `generic_adder`, `generic_resolver`, `list_comparison`, `network_comparison`
@@ -46,8 +45,7 @@
 * vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
 * requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
 * tests: add context handling framework for `test_cases`
-* tests: adapt NG processor tests to asynchronous setup, shutdown, getter, rule loading, and refresh lifecycles
-* tests: add async HTTP server coverage for getter-backed NG processors
+* tests: adapt NG processor and HTTP getter coverage to asynchronous setup, shutdown, rule loading, and refresh lifecycles
 * tests: add coverage for asynchronous scheduler execution and pending jobs
 * tests: wait for finite acceptance pipelines to finish before collecting their output
 * tests: ensure NG processor test helpers always shut down instances after errors
@@ -63,6 +61,10 @@
 * ng: fix input timeout to also accept int parameters
 * ng: fix `http_input` `collect_meta` leading to shared dicts between events
 * ng: fix error output structure to stay consistent with non-ng
+* ng: fix asynchronous refreshable getter scheduling and isolate refresh callback failures
+* ng: share concurrent getter cache updates and initialization across callers
+* ng: make shared getter state cleanup safe during cancellation and concurrent updates
+* ng: clean up and deduplicate GenericResolver refresh callbacks and their orphaned getter targets
 * ng: fix asynchronous refreshable getter scheduling in the runner
 * generic_adder: allow `None` as valid input via `add`
 * grokker: allow fallback matches without named fields
@@ -72,14 +74,9 @@
 * ng: avoid duplicate getter refreshes while executing refresh callbacks
 * ng: share concurrent getter cache updates to avoid duplicate requests for the same target
 * ng: make processor rule tree setup atomic and safe for repeated initialization
-* ng: clean up and deduplicate GenericResolver refresh callbacks
-* ng: remove orphaned refreshable getter targets after callback cleanup
 * ng: make domain resolver DNS lookups non-blocking
-* ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
-* ng: harden Requester setup against repeated initialization
+* ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
-* ng: clean up shared getter update tasks after canceled waiters complete
-* ng: prevent running getter updates from recreating removed shared target state
 
 ## 20.0.0
 ### Breaking
