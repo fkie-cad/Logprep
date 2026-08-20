@@ -13,6 +13,9 @@ from logprep.ng.util.configuration import (
     ConfigGetterException,
 )
 from logprep.ng.util.configuration import Configuration as NgConfiguration
+from logprep.ng.util.configuration import (
+    InvalidConfigurationErrors,
+)
 from logprep.registry import Registry
 
 
@@ -154,3 +157,76 @@ class TestNgConfiguration:
 
         with pytest.raises(ConfigGetterException, match="404"):
             await NgConfiguration.from_sources([config_url])
+
+    async def test_verify_shuts_down_temporary_processor(self):
+        configuration = NgConfiguration()
+        configuration.input = {"input": {"type": "input"}}
+        configuration.output = {"output": {"type": "output"}}
+        configuration.pipeline = [{"processor": {"type": "processor"}}]
+
+        processor = mock.Mock()
+        processor.setup = mock.AsyncMock()
+        processor.shut_down = mock.AsyncMock()
+
+        with (
+            mock.patch(
+                "logprep.ng.util.configuration.Factory.create",
+                side_effect=[
+                    mock.Mock(),
+                    mock.Mock(),
+                    processor,
+                ],
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_environment",
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_rules",
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_processor_outputs",
+            ),
+        ):
+            await configuration._verify()
+
+        processor.setup.assert_awaited_once()
+        processor.shut_down.assert_awaited_once()
+
+    async def test_verify_shuts_down_temporary_processor_if_setup_fails(self):
+        configuration = NgConfiguration()
+        configuration.input = {"input": {"type": "input"}}
+        configuration.output = {"output": {"type": "output"}}
+        configuration.pipeline = [{"processor": {"type": "processor"}}]
+
+        processor = mock.Mock()
+        processor.setup = mock.AsyncMock(side_effect=ValueError("setup failed"))
+        processor.shut_down = mock.AsyncMock()
+
+        with (
+            mock.patch(
+                "logprep.ng.util.configuration.Factory.create",
+                side_effect=[
+                    mock.Mock(),
+                    mock.Mock(),
+                    processor,
+                ],
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_environment",
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_processor_outputs",
+            ),
+        ):
+            with pytest.raises(
+                InvalidConfigurationErrors,
+                match="setup failed",
+            ):
+                await configuration._verify()
+
+        processor.shut_down.assert_awaited_once()
