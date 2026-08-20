@@ -73,6 +73,7 @@
 * ng: clean up and deduplicate GenericResolver refresh callbacks
 * ng: remove orphaned refreshable getter targets after callback cleanup
 * ng: make domain resolver DNS lookups non-blocking
+* ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
 
 ## 20.0.0
 ### Breaking

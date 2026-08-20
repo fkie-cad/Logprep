@@ -257,3 +257,58 @@ class TestRequester(BaseProcessorTestCase[Requester]):
 
         assert session.closed is True
         assert instance._session is None
+
+    def test_convert_timeout_splits_connect_and_read_timeout(self):
+        kwargs = {"timeout": (2, 7)}
+
+        Requester._convert_timeout(kwargs)
+
+        timeout = kwargs["timeout"]
+
+        assert isinstance(timeout, aiohttp.ClientTimeout)
+        assert timeout.sock_connect == 2
+        assert timeout.sock_read == 7
+
+    def test_convert_ssl_uses_verify_path_as_ca_bundle(self):
+        ssl_context = mock.Mock()
+
+        with mock.patch(
+            "logprep.ng.processor.requester.processor.ssl.create_default_context",
+            return_value=ssl_context,
+        ) as create_default_context:
+            kwargs = {"verify": "/path/to/ca.pem"}
+
+            Requester._convert_ssl(kwargs)
+
+        create_default_context.assert_called_once_with(
+            cafile="/path/to/ca.pem",
+        )
+        assert kwargs == {"ssl": ssl_context}
+
+    def test_convert_ssl_loads_client_certificate_tuple(self):
+        ssl_context = mock.Mock()
+
+        with mock.patch(
+            "logprep.ng.processor.requester.processor.ssl.create_default_context",
+            return_value=ssl_context,
+        ):
+            kwargs = {
+                "cert": (
+                    "/path/to/client.pem",
+                    "/path/to/client.key",
+                )
+            }
+
+            Requester._convert_ssl(kwargs)
+
+        ssl_context.load_cert_chain.assert_called_once_with(
+            certfile="/path/to/client.pem",
+            keyfile="/path/to/client.key",
+        )
+        assert kwargs == {"ssl": ssl_context}
+
+    async def test_setup_creates_session_with_trust_env_enabled(self):
+        await self.object.setup()
+
+        assert self.object._session is not None
+        assert self.object._session.trust_env is True
