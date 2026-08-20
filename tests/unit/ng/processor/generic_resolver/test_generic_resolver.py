@@ -14,6 +14,7 @@ from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_resolver.processor import GenericResolver
+from logprep.ng.processor.generic_resolver.rule import GenericResolverRule
 from logprep.ng.util.getter import HttpGetter
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.async_scheduler import AsyncScheduler
@@ -659,3 +660,15 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         assert self.object.metrics.new_results == 3
         assert self.object.metrics.cached_results == 3
         assert self.object.metrics.num_cache_entries == 3
+
+    def test_additions_are_not_shared_between_configs(self):
+        first = GenericResolverRule.Config(
+            field_mapping={"source": "target"},
+            resolve_list={},
+        )
+        second = GenericResolverRule.Config(
+            field_mapping={"source": "target"},
+            resolve_list={},
+        )
+
+        assert first.additions is not second.additions
