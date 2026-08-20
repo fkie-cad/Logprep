@@ -459,3 +459,19 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         assert temporary_file.read_bytes().decode("utf8") == pre_existing_content
         assert temporary_file.read_bytes().decode("utf8") != new_content
         shutil.rmtree(logprep_tmp_dir)  # delete testfile
+
+    async def test_geoip_lookup_is_offloaded(self):
+        await self.object.setup()
+
+        ip_data = mock.Mock()
+
+        with mock.patch(
+            "logprep.ng.processor.geoip_enricher.processor.asyncio.to_thread",
+            new=mock.AsyncMock(return_value=ip_data),
+        ) as to_thread:
+            await self.object._try_getting_geoip_data("8.8.8.8")
+
+        to_thread.assert_awaited_once_with(
+            self.object._city_db.city,
+            "8.8.8.8",
+        )
