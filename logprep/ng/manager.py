@@ -66,18 +66,49 @@ class PipelineManager:
         if error_output is None:
             logger.warning("No error output configured")
 
-        await asyncio.gather(*(component.setup() for component in self._components))
+        try:
+            await self._setup_components()
 
-        workflow_config = WorkflowConfig.from_dict_or_default(self.configuration.workflow)
+            workflow_config = WorkflowConfig.from_dict_or_default(self.configuration.workflow)
 
-        self._orchestrator = create_orchestrator(
-            input_connector,
-            processors,
-            default_output,
-            named_outputs,
-            error_output,
-            workflow_config,
-        )
+            self._orchestrator = create_orchestrator(
+                input_connector,
+                processors,
+                default_output,
+                named_outputs,
+                error_output,
+                workflow_config,
+            )
+        except (CancelledError, Exception):
+            logger.error(
+                "PipelineManager.setup cancelled or failed; shutting down...",
+                exc_info=True,
+            )
+
+            try:
+                await self._shut_down()
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("Failure while rolling back PipelineManager setup")
+
+            raise
+
+    async def _setup_components(self) -> None:
+        """Set up all components and stop unfinished setup tasks on failure"""
+
+        setup_tasks = [asyncio.create_task(component.setup()) for component in self._components]
+
+        try:
+            await asyncio.gather(*setup_tasks)
+        except (CancelledError, Exception):
+            for task in setup_tasks:
+                if not task.done():
+                    task.cancel()
+
+            await asyncio.gather(
+                *setup_tasks,
+                return_exceptions=True,
+            )
+            raise
 
     async def run(
         self, stop_event: asyncio.Event, shutdown_timeout_s: float, worker_shutdown_timeout_s: float
