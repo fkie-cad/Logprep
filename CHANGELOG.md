@@ -78,6 +78,7 @@
 * ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
 * ng: harden Requester setup against repeated initialization
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
+* ng: clean up shared getter update tasks after canceled waiters complete
 
 ## 20.0.0
 ### Breaking
