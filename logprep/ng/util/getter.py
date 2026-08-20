@@ -145,6 +145,12 @@ class DataSharedPerTarget:
     )
     """Currently running cache update task"""
 
+    initialization_task: asyncio.Task[None] | None = field(
+        default=None,
+        repr=False,
+    )
+    """Currently running shared initialization task"""
+
     hash: str | None = None
     """Hash value of the obtained resource"""
 
@@ -415,11 +421,41 @@ class RefreshableGetter(Getter, ABC):
             fnc_kwargs,
         )
 
+    @staticmethod
+    def _clear_initialization_task(
+        shared: DataSharedPerTarget,
+        initialization_task: asyncio.Task[None],
+    ) -> None:
+        """Clear the shared initialization task after it has finished"""
+        if shared.initialization_task is initialization_task:
+            shared.initialization_task = None
+
     async def _ensure_initialized(self) -> None:
         """Initialize configuration-dependent shared getter state once"""
-        if self.shared.initialized:
+        shared = self.shared
+
+        if shared.initialized:
             return
 
+        initialization_task = shared.initialization_task
+
+        if initialization_task is None:
+            initialization_task = asyncio.create_task(self._initialize_shared_state(shared))
+            shared.initialization_task = initialization_task
+            initialization_task.add_done_callback(
+                partial(
+                    self._clear_initialization_task,
+                    shared,
+                )
+            )
+
+        await asyncio.shield(initialization_task)
+
+    async def _initialize_shared_state(
+        self,
+        shared: DataSharedPerTarget,
+    ) -> None:
+        """Initialize configuration-dependent state for a shared getter target"""
         config = await self._get_getter_config_entry()
 
         refresh_interval = config.get("refresh_interval", 0)
@@ -431,16 +467,16 @@ class RefreshableGetter(Getter, ABC):
         if timeout_interval < 0:
             raise ValueError(f"'timeout_interval' must be >= 0: {timeout_interval}")
 
-        self.shared.refresh_interval = refresh_interval
-        self.shared.timeout_interval = timeout_interval
+        shared.refresh_interval = refresh_interval
+        shared.timeout_interval = timeout_interval
 
         default_return_value = config.get("default_return_value")
-        self.shared.default_return_value = (
+        shared.default_return_value = (
             default_return_value.encode("utf-8") if default_return_value is not None else None
         )
 
         self._init_scheduler()
-        self.shared.initialized = True
+        shared.initialized = True
 
     async def _get_getter_config_entry(self) -> dict:
         if ENV_NAME_LOGPREP_GETTER_CONFIG not in ENV_VARS:
@@ -653,15 +689,18 @@ class RefreshableGetter(Getter, ABC):
         target: str,
         shared: DataSharedPerTarget,
     ) -> bool:
-        """Remove shared target state and cancel its running cache update"""
+        """Remove shared target state and cancel its running tasks"""
         if cls._target_to_data_caches.get(target) is not shared:
             return False
 
         cls._target_to_data_caches.pop(target, None)
 
-        update_task = shared.update_task
-        if update_task is not None and not update_task.done():
-            update_task.cancel()
+        for task in (
+            shared.initialization_task,
+            shared.update_task,
+        ):
+            if task is not None and not task.done():
+                task.cancel()
 
         return True
 
