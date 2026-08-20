@@ -460,3 +460,66 @@ class TestGenericResolverRule:
         )
 
         assert first.additions is not second.additions
+
+    async def test_failed_refresh_preserves_last_valid_additions(
+        self,
+        tmp_path,
+        aiohttp_server,
+    ):
+        responses = iter(
+            (
+                {"content": {"foo": "first"}},
+                {"invalid": {"foo": "second"}},
+                {"content": {"foo": "third"}},
+            )
+        )
+
+        async def handler(_: web.Request) -> web.Response:
+            return web.json_response(next(responses))
+
+        app = web.Application()
+        app.router.add_get("/resolve", handler)
+        server = await aiohttp_server(app)
+        url = str(server.make_url("/resolve"))
+
+        getter_file_content = {
+            url: {
+                "refresh_interval": 10,
+            }
+        }
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+
+        rule_definition = {
+            "filter": "something",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": url,
+                    "pattern": r"something_\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        }
+
+        RefreshableGetter.reset()
+
+        try:
+            with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
+                rule = GenericResolverRule.create_from_dict(rule_definition)
+                await rule.setup("test")
+
+                scheduler = HttpGetter(protocol="http", target=url).scheduler
+                assert scheduler is not None
+
+                assert rule.additions == {"foo": "first"}
+
+                await scheduler.run_all()
+
+                assert rule.additions == {"foo": "first"}
+
+                await scheduler.run_all()
+
+                assert rule.additions == {"foo": "third"}
+        finally:
+            RefreshableGetter.reset()
