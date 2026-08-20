@@ -23,7 +23,6 @@
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
 * ng: add asynchronous getter and refresh scheduling support
 * ng: load configuration, rule tree configuration, rule definitions, and processor rules asynchronously
-* ng: move rule tree configuration and rule loading into processor setup with asynchronous initialization support
 * ng: make getter-backed setup and processing asynchronous for:
   - `geoip_enricher`, `grokker`, `requester`, `amides`
   - `generic_adder`, `generic_resolver`, `list_comparison`, `network_comparison`
@@ -83,6 +82,7 @@
 * ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
 * ng: harden Requester setup against repeated initialization
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
+* ng: roll back initialized pipeline components when pipeline manager setup fails
 * ng: clean up shared getter update tasks after canceled waiters complete
 * ng: prevent running getter updates from recreating removed shared target state
 
