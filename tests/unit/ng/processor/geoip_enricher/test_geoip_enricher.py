@@ -475,3 +475,6 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             self.object._city_db.city,
             "8.8.8.8",
         )
+
+    async def test_has_async_io(self):
+        assert await self.object.has_asyncio() is True

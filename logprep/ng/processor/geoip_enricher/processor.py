@@ -169,3 +169,7 @@ class GeoipEnricher(FieldManager):
             merge_with_target=False,
             overwrite_target=rule.overwrite_target,
         )
+
+    async def has_asyncio(self) -> bool:
+        """Return whether the processor performs asynchronous I/O operations."""
+        return True

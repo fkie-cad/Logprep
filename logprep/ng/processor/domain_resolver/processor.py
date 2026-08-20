@@ -253,3 +253,7 @@ class DomainResolver(Processor):
             }
         }
         add_fields_to(event, event_dbg, overwrite_target=True)
+
+    async def has_asyncio(self) -> bool:
+        """Return whether the processor performs asynchronous I/O operations."""
+        return True

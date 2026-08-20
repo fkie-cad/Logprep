@@ -94,10 +94,6 @@ class Requester(FieldManager):
             self._session = None
         await super().shut_down()
 
-    async def has_asyncio(self) -> bool:
-        """Return whether the processor performs asynchronous I/O operations."""
-        return True
-
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(RequesterRule, rule)
         source_field_dict = get_source_fields_dict(event, rule)
@@ -294,3 +290,7 @@ class Requester(FieldManager):
                     transform_value=lambda d: template_resolver(d) if isinstance(d, str) else d,
                 )
         return kwargs
+
+    async def has_asyncio(self) -> bool:
+        """Return whether the processor performs asynchronous I/O operations."""
+        return True

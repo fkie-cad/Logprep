@@ -1387,3 +1387,6 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             assert rule.data_error is None
             assert await _compare_sets(rule) == {list_name: {"Foo"}}
             assert request_statuses == [500, 500, 500, 500, 200]
+
+    async def test_has_async_io(self):
+        assert await self.object.has_asyncio() is True
