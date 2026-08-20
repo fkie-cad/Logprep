@@ -662,3 +662,6 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 "FIRST_LIST": {IPv4Network("1.1.1.1/32")},
                 "SECOND_LIST": {IPv4Network("1.1.1.1/32")},
             }
+
+    async def test_has_async_io(self):
+        assert await self.object.has_asyncio() is True

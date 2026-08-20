@@ -174,3 +174,7 @@ class ListComparison(Processor):
     def _shut_down(self) -> None:
         RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
         return super()._shut_down()
+
+    async def has_asyncio(self) -> bool:
+        """Return whether the processor performs asynchronous I/O operations."""
+        return True
