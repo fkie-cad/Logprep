@@ -47,6 +47,15 @@ pipeline:
       type: dissector
       rules:
         - examples/exampledata/rules/dissector/rules
+  - field_name_replacer:
+      type: field_name_replacer
+      rules:
+        - filter: test_field_name_replacer
+          field_name_replacer:
+            source_fields:
+              - field_name_replacer
+            to_replace: "."
+            replacement: "__"
   - dropper:
       type: dropper
       rules:

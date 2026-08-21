@@ -898,11 +898,25 @@ def reduce_field_value(func: Callable[[FieldValue, T], T], data: FieldValue, ini
     return result
 
 
+class FieldCollisionError(ValueError):
+    """Raised when transformed dictionary keys cannot be resolved"""
+
+    def __init__(self, key: str, existing_type: type, incoming_type: type) -> None:
+        self.key = key
+        self.existing_type = existing_type
+        self.incoming_type = incoming_type
+        super().__init__(
+            f"collision for transformed key {key!r}: "
+            f"cannot merge {existing_type.__name__} with {incoming_type.__name__}"
+        )
+
+
 def transform_field_value(
     data: FieldValue,
     /,
     transform_value: Callable[[str | int | float | bool | None], FieldValue],
     transform_key: Callable[[str], str],
+    collision_handler: Callable[[str, FieldValue, FieldValue], FieldValue] | None = None,
 ) -> FieldValue:
     """Transforms a field value by mapping all leafs (not :code:`dict` and :code:`list`)
     to new values.
@@ -926,21 +940,94 @@ def transform_field_value(
     ValueError
         If an unexpected type is encountered
     """
-    match (data):
+
+    transform_recursive = functools.partial(
+        transform_field_value,
+        transform_value=transform_value,
+        transform_key=transform_key,
+        collision_handler=collision_handler,
+    )
+
+    match data:
         case dict():
-            transform_recursive = functools.partial(
-                transform_field_value, transform_value=transform_value, transform_key=transform_key
-            )
-            return {transform_key(key): transform_recursive(value) for key, value in data.items()}
+            transformed: dict[str, FieldValue] = {}
+            for key, value in data.items():
+                transformed_key = transform_key(key)
+                transformed_value = transform_recursive(value)
+
+                if transformed_key in transformed and collision_handler is not None:
+                    transformed[transformed_key] = collision_handler(
+                        transformed_key, transformed[transformed_key], transformed_value
+                    )
+                else:
+                    transformed[transformed_key] = transformed_value
+
+            return transformed
         case list():
-            transform_recursive = functools.partial(
-                transform_field_value, transform_value=transform_value, transform_key=transform_key
-            )
             return [transform_recursive(item) for item in data]
         case str() | int() | float() | bool() | None:
             return transform_value(data)
         case _:
             raise ValueError(f"unexpected type encountered: {type(data)}")
+
+
+def keep_incoming_collision_handler(
+    _key: str,
+    _existing: FieldValue,
+    incoming: FieldValue,
+) -> FieldValue:
+    """Resolve a key collision by retaining the incoming value."""
+    return incoming
+
+
+def merge_collision_handler(
+    key: str,
+    existing: FieldValue,
+    incoming: FieldValue,
+) -> FieldValue:
+    """Resolve compatible key collisions by returning a merged value.
+
+    The inputs are not mutated. Raises :class:`FieldCollisionError` for incompatible
+    value types.
+    """
+    match existing, incoming:
+        case dict(), dict():
+            return {**existing, **incoming}
+        case list(), list():
+            return [*existing, *incoming]
+        case list(), str() | int() | float() | bool() | None:
+            return [*existing, incoming]
+        case str() | int() | float() | bool() | None, list():
+            return [existing, *incoming]
+        case _:
+            raise FieldCollisionError(key, type(existing), type(incoming))
+
+
+def merge_mutating_collision_handler(
+    key: str,
+    existing: FieldValue,
+    incoming: FieldValue,
+) -> FieldValue:
+    """Resolve compatible key collisions by mutating and returning a value.
+
+    This avoids allocating a replacement container where possible. Raises
+    :class:`FieldCollisionError` for incompatible value types.
+    """
+    match existing, incoming:
+        case dict(), dict():
+            existing.update(incoming)
+            return existing
+        case list(), list():
+            existing.extend(incoming)
+            return existing
+        case list(), str() | int() | float() | bool() | None:
+            existing.append(incoming)
+            return existing
+        case str() | int() | float() | bool() | None, list():
+            incoming.insert(0, existing)
+            return incoming
+        case _:
+            raise FieldCollisionError(key, type(existing), type(incoming))
 
 
 def field_value_validator(_: object, attribute: Attribute, value: object) -> None:

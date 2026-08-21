@@ -17,6 +17,7 @@ Processors
 .. automodule:: logprep.processor.domain_resolver.processor
 .. automodule:: logprep.processor.dropper.processor
 .. automodule:: logprep.processor.field_manager.processor
+.. automodule:: logprep.processor.field_name_replacer.processor
 .. automodule:: logprep.processor.generic_adder.processor
 .. automodule:: logprep.processor.generic_resolver.processor
 .. automodule:: logprep.processor.geoip_enricher.processor

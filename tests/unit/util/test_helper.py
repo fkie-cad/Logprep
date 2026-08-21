@@ -2,6 +2,7 @@
 # pylint: disable=no-self-use
 import re
 import typing
+from copy import deepcopy
 from unittest import mock
 
 import pytest
@@ -16,6 +17,8 @@ from logprep.util.helper import (
     get_dotted_field_list,
     get_dotted_field_value,
     get_versions_string,
+    merge_collision_handler,
+    merge_mutating_collision_handler,
     pop_dotted_field_value,
     reduce_field_value,
     snake_to_camel,
@@ -433,6 +436,30 @@ class TestTransformFieldValue:
                 transform_key=lambda x: x,
                 transform_value=lambda x: x,
             )
+
+
+class TestMergeCollisionHandlers:
+    @pytest.mark.parametrize(
+        "existing, incoming",
+        [
+            (
+                {"existing": "value", "shared": "existing"},
+                {"incoming": "value", "shared": "incoming"},
+            ),
+            (["existing"], ["incoming"]),
+            (["existing"], "incoming"),
+            ("existing", ["incoming"]),
+        ],
+    )
+    def test_return_equal_values(self, existing: FieldValue, incoming: FieldValue):
+        non_mutating_result = merge_collision_handler(
+            "field", deepcopy(existing), deepcopy(incoming)
+        )
+        mutating_result = merge_mutating_collision_handler(
+            "field", deepcopy(existing), deepcopy(incoming)
+        )
+
+        assert mutating_result == non_mutating_result
 
 
 class TestReduceFieldValue:

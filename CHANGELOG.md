@@ -8,6 +8,7 @@
 * introduce API-level support for asynchronous rule processing and I/O capability detection in `ng` processors
 * generic_adder: add support for templated http urls & content_field
 * generic_resolver: add content_field support
+* field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
