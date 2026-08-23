@@ -433,7 +433,7 @@ class ConfluentKafkaInput(Input):
         to be considered informational since the client will automatically try to recover.
         This callback is served upon calling client.consume()
         """
-        self.metrics.number_of_errors.inc(1)
+        self._metrics.number_of_errors.inc(1)
         logger.error("%s: %s", self.description, error)
 
     async def _stats_callback(self, stats_raw: str) -> None:
@@ -449,24 +449,24 @@ class ConfluentKafkaInput(Input):
         """
 
         stats = self._decoder.decode(stats_raw)
-        self.metrics.librdkafka_age.set(stats.get("age", DEFAULT_RETURN))
-        self.metrics.librdkafka_rx.set(stats.get("rx", DEFAULT_RETURN))
-        self.metrics.librdkafka_tx.set(stats.get("tx", DEFAULT_RETURN))
-        self.metrics.librdkafka_rx_bytes.set(stats.get("rx_bytes", DEFAULT_RETURN))
-        self.metrics.librdkafka_tx_bytes.set(stats.get("tx_bytes", DEFAULT_RETURN))
-        self.metrics.librdkafka_rxmsgs.set(stats.get("rxmsgs", DEFAULT_RETURN))
-        self.metrics.librdkafka_rxmsg_bytes.set(stats.get("rxmsg_bytes", DEFAULT_RETURN))
+        self._metrics.librdkafka_age.set(stats.get("age", DEFAULT_RETURN))
+        self._metrics.librdkafka_rx.set(stats.get("rx", DEFAULT_RETURN))
+        self._metrics.librdkafka_tx.set(stats.get("tx", DEFAULT_RETURN))
+        self._metrics.librdkafka_rx_bytes.set(stats.get("rx_bytes", DEFAULT_RETURN))
+        self._metrics.librdkafka_tx_bytes.set(stats.get("tx_bytes", DEFAULT_RETURN))
+        self._metrics.librdkafka_rxmsgs.set(stats.get("rxmsgs", DEFAULT_RETURN))
+        self._metrics.librdkafka_rxmsg_bytes.set(stats.get("rxmsg_bytes", DEFAULT_RETURN))
 
-        self.metrics.librdkafka_cgrp_stateage.set(
+        self._metrics.librdkafka_cgrp_stateage.set(
             stats.get("cgrp", {}).get("stateage", DEFAULT_RETURN)
         )
-        self.metrics.librdkafka_cgrp_rebalance_age.set(
+        self._metrics.librdkafka_cgrp_rebalance_age.set(
             stats.get("cgrp", {}).get("rebalance_age", DEFAULT_RETURN)
         )
-        self.metrics.librdkafka_cgrp_rebalance_cnt.set(
+        self._metrics.librdkafka_cgrp_rebalance_cnt.set(
             stats.get("cgrp", {}).get("rebalance_cnt", DEFAULT_RETURN)
         )
-        self.metrics.librdkafka_cgrp_assignment_size.set(
+        self._metrics.librdkafka_cgrp_assignment_size.set(
             stats.get("cgrp", {}).get("assignment_size", DEFAULT_RETURN)
         )
 
