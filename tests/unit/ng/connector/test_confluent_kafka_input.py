@@ -35,9 +35,6 @@ from logprep.ng.abc.input import (
 from logprep.ng.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.ng.connector.confluent_kafka.input import logger as kafka_input_logger
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
-from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
-    OffsetCommitTracker,
-)
 from logprep.util.helper import FieldValue, get_dotted_field_value
 from tests.unit.ng.connector.base import BaseInputTestCase
 

@@ -376,7 +376,7 @@ class ConfluentKafkaInput(Input):
 
     @cached_property
     def _metrics(self) -> Metrics:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed metrics object"""
         return typing.cast(ConfluentKafkaInput.Metrics, self.metrics)
 
     @property

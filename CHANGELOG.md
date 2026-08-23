@@ -9,6 +9,7 @@
 * generic_adder: add support for templated http urls & content_field
 * generic_resolver: add content_field support
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
+* ng: support kafka input partition assignment strategy 'cooperative-sticky'
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
