@@ -79,13 +79,12 @@ class TestConfluentKafkaInput(BaseInputTestCase):
             _ = Factory.create({"test connector": kafka_config})
 
     def test_error_callback_logs_error(self):
-        self.object.metrics.number_of_errors = 0
         with mock.patch("logging.Logger.error") as mock_error:
             test_error = Exception("test error")
             self.object._error_callback(test_error)
             mock_error.assert_called()
             mock_error.assert_called_with("%s: %s", self.object.description, test_error)
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
 
     def test_stats_callback_sets_metric_objetc_attributes(self):
         librdkafka_metrics = tuple(
@@ -103,10 +102,9 @@ class TestConfluentKafkaInput(BaseInputTestCase):
             assert getattr(self.object.metrics, metric) == metric_value, metric
 
     def test_stats_set_age_metric_explicitly(self):
-        self.object.metrics.librdkafka_age = 0
         json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
         self.object._stats_callback(json_string)
-        assert self.object.metrics.librdkafka_age == 1337
+        assert self.object.metrics.librdkafka_age.value == 1337
 
     def test_kafka_config_is_immutable(self):
         self.object.setup()
@@ -297,9 +295,8 @@ class TestConfluentKafkaInput(BaseInputTestCase):
             assert self.object._commit_failures == 1
 
     def test_commit_callback_counts_commit_success(self):
-        self.object.metrics.commit_success = 0
         self.object._commit_callback(None, [mock.MagicMock()])
-        assert self.object.metrics.commit_success == 1
+        assert self.object.metrics.commit_success.value == 1
 
     def test_commit_callback_sets_committed_offsets(self):
         mock_add = mock.MagicMock()
@@ -404,12 +401,11 @@ class TestConfluentKafkaInput(BaseInputTestCase):
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_lost_callback_counts_warnings_and_logs(self, mock_consumer):
-        self.object.metrics.number_of_warnings = 0
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
             self.object._lost_callback(mock_consumer, mock_partitions)
         mock_warning.assert_called()
-        assert self.object.metrics.number_of_warnings == 1
+        assert self.object.metrics.number_of_warnings.value == 1
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_commit_callback_sets_offset_to_0_for_special_offsets(self, _):
@@ -438,13 +434,12 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         self.object.metrics.current_offsets.add_with_labels.assert_called_with(0, expected_labels)
 
     def test_revoke_callback_logs_warning_and_counts(self):
-        self.object.metrics.number_of_warnings = 0
         self.object.output_connector = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
             self.object._revoke_callback(None, mock_partitions)
         mock_warning.assert_called()
-        assert self.object.metrics.number_of_warnings == 1
+        assert self.object.metrics.number_of_warnings.value == 1
 
     def test_revoke_callback_calls_batch_finished_callback(self):
         self.object.output_connector = mock.MagicMock()
@@ -496,13 +491,12 @@ class TestConfluentKafkaInput(BaseInputTestCase):
 
     def test_health_counts_metrics_on_kafka_exception(self):
         kafka_input = Factory.create({"kafka_input": self.CONFIG})
-        kafka_input.metrics.number_of_errors = 0
 
         with mock.patch.object(kafka_input, "_consumer") as mock_consumer:
             mock_consumer.list_topics.side_effect = KafkaException("test error")
 
             assert not kafka_input.health()
-            assert kafka_input.metrics.number_of_errors == 1
+            assert kafka_input.metrics.number_of_errors.value == 1
 
     @pytest.mark.parametrize(
         ["kafka_config_update", "expected_admin_client_config"],

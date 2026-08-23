@@ -64,9 +64,8 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
-        self.object.metrics.number_of_processed_events = 0
         self.object.store("default,test_payload")
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events.value == 1
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_raises_critical_output_on_any_exception(self, _):

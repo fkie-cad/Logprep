@@ -80,9 +80,8 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
 
     @mock.patch("builtins.open")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
-        self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events.value == 1
 
     @mock.patch("builtins.open")
     def test_store_calls_batch_finished_callback_without_errors(

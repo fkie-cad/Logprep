@@ -363,7 +363,7 @@ class ConfluentKafkaInput(Input):
         error : KafkaException
             the error that occurred
         """
-        self.metrics.number_of_errors += 1
+        self.metrics.number_of_errors.inc(1)
         logger.error("%s: %s", self.description, error)
 
     async def _stats_callback(self, stats_raw: str) -> None:
@@ -379,25 +379,25 @@ class ConfluentKafkaInput(Input):
         """
 
         stats = self._decoder.decode(stats_raw)
-        self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
-        self.metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
-        self.metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
-        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
-        self.metrics.librdkafka_tx_bytes += stats.get("tx_bytes", DEFAULT_RETURN)
-        self.metrics.librdkafka_rxmsgs += stats.get("rxmsgs", DEFAULT_RETURN)
-        self.metrics.librdkafka_rxmsg_bytes += stats.get("rxmsg_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_age.set(stats.get("age", DEFAULT_RETURN))
+        self.metrics.librdkafka_rx.set(stats.get("rx", DEFAULT_RETURN))
+        self.metrics.librdkafka_tx.set(stats.get("tx", DEFAULT_RETURN))
+        self.metrics.librdkafka_rx_bytes.set(stats.get("rx_bytes", DEFAULT_RETURN))
+        self.metrics.librdkafka_tx_bytes.set(stats.get("tx_bytes", DEFAULT_RETURN))
+        self.metrics.librdkafka_rxmsgs.set(stats.get("rxmsgs", DEFAULT_RETURN))
+        self.metrics.librdkafka_rxmsg_bytes.set(stats.get("rxmsg_bytes", DEFAULT_RETURN))
 
-        self.metrics.librdkafka_cgrp_stateage += stats.get("cgrp", {}).get(
-            "stateage", DEFAULT_RETURN
+        self.metrics.librdkafka_cgrp_stateage.set(
+            stats.get("cgrp", {}).get("stateage", DEFAULT_RETURN)
         )
-        self.metrics.librdkafka_cgrp_rebalance_age += stats.get("cgrp", {}).get(
-            "rebalance_age", DEFAULT_RETURN
+        self.metrics.librdkafka_cgrp_rebalance_age.set(
+            stats.get("cgrp", {}).get("rebalance_age", DEFAULT_RETURN)
         )
-        self.metrics.librdkafka_cgrp_rebalance_cnt += stats.get("cgrp", {}).get(
-            "rebalance_cnt", DEFAULT_RETURN
+        self.metrics.librdkafka_cgrp_rebalance_cnt.set(
+            stats.get("cgrp", {}).get("rebalance_cnt", DEFAULT_RETURN)
         )
-        self.metrics.librdkafka_cgrp_assignment_size += stats.get("cgrp", {}).get(
-            "assignment_size", DEFAULT_RETURN
+        self.metrics.librdkafka_cgrp_assignment_size.set(
+            stats.get("cgrp", {}).get("assignment_size", DEFAULT_RETURN)
         )
 
     def _describe(self) -> str:
@@ -526,7 +526,7 @@ class ConfluentKafkaInput(Input):
         self, _: AIOConsumer, topic_partitions: list[TopicPartition]
     ) -> None:
         for tp in topic_partitions:
-            self.metrics.number_of_warnings += 1
+            self.metrics.number_of_warnings.inc(1)
             member_id = await self._get_memberid()
             logger.warning(
                 "%s to be revoked from topic: %s | partition %s", member_id, tp.topic, tp.partition
@@ -535,7 +535,7 @@ class ConfluentKafkaInput(Input):
 
     async def _lost_callback(self, _: AIOConsumer, topic_partitions: list[TopicPartition]) -> None:
         for tp in topic_partitions:
-            self.metrics.number_of_warnings += 1
+            self.metrics.number_of_warnings.inc(1)
             member_id = await self._get_memberid()
             logger.warning(
                 "%s has lost topic: %s | partition %s", member_id, tp.topic, tp.partition
@@ -557,9 +557,9 @@ class ConfluentKafkaInput(Input):
         """
 
         if error is not None:
-            self.metrics.commit_failures += 1
+            self.metrics.commit_failures.inc(1)
             raise InputWarning.from_error(self, error, "Could not commit offsets")
-        self.metrics.commit_success += 1
+        self.metrics.commit_success.inc(1)
         for tp in topic_partitions:
             offset = tp.offset
             if offset in SPECIAL_OFFSETS:
@@ -594,7 +594,7 @@ class ConfluentKafkaInput(Input):
                 return False
         except KafkaException as error:
             logger.error("Health check failed: %s", error)
-            self.metrics.number_of_errors += 1
+            self.metrics.number_of_errors.inc(1)
             return False
         return True
 

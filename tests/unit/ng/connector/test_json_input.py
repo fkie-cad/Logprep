@@ -449,12 +449,10 @@ class TestJsonInput(BaseInputTestCase):
             connector.pipeline_index = 1
             connector.setup()
 
-            connector.metrics.number_of_processed_events = 0
-
             with mock.patch.object(connector, "_get_event", return_value=return_value):
                 connector.get_next(0.01)
 
-            assert connector.metrics.number_of_processed_events == 1
+            assert connector.metrics.number_of_processed_events.value == 1
 
     async def test_get_next_adds_timestamp_if_configured(self):
         return_value = ({"any": "content"}, None, None)
@@ -850,10 +848,9 @@ class TestJsonInput(BaseInputTestCase):
             connector.pipeline_index = 1
             connector.setup()
             connector._get_event = mock.MagicMock(return_value=return_value)
-            connector.metrics.number_of_processed_events = 0
             connector.get_next(0.01)
 
-            assert connector.metrics.number_of_processed_events == 1
+            assert connector.metrics.number_of_processed_events.value == 1
 
     async def test_get_next_has_time_measurement(self):
         return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
@@ -869,7 +866,6 @@ class TestJsonInput(BaseInputTestCase):
             connector._get_event = mock.MagicMock(return_value=return_value)
             connector.get_next(0.01)
             assert isinstance(connector.metrics.processing_time_per_event, mock.MagicMock)
-            # asserts entering context manager in metrics.metrics.Metric.measure_time
             mock_metric.assert_has_calls([mock.call.observe(mock.ANY)])
 
     async def test_raises_exception_if_not_a_dict(self):
@@ -959,10 +955,9 @@ class TestJsonInput(BaseInputTestCase):
             connector.pipeline_index = 1
             connector.setup()
 
-            connector.metrics.number_of_processed_events = 0
             connector._get_event = mock.MagicMock(return_value=(None, None, None))
             connector.get_next(0.01)
-            assert connector.metrics.number_of_processed_events == 0
+            assert connector.metrics.number_of_processed_events.value == 0
 
     async def test_get_next_does_not_count_number_of_processed_events_if_event_is_none(self):
         with self.patch_documents_property(document={}):
@@ -972,10 +967,9 @@ class TestJsonInput(BaseInputTestCase):
             connector.pipeline_index = 1
             connector.setup()
 
-            connector.metrics.number_of_processed_events = 0
             connector._get_event = mock.MagicMock(return_value=(None, None, None))
             connector.get_next(0.01)
-            assert connector.metrics.number_of_processed_events == 0
+            assert connector.metrics.number_of_processed_events.value == 0
 
     async def test_add_full_event_to_target_field_without_clear(self):
         return_value = ({"any": "content"}, None, None)

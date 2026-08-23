@@ -72,10 +72,10 @@ class TestPipelineManager:
             assert self.manager._pipelines == current_pipelines
 
     def test_decrease_to_count_increases_number_of_pipeline_stops_metric(self):
+        before = self.manager.metrics.number_of_pipeline_stops.value
         self.manager._increase_to_count(2)
-        self.manager.metrics.number_of_pipeline_stops = 0
         self.manager._decrease_to_count(0)
-        assert self.manager.metrics.number_of_pipeline_stops == 2
+        assert self.manager.metrics.number_of_pipeline_stops.value - before == 2
 
     def test_set_count_increases_or_decreases_count_of_pipelines_as_needed(self):
         self.manager._increase_to_count(3)
@@ -148,9 +148,9 @@ class TestPipelineManager:
         failed_pipeline.is_alive = mock.MagicMock()
         failed_pipeline.is_alive.return_value = False
         self.manager._pipelines = [failed_pipeline]
-        self.manager.metrics.number_of_failed_pipelines = 0
+        before = self.manager.metrics.number_of_failed_pipelines.value
         self.manager.restart_failed_pipeline()
-        assert self.manager.metrics.number_of_failed_pipelines == 1
+        assert self.manager.metrics.number_of_failed_pipelines.value - before == 1
 
     def test_stop_calls_prometheus_cleanup_method(self, tmpdir, config_path):
         with mock_env({"PROMETHEUS_MULTIPROC_DIR": tmpdir}):
@@ -171,15 +171,15 @@ class TestPipelineManager:
         assert isinstance(manager.prometheus_exporter, PrometheusExporter)
 
     def test_set_count_increases_number_of_pipeline_starts_metric(self):
-        self.manager.metrics.number_of_pipeline_starts = 0
+        before = self.manager.metrics.number_of_pipeline_starts.value
         self.manager.set_count(2)
-        assert self.manager.metrics.number_of_pipeline_starts == 2
+        assert self.manager.metrics.number_of_pipeline_starts.value - before == 2
 
     def test_set_count_increases_number_of_pipeline_stops_metric(self):
-        self.manager.metrics.number_of_pipeline_stops = 0
+        before = self.manager.metrics.number_of_pipeline_stops.value
         self.manager.set_count(2)
         self.manager.set_count(0)
-        assert self.manager.metrics.number_of_pipeline_stops == 2
+        assert self.manager.metrics.number_of_pipeline_stops.value - before == 2
 
     def test_restart_calls_set_count(self):
         with mock.patch.object(self.manager, "set_count") as mock_set_count:

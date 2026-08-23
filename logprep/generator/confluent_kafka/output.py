@@ -71,7 +71,7 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
     def store(self, document) -> None:
 
         with self.lock:
-            self.metrics.processed_batches += 1
+            self.metrics.processed_batches.inc(1)
             topic, _, payload = document.partition(",")
             _, _, topic = topic.rpartition("/")
             self._config = evolve(self._config, topic=topic)
@@ -99,7 +99,7 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
             self._producer.produce(target, value=document)
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
-            self.metrics.number_of_processed_events += 1
+            self.metrics.number_of_processed_events.inc(1)
         except BufferError:
             self._producer.flush(timeout=self._config.flush_timeout)
             logger.debug("Buffer full, flushing")
