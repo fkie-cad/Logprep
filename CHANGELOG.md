@@ -29,10 +29,10 @@
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
 * grokker: improve performance by stopping on first matching expression
-* perf: cache labeled child metric collectors
-* perf: avoid heavy time context manager and hardwire passtrough metric collector methods on wrapper class
-* refactor: consolidate `measure_time` and `measure_time_async` in single decorator
-
+* metrics: cache labeled child metric collectors
+* metrics: avoid heavy time context manager and hardwire passtrough metric collector methods on wrapper class
+* metrics: remove `__add__` interface from metrics and use the passthrough instead
+* metrics: consolidate `measure_time` and `measure_time_async` in single decorator
 
 ### Bugfix
 * chart: fix command handling

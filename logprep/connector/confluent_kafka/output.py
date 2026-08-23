@@ -245,7 +245,7 @@ class ConfluentKafkaOutput(Output):
         error : KafkaException
             the error that occurred
         """
-        self.metrics.number_of_errors += 1
+        self.metrics.number_of_errors.inc(1)
         logger.error("%s: %s", self.description, error)
 
     def _stats_callback(self, stats_raw: str) -> None:
@@ -260,17 +260,17 @@ class ConfluentKafkaOutput(Output):
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
         stats = self._decoder.decode(stats_raw)
-        self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
-        self.metrics.librdkafka_msg_cnt += stats.get("msg_cnt", DEFAULT_RETURN)
-        self.metrics.librdkafka_msg_size += stats.get("msg_size", DEFAULT_RETURN)
-        self.metrics.librdkafka_msg_max += stats.get("msg_max", DEFAULT_RETURN)
-        self.metrics.librdkafka_msg_size_max += stats.get("msg_size_max", DEFAULT_RETURN)
-        self.metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
-        self.metrics.librdkafka_tx_bytes += stats.get("tx_bytes", DEFAULT_RETURN)
-        self.metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
-        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
-        self.metrics.librdkafka_txmsgs += stats.get("txmsgs", DEFAULT_RETURN)
-        self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_age.set(stats.get("age", DEFAULT_RETURN))
+        self.metrics.librdkafka_msg_cnt.set(stats.get("msg_cnt", DEFAULT_RETURN))
+        self.metrics.librdkafka_msg_size.set(stats.get("msg_size", DEFAULT_RETURN))
+        self.metrics.librdkafka_msg_max.set(stats.get("msg_max", DEFAULT_RETURN))
+        self.metrics.librdkafka_msg_size_max.set(stats.get("msg_size_max", DEFAULT_RETURN))
+        self.metrics.librdkafka_tx.set(stats.get("tx", DEFAULT_RETURN))
+        self.metrics.librdkafka_tx_bytes.set(stats.get("tx_bytes", DEFAULT_RETURN))
+        self.metrics.librdkafka_rx.set(stats.get("rx", DEFAULT_RETURN))
+        self.metrics.librdkafka_rx_bytes.set(stats.get("rx_bytes", DEFAULT_RETURN))
+        self.metrics.librdkafka_txmsgs.set(stats.get("txmsgs", DEFAULT_RETURN))
+        self.metrics.librdkafka_txmsg_bytes.set(stats.get("txmsg_bytes", DEFAULT_RETURN))
 
     def _describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server."""
@@ -309,7 +309,7 @@ class ConfluentKafkaOutput(Output):
             self._producer.produce(target, value=self._encoder.encode(document))
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self.config.send_timeout)
-            self.metrics.number_of_processed_events += 1
+            self.metrics.number_of_processed_events.inc(1)
         except BufferError:
             # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self.config.flush_timeout)
@@ -325,7 +325,7 @@ class ConfluentKafkaOutput(Output):
         """
         remaining_messages = self._producer.flush()
         if remaining_messages:
-            self.metrics.number_of_errors += 1
+            self.metrics.number_of_errors.inc(1)
             logger.error(
                 "Flushing producer timed out. %s messages are still in the buffer.",
                 remaining_messages,
@@ -349,7 +349,7 @@ class ConfluentKafkaOutput(Output):
                 return False
         except KafkaException as error:
             logger.error("Health check failed: %s", error)
-            self.metrics.number_of_errors += 1
+            self.metrics.number_of_errors.inc(1)
             return False
         return True
 

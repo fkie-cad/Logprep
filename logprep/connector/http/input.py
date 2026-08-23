@@ -299,7 +299,7 @@ class HttpEndpoint(ABC):
 
     def collect_metrics(self):
         """Increment number of requests"""
-        self.metrics.number_of_http_requests += 1
+        self.metrics.number_of_http_requests.inc(1)
 
     async def get_data(self, req: falcon.asgi.Request) -> bytes:
         """returns the data from the request body
@@ -644,7 +644,7 @@ class HttpInput(Input):
         """Returns the first message from the queue"""
         messages = typing.cast(Queue, self.messages)
 
-        self._typed_metrics.message_backlog_size += messages.qsize()
+        self._typed_metrics.message_backlog_size.set(messages.qsize())
         try:
             message = messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
@@ -689,7 +689,7 @@ class HttpInput(Input):
                 ).raise_for_status()
             except (requests.exceptions.RequestException, requests.exceptions.Timeout) as error:
                 logger.error("Health check failed for endpoint: %s due to %s", endpoint, str(error))
-                self._typed_metrics.number_of_errors += 1
+                self._typed_metrics.number_of_errors.inc(1)
                 return False
 
         return True

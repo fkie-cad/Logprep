@@ -213,7 +213,7 @@ class HttpOutput(Output):
             request_data = document.replace(";", "\n")
         else:
             error = TypeError(f"Document type {type(document)} is not supported")
-            self.metrics.number_of_failed_events += 1
+            self.metrics.number_of_failed_events.inc(1)
             logger.error(str(error))
             return
         try:
@@ -234,20 +234,20 @@ class HttpOutput(Output):
                     },
                 )
                 response.raise_for_status()
-                self.metrics.number_of_processed_events += document_count
-                self.metrics.number_of_http_requests += 1
+                self.metrics.number_of_processed_events.inc(document_count)
+                self.metrics.number_of_http_requests.inc(1)
             except requests.RequestException as error:
                 logger.error("Failed to send event: %s", str(error))
                 logger.debug("Failed event: %s", document)
-                self.metrics.number_of_failed_events += document_count
-                self.metrics.number_of_http_requests += 1
+                self.metrics.number_of_failed_events.inc(document_count)
+                self.metrics.number_of_http_requests.inc(1)
                 if not isinstance(error, requests.exceptions.HTTPError):
                     raise error
         except requests.exceptions.ConnectionError as error:
             logger.error(error)
-            self.metrics.connection_errors += 1
+            self.metrics.connection_errors.inc(1)
             if isinstance(error, requests.exceptions.Timeout):
-                self.metrics.timeouts += 1
+                self.metrics.timeouts.inc(1)
         except requests.exceptions.MissingSchema as error:
             raise ConnectionError(
                 f"No schema set in target-url: {self.config.target_url}"
@@ -255,4 +255,4 @@ class HttpOutput(Output):
         except requests.exceptions.Timeout as error:
             # other timeouts than connection timeouts are handled here
             logger.error(error)
-            self.metrics.timeouts += 1
+            self.metrics.timeouts.inc(1)

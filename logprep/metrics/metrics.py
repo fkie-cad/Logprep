@@ -171,8 +171,11 @@ class Metric(ABC, Generic[M]):
 
     _collector: M = field(default=None, init=False)
 
-    _collector_methods: ClassVar[set[str]] = set()
+    _collector_methods: ClassVar[set[str]]
     """Methods marked as tracked method collected on subclass init"""
+
+    _value_series_suffix: ClassVar[str]
+    """Suffix implemented by subclasses to select the right series carrying the metric value"""
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -238,14 +241,14 @@ class Metric(ABC, Generic[M]):
         """Return the labelled child of the collector for the given labels"""
         return self._collector.labels(**(self.labels | labels))
 
-    def _bind(self, child: M) -> M:
-        """Bind the child's exposed methods directly onto this instance."""
+    def _bind(self, child: M) -> Self:
+        """Bind the child's exposed methods directly onto this instance"""
         for name in self._collector_methods:
             setattr(self, name, getattr(child, name))
-        return child
+        return self
 
-    def _lazy_bind_default_child(self) -> M:
-        """Bind the default child on first use and return it."""
+    def _lazy_bind_default_child(self) -> Self:
+        """Bind the default child on first use and return the metric."""
         return self._bind(self._labeled_child(self.labels))
 
     def child_collector(self, labels: dict[str, str], inject_label_values: bool = True) -> Self:
@@ -260,9 +263,11 @@ class Metric(ABC, Generic[M]):
     def _init_collector(self) -> M:
         """Create the concrete prometheus metric object"""
 
-    @abstractmethod
-    def __add__(self, other):
-        """Increment the metric by the given value"""
+    @property
+    def value(self) -> float:
+        """The value this metric currently exports, summed over its labelled children."""
+        series_name = f"{self.fullname}{self._value_series_suffix}"
+        return sum(sample.value for sample in self.collect_samples() if sample.name == series_name)
 
     def collect_samples(self) -> list[Sample]:
         """Return the samples of the whole collector, including every labelled child."""
@@ -360,6 +365,9 @@ class Metric(ABC, Generic[M]):
 class CounterMetric(Metric[Counter]):
     """Wrapper for prometheus Counter metric"""
 
+    _value_series_suffix: ClassVar[str] = "_total"
+    """A counter exports its value under the `_total` series"""
+
     @property
     def collector_type(self) -> type[Counter]:
         return Counter
@@ -375,11 +383,7 @@ class CounterMetric(Metric[Counter]):
     @_collector_method
     def inc(self, amount: float = 1, exemplar: dict[str, str] | None = None) -> None:
         """Increment the counter. Rebinds to the collector's method on first call."""
-        self._lazy_bind_default_child().inc(amount, exemplar)
-
-    def __add__(self, other: Any) -> Self:
-        self.inc(other)
-        return self
+        return self._lazy_bind_default_child().inc(amount, exemplar)
 
     def add_with_labels(self, other: Any, labels: dict) -> None:
         """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
@@ -389,6 +393,15 @@ class CounterMetric(Metric[Counter]):
 @define(kw_only=True)
 class HistogramMetric(Metric[Histogram]):
     """Wrapper for prometheus Histogram metric"""
+
+    _value_series_suffix: ClassVar[str] = "_sum"
+    """The histogram value is the sum of the observations"""
+
+    @property
+    def count(self) -> float:
+        """How many observations were made, summed over the labelled children"""
+        series = f"{self.fullname}_count"
+        return sum(sample.value for sample in self.collect_samples() if sample.name == series)
 
     @property
     def collector_type(self) -> type[Histogram]:
@@ -406,16 +419,7 @@ class HistogramMetric(Metric[Histogram]):
     @_collector_method
     def observe(self, amount: float, exemplar: dict[str, str] | None = None) -> None:
         """Observe a value. Rebinds to the collector's method on first call."""
-        self._lazy_bind_default_child().observe(amount, exemplar)
-
-    @_collector_method
-    def time(self) -> Any:
-        """Time a block or function. Rebinds on first call."""
-        return self._lazy_bind_default_child().time()
-
-    def __add__(self, other) -> Self:
-        self.observe(other)
-        return self
+        return self._lazy_bind_default_child().observe(amount, exemplar)
 
     def add_with_labels(self, other: Any, labels: dict) -> None:
         """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
@@ -424,7 +428,10 @@ class HistogramMetric(Metric[Histogram]):
 
 @define(kw_only=True)
 class GaugeMetric(Metric[Gauge]):
-    """Wrapper for prometheus Gauge metric""" ""
+    """Wrapper for prometheus Gauge metric"""
+
+    _value_series_suffix: ClassVar[str] = ""
+    """A gauge exports its value under the bare metric name, without a suffix"""
 
     @property
     def collector_type(self) -> type[Gauge]:
@@ -441,22 +448,18 @@ class GaugeMetric(Metric[Gauge]):
 
     @_collector_method
     def set(self, value: float) -> None:
-        """Set the gauge. Rebinds to the collector's method on first call."""
-        self._lazy_bind_default_child().set(value)
+        """Set the gauge. Rebinds to the collector's method on first call"""
+        return self._lazy_bind_default_child().set(value)
 
     @_collector_method
     def inc(self, amount: float = 1) -> None:
-        """Increment the gauge. Rebinds to the collector's method on first call."""
-        self._lazy_bind_default_child().inc(amount)
+        """Increment the gauge. Rebinds to the collector's method on first call"""
+        return self._lazy_bind_default_child().inc(amount)
 
     @_collector_method
     def dec(self, amount: float = 1) -> None:
-        """Decrement the gauge. Rebinds to the collector's method on first call."""
-        self._lazy_bind_default_child().dec(amount)
-
-    def __add__(self, other) -> Self:
-        self.set(other)
-        return self
+        """Decrement the gauge. Rebinds to the collector's method on first call"""
+        return self._lazy_bind_default_child().dec(amount)
 
     def add_with_labels(self, other: Any, labels: dict) -> None:
         """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
