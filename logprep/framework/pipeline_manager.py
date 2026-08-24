@@ -118,7 +118,7 @@ class OutputQueueListener:
                 continue
             try:
                 target(item)
-            except Exception as error:
+            except Exception as error:  # pylint: disable=broad-except
                 logger.error(
                     f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{item}'"
                 )

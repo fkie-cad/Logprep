@@ -9,7 +9,6 @@ from typing import Sequence, cast
 
 from logprep.abc.component import Component
 from logprep.factory import Factory
-from logprep.ng.abc.component import NgComponent
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
