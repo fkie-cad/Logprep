@@ -522,6 +522,21 @@ class RefreshableGetter(Getter, ABC):
         try:
             try:
                 was_modified = await self._update_cache()
+            except asyncio.CancelledError:
+                current_task = asyncio.current_task()
+
+                if (
+                    current_task is not None
+                    and current_task.cancelling() == 0
+                    and self._target_to_data_caches.get(self.target) is not shared
+                ):
+                    rg_logger.debug(
+                        "refresh cancelled because target was removed: %s",
+                        self.target,
+                    )
+                    return
+
+                raise
             except RefreshableGetterError as error:
                 self._log_cache_warning(error)
                 was_modified = False
