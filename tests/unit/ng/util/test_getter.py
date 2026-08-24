@@ -680,3 +680,32 @@ class TestRefreshableGetter:
 
             assert shared.initialization_task is None
             assert getter.target not in RefreshableGetter._target_to_data_caches
+
+    async def test_uses_environment_settings_for_http_session(self, aiohttp_server):
+        async def handler(_: web.Request) -> web.Response:
+            return web.Response(
+                text="content",
+                content_type="text/plain",
+            )
+
+        app = web.Application()
+        app.router.add_get("/data", handler)
+        server = await aiohttp_server(app)
+
+        getter = GetterFactory.from_string(str(server.make_url("/data")))
+
+        client_session = aiohttp.ClientSession
+        session_kwargs = []
+
+        def create_session(*args, **kwargs):
+            session_kwargs.append(kwargs)
+            return client_session(*args, **kwargs)
+
+        with mock.patch(
+            "logprep.ng.util.getter.aiohttp.ClientSession",
+            side_effect=create_session,
+        ):
+            await getter.get()
+
+        assert session_kwargs
+        assert session_kwargs[0]["trust_env"] is True
