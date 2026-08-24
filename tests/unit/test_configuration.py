@@ -16,7 +16,10 @@ from logprep.ng.util.configuration import Configuration as NgConfiguration
 from logprep.ng.util.configuration import (
     InvalidConfigurationErrors,
 )
+from logprep.ng.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from logprep.registry import Registry
+from logprep.util.credentials import CredentialsFactory
+from tests.conftest import mock_env
 
 
 class MockProcessor(Processor):
@@ -230,3 +233,38 @@ class TestNgConfiguration:
                 await configuration._verify()
 
         processor.shut_down.assert_awaited_once()
+
+    async def test_verify_loads_credentials_file_in_thread(self, tmp_path):
+        credentials_file = tmp_path / "credentials.yml"
+        credentials_file.write_text("{}")
+
+        configuration = NgConfiguration()
+        configuration.input = {"input": {"type": "input"}}
+        configuration.output = {"output": {"type": "output"}}
+        configuration.pipeline = []
+        configuration.error_output = {}
+
+        with (
+            mock_env(
+                {
+                    ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file),
+                }
+            ),
+            mock.patch(
+                "logprep.ng.util.configuration.Factory.create",
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_environment",
+            ),
+            mock.patch(
+                "logprep.ng.util.configuration.asyncio.to_thread",
+                new=mock.AsyncMock(return_value={}),
+            ) as to_thread,
+        ):
+            await configuration._verify()
+
+        to_thread.assert_awaited_once_with(
+            CredentialsFactory.get_content,
+            credentials_file,
+        )
