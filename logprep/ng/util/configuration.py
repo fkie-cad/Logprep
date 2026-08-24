@@ -190,6 +190,7 @@ The following config file will be valid by setting the given environment variabl
                 group.id: test"
 """
 
+import asyncio
 import json
 import logging
 import typing
@@ -1091,7 +1092,10 @@ class Configuration:
                 if credentials_file_path is None:
                     raise ValueError("credentials file path was None but expected it to be set")
 
-                _ = CredentialsFactory.get_content(Path(credentials_file_path))
+                _ = await asyncio.to_thread(
+                    CredentialsFactory.get_content,
+                    Path(credentials_file_path),
+                )
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
 
