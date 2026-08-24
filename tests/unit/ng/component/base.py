@@ -54,12 +54,13 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
         override_shared: bool = False,
     ) -> AsyncGenerator[ComponentTypeT]:
         instance = self._create_test_instance(config_patch=config_patch)
-        await instance.setup()
-
-        if override_shared:
-            self.object = instance
 
         try:
+            await instance.setup()
+
+            if override_shared:
+                self.object = instance
+
             yield instance
         finally:
             await instance.shut_down()
