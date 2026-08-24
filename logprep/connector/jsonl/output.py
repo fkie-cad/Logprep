@@ -19,6 +19,8 @@ Example
 """
 
 import json
+import typing
+from functools import cached_property
 
 from attrs import define, field, validators
 
@@ -55,6 +57,11 @@ class JsonlOutput(Output):
         "failed_events",
     ]
 
+    @cached_property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(JsonlOutput.Config, self._config)
+
     def __init__(self, name: str, configuration: "Output.Config"):
         super().__init__(name, configuration)
         self.events = []
@@ -62,9 +69,9 @@ class JsonlOutput(Output):
 
     def setup(self):
         super().setup()
-        open(self._config.output_file, "a+", encoding="utf8").close()
-        if self._config.output_file_custom:
-            open(self._config.output_file_custom, "a+", encoding="utf8").close()
+        open(self.config.output_file, "a+", encoding="utf8").close()
+        if self.config.output_file_custom:
+            open(self.config.output_file_custom, "a+", encoding="utf8").close()
 
     @staticmethod
     def _write_json(filepath: str, line: dict):
@@ -74,13 +81,13 @@ class JsonlOutput(Output):
 
     def store(self, document: dict):
         self.events.append(document)
-        JsonlOutput._write_json(self._config.output_file, document)
-        self.metrics.number_of_processed_events += 1
+        JsonlOutput._write_json(self.config.output_file, document)
+        self.metrics.number_of_processed_events.inc(1)
 
     def store_custom(self, document: dict, target: str):
         document = {target: document}
         self.events.append(document)
 
-        if self._config.output_file_custom:
-            JsonlOutput._write_json(self._config.output_file_custom, document)
-        self.metrics.number_of_processed_events += 1
+        if self.config.output_file_custom:
+            JsonlOutput._write_json(self.config.output_file_custom, document)
+        self.metrics.number_of_processed_events.inc(1)

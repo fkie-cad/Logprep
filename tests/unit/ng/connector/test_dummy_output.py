@@ -92,43 +92,37 @@ class TestDummyOutput(BaseOutputTestCase[DummyOutput]):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
         connector = Factory.create({"Test Instance Name": config})
-        connector.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         await connector.store_batch([event], target="custom_target")
-        assert connector.metrics.number_of_errors == 1
+        assert connector.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
 
     async def test_store_handles_errors_failed_event(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
         connector = Factory.create({"Test Instance Name": config})
-        connector.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         await connector.store_batch([event])
-        assert connector.metrics.number_of_errors == 1
+        assert connector.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
 
     async def test_store_batch_handles_errors_failed_event(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
         connector = Factory.create({"Test Instance Name": config})
-        connector.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         await connector.store_batch([event], target="custom_target")
-        assert connector.metrics.number_of_errors == 1
+        assert connector.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
 
     async def test_do_nothing_does_nothing(self):
         config = deepcopy(self.CONFIG)
         config.update({"do_nothing": True})
         connector = Factory.create({"Test Instance Name": config})
-        connector.metrics.number_of_errors = 0
-        connector.metrics.number_of_warnings = 0
-        connector.metrics.number_of_processed_events = 0
         event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         await connector.store_batch([event], target="custom_target")
-        assert connector.metrics.number_of_errors == 0
-        assert connector.metrics.number_of_warnings == 0
-        assert connector.metrics.number_of_processed_events == 0
+        assert connector.metrics.number_of_errors.value == 0
+        assert connector.metrics.number_of_warnings.value == 0
+        assert connector.metrics.number_of_processed_events.value == 0
         assert len(event.errors) == 0
         assert len(event.warnings) == 0

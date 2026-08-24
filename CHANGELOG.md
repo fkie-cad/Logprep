@@ -9,6 +9,7 @@
 * generic_adder: add support for templated http urls & content_field
 * generic_resolver: add content_field support
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
+* ng: support kafka input partition assignment strategy 'cooperative-sticky'
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
@@ -21,9 +22,14 @@
 * getter: remove noisy debug log
 * vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
 * tests: add context handling framework for `test_cases`
+* tests: add mock_env decorator support for async functions
 * ci: enforce CHANGELOG.md is updated
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
+* metrics: cache labeled child metric collectors
+* metrics: avoid heavy time context manager and hardwire passthrough metric collector methods on wrapper class
+* metrics: remove `__add__` interface from metrics and use the passthrough instead
+* metrics: consolidate `measure_time` and `measure_time_async` in single decorator
 
 ### Bugfix
 * chart: fix command handling

@@ -189,7 +189,7 @@ class HttpEndpoint(ABC):
 
     def collect_metrics(self):
         """Increment number of requests"""
-        self.metrics.number_of_http_requests += 1
+        self.metrics.number_of_http_requests.inc(1)
 
     async def get_data(self, req: falcon.asgi.Request) -> bytes:
         """returns the data from the request body
@@ -529,7 +529,7 @@ class HttpInput(Input):
 
     async def _get_event(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Returns the first message from the queue"""
-        self.metrics.message_backlog_size += self.messages.qsize()
+        self.metrics.message_backlog_size.set(self.messages.qsize())
         try:
             async with asyncio.timeout(timeout):
                 message = await self.messages.get()
@@ -590,7 +590,7 @@ class HttpInput(Input):
             try:
                 await asyncio.gather(*map(check_endpoint_status, self.health_endpoints))
             except (aiohttp.ClientError, TimeoutError):
-                self.metrics.number_of_errors += 1
+                self.metrics.number_of_errors.inc(1)
                 return False
 
         return True

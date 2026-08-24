@@ -436,43 +436,37 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
 
     async def test_metrics_count_bulk_requests_documents_and_rejections(self, mock_client):
         mock_client.bulk.side_effect = [_bulk_response(201, 429), _bulk_response(200)]
-        self.object.metrics.number_of_bulk_requests = 0
-        self.object.metrics.number_of_document_rejections = 0
-        self.object.metrics.documents_per_bulk_request = 0
         events = self._create_log_events(2)
 
         await self._setup_and_store(events)
 
-        assert self.object.metrics.number_of_bulk_requests == 2
-        assert self.object.metrics.number_of_document_rejections == 1
-        assert self.object.metrics.documents_per_bulk_request == 2 + 1
+        assert self.object.metrics.number_of_bulk_requests.value == 2
+        assert self.object.metrics.number_of_document_rejections.value == 1
+        assert self.object.metrics.documents_per_bulk_request.value == 2 + 1
 
     async def test_metrics_count_bytes_sent(self, mock_client):
         mock_client.bulk.return_value = _bulk_response(201)
-        self.object.metrics.number_of_bytes_sent = 0
         event = self._create_log_event({"message": "test message"})
 
         await self._setup_and_store([event])
 
         sent_body = mock_client.bulk.await_args.kwargs["body"]
-        assert self.object.metrics.number_of_bytes_sent == len(sent_body)
+        assert self.object.metrics.number_of_bytes_sent.value == len(sent_body)
 
     async def test_metrics_count_connection_failures(self, mock_client):
         mock_client.bulk.side_effect = [CONNECTION_ERROR, CONNECTION_ERROR, _bulk_response(201)]
-        self.object.metrics.number_of_connection_failures = 0
         event = self._create_log_event({"message": "test message"})
 
         await self._setup_and_store([event])
 
-        assert self.object.metrics.number_of_connection_failures == 2
+        assert self.object.metrics.number_of_connection_failures.value == 2
 
     async def test_metrics_count_serialization_errors(self):
-        self.object.metrics.number_of_serialization_errors = 0
         unserializable = self._create_log_event({"message": object()})
 
         await self._setup_and_store([unserializable])
 
-        assert self.object.metrics.number_of_serialization_errors == 1
+        assert self.object.metrics.number_of_serialization_errors.value == 1
 
     async def test_health_returns_true_on_success(self, mock_client):
         mock_client.cluster.health.return_value = {"status": "green"}
@@ -493,11 +487,10 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
             mock_error.assert_called()
 
     async def test_health_counts_metrics_on_failure(self, mock_client):
-        self.object.metrics.number_of_errors = 0
         mock_client.cluster.health.side_effect = SearchException
         await self.object.setup()
         assert not await self.object.health()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
 
     async def test_health_returns_false_on_cluster_status_not_green(self, mock_client):
         mock_client.cluster.health.return_value = {"status": "yellow"}

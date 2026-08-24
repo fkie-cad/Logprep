@@ -46,7 +46,7 @@ class InputError(LogprepException):
     """Base class for Input related exceptions."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
-        input_connector.metrics.number_of_errors += 1
+        input_connector.metrics.number_of_errors.inc(1)
         super().__init__(f"{self.__class__.__name__} in {input_connector.description}: {message}")
 
 
@@ -73,7 +73,7 @@ class InputWarning(LogprepException):
     """May be catched but must be displayed to the user/logged."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
-        input_connector.metrics.number_of_warnings += 1
+        input_connector.metrics.number_of_warnings.inc(1)
         super().__init__(f"{self.__class__.__name__} in {input_connector.description}: {message}")
 
 
@@ -213,7 +213,7 @@ class Input(Connector):
         event, raw_event = self._get_event(timeout)
         if event is None:
             return None
-        self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events.inc(1)
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
         try:

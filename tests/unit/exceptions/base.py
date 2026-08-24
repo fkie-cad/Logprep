@@ -29,7 +29,6 @@ class ExceptionBaseTest:
             raise self.exception(*self.exception_args)
 
     def test_metrics_counts(self):
-        setattr(self.object.metrics, self.counted_metric_name, 0)
         with pytest.raises(self.exception):
             raise self.exception(*self.exception_args)
-        assert getattr(self.object.metrics, self.counted_metric_name) == 1
+        assert getattr(self.object.metrics, self.counted_metric_name).value == 1

@@ -31,13 +31,12 @@ Example
             # enable.partition.eof
 """
 
+import asyncio
 import concurrent
-import functools
 import logging
-import os
 import typing
-from collections.abc import Iterator, Sequence
-from functools import partial
+from collections.abc import Iterable, Iterator, Sequence
+from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType  # pylint: disable=no-name-in-module
 
@@ -64,16 +63,14 @@ from logprep.ng.abc.input import (
     InputWarning,
 )
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
-from logprep.ng.connector.confluent_kafka.offset_commit_tracker import (
-    OffsetCommitTracker,
-)
+from logprep.util.environ import ENV_VARS
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
-    "client.id": "<<hostname>>",
     "auto.offset.reset": "earliest",
-    "session.timeout.ms": "6000",
+    "session.timeout.ms": "45000",
     "statistics.interval.ms": "30000",
+    "partition.assignment.strategy": "cooperative-sticky",
 }
 
 SPECIAL_OFFSETS = {
@@ -84,8 +81,37 @@ SPECIAL_OFFSETS = {
 }
 
 DEFAULT_RETURN = 0
+DEFAULT_MEMBER_ID = "MISSING_MEMBER_ID"
 
 logger = logging.getLogger("KafkaInput")
+
+
+@define(kw_only=True, slots=True)
+class _PartitionState:
+    """Offset bookkeeping, drain signalling and pre-bound metrics of one partition.
+
+    Registered on assignment, unregistered on revocation or loss.
+    """
+
+    next_expected_offset: int
+    """Offset to commit next. Everything below is acknowledged and gap free."""
+
+    last_dispatched_offset: int = field(default=-1)
+    """Last offset received from kafka and handed to the pipeline. Drain target for rebalancing."""
+
+    committable_offsets: set[int] = field(factory=set)
+    """Acknowledged offsets above `next_expected_offset`, possibly with gaps."""
+
+    current_offset_gauge: GaugeMetric
+    """`current_offsets` child, pre-bound to this topic/partition."""
+
+    committed_offset_gauge: GaugeMetric
+    """`committed_offsets` child, pre-bound to this topic/partition."""
+
+    @property
+    def is_drained(self) -> bool:
+        """True if every received offset is acknowledged."""
+        return self.next_expected_offset > self.last_dispatched_offset
 
 
 class ConfluentKafkaInput(Input):
@@ -102,6 +128,7 @@ class ConfluentKafkaInput(Input):
             )
         )
         """count of failed commits. Is filled by `_commit_callback`"""
+
         commit_success: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="count of successful commits.",
@@ -109,6 +136,7 @@ class ConfluentKafkaInput(Input):
             )
         )
         """count of successful commits. Is filled by `_commit_callback`"""
+
         current_offsets: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="current offsets of the consumer.",
@@ -117,6 +145,7 @@ class ConfluentKafkaInput(Input):
             )
         )
         """current offsets of the consumer. Is filled by `_get_raw_event`"""
+
         committed_offsets: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="committed offsets of the consumer.",
@@ -125,6 +154,24 @@ class ConfluentKafkaInput(Input):
             )
         )
         """committed offsets of the consumer. Is filled by `_commit_callback`"""
+
+        revoke_drain_timeouts: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="count of revocations whose drain timed out.",
+                name="confluent_kafka_input_revoke_drain_timeouts",
+            )
+        )
+        """count of revocations whose drain timed out. Is filled by `_revoke_callback`"""
+
+        revoked_messages_dropped: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="count of consumed messages dropped because their partition was revoked.",
+                name="confluent_kafka_input_revoked_messages_dropped",
+            )
+        )
+        """count of consumed messages dropped because their partition was revoked.
+           Is filled by `_get_raw_event`
+        """
 
         librdkafka_age: GaugeMetric = field(
             factory=lambda: GaugeMetric(
@@ -146,6 +193,7 @@ class ConfluentKafkaInput(Input):
         """Number of ops (callbacks, events, etc) waiting in queue for application
            to serve with rd_kafka_consume()
         """
+
         librdkafka_tx: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Total number of requests sent to Kafka brokers",
@@ -153,6 +201,7 @@ class ConfluentKafkaInput(Input):
             )
         )
         """Total number of requests sent to Kafka brokers"""
+
         librdkafka_tx_bytes: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Total number of bytes transmitted to Kafka brokers",
@@ -168,6 +217,7 @@ class ConfluentKafkaInput(Input):
             )
         )
         """Total number of responses received from Kafka brokers"""
+
         librdkafka_rx_bytes: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Total number of bytes received from Kafka brokers",
@@ -175,6 +225,7 @@ class ConfluentKafkaInput(Input):
             )
         )
         """Total number of bytes received from Kafka brokers"""
+
         librdkafka_rxmsgs: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description=(
@@ -187,6 +238,7 @@ class ConfluentKafkaInput(Input):
         """Total number of messages consumed, not including ignored messages
            (due to offset, etc), from Kafka brokers.
         """
+
         librdkafka_rxmsg_bytes: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description=(
@@ -205,6 +257,7 @@ class ConfluentKafkaInput(Input):
             )
         )
         """Time elapsed since last state change (milliseconds)."""
+
         librdkafka_cgrp_rebalance_age: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Time elapsed since last rebalance (assign or revoke) (milliseconds).",
@@ -212,6 +265,7 @@ class ConfluentKafkaInput(Input):
             )
         )
         """Time elapsed since last rebalance (assign or revoke) (milliseconds)."""
+
         librdkafka_cgrp_rebalance_cnt: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Total number of rebalance (assign or revoke).",
@@ -219,6 +273,7 @@ class ConfluentKafkaInput(Input):
             )
         )
         """Total number of rebalance (assign or revoke)."""
+
         librdkafka_cgrp_assignment_size: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Current assignment's partition count.",
@@ -292,12 +347,37 @@ class ConfluentKafkaInput(Input):
         Defaults to 200.
         """
 
-    __slots__ = ["_commit_tracker", "_consumer", "_executor", "_message_iter"]
+        revoke_drain_timeout: float = field(
+            validator=validators.instance_of(float),
+            converter=float,
+            default=120.0,
+        )
+        """
+        Maximum number of seconds a partition revocation waits for in-flight events to be
+        acknowledged before releasing the partitions anyway. Must stay well below
+        `max.poll.interval.ms`, and above the accumulated batch intervals of the pipeline.
+        Events still in flight when the timeout hits are reprocessed by the new owner.
+        Defaults to 120.0.
+        """
 
-    @property
+    __slots__ = [
+        "_consumer",
+        "_offsets_stored_signal",
+        "_executor",
+        "_member_id",
+        "_message_iter",
+        "_partitions",
+    ]
+
+    @cached_property
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
         return typing.cast(ConfluentKafkaInput.Config, self._config)
+
+    @cached_property
+    def _metrics(self) -> Metrics:
+        """Provides the properly typed metrics object"""
+        return typing.cast(ConfluentKafkaInput.Metrics, self.metrics)
 
     @property
     def _kafka_config(self) -> dict:
@@ -308,7 +388,7 @@ class ConfluentKafkaInput(Input):
         dict
             The kafka configuration.
         """
-        injected_config = {
+        forced_config = {
             "logger": logger,
             "enable.auto.offset.store": "false",
             "enable.auto.commit": "true",
@@ -317,15 +397,8 @@ class ConfluentKafkaInput(Input):
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
-        fqdn = getfqdn()
-        DEFAULTS.update({"client.id": fqdn})
-        DEFAULTS.update(
-            {
-                "group.instance.id": f"{fqdn.strip('.')}-"
-                f"Pipeline{self.pipeline_index}-pid{os.getpid()}"
-            }
-        )
-        return DEFAULTS | self.config.kafka_config | injected_config
+        id_defaults = {"client.id": ENV_VARS.get("POD_NAME") or getfqdn()}
+        return DEFAULTS | id_defaults | self.config.kafka_config | forced_config
 
     async def setup(self) -> None:
         """Set the confluent kafka input connector."""
@@ -337,6 +410,9 @@ class ConfluentKafkaInput(Input):
 
             self._consumer = AIOConsumer(self._kafka_config, executor=self._executor)
             self._message_iter: Iterator[Message] = iter([])
+            self._partitions: dict[int, _PartitionState] = {}
+            self._offsets_stored_signal = asyncio.Event()
+            self._member_id = DEFAULT_MEMBER_ID
 
             await self._consumer.subscribe(
                 [self.config.topic],
@@ -344,8 +420,6 @@ class ConfluentKafkaInput(Input):
                 on_revoke=self._revoke_callback,
                 on_lost=self._lost_callback,
             )
-
-            self._commit_tracker = OffsetCommitTracker(topic=self.config.topic)
         except KafkaException as error:
             raise FatalInputError.from_error(
                 self, error, "could not setup kafka consumer"
@@ -354,16 +428,12 @@ class ConfluentKafkaInput(Input):
         await super().setup()
 
     async def _error_callback(self, error: KafkaException) -> None:
-        """Callback for generic/global error events, these errors are typically
+        """
+        Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
         This callback is served upon calling client.consume()
-
-        Parameters
-        ----------
-        error : KafkaException
-            the error that occurred
         """
-        self.metrics.number_of_errors += 1
+        self._metrics.number_of_errors.inc(1)
         logger.error("%s: %s", self.description, error)
 
     async def _stats_callback(self, stats_raw: str) -> None:
@@ -379,25 +449,25 @@ class ConfluentKafkaInput(Input):
         """
 
         stats = self._decoder.decode(stats_raw)
-        self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
-        self.metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
-        self.metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
-        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
-        self.metrics.librdkafka_tx_bytes += stats.get("tx_bytes", DEFAULT_RETURN)
-        self.metrics.librdkafka_rxmsgs += stats.get("rxmsgs", DEFAULT_RETURN)
-        self.metrics.librdkafka_rxmsg_bytes += stats.get("rxmsg_bytes", DEFAULT_RETURN)
+        self._metrics.librdkafka_age.set(stats.get("age", DEFAULT_RETURN))
+        self._metrics.librdkafka_rx.set(stats.get("rx", DEFAULT_RETURN))
+        self._metrics.librdkafka_tx.set(stats.get("tx", DEFAULT_RETURN))
+        self._metrics.librdkafka_rx_bytes.set(stats.get("rx_bytes", DEFAULT_RETURN))
+        self._metrics.librdkafka_tx_bytes.set(stats.get("tx_bytes", DEFAULT_RETURN))
+        self._metrics.librdkafka_rxmsgs.set(stats.get("rxmsgs", DEFAULT_RETURN))
+        self._metrics.librdkafka_rxmsg_bytes.set(stats.get("rxmsg_bytes", DEFAULT_RETURN))
 
-        self.metrics.librdkafka_cgrp_stateage += stats.get("cgrp", {}).get(
-            "stateage", DEFAULT_RETURN
+        self._metrics.librdkafka_cgrp_stateage.set(
+            stats.get("cgrp", {}).get("stateage", DEFAULT_RETURN)
         )
-        self.metrics.librdkafka_cgrp_rebalance_age += stats.get("cgrp", {}).get(
-            "rebalance_age", DEFAULT_RETURN
+        self._metrics.librdkafka_cgrp_rebalance_age.set(
+            stats.get("cgrp", {}).get("rebalance_age", DEFAULT_RETURN)
         )
-        self.metrics.librdkafka_cgrp_rebalance_cnt += stats.get("cgrp", {}).get(
-            "rebalance_cnt", DEFAULT_RETURN
+        self._metrics.librdkafka_cgrp_rebalance_cnt.set(
+            stats.get("cgrp", {}).get("rebalance_cnt", DEFAULT_RETURN)
         )
-        self.metrics.librdkafka_cgrp_assignment_size += stats.get("cgrp", {}).get(
-            "assignment_size", DEFAULT_RETURN
+        self._metrics.librdkafka_cgrp_assignment_size.set(
+            stats.get("cgrp", {}).get("assignment_size", DEFAULT_RETURN)
         )
 
     def _describe(self) -> str:
@@ -440,20 +510,96 @@ class ConfluentKafkaInput(Input):
         partition = message.partition()
         offset = message.offset()
 
-        if message_value is None or partition is None or offset is None:
-            logger.warning("Unexpected empty input message or empty metadata. Skipping")
+        if partition is None or offset is None:
+            # only unpartitioned/invalid messages, which are error events handled above
+            logger.warning("Message without partition or offset. Skipping")
             return None
 
-        self.metrics.current_offsets.add_with_labels(
-            offset + 1, ConfluentKafkaInput._message_labels(self.config.topic, partition)
-        )
+        state = self._partitions.get(partition)
+        if state is None:
+            # consume() hands out messages of partitions revoked during the very same call,
+            # see confluent-kafka-python#1013. They belong to the new owner now.
+            self._metrics.revoked_messages_dropped.inc(1)
+            return None
+
+        if message_value is None:
+            # a null value never enters the pipeline, so nothing would ever acknowledge
+            # this offset and it would block the commit watermark forever
+            logger.warning("Unexpected empty input message. Skipping")
+            state.committable_offsets.add(offset)
+            return None
+
+        state.last_dispatched_offset = max(offset, state.last_dispatched_offset)
+        state.current_offset_gauge.set(offset + 1)
 
         return message_value, ConfluentKafkaInputMeta(partition=partition, offset=offset)
 
-    @staticmethod
-    @functools.lru_cache(maxsize=64)
-    def _message_labels(topic: str, partition: int) -> dict[str, str]:
-        return {"description": f"topic: {topic} - partition: {partition}"}
+    def _register_partition(self, partition: int, offset: int) -> None:
+        """Start tracking `partition`, resuming at `offset` (as returned by `committed`)."""
+
+        labels = {"description": f"topic: {self.config.topic} - partition: {partition}"}
+        state = _PartitionState(
+            next_expected_offset=offset,
+            current_offset_gauge=self._metrics.current_offsets.child_collector(labels),
+            committed_offset_gauge=self._metrics.committed_offsets.child_collector(labels),
+        )
+        state.current_offset_gauge.set(offset)
+        state.committed_offset_gauge.set(offset)
+        self._partitions[partition] = state
+
+    def _unregister_partition(self, partition: int) -> None:
+        """Stop tracking `partition`. Offsets not yet stored are lost."""
+
+        state = self._partitions.pop(partition, None)
+        if state is not None and state.committable_offsets:
+            logger.warning(
+                "offsets %s of partition %d were ready to commit and are now lost",
+                sorted(state.committable_offsets),
+                partition,
+            )
+
+    def _is_drained(self, partitions: Iterable[int]) -> bool:
+        """True if every dispatched offset of `partitions` is acknowledged."""
+
+        states = self._partitions
+        return all(p not in states or states[p].is_drained for p in partitions)
+
+    def _advance_offsets(self, metadata: Iterable[ConfluentKafkaInputMeta]) -> list[TopicPartition]:
+        """Feed acknowledged offsets in and return the gap free offsets to store."""
+
+        touched: set[int] = set()
+        for item in metadata:
+            state = self._partitions.get(item.partition)
+            if state is None:
+                logger.warning(
+                    "received offset for unregistered partition: offset=%d, partition=%d",
+                    item.offset,
+                    item.partition,
+                )
+                continue
+            if item.offset < state.next_expected_offset:
+                logger.warning(
+                    "offset %d already committed (<%d)", item.offset, state.next_expected_offset
+                )
+                continue
+            state.committable_offsets.add(item.offset)
+            touched.add(item.partition)
+
+        offsets: list[TopicPartition] = []
+        for partition in touched:
+            state = self._partitions[partition]
+            committable = state.committable_offsets
+            next_offset = state.next_expected_offset
+            while next_offset in committable:
+                next_offset += 1
+            if next_offset == state.next_expected_offset:
+                continue
+            committable.difference_update(range(state.next_expected_offset, next_offset))
+            state.next_expected_offset = next_offset
+            offsets.append(
+                TopicPartition(self.config.topic, partition=partition, offset=next_offset)
+            )
+        return offsets
 
     async def _get_event(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Parse the raw document from Kafka into a json"""
@@ -495,6 +641,8 @@ class ConfluentKafkaInput(Input):
         except KafkaException as error:
             raise FatalInputError.from_error(self, error, "failed to get committed offsets")
 
+        self._member_id = await self._get_memberid()
+
         for tp in topic_partitions:
             try:
                 offset = next(p.offset for p in committed_offsets if p.partition == tp.partition)
@@ -510,37 +658,64 @@ class ConfluentKafkaInput(Input):
 
             logger.info(
                 "%s was assigned to topic: %s | partition %s | offset %d",
-                await self._get_memberid(),
+                self._member_id,
                 tp.topic,
                 tp.partition,
                 offset,
             )
 
-            labels = ConfluentKafkaInput._message_labels(self.config.topic, tp.partition)
-            self.metrics.committed_offsets.add_with_labels(offset, labels)
-            self.metrics.current_offsets.add_with_labels(offset, labels)
-
-            self._commit_tracker.register_partition(tp.partition, offset)
+            self._register_partition(tp.partition, offset)
 
     async def _revoke_callback(
         self, _: AIOConsumer, topic_partitions: list[TopicPartition]
     ) -> None:
-        for tp in topic_partitions:
-            self.metrics.number_of_warnings += 1
-            member_id = await self._get_memberid()
+        """Hold the partitions until their in-flight events are acknowledged.
+
+        Runs inside `consume()`, so no new messages are dispatched while it waits and the
+        rest of the pipeline keeps draining. Returning releases the partitions, therefore
+        offsets not stored by then are reprocessed by the new owner.
+        """
+
+        partitions = [tp.partition for tp in topic_partitions]
+        self._metrics.number_of_warnings.inc(len(partitions))
+
+        try:
             logger.warning(
-                "%s to be revoked from topic: %s | partition %s", member_id, tp.topic, tp.partition
+                "%s to be revoked from topic: %s | partitions %s",
+                self._member_id,
+                self.config.topic,
+                partitions,
             )
-            self._commit_tracker.unregister_partition(tp.partition)
+            async with asyncio.timeout(self.config.revoke_drain_timeout):
+                while not self._is_drained(partitions):
+                    # no await between clear and wait, so no acknowledgement is missed
+                    self._offsets_stored_signal.clear()
+                    await self._offsets_stored_signal.wait()
+        except TimeoutError:
+            self._metrics.revoke_drain_timeouts.inc(1)
+            logger.error(
+                "drain timeout of %.1fs exceeded while revoking partitions %s, "
+                "in-flight events will be reprocessed by the new owner",
+                self.config.revoke_drain_timeout,
+                partitions,
+            )
+        finally:
+            # also on cancellation, otherwise the partitions leak
+            for partition in partitions:
+                self._unregister_partition(partition)
 
     async def _lost_callback(self, _: AIOConsumer, topic_partitions: list[TopicPartition]) -> None:
-        for tp in topic_partitions:
-            self.metrics.number_of_warnings += 1
-            member_id = await self._get_memberid()
-            logger.warning(
-                "%s has lost topic: %s | partition %s", member_id, tp.topic, tp.partition
-            )
-            self._commit_tracker.unregister_partition(tp.partition)
+        # the assignment is already gone, draining would neither commit nor help
+        partitions = [tp.partition for tp in topic_partitions]
+        self._metrics.number_of_warnings.inc(len(partitions))
+        for partition in partitions:
+            self._unregister_partition(partition)
+        logger.warning(
+            "%s has lost topic: %s | partitions %s",
+            self._member_id,
+            self.config.topic,
+            partitions,
+        )
 
     async def _commit_callback(
         self, error: KafkaException | None, topic_partitions: list[TopicPartition]
@@ -557,32 +732,32 @@ class ConfluentKafkaInput(Input):
         """
 
         if error is not None:
-            self.metrics.commit_failures += 1
+            self._metrics.commit_failures.inc(1)
             raise InputWarning.from_error(self, error, "Could not commit offsets")
-        self.metrics.commit_success += 1
+        self._metrics.commit_success.inc(1)
         for tp in topic_partitions:
+            state = self._partitions.get(tp.partition)
+            if state is None:
+                continue
             offset = tp.offset
             if offset in SPECIAL_OFFSETS:
                 offset = 0
-            labels = ConfluentKafkaInput._message_labels(self.config.topic, tp.partition)
-            self.metrics.committed_offsets.add_with_labels(offset, labels)
+            state.committed_offset_gauge.set(offset)
 
-    async def _get_memberid(self) -> str | None:
+    async def _get_memberid(self) -> str:
+        """
+        Fetches the memberid and ensures a string is returned (default value as fallback).
+        """
         try:
+            memberid = None
             if self._consumer is not None:
-                return self._consumer._consumer.memberid()  # pylint: disable=protected-access
+                memberid = self._consumer._consumer.memberid()  # pylint: disable=protected-access
         except RuntimeError as error:
             logger.error("Failed to retrieve member ID: %s", error)
-        return None
+        return memberid or DEFAULT_MEMBER_ID
 
     async def health(self) -> bool:  # type: ignore[override]
-        """Check the health of the component.
-
-        Returns
-        -------
-        bool
-            True if the component is healthy, False otherwise.
-        """
+        """Check the health of the component."""
 
         if not await super().health():
             return False
@@ -594,28 +769,30 @@ class ConfluentKafkaInput(Input):
                 return False
         except KafkaException as error:
             logger.error("Health check failed: %s", error)
-            self.metrics.number_of_errors += 1
+            self._metrics.number_of_errors.inc(1)
             return False
         return True
 
     async def acknowledge(self, events: Sequence[AcknowledgableEvent]):
-        commit_offsets = list(
-            self._commit_tracker.advance_offsets(
-                typing.cast(ConfluentKafkaInputMeta, event.input_meta) for event in events
-            )
+        commit_offsets = self._advance_offsets(
+            typing.cast(ConfluentKafkaInputMeta, event.input_meta) for event in events
         )
 
-        if commit_offsets:
-            try:
-                logger.debug("storing offsets for %d partitions", len(commit_offsets))
-                await self._consumer.store_offsets(offsets=commit_offsets)
-            except KafkaException as error:
-                # only a warning as the next call will generally store higher offsets
-                raise InputWarning.from_error(
-                    self,
-                    error,
-                    message=f"could not store offsets ({', '.join(map(str, commit_offsets))})",
-                ) from error
+        if not commit_offsets:
+            return
+
+        try:
+            logger.debug("storing offsets for %d partitions", len(commit_offsets))
+            await self._consumer.store_offsets(offsets=commit_offsets)
+        except KafkaException as error:
+            # only a warning as the next call will generally store higher offsets
+            raise InputWarning.from_error(
+                self,
+                error,
+                message=f"could not store offsets ({', '.join(map(str, commit_offsets))})",
+            ) from error
+        finally:
+            self._offsets_stored_signal.set()
 
     async def shut_down(self) -> None:
         """Shut down the confluent kafka input connector and cleanup resources."""

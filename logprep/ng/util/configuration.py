@@ -916,7 +916,7 @@ class Configuration:
             self._set_attributes_from_configs()
             self._set_version_info_metric()
             self.pipeline = new_config.pipeline
-            self._metrics.number_of_config_refreshes += 1
+            self._metrics.number_of_config_refreshes.inc(1)
             logger.info("Successfully reloaded configuration")
             if self._config_failure:
                 logger.info("Config refresh recovered from failing source")
@@ -926,7 +926,7 @@ class Configuration:
         except ConfigGetterException as error:
             self._config_failure = True
             logger.warning("Failed to load configuration: %s", error)
-            self._metrics.number_of_config_refresh_failures += 1
+            self._metrics.number_of_config_refresh_failures.inc(1)
             if self.config_refresh_interval is not None:
                 self._set_config_refresh_interval(int(self.config_refresh_interval / 4))
         except InvalidConfigurationErrors as error:
@@ -934,14 +934,14 @@ class Configuration:
             errors = [*errors, *error.errors]
         if errors:
             logger.error("Failed to reload configuration: %s", errors)
-            self._metrics.number_of_config_refresh_failures += 1
+            self._metrics.number_of_config_refresh_failures.inc(1)
 
     def _set_config_refresh_interval(self, config_refresh_interval: int | None) -> None:
         if config_refresh_interval is None:
             return
         config_refresh_interval = max(config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL)
         self.config_refresh_interval = config_refresh_interval
-        self._metrics.config_refresh_interval += config_refresh_interval
+        self._metrics.config_refresh_interval.set(config_refresh_interval)
 
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, fields(self.__class__)):
