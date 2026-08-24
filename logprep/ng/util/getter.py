@@ -718,6 +718,8 @@ class RefreshableGetter(Getter, ABC):
     @classmethod
     async def refresh(cls) -> None:
         """Run pending refresh schedulers and clean up timed-out targets"""
+        schedulers: list[AsyncScheduler] = []
+
         for target, shared_target_data in list(cls._target_to_data_caches.items()):
             if shared_target_data.timed_out:
                 update_task = shared_target_data.update_task
@@ -739,7 +741,10 @@ class RefreshableGetter(Getter, ABC):
                 continue
 
             if shared_target_data.scheduler:
-                await shared_target_data.scheduler.run_pending()
+                schedulers.append(shared_target_data.scheduler)
+
+        if schedulers:
+            await asyncio.gather(*(scheduler.run_pending() for scheduler in schedulers))
 
     @classmethod
     def reset(cls, cleanup: bool = False):

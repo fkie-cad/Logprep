@@ -709,3 +709,47 @@ class TestRefreshableGetter:
 
         assert session_kwargs
         assert session_kwargs[0]["trust_env"] is True
+
+    async def test_refresh_runs_target_schedulers_concurrently(self):
+        first_getter = HttpGetter(
+            protocol="http",
+            target="http://example.com/first",
+        )
+        second_getter = HttpGetter(
+            protocol="http",
+            target="http://example.com/second",
+        )
+
+        first_started = asyncio.Event()
+        second_started = asyncio.Event()
+        allow_first_to_finish = asyncio.Event()
+
+        async def run_first():
+            first_started.set()
+            await allow_first_to_finish.wait()
+
+        async def run_second():
+            second_started.set()
+
+        first_scheduler = mock.Mock()
+        first_scheduler.run_pending = mock.AsyncMock(side_effect=run_first)
+
+        second_scheduler = mock.Mock()
+        second_scheduler.run_pending = mock.AsyncMock(side_effect=run_second)
+
+        first_getter.scheduler = first_scheduler
+        second_getter.scheduler = second_scheduler
+
+        refresh_task = asyncio.create_task(RefreshableGetter.refresh())
+
+        await first_started.wait()
+        await asyncio.sleep(0)
+
+        try:
+            assert second_started.is_set()
+        finally:
+            allow_first_to_finish.set()
+            await refresh_task
+
+        first_scheduler.run_pending.assert_awaited_once()
+        second_scheduler.run_pending.assert_awaited_once()
