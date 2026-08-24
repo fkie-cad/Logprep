@@ -931,7 +931,9 @@ class HttpGetter(RefreshableGetter):
             headers["If-None-Match"] = self.hash
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(
+                trust_env=True,
+            ) as session:
                 for attempt in range(self._MAX_RETRIES + 1):
                     try:
                         async with session.get(
