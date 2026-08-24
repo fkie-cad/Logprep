@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 from unittest import mock
 
@@ -475,6 +476,22 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
             self.object._city_db.city,
             "8.8.8.8",
         )
+
+    async def test_shutdown_closes_city_database(self):
+        city_db = mock.Mock()
+        self.object._city_db = city_db
+
+        with mock.patch(
+            "logprep.ng.processor.geoip_enricher.processor.asyncio.to_thread",
+            new=mock.AsyncMock(),
+        ) as to_thread:
+            await self.object.shut_down()
+
+        to_thread.assert_awaited_once_with(city_db.close)
+
+    async def test_shutdown_without_initialized_city_database(self):
+        instance = self._create_test_instance(deepcopy(self.CONFIG))
+        await instance.shut_down()
 
     async def test_has_async_io(self):
         assert await self.object.has_asyncio() is True

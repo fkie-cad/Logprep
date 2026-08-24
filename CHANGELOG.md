@@ -78,6 +78,7 @@
 * ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
 * ng: roll back initialized pipeline components when pipeline manager setup fails
+* ng: close GeoIP database readers during processor shutdown
 
 ## 20.0.0
 ### Breaking
