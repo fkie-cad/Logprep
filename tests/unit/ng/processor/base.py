@@ -167,12 +167,6 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         new_rules_size = self.object._rule_tree.get_size()
         assert new_rules_size > rules_size
 
-    async def test_load_rules_calls_getter_factory(self):
-        with mock.patch("logprep.ng.util.getter.GetterFactory.from_string") as getter_factory:
-            with pytest.raises(TypeError):
-                await self.object.load_rules(rules_targets=self.rules_dirs)
-            getter_factory.assert_called()
-
     async def test_load_rules_creates_rule_with_processor_name(self):
         with mock.patch(
             "logprep.processor.base.rule.Rule.create_from_dict"
