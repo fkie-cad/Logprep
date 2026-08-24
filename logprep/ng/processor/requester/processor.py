@@ -38,7 +38,6 @@ import json
 import ssl
 import typing
 from dataclasses import dataclass
-from os import PathLike
 from urllib.parse import urlparse
 
 import aiohttp
@@ -60,7 +59,7 @@ TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
 @dataclass(frozen=True, slots=True)
 class RequesterResponse:
-    """Response data required for requester result handling."""
+    """Response data required for requester result handling"""
 
     content: bytes
 
@@ -74,7 +73,7 @@ class Requester(FieldManager):
     _session: aiohttp.ClientSession | None = None
 
     async def setup(self) -> None:
-        """Set up the requester HTTP client session."""
+        """Set up the requester HTTP client session"""
         await super().setup()
 
         previous_session = self._session
@@ -88,7 +87,7 @@ class Requester(FieldManager):
             await previous_session.close()
 
     async def shut_down(self) -> None:
-        """Close the requester HTTP client session."""
+        """Close the requester HTTP client session"""
         if self._session is not None:
             await self._session.close()
             self._session = None
@@ -141,7 +140,7 @@ class Requester(FieldManager):
     async def _request(
         self, event: dict, rule: RequesterRule, kwargs: dict
     ) -> RequesterResponse | None:
-        """Perform an asynchronous HTTP request."""
+        """Perform an asynchronous HTTP request"""
         if self._session is None:
             raise RuntimeError("Requester HTTP client session is not initialized")
 
