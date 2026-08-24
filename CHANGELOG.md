@@ -83,6 +83,7 @@
 * ng: harden Requester setup against repeated initialization
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
 * ng: roll back initialized pipeline components when pipeline manager setup fails
+* ng: close GeoIP database readers during processor shutdown
 * ng: clean up shared getter update tasks after canceled waiters complete
 * ng: prevent running getter updates from recreating removed shared target state
 

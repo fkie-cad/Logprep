@@ -170,6 +170,16 @@ class GeoipEnricher(FieldManager):
             overwrite_target=rule.overwrite_target,
         )
 
+    async def shut_down(self) -> None:
+        """Close the GeoIP database and shut down the processor"""
+        city_db = getattr(self, "_city_db", None)
+
+        if city_db is not None:
+            await asyncio.to_thread(city_db.close)
+            del self._city_db
+
+        await super().shut_down()
+
     async def has_asyncio(self) -> bool:
         """Return whether the processor performs asynchronous I/O operations."""
         return True
