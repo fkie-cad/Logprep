@@ -29,6 +29,8 @@
 * ng: offload GeoIP database lookups from the async event loop
 * ng: initialize pseudonymizer public keys asynchronously during setup
 * ng: classify processors with asynchronous I/O during event processing correctly
+* ng: offload credentials file validation from the asynchronous event loop
+* ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
 * ng: make getter-backed setup and processing asynchronous for `geoip_enricher`, `grokker`, `requester`, `amides`, `generic_adder`, `list_comparison`, `network_comparison`, `selective_extractor`, `pseudonymizer`, and `template_replacer`
 * filter: add support for `*` (open boundary) in range expressions
 * filter: allow mixed numeric range boundaries and type coercion for range matching
