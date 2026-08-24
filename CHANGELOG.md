@@ -27,6 +27,7 @@
   - `generic_adder`, `generic_resolver`, `list_comparison`, `network_comparison`
   - `selective_extractor`, `pseudonymizer`, `template_replacer`
 * ng: offload GeoIP database lookups from the async event loop
+* ng: make domain resolver DNS lookups non-blocking
 * ng: initialize pseudonymizer public keys asynchronously during setup
 * ng: classify processors with asynchronous I/O during event processing correctly
 * ng: offload credentials file validation from the asynchronous event loop
@@ -55,6 +56,9 @@
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
 * tests: disable unused WebSocket support in the asynchronous HTTP server
+* ng: offload credentials file validation from the asynchronous event loop
+* ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
+* ng: improve asynchronous refreshable getter scheduling and isolate refresh callback failures
 * grokker: improve performance by stopping on first matching expression
 
 ### Bugfix
@@ -77,11 +81,18 @@
 * ng: avoid duplicate getter refreshes while executing refresh callbacks
 * ng: share concurrent getter cache updates to avoid duplicate requests for the same target
 * ng: make processor rule tree setup atomic and safe for repeated initialization
-* ng: make domain resolver DNS lookups non-blocking
 * ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
 * ng: roll back initialized pipeline components when pipeline manager setup fails
 * ng: close GeoIP database readers during processor shutdown
+
+### Bugfix
+* chart: fix command handling
+* generic_adder: allow None as valid input via `add`
+* generic_resolver: avoid sharing mutable additions between rule configurations
+* ng: fix input timeout to also accept int parameters
+* ng: fix `http_input` `collect_meta` leading to shared dicts between events
+* ng: fix error output structure to stay consistent with non-ng
 
 ## 20.0.0
 ### Breaking

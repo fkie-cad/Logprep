@@ -8,7 +8,6 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-import responses
 from aiohttp import web
 
 from logprep.factory import Factory
