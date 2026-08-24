@@ -563,11 +563,9 @@ class TestRefreshableGetter:
 
             allow_update_to_finish.set()
 
-            with pytest.raises(asyncio.CancelledError):
-                await refresh_task
+            await refresh_task
 
-            await asyncio.sleep(0)
-
+            assert refresh_task.cancelled() is False
             assert getter.target not in RefreshableGetter._target_to_data_caches
 
     async def test_refresh_keeps_timed_out_target_while_update_is_running(self):
@@ -753,3 +751,43 @@ class TestRefreshableGetter:
 
         first_scheduler.run_pending.assert_awaited_once()
         second_scheduler.run_pending.assert_awaited_once()
+
+    async def test_target_cleanup_does_not_cancel_global_refresh(self):
+        getter = HttpGetter(
+            protocol="http",
+            target="http://example.com/data",
+        )
+
+        shared = getter.shared
+        shared.initialized = True
+
+        update_started = asyncio.Event()
+        allow_update_to_finish = asyncio.Event()
+
+        async def update_cache_once(_):
+            update_started.set()
+            await allow_update_to_finish.wait()
+            return True
+
+        scheduler = mock.Mock()
+        scheduler.run_pending = mock.AsyncMock(side_effect=getter._refresh)
+        shared.scheduler = scheduler
+
+        with mock.patch.object(
+            HttpGetter,
+            "_update_cache_once",
+            autospec=True,
+            side_effect=update_cache_once,
+        ):
+            refresh_task = asyncio.create_task(RefreshableGetter.refresh())
+
+            await update_started.wait()
+
+            RefreshableGetter._discard_target(
+                getter.target,
+                shared,
+            )
+
+            await refresh_task
+
+        assert getter.target not in RefreshableGetter._target_to_data_caches
