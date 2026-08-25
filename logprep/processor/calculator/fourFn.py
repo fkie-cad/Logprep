@@ -13,8 +13,10 @@ Reformatted to latest pypyparsing features, support multiple and variable args t
 Copyright 2003-2019 by Paul McGuire
 """
 
+import abc
 import math
 import operator
+from typing import Protocol, Sequence, TypeAlias
 
 from pyparsing import (
     CaselessKeyword,
@@ -23,6 +25,7 @@ from pyparsing import (
     Group,
     Literal,
     Optional,
+    ParseResults,
     Regex,
     Suppress,
     Word,
@@ -65,6 +68,180 @@ fn = {
 }
 
 
+class ASTDescriptionContext(Protocol):
+    def describe(self, node: "ASTNode", *children: "ASTNode") -> None: ...
+
+
+NodeId: TypeAlias = int
+NodeDesc: TypeAlias = str
+
+
+class GraphVizGenerator(ASTDescriptionContext):
+    def __init__(self):
+        self.nodes: dict[NodeId, NodeDesc] = {}
+        self.links: list[tuple[NodeId, NodeId]] = []
+
+    def describe(self, node, *children):
+        self.nodes[id(node)] = repr(node)
+        self.links.extend((id(node), id(child)) for child in children)
+
+    def get_graph_viz(self) -> str:
+
+        def _node_ref(node_id: NodeId) -> str:
+            return f"n{node_id}"
+
+        return "\n".join(
+            ["digraph {"]
+            + [
+                f'\t{_node_ref(node_id)} [label="{node_desc}"]'
+                for node_id, node_desc in self.nodes.items()
+            ]
+            + [
+                f"\t{_node_ref(parent_id)} -> {_node_ref(child_id)}"
+                for parent_id, child_id in self.links
+            ]
+            + ["}"]
+        )
+
+
+class ASTNode(abc.ABC):
+    def write_description(self, context: ASTDescriptionContext) -> None: ...
+
+
+class TerminalASTNode(ASTNode):
+    def __init__(self, value: str):
+        self.value = value
+
+    def write_description(self, context):
+        return context.describe(self)
+
+    def __repr__(self):
+        return f"<value {self.value !r}>"
+
+
+class CompositeASTNode(ASTNode):
+    def __init__(self, operation: str, children: Sequence[ASTNode]):
+        self.operation = operation
+        self.children = children
+
+    def write_description(self, context):
+        context.describe(self, *self.children)
+        for child in self.children:
+            child.write_description(context)
+
+    def __repr__(self):
+        return f"<op {self.operation !r}>"
+
+
+def build_terminal(x):
+    assert len(x) == 1
+    assert isinstance(x[0], str)
+    return TerminalASTNode(x[0])
+
+
+def build_atom(x):
+    if len(x) == 1:
+        if isinstance(x[0], ASTNode):
+            return x[0]
+        assert isinstance(x[0], ParseResults)
+        assert len(x[0]) == 1 and isinstance(x[0][0], ASTNode)
+        return x[0][0]
+    assert len(x) == 2
+    assert x[0] in ("+", "-"), x
+    assert isinstance(x[1], ASTNode)
+    if x[0] == "-":
+        return CompositeASTNode("-", [x[1]])
+    return x[1]
+
+
+def build_fn(x):
+    if len(x) == 1:
+        assert isinstance(x[0], ASTNode)
+        return x[0]
+    assert len(x) == 2, x
+    assert isinstance(x[0], str)
+    assert isinstance(x[1], ParseResults)
+    assert all(isinstance(y, ASTNode) for y in x[1]), [type(i) for i in x[1]]
+    return CompositeASTNode(x[0], x[1])
+
+
+def build_op(x):
+    if len(x) == 1:
+        assert isinstance(x[0], ASTNode)
+        return x[0]
+    assert len(x) == 3, x
+    assert isinstance(x[0], ASTNode)
+    assert isinstance(x[1], str)
+    assert isinstance(x[2], ASTNode)
+    return CompositeASTNode(x[1], [x[0], x[2]])
+
+
+def setup_bnf() -> Forward:
+    """
+    expop                 :: '^'
+    multop                :: '*' | '/'
+    addop                 :: '+' | '-'
+    comparisonop          :: '>' | '<' | '>=' | '<=' | '==' | '!='
+    integer               :: ['+' | '-'] '0'..'9'+
+    atom                  :: PI | E | real | fn '(' comparison_expr ')' | '(' comparison_expr ')'
+    power_expr            :: atom [expop power_expr]*
+    multiplicative_expr   :: power_expr [multop power_expr]*
+    additive_expr         :: multiplicative_expr [addop multiplicative_expr]*
+    comparison_expr       :: additive_expr [comparisonop additive_expr]
+    """
+
+    bnr = Forward()
+
+    # use CaselessKeyword for e and pi, to avoid accidentally matching
+    # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
+    # and CaselessKeyword only match whole words
+    e = CaselessKeyword("E")
+    e.set_parse_action(build_terminal)
+
+    pi = CaselessKeyword("PI")
+    pi.set_parse_action(build_terminal)
+    # fnumber = Combine(Word("+-"+nums, nums) +
+    #                    Optional("." + Optional(Word(nums))) +
+    #                    Optional(e + Word("+-"+nums, nums)))
+    # or use provided pyparsing_common.number, but convert back to str:
+    # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
+    fnumber = Regex(r"[+-]?[a-zA-Z0-9]+(?:\.\d*)?(?:[eE][+-]?\d+)?")
+    fnumber.set_parse_action(build_terminal)
+    ident = Word(alphas, alphanums + "_$")
+    plus, minus, mult, div = map(Literal, "+-*/")
+    lpar, rpar = map(Suppress, "()")
+    addop = plus | minus
+    multop = mult | div
+    expop = Literal("^")
+    comparisonop = one_of(">= <= == != > <")
+
+    expr_list = DelimitedList(Group(bnr))
+
+    fn_call = ident + lpar - expr_list + rpar
+    fn_call.set_parse_action(build_fn)
+    atom = addop[...] + ((fn_call | pi | e | fnumber | ident) | Group(lpar + bnr + rpar))
+    atom.set_parse_action(build_atom)
+    # A Forward declaration is required because the power expression recursively
+    # references itself on the right-hand side of the exponent operator.
+    # By defining exponentiation as "atom [ ^ power_expression ]..." instead of
+    # "atom [ ^ atom ]...", exponents are evaluated from right to left:
+    # 2^3^2 = 2^(3^2), not (2^3)^2.
+    power_expr = Forward()
+    power_expr <<= atom + (expop + power_expr)[...]
+
+    multiplicative_expr = power_expr + (multop + power_expr)[...]
+
+    additive_expr = multiplicative_expr + (addop + multiplicative_expr)[...]
+
+    # Optional allows at most one comparison; chained comparisons are not supported.
+    comparison_expr = additive_expr + Optional(comparisonop + additive_expr)
+    comparison_expr.add_parse_action(build_op)
+
+    bnr <<= comparison_expr
+
+    return bnr
+
+
 class BNF(Forward):
     """
     expop                 :: '^'
@@ -92,6 +269,7 @@ class BNF(Forward):
     # or use provided pyparsing_common.number, but convert back to str:
     # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
     fnumber = Regex(r"[+-]?[a-zA-Z0-9]+(?:\.\d*)?(?:[eE][+-]?\d+)?")
+
     ident = Word(alphas, alphanums + "_$")
 
     plus, minus, mult, div = map(Literal, "+-*/")
@@ -201,3 +379,14 @@ class BNF(Forward):
                 return float(op)
             except ValueError:
                 return op
+
+
+if __name__ == "__main__":
+    parser = setup_bnf()
+
+    parse_result = parser.parse_string("abs((2+3)*-pi) > abs( sin( 4 *2) )", parse_all=True)[0]
+
+    context = GraphVizGenerator()
+    assert isinstance(parse_result, ASTNode)
+    parse_result.write_description(context)
+    print(context.get_graph_viz())
