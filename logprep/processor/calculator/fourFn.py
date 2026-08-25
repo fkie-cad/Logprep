@@ -16,7 +16,7 @@ Copyright 2003-2019 by Paul McGuire
 import abc
 import math
 import operator
-from typing import Protocol, Sequence, TypeAlias
+from typing import Any, Protocol, Sequence, TypeAlias
 
 from pyparsing import (
     CaselessKeyword,
@@ -25,6 +25,7 @@ from pyparsing import (
     Group,
     Literal,
     Optional,
+    ParserElement,
     ParseResults,
     Regex,
     Suppress,
@@ -107,6 +108,8 @@ class GraphVizGenerator(ASTDescriptionContext):
 class ASTNode(abc.ABC):
     def write_description(self, context: ASTDescriptionContext) -> None: ...
 
+    def evaluate(self) -> Any: ...
+
 
 class TerminalASTNode(ASTNode):
     def __init__(self, value: str):
@@ -118,6 +121,13 @@ class TerminalASTNode(ASTNode):
     def __repr__(self):
         return f"<value {self.value !r}>"
 
+    def evaluate(self):
+        if self.value == "PI":
+            return math.pi  # 3.1415926535
+        if self.value == "E":
+            return math.e  # 2.718281828
+        return float(self.value)
+
 
 class CompositeASTNode(ASTNode):
     def __init__(self, operation: str, children: Sequence[ASTNode]):
@@ -128,6 +138,16 @@ class CompositeASTNode(ASTNode):
         context.describe(self, *self.children)
         for child in self.children:
             child.write_description(context)
+
+    def evaluate(self):
+        if self.operation == "unary -":
+            assert len(self.children) == 1
+            return -self.children[0].evaluate()
+
+        op = opn.get(self.operation) or fn.get(self.operation)
+        if not op:
+            raise Exception(f"unkown op {self.operation !r}")
+        return op(*(child.evaluate() for child in self.children))
 
     def __repr__(self):
         return f"<op {self.operation !r}>"
@@ -150,7 +170,7 @@ def build_atom(x):
     assert x[0] in ("+", "-"), x
     assert isinstance(x[1], ASTNode)
     if x[0] == "-":
-        return CompositeASTNode("-", [x[1]])
+        return CompositeASTNode("unary -", [x[1]])
     return x[1]
 
 
@@ -176,7 +196,7 @@ def build_op(x):
     return CompositeASTNode(x[1], [x[0], x[2]])
 
 
-def setup_bnf() -> Forward:
+def setup_bnf() -> ParserElement:
     """
     expop                 :: '^'
     multop                :: '*' | '/'
@@ -384,8 +404,7 @@ class BNF(Forward):
 if __name__ == "__main__":
     parser = setup_bnf()
 
-    parse_result = parser.parse_string("abs((2+3)*-pi) > abs( sin( 4 *2) )", parse_all=True)[0]
-
+    parse_result = parser.parse_string("1<=1", parse_all=True)[0]
     context = GraphVizGenerator()
     assert isinstance(parse_result, ASTNode)
     parse_result.write_description(context)

@@ -25,9 +25,9 @@ Processor Configuration
 
 from functools import cached_property
 
-from pyparsing import ParseException, ParseSyntaxException
+from pyparsing import ParseException, ParserElement, ParseSyntaxException
 
-from logprep.processor.calculator.fourFn import BNF
+from logprep.processor.calculator.fourFn import setup_bnf
 from logprep.processor.calculator.rule import CalculatorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.decorators import timeout
@@ -55,7 +55,7 @@ class Calculator(FieldManager):
             self._handle_warning_error(event, rule, error)
 
     @cached_property
-    def bnf(self) -> BNF:
+    def bnf(self) -> ParserElement:
         """Holds the Backus-Naur Form definition
 
         Returns
@@ -63,14 +63,14 @@ class Calculator(FieldManager):
         Forward
             a pyparsing Forward object
         """
-        return BNF()
+        return setup_bnf()
 
     def _calculate(self, event, rule, expression):
         @timeout(seconds=rule.timeout)
         def calculate(event, rule, expression):
             try:
-                _ = self.bnf.parse_string(expression, parse_all=True)
-                return self.bnf.evaluate_stack()
+                ast = self.bnf.parse_string(expression, parse_all=True)
+                return ast.evaluate()
             except (ParseException, ParseSyntaxException) as error:
                 error.msg = f"({self.name}): expression '{error.line}' could not be parsed"
                 self._handle_warning_error(event, rule, error)
@@ -80,9 +80,7 @@ class Calculator(FieldManager):
                     + f"{error.args[0]}"
                 ]
                 self._handle_warning_error(event, rule, error)
-            finally:
-                # always clear the expression stack so the shared BNF instance can be safely reused.
-                self.bnf.exprStack.clear()
+
             return None
 
         return calculate(event, rule, expression)
