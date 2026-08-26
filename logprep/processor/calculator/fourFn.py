@@ -126,7 +126,14 @@ class TerminalASTNode(ASTNode):
             return math.pi  # 3.1415926535
         if self.value == "E":
             return math.e  # 2.718281828
-        return float(self.value)
+        # try to evaluate as int first, then as float if int fails
+        try:
+            return int(self.value)
+        except ValueError:
+            try:
+                return float(self.value)
+            except ValueError:
+                return self.value
 
 
 class CompositeASTNode(ASTNode):
@@ -147,7 +154,11 @@ class CompositeASTNode(ASTNode):
         op = opn.get(self.operation) or fn.get(self.operation)
         if not op:
             raise Exception(f"unkown op {self.operation !r}")
-        return op(*(child.evaluate() for child in self.children))
+        operands = [child.evaluate() for child in self.children]
+
+        if any(isinstance(operand, bool) for operand in operands):
+            raise ValueError("boolean values cannot be used as operands")
+        return op(*operands)
 
     def __repr__(self):
         return f"<op {self.operation !r}>"
@@ -178,22 +189,23 @@ def build_fn(x):
     if len(x) == 1:
         assert isinstance(x[0], ASTNode)
         return x[0]
-    assert len(x) == 2, x
+    assert len(x) >= 1, x
     assert isinstance(x[0], str)
-    assert isinstance(x[1], ParseResults)
-    assert all(isinstance(y, ASTNode) for y in x[1]), [type(i) for i in x[1]]
-    return CompositeASTNode(x[0], x[1])
+    assert all(
+        isinstance(i, ParseResults) and len(i) == 1 and isinstance(i[0], ASTNode) for i in x[1:]
+    )
+    return CompositeASTNode(x[0], [i[0] for i in x[1:]])
 
 
 def build_op(x):
-    if len(x) == 1:
-        assert isinstance(x[0], ASTNode)
-        return x[0]
-    assert len(x) == 3, x
+    assert len(x) > 0 and len(x) % 2 == 1
     assert isinstance(x[0], ASTNode)
-    assert isinstance(x[1], str)
-    assert isinstance(x[2], ASTNode)
-    return CompositeASTNode(x[1], [x[0], x[2]])
+    op = x[0]
+    for i in range(1, len(x), 2):
+        assert isinstance(x[i], str)
+        assert isinstance(x[i + 1], ASTNode)
+        op = CompositeASTNode(x[i], [op, x[i + 1]])
+    return op
 
 
 def setup_bnf() -> ParserElement:
@@ -210,7 +222,7 @@ def setup_bnf() -> ParserElement:
     comparison_expr       :: additive_expr [comparisonop additive_expr]
     """
 
-    bnr = Forward()
+    bnf = Forward()
 
     # use CaselessKeyword for e and pi, to avoid accidentally matching
     # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
@@ -235,11 +247,11 @@ def setup_bnf() -> ParserElement:
     expop = Literal("^")
     comparisonop = one_of(">= <= == != > <")
 
-    expr_list = DelimitedList(Group(bnr))
+    expr_list = DelimitedList(Group(bnf))
 
     fn_call = ident + lpar - expr_list + rpar
     fn_call.set_parse_action(build_fn)
-    atom = addop[...] + ((fn_call | pi | e | fnumber | ident) | Group(lpar + bnr + rpar))
+    atom = addop[...] + ((fn_call | pi | e | fnumber | ident) | Group(lpar + bnf + rpar))
     atom.set_parse_action(build_atom)
     # A Forward declaration is required because the power expression recursively
     # references itself on the right-hand side of the exponent operator.
@@ -248,18 +260,21 @@ def setup_bnf() -> ParserElement:
     # 2^3^2 = 2^(3^2), not (2^3)^2.
     power_expr = Forward()
     power_expr <<= atom + (expop + power_expr)[...]
+    power_expr.add_parse_action(build_op)
 
     multiplicative_expr = power_expr + (multop + power_expr)[...]
+    multiplicative_expr.add_parse_action(build_op)
 
     additive_expr = multiplicative_expr + (addop + multiplicative_expr)[...]
+    additive_expr.add_parse_action(build_op)
 
     # Optional allows at most one comparison; chained comparisons are not supported.
     comparison_expr = additive_expr + Optional(comparisonop + additive_expr)
     comparison_expr.add_parse_action(build_op)
 
-    bnr <<= comparison_expr
+    bnf <<= comparison_expr
 
-    return bnr
+    return bnf
 
 
 class BNF(Forward):
@@ -399,13 +414,3 @@ class BNF(Forward):
                 return float(op)
             except ValueError:
                 return op
-
-
-if __name__ == "__main__":
-    parser = setup_bnf()
-
-    parse_result = parser.parse_string("1<=1", parse_all=True)[0]
-    context = GraphVizGenerator()
-    assert isinstance(parse_result, ASTNode)
-    parse_result.write_description(context)
-    print(context.get_graph_viz())
