@@ -33,6 +33,7 @@
 * ng: fix error output structure to stay consistent with non-ng
 * generic_adder: allow `None` as valid input via `add`
 * grokker: allow fallback matches without named fields
+* filter: fix lucene range expressions not matching on mixed-type scenarios
 
 ## 20.0.0
 ### Breaking

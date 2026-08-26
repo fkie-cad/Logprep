@@ -218,12 +218,11 @@ from logprep.filter.expression.filter_expression import (
     And,
     Exists,
     FilterExpression,
-    FloatRangeFilterExpression,
-    IntegerRangeFilterExpression,
 )
 from logprep.filter.expression.filter_expression import Not as NotExpression
 from logprep.filter.expression.filter_expression import (
     Null,
+    NumericRangeFilterExpression,
     Or,
     RangeBoundary,
     RegExFilterExpression,
@@ -407,8 +406,7 @@ class LuceneTransformer:
         upper_value = self._get_range_boundary_value(expr.high)
 
         for range_parser in (
-            self._parse_integer_range,
-            self._parse_float_range,
+            self._parse_numeric_range,
             self._parse_string_range,
         ):
             range_filter_expression = range_parser(
@@ -433,7 +431,7 @@ class LuceneTransformer:
         include_lower_bound: bool,
         include_upper_bound: bool,
         expr: Range,
-    ) -> IntegerRangeFilterExpression | None:
+    ) -> NumericRangeFilterExpression | None:
         """Create an integer range expression if both boundaries are integers."""
         try:
             lower_bound = int(lower_value)
@@ -443,7 +441,7 @@ class LuceneTransformer:
 
         LuceneTransformer._validate_range_boundaries(lower_bound, upper_bound, expr)
 
-        return IntegerRangeFilterExpression(
+        return NumericRangeFilterExpression(
             key,
             lower_bound,
             upper_bound,
@@ -452,29 +450,40 @@ class LuceneTransformer:
         )
 
     @staticmethod
-    def _parse_float_range(
+    def _parse_finite_numeric_value(value: str) -> int | float:
+        parsed_value: int | float
+        try:
+            parsed_value = int(value)
+        except ValueError:
+            try:
+                parsed_value = float(value)
+            except ValueError as exc:
+                raise ValueError(f"failed to parse '{value}' as int/float") from exc
+
+        if not math.isfinite(parsed_value):
+            raise ValueError(f"'{value}' is not a finite numerical value")
+
+        return parsed_value
+
+    @staticmethod
+    def _parse_numeric_range(
         key: Sequence[str],
         lower_value: str,
         upper_value: str,
         include_lower_bound: bool,
         include_upper_bound: bool,
         expr: Range,
-    ) -> FloatRangeFilterExpression | None:
+    ) -> NumericRangeFilterExpression | None:
         """Create a float range expression if both boundaries are finite numbers."""
         try:
-            lower_bound = float(lower_value)
-            upper_bound = float(upper_value)
+            lower_bound = LuceneTransformer._parse_finite_numeric_value(lower_value)
+            upper_bound = LuceneTransformer._parse_finite_numeric_value(upper_value)
         except ValueError:
             return None
 
-        if not math.isfinite(lower_bound) or not math.isfinite(upper_bound):
-            raise LuceneFilterError(
-                f'The expression "{expr}" is invalid. ' "Range boundaries must be finite numbers."
-            )
-
         LuceneTransformer._validate_range_boundaries(lower_bound, upper_bound, expr)
 
-        return FloatRangeFilterExpression(
+        return NumericRangeFilterExpression(
             key,
             lower_bound,
             upper_bound,

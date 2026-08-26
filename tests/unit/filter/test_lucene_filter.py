@@ -27,6 +27,7 @@ from logprep.filter.lucene_filter import (
 
 
 @pytest.fixture(
+    name="range_query",
     params=(
         pytest.param(
             "key:{range_expression}",
@@ -36,9 +37,9 @@ from logprep.filter.lucene_filter import (
             "key:({range_expression})",
             id="field-group-range",
         ),
-    )
+    ),
 )
-def range_query(request):
+def fixture_range_query(request):
     def create_query(range_expression: str) -> str:
         return request.param.format(range_expression=range_expression)
 
@@ -927,16 +928,10 @@ class TestLueceneFilter:
         ("range_expression", "matching_value", "wrong_values"),
         (
             pytest.param(
-                "[0 TO 10]",
-                5,
-                ("5", 5.0, object()),
-                id="integer-range-does-not-match-non-integer-document-values",
-            ),
-            pytest.param(
-                "[0.1 TO 8.5]",
+                "[-3 TO 8.5]",
                 5.0,
-                ("5.0", 5, object()),
-                id="float-range-does-not-match-non-float-document-values",
+                ("5.0", 5, [], {}),
+                id="numeric-range-does-not-match-non-float-document-values",
             ),
             pytest.param(
                 "[bar TO foo]",
@@ -986,6 +981,18 @@ class TestLueceneFilter:
             pytest.param(
                 "[1.5 TO 1.5}",
                 id="exclusive-upper-float-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "{1.0 TO 1}",
+                id="exclusive-mixed-numeric-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "{1.0 TO 1]",
+                id="exclusive-lower-mixed-numeric-range-with-equal-boundaries",
+            ),
+            pytest.param(
+                "[1.0 TO 1}",
+                id="exclusive-upper-mixed-numeric-range-with-equal-boundaries",
             ),
             pytest.param(
                 "{abc TO abc}",
@@ -1046,6 +1053,22 @@ class TestLueceneFilter:
             pytest.param(
                 "[-1.5 TO 1.5}",
                 id="float-inclusive-exclusive-range",
+            ),
+            pytest.param(
+                "[-1 TO 1.0]",
+                id="mixed-numeric-inclusive-range",
+            ),
+            pytest.param(
+                "{-1 TO 1.0}",
+                id="mixed-numeric-exclusive-range",
+            ),
+            pytest.param(
+                "{-1 TO 1.0]",
+                id="mixed-numeric-exclusive-inclusive-range",
+            ),
+            pytest.param(
+                "[-1 TO 1.0}",
+                id="mixed-numeric-inclusive-exclusive-range",
             ),
             pytest.param(
                 "[bar TO foo]",
@@ -1352,26 +1375,6 @@ class TestLueceneFilter:
             ),
         ):
             LuceneFilter.create(range_query(range_expression))
-
-    def test_created_range_filter_prefers_integer_range_over_string_range(
-        self,
-        range_query,
-    ):
-        lucene_filter = LuceneFilter.create(range_query("[1 TO 10]"))
-
-        assert lucene_filter.matches({"key": 2})
-        assert lucene_filter.matches({"key": 10})
-        assert not lucene_filter.matches({"key": "2"})
-
-    def test_created_range_filter_prefers_float_range_over_string_range(
-        self,
-        range_query,
-    ):
-        lucene_filter = LuceneFilter.create(range_query("[1.5 TO 10.5]"))
-
-        assert lucene_filter.matches({"key": 2.0})
-        assert lucene_filter.matches({"key": 10.5})
-        assert not lucene_filter.matches({"key": "2.0"})
 
     @pytest.mark.parametrize(
         ("range_expression", "matching_values", "non_matching_values"),
