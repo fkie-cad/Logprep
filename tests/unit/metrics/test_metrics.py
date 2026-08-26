@@ -294,7 +294,7 @@ class TestMetric(MetricTestCase):
         assert metric_type.collector_methods == covered
 
     def test_collector_methods_are_decorated_exactly_when_they_bind_lazily(self):
-        # decorated with @_collector_method <-> calls _lazy_bind_default_child() in body
+        # decorated with @_collector_method <-> calls _bind_default_child() in body
         module = ast.parse(inspect.getsource(metrics_module))
         for metric_type in METRIC_TYPES:
             class_node = next(
@@ -309,7 +309,7 @@ class TestMetric(MetricTestCase):
                     getattr(decorator, "id", None) == "_collector_method"
                     for decorator in method.decorator_list
                 )
-                binds_lazily = "_lazy_bind_default_child" in ast.dump(method)
+                binds_lazily = "_bind_default_child" in ast.dump(method)
                 assert decorated == binds_lazily, (
                     f"{metric_type.metric.__name__}.{method.name}: "
                     f"decorated={decorated} but binds_lazily={binds_lazily}"

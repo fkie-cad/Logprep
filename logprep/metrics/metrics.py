@@ -181,8 +181,8 @@ class Metric(ABC, Generic[M]):
         super().__init_subclass__(**kwargs)
         cls._collector_methods = {
             name
-            for klass in cls.__mro__
-            for name, value in vars(klass).items()
+            for super_cls in cls.__mro__
+            for name, value in vars(super_cls).items()
             if getattr(value, "__collector_method__", False)
         }
 
@@ -230,7 +230,7 @@ class Metric(ABC, Generic[M]):
                 ) from error
             self._collector = collector
         if self.inject_label_values:
-            self._bind(self._labeled_child(self.labels))
+            self._bind_default_child()
 
     @property
     def initialized(self) -> bool:
@@ -241,15 +241,13 @@ class Metric(ABC, Generic[M]):
         """Return the labelled child of the collector for the given labels"""
         return self._collector.labels(**(self.labels | labels))
 
-    def _bind(self, child: M) -> Self:
-        """Bind the child's exposed methods directly onto this instance"""
+    def _bind_default_child(self) -> Self:
+        """Bind the default childs methods and return the metric."""
+        child_collector = self._labeled_child(self.labels)
         for name in self._collector_methods:
-            setattr(self, name, getattr(child, name))
+            child_collector_method = getattr(child_collector, name)
+            setattr(self, name, child_collector_method)
         return self
-
-    def _lazy_bind_default_child(self) -> Self:
-        """Bind the default child on first use and return the metric."""
-        return self._bind(self._labeled_child(self.labels))
 
     def child_collector(self, labels: dict[str, str], inject_label_values: bool = True) -> Self:
         """Return a child metric configured with the given labels"""
@@ -383,7 +381,7 @@ class CounterMetric(Metric[Counter]):
     @_collector_method
     def inc(self, amount: float = 1, exemplar: dict[str, str] | None = None) -> None:
         """Increment the counter. Rebinds to the collector's method on first call."""
-        return self._lazy_bind_default_child().inc(amount, exemplar)
+        return self._bind_default_child().inc(amount, exemplar)
 
     def add_with_labels(self, other: Any, labels: dict) -> None:
         """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
@@ -419,7 +417,7 @@ class HistogramMetric(Metric[Histogram]):
     @_collector_method
     def observe(self, amount: float, exemplar: dict[str, str] | None = None) -> None:
         """Observe a value. Rebinds to the collector's method on first call."""
-        return self._lazy_bind_default_child().observe(amount, exemplar)
+        return self._bind_default_child().observe(amount, exemplar)
 
     def add_with_labels(self, other: Any, labels: dict) -> None:
         """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
@@ -449,17 +447,17 @@ class GaugeMetric(Metric[Gauge]):
     @_collector_method
     def set(self, value: float) -> None:
         """Set the gauge. Rebinds to the collector's method on first call"""
-        return self._lazy_bind_default_child().set(value)
+        return self._bind_default_child().set(value)
 
     @_collector_method
     def inc(self, amount: float = 1) -> None:
         """Increment the gauge. Rebinds to the collector's method on first call"""
-        return self._lazy_bind_default_child().inc(amount)
+        return self._bind_default_child().inc(amount)
 
     @_collector_method
     def dec(self, amount: float = 1) -> None:
         """Decrement the gauge. Rebinds to the collector's method on first call"""
-        return self._lazy_bind_default_child().dec(amount)
+        return self._bind_default_child().dec(amount)
 
     def add_with_labels(self, other: Any, labels: dict) -> None:
         """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
