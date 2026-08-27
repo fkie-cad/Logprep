@@ -667,13 +667,13 @@ class TestCalculator(BaseProcessorTestCase):
     )
     def test_fourfn_rejects_boolean_operands(self, expression):
         bnf = setup_bnf()
-        ast = bnf.parse_string(expression, parse_all=True)  # pylint: disable=E1123,E1121
+        ast = bnf.parse_string(expression, parse_all=True)[0]  # pylint: disable=E1123,E1121
         assert isinstance(ast, ASTNode)
         with pytest.raises(
             Exception,
             match="boolean values cannot be used as operands",
         ):
-            ast.evaluate()
+            result = ast.evaluate()
 
     @pytest.mark.skip("TODO check how to update")
     def test_fourfn_builds_expected_postfix_stack(self):

@@ -147,17 +147,19 @@ class CompositeASTNode(ASTNode):
             child.write_description(context)
 
     def evaluate(self):
+        operands = [child.evaluate() for child in self.children]
+        if any(isinstance(operand, bool) for operand in operands):
+            raise ValueError("boolean values cannot be used as operands")
+
         if self.operation == "unary -":
-            assert len(self.children) == 1
-            return -self.children[0].evaluate()
+            assert len(operands) == 1
+            return -operands[0]
 
         op = opn.get(self.operation) or fn.get(self.operation)
         if not op:
             raise Exception(f"unkown op {self.operation !r}")
         operands = [child.evaluate() for child in self.children]
 
-        if any(isinstance(operand, bool) for operand in operands):
-            raise ValueError("boolean values cannot be used as operands")
         return op(*operands)
 
     def __repr__(self):
@@ -177,12 +179,17 @@ def build_atom(x):
         assert isinstance(x[0], ParseResults)
         assert len(x[0]) == 1 and isinstance(x[0][0], ASTNode)
         return x[0][0]
-    assert len(x) == 2
-    assert x[0] in ("+", "-"), x
-    assert isinstance(x[1], ASTNode)
-    if x[0] == "-":
-        return CompositeASTNode("unary -", [x[1]])
-    return x[1]
+    assert len(x) >= 2
+    signs = x[:-1]
+    assert all(sign in ("+", "-") for sign in signs), signs
+    node = x[-1]
+    if isinstance(node, ParseResults):
+        assert len(node) == 1
+        node = node[0]
+    assert isinstance(node, ASTNode)
+    if len([s for s in signs if s == "-"]) % 2 == 1:
+        return CompositeASTNode("unary -", [node])
+    return node
 
 
 def build_fn(x):
