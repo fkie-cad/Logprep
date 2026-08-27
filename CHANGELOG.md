@@ -30,7 +30,8 @@
 * ng: fix input timeout to also accept int parameters
 * ng: fix `http_input` `collect_meta` leading to shared dicts between events
 * ng: fix error output structure to stay consistent with non-ng
-* generic_adder: allow None as valid input via `add`
+* generic_adder: allow `None` as valid input via `add`
+* grokker: allow fallback matches without named fields
 
 ## 20.0.0
 ### Breaking

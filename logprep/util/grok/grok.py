@@ -25,6 +25,7 @@ SOFTWARE.
 
 import re
 import string
+from collections.abc import Callable
 from hashlib import md5
 from importlib import resources
 from itertools import chain
@@ -36,13 +37,14 @@ from attrs import define, field, validators
 
 from logprep.util.decorators import timeout
 from logprep.util.helper import field_list_to_dotted_field
+from logprep.util.validators import fix_type
 
 DEFAULT_PATTERNS_DIRS = [str(resources.files(__package__) / "patterns/ecs-v1")]
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
 ONIGURUMA = r"\(\?<([^()]*)>\(?(([^()]*|\(([^()]*|\([^()]*\))*\))*)\)?\)"
 NON_RESOLVED_ONIGURUMA = r"\(\?<[^md5].*>"
-INT_FLOAT = {"int": int, "float": float}
+INT_FLOAT: dict[str | None, Callable[[str], int | float]] = {"int": int, "float": float}
 
 
 @define(slots=True)
@@ -53,19 +55,21 @@ class Grok:
     oniguruma = re.compile(ONIGURUMA)
 
     pattern: str | list[str] = field(
-        validator=validators.or_(
-            validators.instance_of(str),
-            validators.deep_iterable(
-                iterable_validator=validators.instance_of(list),
-                member_validator=validators.instance_of(str),
-            ),
+        validator=fix_type(
+            lambda: validators.or_(
+                validators.instance_of(str | float),
+                validators.deep_iterable(
+                    iterable_validator=validators.instance_of(list),
+                    member_validator=validators.instance_of(str),
+                ),
+            )
         )
     )
     custom_patterns_dir: str = field(default="")
     custom_patterns: dict = field(factory=dict)
     fullmatch: bool = field(default=True)
     predefined_patterns: dict = field(init=False, factory=dict, repr=False)
-    type_mappings: dict = field(init=False, factory=dict)
+    type_mappings: dict[str, str] = field(init=False, factory=dict)
     field_mappings: dict = field(init=False, factory=dict)
     regex_obj = field(init=False, default=None)
 
@@ -85,7 +89,7 @@ class Grok:
         self._load_search_pattern()
 
     @timeout(seconds=1)
-    def match(self, text):
+    def match(self, text) -> dict[str, str | int | float] | None:
         """If text is matched with pattern, return variable names
         specified(%{pattern:variable name}) in pattern and their
         corresponding values. If not matched, return None.
@@ -100,18 +104,20 @@ class Grok:
             match_obj = [regex_pattern.search(text) for regex_pattern in self.regex_obj]
 
         match_obj = [match for match in match_obj if match is not None]
-        matches = [
-            {k: v for k, v in match.groupdict(None).items() if v is not None} for match in match_obj
-        ]
-        if not matches:
-            return {}
-        first_match = matches[0]
+        if not match_obj:
+            return None
+        match = match_obj[0]
+        hash_to_fvalue: dict[str, str | int | float] = {
+            k: v for k, v in match.groupdict(None).items() if v is not None
+        }
         if self.type_mappings:
-            for key, match in first_match.items():
+            for key, match in hash_to_fvalue.items():
                 type_mapper = INT_FLOAT.get(self.type_mappings.get(key))
                 if type_mapper is not None:
-                    first_match[key] = type_mapper(match)
-        return {self.field_mappings[field_hash]: value for field_hash, value in first_match.items()}
+                    hash_to_fvalue[key] = type_mapper(match)
+        return {
+            self.field_mappings[field_hash]: value for field_hash, value in hash_to_fvalue.items()
+        }
 
     def _map_types(self, matches):
         for key, match in matches.items():

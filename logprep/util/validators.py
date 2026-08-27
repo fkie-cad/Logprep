@@ -2,10 +2,19 @@
 
 import os
 import typing
+from collections.abc import Callable
+from typing import TypeVar
 from urllib.parse import urlparse
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.util.json_handling import is_json
+
+_T = TypeVar("_T")
+
+
+def fix_type(thunk: Callable[[], _T]) -> _T:
+    """Forces mypy into bottom-up type resolution"""
+    return thunk()
 
 
 def json_validator(_, __, value):
