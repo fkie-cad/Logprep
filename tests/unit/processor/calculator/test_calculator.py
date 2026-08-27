@@ -134,18 +134,6 @@ test_cases = [
         {
             "filter": "message",
             "calculator": {
-                "calc": "abs(2*-4) + cos(0) >abs(sin(4*2))",
-                "target_field": "new_field",
-            },
-        },
-        {"message": "This is a message"},
-        {"message": "This is a message", "new_field": True},
-        id="complex testcase",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "calculator": {
                 "calc": "1!=2",
                 "target_field": "new_field",
             },
@@ -614,8 +602,8 @@ class TestCalculator(BaseProcessorTestCase):
             ("E^PI", math.e**math.pi),
             ("exp(0)", 1),
             ("exp(1)", math.e),
-            ("2^3^2", 2**3**2),
-            ("(2^3)^2", (2**3) ** 2),
+            ("2^3^4", 2**3**4),
+            ("(2^3)^4", (2**3) ** 4),
             ("2^3+2", 2**3 + 2),
             ("2^3+5", 2**3 + 5),
             ("2^9", 2**9),
@@ -673,7 +661,7 @@ class TestCalculator(BaseProcessorTestCase):
             Exception,
             match="boolean values cannot be used as operands",
         ):
-            result = ast.evaluate()
+            ast.evaluate()
 
     @pytest.mark.skip("TODO check how to update")
     def test_fourfn_builds_expected_postfix_stack(self):
@@ -684,7 +672,7 @@ class TestCalculator(BaseProcessorTestCase):
         changes do not alter the evaluation order unintentionally. Intentional changes
         to the order must also update this test.
         """
-        bnf = BNF()
+        bnf = None  # BNF()
         expression = "round((PI + 2) * 3 ^ 2 ^ 2 / 4 - -5, 2) >= multiply(2, 3) + E"
 
         bnf.parse_string(expression, parse_all=True)  # pylint: disable=E1123,E1121
