@@ -65,7 +65,7 @@ def test_one_pat_7():
     pat = "%{NUMBER:test_num}"
     grok = Grok(pat)
     match = grok.match(text)
-    assert match == {}, f"grok match failed: {text}, {pat}"
+    assert match is None, f"grok match failed: {text}, {pat}"
     # not match
 
 
@@ -98,7 +98,7 @@ def test_multiple_pats():
     pat = "%{WORD:name} %{INT:age} %{QUOTEDSTRING:motto}"
     grok = Grok(pat)
     match = grok.match(text)
-    assert match == {}, f"grok match failed:{text}, {pat}"
+    assert match is None, f"grok match failed:{text}, {pat}"
 
     # nginx log
     text = (
