@@ -13,7 +13,10 @@ _T = TypeVar("_T")
 
 
 def fix_type(thunk: Callable[[], _T]) -> _T:
-    """Forces mypy into bottom-up type resolution"""
+    """
+    Forces mypy into bottom-up type resolution when used with `lambda`.
+    A typical usage would looks like this: `fix_type(lambda: complicated_expression)`.
+    """
     return thunk()
 
 

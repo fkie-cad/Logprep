@@ -98,26 +98,30 @@ class Grok:
         or custom_patterns_dir.
         """
 
-        if self.fullmatch:
-            match_obj = [regex_pattern.fullmatch(text) for regex_pattern in self.regex_obj]
-        else:
-            match_obj = [regex_pattern.search(text) for regex_pattern in self.regex_obj]
+        for regex_pattern in self.regex_obj:
+            if self.fullmatch:
+                match_obj = regex_pattern.fullmatch(text)
+            else:
+                match_obj = regex_pattern.search(text)
 
-        match_obj = [match for match in match_obj if match is not None]
-        if not match_obj:
-            return None
-        match = match_obj[0]
-        hash_to_fvalue: dict[str, str | int | float] = {
-            k: v for k, v in match.groupdict(None).items() if v is not None
-        }
-        if self.type_mappings:
-            for key, match in hash_to_fvalue.items():
-                type_mapper = INT_FLOAT.get(self.type_mappings.get(key))
-                if type_mapper is not None:
-                    hash_to_fvalue[key] = type_mapper(match)
-        return {
-            self.field_mappings[field_hash]: value for field_hash, value in hash_to_fvalue.items()
-        }
+            if match_obj is None:
+                continue
+
+            result: dict[str, str | int | float] = {}
+            for field_hash, value in match_obj.groupdict(None).items():
+                if value is None:
+                    continue
+
+                if self.type_mappings:
+                    mapper = INT_FLOAT.get(self.type_mappings.get(field_hash))
+                    if mapper:
+                        value = mapper(value)
+
+                result[self.field_mappings[field_hash]] = value
+
+            return result
+
+        return None
 
     def _map_types(self, matches):
         for key, match in matches.items():
