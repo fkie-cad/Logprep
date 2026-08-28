@@ -23,15 +23,20 @@ Processor Configuration
 .. automodule:: logprep.processor.calculator.rule
 """
 
-from functools import cached_property
+from typing import TypeAlias
 
-from pyparsing import ParseException, ParserElement, ParseSyntaxException
-
-from logprep.processor.calculator.fourFn import setup_bnf
+from logprep.processor.calculator.fourFn import (
+    ASTNode,
+    EvaluationError,
+    InvalidSyntaxError,
+    MissingValueError,
+    compile_expression,
+)
 from logprep.processor.calculator.rule import CalculatorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.decorators import timeout
-from logprep.util.helper import get_source_fields_dict, resolve_template
+
+ExpressionCacheEntry: TypeAlias = ASTNode | Exception
 
 
 class Calculator(FieldManager):
@@ -39,47 +44,43 @@ class Calculator(FieldManager):
 
     rule_class = CalculatorRule
 
+    _expression_cache: dict[str, ExpressionCacheEntry] = {}
+
+    def __precompile(self, expression: str) -> ExpressionCacheEntry:
+        if expression in self._expression_cache:
+            return self._expression_cache[expression]
+
+        try:
+            self._expression_cache[expression] = compile_expression(expression)
+        except InvalidSyntaxError as error:
+            self._expression_cache[expression] = error
+
+        return self._expression_cache[expression]
+
     def _apply_rules(self, event, rule):
-        source_field_dict = get_source_fields_dict(event, rule)
-        if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
-            return
-        if self._has_missing_values(event, rule, source_field_dict):
+        # TODO check all rules can be precompiled at init instead of
+        # cached/lazy loading approach.
+        cache_entry = self.__precompile(rule.calc)
+        if isinstance(cache_entry, Exception):
+            self._handle_warning_error(event, rule, cache_entry)
             return
 
-        expression = resolve_template(rule.calc, source_field_dict)
+        @timeout(seconds=rule.timeout)
+        def calculate():
+            return cache_entry.evaluate(event)
+
         try:
-            result = self._calculate(event, rule, expression)
+            result = calculate()
             if result is not None:
                 self._write_target_field(event, rule, result)
+        except MissingValueError as error:
+            self._handle_missing_fields(
+                event,
+                rule,
+                rule.source_fields,
+                [None],  # TODO: interace for utility function is terrible.
+            )
+        except EvaluationError as error:
+            self._handle_warning_error(event, rule, error)
         except TimeoutError as error:
             self._handle_warning_error(event, rule, error)
-
-    @cached_property
-    def bnf(self) -> ParserElement:
-        """Holds the Backus-Naur Form definition
-
-        Returns
-        -------
-        Forward
-            a pyparsing Forward object
-        """
-        return setup_bnf()
-
-    def _calculate(self, event, rule, expression):
-        @timeout(seconds=rule.timeout)
-        def calculate(event, rule, expression):
-            try:
-                ast = self.bnf.parse_string(expression, parse_all=True)[0]
-                return ast.evaluate()
-            except (ParseException, ParseSyntaxException) as error:
-                error.msg = f"({self.name}): expression '{error.line}' could not be parsed"
-                self._handle_warning_error(event, rule, error)
-            except ArithmeticError as error:
-                error.args = [
-                    f"({self.name}): expression '{rule.calc}' => '{expression}' results in "
-                    + f"{error.args[0]}"
-                ]
-                self._handle_warning_error(event, rule, error)
-            return None
-
-        return calculate(event, rule, expression)

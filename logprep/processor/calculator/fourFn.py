@@ -13,9 +13,9 @@ Reformatted to latest pypyparsing features, support multiple and variable args t
 Copyright 2003-2019 by Paul McGuire
 """
 
-import abc
 import math
 import operator
+from abc import ABC, abstractmethod
 from typing import Any, Protocol, Sequence, TypeAlias
 
 from pyparsing import (
@@ -25,8 +25,10 @@ from pyparsing import (
     Group,
     Literal,
     Optional,
+    ParseException,
     ParserElement,
     ParseResults,
+    ParseSyntaxException,
     Regex,
     Suppress,
     Word,
@@ -34,6 +36,24 @@ from pyparsing import (
     alphas,
     one_of,
 )
+
+from logprep.util.helper import DottedTemplate, FieldValue, get_dotted_field_value
+
+
+class CalculatorError(Exception): ...
+
+
+class InvalidSyntaxError(CalculatorError): ...
+
+
+class MissingValueError(CalculatorError):
+    def __init__(self, desc: str, value: str):
+        super().__init__(desc)
+        self.value = value
+
+
+class EvaluationError(CalculatorError): ...
+
 
 epsilon = 1e-12
 # map operator symbols to corresponding arithmetic and comparison operations.
@@ -77,7 +97,7 @@ NodeId: TypeAlias = int
 NodeDesc: TypeAlias = str
 
 
-class GraphVizGenerator(ASTDescriptionContext):
+class DiagramRenderContext(ASTDescriptionContext):
     def __init__(self):
         self.nodes: dict[NodeId, NodeDesc] = {}
         self.links: list[tuple[NodeId, NodeId]] = []
@@ -105,49 +125,145 @@ class GraphVizGenerator(ASTDescriptionContext):
         )
 
 
-class ASTNode(abc.ABC):
+def try_handle_number(value: int | float | str) -> int | float | str:
+    if isinstance(value, (int, float)):
+        return value
+    if value == "PI":
+        return math.pi  # 3.1415926535
+    if value == "E":
+        return math.e  # 2.718281828
+    try:
+        return int(value)
+    except ValueError:
+        try:
+            return float(value)
+        except ValueError:
+            ...
+    return value
+
+
+EvaluationContext: TypeAlias = dict[str, FieldValue]
+
+
+class ASTNode(ABC):
+    @abstractmethod
     def write_description(self, context: ASTDescriptionContext) -> None: ...
 
-    def evaluate(self) -> Any: ...
+    @abstractmethod
+    def evaluate(self, context: EvaluationContext) -> Any: ...
+
+    @property
+    @abstractmethod
+    def is_static(self) -> bool: ...
+
+    @property
+    @abstractmethod
+    def complexity(self) -> int: ...
+
+    @abstractmethod
+    def optimize(self) -> "ASTNode": ...
+
+    def get_diagram(self) -> str:
+        diagram_render_context = DiagramRenderContext()
+        self.write_description(diagram_render_context)
+        return diagram_render_context.get_graph_viz()
 
 
 class TerminalASTNode(ASTNode):
-    def __init__(self, value: str):
-        self.value = value
+    @property
+    def complexity(self):
+        return 1
 
     def write_description(self, context):
         return context.describe(self)
 
+
+class ConstantASTNode(TerminalASTNode):
+    def __init__(self, value: str):
+        self.value = try_handle_number(value)
+
+    @property
+    def is_static(self):
+        return True
+
     def __repr__(self):
         return f"<value {self.value !r}>"
 
-    def evaluate(self):
-        if self.value == "PI":
-            return math.pi  # 3.1415926535
-        if self.value == "E":
-            return math.e  # 2.718281828
-        # try to evaluate as int first, then as float if int fails
-        try:
-            return int(self.value)
-        except ValueError:
-            try:
-                return float(self.value)
-            except ValueError:
-                return self.value
+    def evaluate(self, context):
+        return self.value
+
+    def optimize(self):
+        return ConstantASTNode(value=self.value)
+
+
+class VariableASTNode(TerminalASTNode):
+    def __init__(self, path: str):
+        self.path = path
+
+    @property
+    def is_static(self):
+        return False
+
+    def evaluate(self, context):
+        value = get_dotted_field_value(context, self.path)
+        if not value:
+            raise MissingValueError(f"Missing value for field {self.path!r}.", self.path)
+        return try_handle_number(value)
+
+    def __repr__(self):
+        return f"<variable {self.path !r}>"
+
+    def optimize(self):
+        return VariableASTNode(path=self.path)
 
 
 class CompositeASTNode(ASTNode):
+    # TODO: split into more specific node
     def __init__(self, operation: str, children: Sequence[ASTNode]):
         self.operation = operation
         self.children = children
+        # assume children are setup on init and persistent
+        self.__complexity = sum(child.complexity for child in children)
+
+    @property
+    def complexity(self):
+        return self.__complexity
+
+    @property
+    def is_static(self):
+        return all(child.is_static for child in self.children)
+
+    def optimize(self) -> ASTNode:
+        optimized_clone = CompositeASTNode(
+            operation=self.operation, children=[child.optimize() for child in self.children]
+        )
+        if not all(child.is_static for child in optimized_clone.children):
+            return optimized_clone
+
+        try:
+            my_static_value = optimized_clone.evaluate({})
+            return ConstantASTNode(value=my_static_value)
+        except CalculatorError as error:
+            # As every child considered consider itself static
+            # evaluating with an empty context should not raise
+            # an MissingValueError. All other errors should already
+            # be detected at compile time.
+
+            # If the following assert is hit one of the children
+            # is probably wrong about itself being static.
+            assert not error, self.children
+
+            # Returning the optimized_clone if asserts are disabled
+            # as this is probably still preferable to failing on
+            return optimized_clone
 
     def write_description(self, context):
         context.describe(self, *self.children)
         for child in self.children:
             child.write_description(context)
 
-    def evaluate(self):
-        operands = [child.evaluate() for child in self.children]
+    def evaluate(self, context):
+        operands = [child.evaluate(context) for child in self.children]
         if any(isinstance(operand, bool) for operand in operands):
             raise ValueError("boolean values cannot be used as operands")
 
@@ -158,18 +274,28 @@ class CompositeASTNode(ASTNode):
         op = opn.get(self.operation) or fn.get(self.operation)
         if not op:
             raise Exception(f"unkown op {self.operation !r}")
-        operands = [child.evaluate() for child in self.children]
-
-        return op(*operands)
+        operands = [child.evaluate(context) for child in self.children]
+        try:
+            return op(*operands)
+        except Exception as error:
+            raise EvaluationError(
+                f"Failed on operator {self.operation !r} with values {operands !r}"
+            ) from error
 
     def __repr__(self):
         return f"<op {self.operation !r}>"
 
 
-def build_terminal(x):
+def build_constant(x):
     assert len(x) == 1
     assert isinstance(x[0], str)
-    return TerminalASTNode(x[0])
+    return ConstantASTNode(x[0])
+
+
+def build_variable(x):
+    assert len(x) == 1
+    assert isinstance(x[0], str)
+    return VariableASTNode(x[0])
 
 
 def build_atom(x):
@@ -235,17 +361,19 @@ def setup_bnf() -> ParserElement:
     # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
     # and CaselessKeyword only match whole words
     e = CaselessKeyword("E")
-    e.set_parse_action(build_terminal)
+    e.set_parse_action(build_constant)
 
     pi = CaselessKeyword("PI")
-    pi.set_parse_action(build_terminal)
+    pi.set_parse_action(build_constant)
     # fnumber = Combine(Word("+-"+nums, nums) +
     #                    Optional("." + Optional(Word(nums))) +
     #                    Optional(e + Word("+-"+nums, nums)))
     # or use provided pyparsing_common.number, but convert back to str:
     # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
     fnumber = Regex(r"[+-]?[a-zA-Z0-9]+(?:\.\d*)?(?:[eE][+-]?\d+)?")
-    fnumber.set_parse_action(build_terminal)
+    fnumber.set_parse_action(build_constant)
+    variable = Suppress("${") + Regex(DottedTemplate.braceidpattern) + Suppress("}")
+    variable.set_parse_action(build_variable)
     ident = Word(alphas, alphanums + "_$")
     plus, minus, mult, div = map(Literal, "+-*/")
     lpar, rpar = map(Suppress, "()")
@@ -258,7 +386,7 @@ def setup_bnf() -> ParserElement:
 
     fn_call = ident + lpar - expr_list + rpar
     fn_call.set_parse_action(build_fn)
-    atom = addop[...] + ((fn_call | pi | e | fnumber | ident) | Group(lpar + bnf + rpar))
+    atom = addop[...] + ((fn_call | pi | e | fnumber | ident | variable) | Group(lpar + bnf + rpar))
     atom.set_parse_action(build_atom)
     # A Forward declaration is required because the power expression recursively
     # references itself on the right-hand side of the exponent operator.
@@ -282,6 +410,18 @@ def setup_bnf() -> ParserElement:
     bnf <<= comparison_expr
 
     return bnf
+
+
+_BNF = setup_bnf()
+
+
+def compile_expression(expression: str) -> ASTNode:
+    try:
+        root_node = _BNF.parse_string(expression)[0]
+    except (ParseException, ParseSyntaxException) as error:
+        raise InvalidSyntaxError("Error raising expression.") from error
+    assert isinstance(root_node, ASTNode)
+    return root_node
 
 
 class BNF(Forward):
