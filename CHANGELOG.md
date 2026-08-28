@@ -2,6 +2,9 @@
 ### Breaking
 * restrict UNIX timestamp normalization to seconds, milliseconds, microseconds, and nanoseconds.
 * handle non-string `concatenator` source fields with `ProcessingWarning` instead of `ProcessingCriticalError`
+* filter: rework range expressions to allow mixed types and type coercion
+* filter: drop support for `inf`/`nan` in range expressions
+* filter: add support for `*` (open boundary) in range expressions
 
 ### Features
 * add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.

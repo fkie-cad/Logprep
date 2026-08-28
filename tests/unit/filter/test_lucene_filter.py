@@ -29,14 +29,8 @@ from logprep.filter.lucene_filter import (
 @pytest.fixture(
     name="range_query",
     params=(
-        pytest.param(
-            "key:{range_expression}",
-            id="search-field-range",
-        ),
-        pytest.param(
-            "key:({range_expression})",
-            id="field-group-range",
-        ),
+        pytest.param("key:{range_expression}", id="search-field-range"),
+        pytest.param("key:({range_expression})", id="field-group-range"),
     ),
 )
 def fixture_range_query(request):
@@ -601,37 +595,37 @@ class TestLueceneFilter:
                 "[0 TO 10]",
                 (0, 5, 10),
                 (-1, 11),
-                id="positive-integer-range-including-boundaries",
+                id="pos-int-range-incl-bounds",
             ),
             pytest.param(
                 "[-10 TO -1]",
                 (-10, -5, -1),
                 (-11, 0),
-                id="negative-integer-range",
+                id="neg-int-range",
             ),
             pytest.param(
                 "[-10 TO 10]",
                 (-10, 0, 10),
                 (-11, 11),
-                id="integer-range-across-zero",
+                id="int-range-across-zero",
             ),
             pytest.param(
                 "[0 TO 0]",
                 (0,),
                 (-1, 1),
-                id="single-integer-value-range",
+                id="single-int-value-range",
             ),
             pytest.param(
                 "[2147483647 TO 2147483648]",
                 (2147483647, 2147483648),
                 (2147483646, 2147483649),
-                id="integer-values-above-32-bit-boundary",
+                id="int-values-above-32-bit-bound",
             ),
             pytest.param(
                 "[-9223372036854775809 TO -9223372036854775808]",
                 (-9223372036854775809, -9223372036854775808),
                 (-9223372036854775810, -9223372036854775807),
-                id="integer-values-below-64-bit-boundary",
+                id="int-values-below-64-bit-bound",
             ),
         ),
     )
@@ -657,13 +651,13 @@ class TestLueceneFilter:
                 "[0.1 TO 8.5]",
                 (0.1, 5.0, 8.5),
                 (0.099, 8.501),
-                id="positive-float-range-including-boundaries",
+                id="pos-float-range-incl-bounds",
             ),
             pytest.param(
                 "[-8.5 TO -0.1]",
                 (-8.5, -4.2, -0.1),
                 (-8.501, 0),
-                id="negative-float-range",
+                id="neg-float-range",
             ),
             pytest.param(
                 "[-1.5 TO 1.5]",
@@ -687,7 +681,7 @@ class TestLueceneFilter:
                 "[-1.0e3 TO -1.0e-3]",
                 (-1000.0, -1.0, -0.001),
                 (-1000.1, 0.0),
-                id="negative-scientific-notation",
+                id="neg-scientific-notation",
             ),
         ),
     )
@@ -713,7 +707,7 @@ class TestLueceneFilter:
                 "[bar TO foo]",
                 ("bar", "baz", "foo"),
                 ("aaa", "zoo"),
-                id="string-range-including-boundaries",
+                id="string-range-incl-bounds",
             ),
             pytest.param(
                 "[a TO z]",
@@ -763,43 +757,43 @@ class TestLueceneFilter:
                 "[0 TO 10]",
                 (0, 5, 10),
                 (-1, 11),
-                id="integer-inclusive-lower-inclusive-upper",
+                id="int-incl-lower-incl-upper",
             ),
             pytest.param(
                 "{0 TO 10}",
                 (1, 5, 9),
                 (-1, 0, 10, 11),
-                id="integer-exclusive-lower-exclusive-upper",
+                id="int-excl-lower-excl-upper",
             ),
             pytest.param(
                 "{0 TO 10]",
                 (1, 5, 10),
                 (-1, 0, 11),
-                id="integer-exclusive-lower-inclusive-upper",
+                id="int-excl-lower-incl-upper",
             ),
             pytest.param(
                 "[0 TO 10}",
                 (0, 5, 9),
                 (-1, 10, 11),
-                id="integer-inclusive-lower-exclusive-upper",
+                id="int-incl-lower-excl-upper",
             ),
             pytest.param(
                 "{-10 TO -1}",
                 (-9, -5, -2),
                 (-10, -1, 0),
-                id="negative-integer-exclusive-lower-exclusive-upper",
+                id="neg-int-excl-lower-excl-upper",
             ),
             pytest.param(
                 "{-10 TO -1]",
                 (-9, -5, -1),
                 (-10, 0),
-                id="negative-integer-exclusive-lower-inclusive-upper",
+                id="neg-int-excl-lower-incl-upper",
             ),
             pytest.param(
                 "[-10 TO -1}",
                 (-10, -5, -2),
                 (-11, -1, 0),
-                id="negative-integer-inclusive-lower-exclusive-upper",
+                id="neg-int-incl-lower-excl-upper",
             ),
         ),
     )
@@ -825,43 +819,43 @@ class TestLueceneFilter:
                 "[0.1 TO 8.5]",
                 (0.1, 5.0, 8.5),
                 (0.099, 8.501),
-                id="float-inclusive-lower-inclusive-upper",
+                id="float-incl-lower-incl-upper",
             ),
             pytest.param(
                 "{0.1 TO 8.5}",
                 (0.101, 5.0, 8.499),
                 (0.1, 8.5),
-                id="float-exclusive-lower-exclusive-upper",
+                id="float-excl-lower-excl-upper",
             ),
             pytest.param(
                 "{0.1 TO 8.5]",
                 (0.101, 5.0, 8.5),
                 (0.1, 8.501),
-                id="float-exclusive-lower-inclusive-upper",
+                id="float-excl-lower-incl-upper",
             ),
             pytest.param(
                 "[0.1 TO 8.5}",
                 (0.1, 5.0, 8.499),
                 (0.099, 8.5),
-                id="float-inclusive-lower-exclusive-upper",
+                id="float-incl-lower-excl-upper",
             ),
             pytest.param(
                 "{-8.5 TO -0.1}",
                 (-8.499, -4.2, -0.101),
                 (-8.5, -0.1, 0),
-                id="negative-float-exclusive-lower-exclusive-upper",
+                id="neg-float-excl-lower-excl-upper",
             ),
             pytest.param(
                 "{-8.5 TO -0.1]",
                 (-8.499, -4.2, -0.1),
                 (-8.5, 0),
-                id="negative-float-exclusive-lower-inclusive-upper",
+                id="neg-float-excl-lower-incl-upper",
             ),
             pytest.param(
                 "[-8.5 TO -0.1}",
                 (-8.5, -4.2, -0.101),
                 (-8.501, -0.1, 0),
-                id="negative-float-inclusive-lower-exclusive-upper",
+                id="neg-float-incl-lower-excl-upper",
             ),
         ),
     )
@@ -887,25 +881,25 @@ class TestLueceneFilter:
                 "[bar TO foo]",
                 ("bar", "baz", "foo"),
                 ("aaa", "zoo"),
-                id="string-inclusive-lower-inclusive-upper",
+                id="string-incl-lower-incl-upper",
             ),
             pytest.param(
                 "{bar TO foo}",
                 ("baz", "faa"),
                 ("bar", "foo", "aaa", "zoo"),
-                id="string-exclusive-lower-exclusive-upper",
+                id="string-excl-lower-excl-upper",
             ),
             pytest.param(
                 "{bar TO foo]",
                 ("baz", "foo"),
                 ("bar", "aaa", "zoo"),
-                id="string-exclusive-lower-inclusive-upper",
+                id="string-excl-lower-incl-upper",
             ),
             pytest.param(
                 "[bar TO foo}",
                 ("bar", "baz"),
                 ("foo", "aaa", "zoo"),
-                id="string-inclusive-lower-exclusive-upper",
+                id="string-incl-lower-excl-upper",
             ),
         ),
     )
@@ -930,14 +924,14 @@ class TestLueceneFilter:
             pytest.param(
                 "[-3 TO 8.5]",
                 5.0,
-                ("5.0", 5, [], {}),
-                id="numeric-range-does-not-match-non-float-document-values",
+                ("abc", True, False, [], {}),
+                id="numeric-range-does-not-match-non-numeric-document-values",
             ),
             pytest.param(
                 "[bar TO foo]",
                 "baz",
-                (5, 5.0, object()),
-                id="string-range-does-not-match-non-string-document-values",
+                (True, False, [], {}, object()),
+                id="string-range-does-not-match-non-convertible-document-values",
             ),
         ),
     )
@@ -955,57 +949,46 @@ class TestLueceneFilter:
         for wrong_value in wrong_values:
             assert not lucene_filter.matches({"key": wrong_value})
 
+    def test_created_numeric_range_filter_matches_int_float_and_numeric_string_document_values(
+        self,
+        range_query,
+    ):
+        lucene_filter = LuceneFilter.create(range_query("[1 TO 10]"))
+
+        assert lucene_filter.matches({"key": 2})
+        assert lucene_filter.matches({"key": 2.0})
+        assert lucene_filter.matches({"key": 10})
+        assert lucene_filter.matches({"key": "2"})
+        assert not lucene_filter.matches({"key": "20"})
+        assert not lucene_filter.matches({"key": "abc"})
+
+    def test_created_string_range_filter_matches_int_and_float_document_values(
+        self,
+        range_query,
+    ):
+        lucene_filter = LuceneFilter.create(range_query("[1 TO bar]"))
+
+        assert lucene_filter.matches({"key": 5})
+        assert lucene_filter.matches({"key": 5.5})
+        assert lucene_filter.matches({"key": "5"})
+        assert not lucene_filter.matches({"key": -5})
+        assert not lucene_filter.matches({"key": True})
+
     @pytest.mark.parametrize(
         "range_expression",
         (
-            pytest.param(
-                "{0 TO 0}",
-                id="exclusive-integer-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "{0 TO 0]",
-                id="exclusive-lower-integer-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "[0 TO 0}",
-                id="exclusive-upper-integer-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "{1.5 TO 1.5}",
-                id="exclusive-float-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "{1.5 TO 1.5]",
-                id="exclusive-lower-float-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "[1.5 TO 1.5}",
-                id="exclusive-upper-float-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "{1.0 TO 1}",
-                id="exclusive-mixed-numeric-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "{1.0 TO 1]",
-                id="exclusive-lower-mixed-numeric-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "[1.0 TO 1}",
-                id="exclusive-upper-mixed-numeric-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "{abc TO abc}",
-                id="exclusive-string-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "{abc TO abc]",
-                id="exclusive-lower-string-range-with-equal-boundaries",
-            ),
-            pytest.param(
-                "[abc TO abc}",
-                id="exclusive-upper-string-range-with-equal-boundaries",
-            ),
+            pytest.param("{0 TO 0}", id="excl-int-range-eq-bounds"),
+            pytest.param("{0 TO 0]", id="excl-lower-int-range-eq-bounds"),
+            pytest.param("[0 TO 0}", id="excl-upper-int-range-eq-bounds"),
+            pytest.param("{1.5 TO 1.5}", id="excl-float-range-eq-bounds"),
+            pytest.param("{1.5 TO 1.5]", id="excl-lower-float-range-eq-bounds"),
+            pytest.param("[1.5 TO 1.5}", id="excl-upper-float-range-eq-bounds"),
+            pytest.param("{1.0 TO 1}", id="excl-mixed-numeric-range-eq-bounds"),
+            pytest.param("{1.0 TO 1]", id="excl-lower-mixed-numeric-range-eq-bounds"),
+            pytest.param("[1.0 TO 1}", id="excl-upper-mixed-numeric-range-eq-bounds"),
+            pytest.param("{abc TO abc}", id="excl-string-range-eq-bounds"),
+            pytest.param("{abc TO abc]", id="excl-lower-string-range-eq-bounds"),
+            pytest.param("[abc TO abc}", id="excl-upper-string-range-eq-bounds"),
         ),
     )
     def test_created_exclusive_range_with_equal_boundaries_matches_no_value(
@@ -1022,70 +1005,22 @@ class TestLueceneFilter:
     @pytest.mark.parametrize(
         "range_expression",
         (
-            pytest.param(
-                "[0 TO 10]",
-                id="integer-inclusive-range",
-            ),
-            pytest.param(
-                "{0 TO 10}",
-                id="integer-exclusive-range",
-            ),
-            pytest.param(
-                "{0 TO 10]",
-                id="integer-exclusive-inclusive-range",
-            ),
-            pytest.param(
-                "[0 TO 10}",
-                id="integer-inclusive-exclusive-range",
-            ),
-            pytest.param(
-                "[-1.5 TO 1.5]",
-                id="float-inclusive-range",
-            ),
-            pytest.param(
-                "{-1.5 TO 1.5}",
-                id="float-exclusive-range",
-            ),
-            pytest.param(
-                "{-1.5 TO 1.5]",
-                id="float-exclusive-inclusive-range",
-            ),
-            pytest.param(
-                "[-1.5 TO 1.5}",
-                id="float-inclusive-exclusive-range",
-            ),
-            pytest.param(
-                "[-1 TO 1.0]",
-                id="mixed-numeric-inclusive-range",
-            ),
-            pytest.param(
-                "{-1 TO 1.0}",
-                id="mixed-numeric-exclusive-range",
-            ),
-            pytest.param(
-                "{-1 TO 1.0]",
-                id="mixed-numeric-exclusive-inclusive-range",
-            ),
-            pytest.param(
-                "[-1 TO 1.0}",
-                id="mixed-numeric-inclusive-exclusive-range",
-            ),
-            pytest.param(
-                "[bar TO foo]",
-                id="string-inclusive-range",
-            ),
-            pytest.param(
-                "{bar TO foo}",
-                id="string-exclusive-range",
-            ),
-            pytest.param(
-                "{bar TO foo]",
-                id="string-exclusive-inclusive-range",
-            ),
-            pytest.param(
-                "[bar TO foo}",
-                id="string-inclusive-exclusive-range",
-            ),
+            pytest.param("[0 TO 10]", id="int-incl-range"),
+            pytest.param("{0 TO 10}", id="int-excl-range"),
+            pytest.param("{0 TO 10]", id="int-excl-incl-range"),
+            pytest.param("[0 TO 10}", id="int-incl-excl-range"),
+            pytest.param("[-1.5 TO 1.5]", id="float-incl-range"),
+            pytest.param("{-1.5 TO 1.5}", id="float-excl-range"),
+            pytest.param("{-1.5 TO 1.5]", id="float-excl-incl-range"),
+            pytest.param("[-1.5 TO 1.5}", id="float-incl-excl-range"),
+            pytest.param("[-1 TO 1.0]", id="mixed-numeric-incl-range"),
+            pytest.param("{-1 TO 1.0}", id="mixed-numeric-excl-range"),
+            pytest.param("{-1 TO 1.0]", id="mixed-numeric-excl-incl-range"),
+            pytest.param("[-1 TO 1.0}", id="mixed-numeric-incl-excl-range"),
+            pytest.param("[bar TO foo]", id="string-incl-range"),
+            pytest.param("{bar TO foo}", id="string-excl-range"),
+            pytest.param("{bar TO foo]", id="string-excl-incl-range"),
+            pytest.param("[bar TO foo}", id="string-incl-excl-range"),
         ),
     )
     def test_created_range_filter_does_not_match_missing_field(
@@ -1101,54 +1036,24 @@ class TestLueceneFilter:
     @pytest.mark.parametrize(
         "range_expression",
         (
-            pytest.param(
-                "[10 TO 0]",
-                id="reversed-inclusive-integer-range",
-            ),
-            pytest.param(
-                "{10 TO 0}",
-                id="reversed-exclusive-integer-range",
-            ),
-            pytest.param(
-                "{10 TO 0]",
-                id="reversed-exclusive-inclusive-integer-range",
-            ),
-            pytest.param(
-                "[10 TO 0}",
-                id="reversed-inclusive-exclusive-integer-range",
-            ),
-            pytest.param(
-                "[10.5 TO -1.5]",
-                id="reversed-inclusive-float-range",
-            ),
-            pytest.param(
-                "{10.5 TO -1.5}",
-                id="reversed-exclusive-float-range",
-            ),
-            pytest.param(
-                "{10.5 TO -1.5]",
-                id="reversed-exclusive-inclusive-float-range",
-            ),
-            pytest.param(
-                "[10.5 TO -1.5}",
-                id="reversed-inclusive-exclusive-float-range",
-            ),
-            pytest.param(
-                "[foo TO bar]",
-                id="reversed-inclusive-string-range",
-            ),
-            pytest.param(
-                "{foo TO bar}",
-                id="reversed-exclusive-string-range",
-            ),
-            pytest.param(
-                "{foo TO bar]",
-                id="reversed-exclusive-inclusive-string-range",
-            ),
-            pytest.param(
-                "[foo TO bar}",
-                id="reversed-inclusive-exclusive-string-range",
-            ),
+            pytest.param("[10 TO 0]", id="reverse-incl-int-range"),
+            pytest.param("{10 TO 0}", id="reverse-excl-int-range"),
+            pytest.param("{10 TO 0]", id="reverse-excl-incl-int-range"),
+            pytest.param("[10 TO 0}", id="reverse-incl-excl-int-range"),
+            pytest.param("[10.5 TO -1.5]", id="reverse-incl-float-range"),
+            pytest.param("{10.5 TO -1.5}", id="reverse-excl-float-range"),
+            pytest.param("{10.5 TO -1.5]", id="reverse-excl-incl-float-range"),
+            pytest.param("[10.5 TO -1.5}", id="reverse-incl-excl-float-range"),
+            pytest.param("[foo TO bar]", id="reverse-incl-string-range"),
+            pytest.param("{foo TO bar}", id="reverse-excl-string-range"),
+            pytest.param("{foo TO bar]", id="reverse-excl-incl-string-range"),
+            pytest.param("[foo TO bar}", id="reverse-incl-excl-string-range"),
+            pytest.param("[foo TO 10]", id="reverse-string-lower-and-int-upper-bound"),
+            pytest.param("{foo TO 10}", id="reverse-excl-string-lower-and-int-upper-bound"),
+            pytest.param("[foo TO 10.5]", id="reverse-string-lower-and-float-upper-bound"),
+            pytest.param("{foo TO 10.5}", id="reverse-excl-string-lower-and-float-upper-bound"),
+            pytest.param("[nan TO 10]", id="reverse-nan-lower-and-int-upper-bound"),
+            pytest.param("{nan TO 10}", id="reverse-excl-nan-lower-and-int-upper-bound"),
         ),
     )
     def test_create_rejects_range_with_reversed_boundaries(
@@ -1172,13 +1077,13 @@ class TestLueceneFilter:
                 "[0 TO 10.5]",
                 (0.0, 5.5, 10.5),
                 (-0.1, 10.6),
-                id="integer-lower-float-upper-boundary",
+                id="int-lower-float-upper-bound",
             ),
             pytest.param(
                 "[-10.5 TO 10]",
                 (-10.5, 0.0, 10.0),
                 (-10.6, 10.1),
-                id="float-lower-integer-upper-boundary",
+                id="float-lower-int-upper-bound",
             ),
         ),
     )
@@ -1198,183 +1103,194 @@ class TestLueceneFilter:
             assert not lucene_filter.matches({"key": value})
 
     @pytest.mark.parametrize(
-        "range_expression",
+        ("range_expression", "matching_values", "non_matching_values"),
         (
             pytest.param(
                 "[1 TO bar]",
-                id="integer-lower-and-string-upper-bound",
-            ),
-            pytest.param(
-                "{1 TO bar}",
-                id="exclusive-integer-lower-and-string-upper-bound",
-            ),
-            pytest.param(
-                "{1 TO bar]",
-                id="exclusive-inclusive-integer-lower-and-string-upper-bound",
-            ),
-            pytest.param(
-                "[1 TO bar}",
-                id="inclusive-exclusive-integer-lower-and-string-upper-bound",
-            ),
-            pytest.param(
-                "[foo TO 10]",
-                id="string-lower-and-integer-upper-bound",
-            ),
-            pytest.param(
-                "{foo TO 10}",
-                id="exclusive-string-lower-and-integer-upper-bound",
-            ),
-            pytest.param(
-                "{foo TO 10]",
-                id="exclusive-inclusive-string-lower-and-integer-upper-bound",
-            ),
-            pytest.param(
-                "[foo TO 10}",
-                id="inclusive-exclusive-string-lower-and-integer-upper-bound",
+                ("1", "5", "bar"),
+                ("0", "baz"),
+                id="int-lower-and-string-upper-bound",
             ),
             pytest.param(
                 "[1.5 TO bar]",
+                ("1.5", "5", "bar"),
+                ("1.4", "baz"),
                 id="float-lower-and-string-upper-bound",
             ),
             pytest.param(
-                "{1.5 TO bar}",
-                id="exclusive-float-lower-and-string-upper-bound",
+                "[0 TO nan]",
+                ("0", "5", "nan"),
+                ("-1", "nao"),
+                id="int-lower-and-nan-upper-bound",
             ),
             pytest.param(
-                "{1.5 TO bar]",
-                id="exclusive-inclusive-float-lower-and-string-upper-bound",
+                "[-inf TO 10]",
+                ("-inf", "0", "10"),
+                ("11", "a"),
+                id="neg-infinity-lower-and-int-upper-bound",
             ),
             pytest.param(
-                "[1.5 TO bar}",
-                id="inclusive-exclusive-float-lower-and-string-upper-bound",
+                "[0 TO inf]",
+                ("0", "5", "inf"),
+                ("-1", "infinity"),
+                id="int-lower-and-pos-infinity-upper-bound",
             ),
             pytest.param(
-                "[foo TO 10.5]",
-                id="string-lower-and-float-upper-bound",
+                "[-inf TO inf]",
+                ("-inf", "0", "inf"),
+                ("infinity", "zzz"),
+                id="both-bounds-non-finite-terms",
             ),
             pytest.param(
-                "{foo TO 10.5}",
-                id="exclusive-string-lower-and-float-upper-bound",
-            ),
-            pytest.param(
-                "{foo TO 10.5]",
-                id="exclusive-inclusive-string-lower-and-float-upper-bound",
-            ),
-            pytest.param(
-                "[foo TO 10.5}",
-                id="inclusive-exclusive-string-lower-and-float-upper-bound",
+                "[nan TO nan]",
+                ("nan",),
+                ("Nan", "0", "nanana"),
+                id="eq-non-finite-term-bounds",
             ),
         ),
     )
-    def test_create_rejects_mixed_numeric_and_string_range_boundaries(
+    def test_created_range_filter_falls_back_to_string_range_for_non_numeric_boundaries(
         self,
         range_query,
         range_expression,
+        matching_values,
+        non_matching_values,
     ):
-        with pytest.raises(
-            LuceneFilterError,
-            match=re.escape(f'The expression "{range_expression}" is invalid!'),
-        ):
-            LuceneFilter.create(range_query(range_expression))
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
 
     @pytest.mark.parametrize(
-        "range_expression",
+        ("range_expression", "matching_values", "non_matching_values"),
         (
             pytest.param(
                 "[* TO 10]",
-                id="open-lower-bound",
+                (-1000, -1, 0, 10),
+                (11,),
+                id="open-lower-bound-numeric",
             ),
             pytest.param(
                 "{* TO 10}",
-                id="exclusive-open-lower-bound",
+                (-1000, 9),
+                (10, 11),
+                id="excl-open-lower-bound-numeric",
             ),
             pytest.param(
                 "[1 TO *]",
-                id="open-upper-bound",
+                (1, 5, 1000),
+                (0,),
+                id="open-upper-bound-numeric",
             ),
             pytest.param(
                 "{1 TO *}",
-                id="exclusive-open-upper-bound",
-            ),
-            pytest.param(
-                "[* TO *]",
-                id="fully-open-range",
-            ),
-            pytest.param(
-                "{* TO *}",
-                id="exclusive-fully-open-range",
+                (2,),
+                (0, 1),
+                id="excl-open-upper-bound-numeric",
             ),
             pytest.param(
                 "[* TO foo]",
+                ("", "a", "foo"),
+                ("fop", "zzz"),
                 id="open-lower-string-upper-bound",
             ),
             pytest.param(
                 "[foo TO *]",
+                ("foo", "zzz"),
+                ("", "e", "fon"),
                 id="string-lower-open-upper-bound",
             ),
         ),
     )
-    def test_create_rejects_open_range(
+    def test_created_range_filter_treats_open_boundary_as_unbounded(
         self,
         range_query,
         range_expression,
+        matching_values,
+        non_matching_values,
     ):
-        with pytest.raises(
-            LuceneFilterError,
-            match=re.escape(f'The expression "{range_expression}" is invalid!'),
-        ):
-            LuceneFilter.create(range_query(range_expression))
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in matching_values:
+            assert lucene_filter.matches({"key": value})
+
+        for value in non_matching_values:
+            assert not lucene_filter.matches({"key": value})
 
     @pytest.mark.parametrize(
         "range_expression",
         (
-            pytest.param(
-                "[nan TO 10]",
-                id="nan-lower-bound",
-            ),
-            pytest.param(
-                "{nan TO 10}",
-                id="exclusive-nan-lower-bound",
-            ),
-            pytest.param(
-                "[0 TO nan]",
-                id="nan-upper-bound",
-            ),
-            pytest.param(
-                "{0 TO nan}",
-                id="exclusive-nan-upper-bound",
-            ),
-            pytest.param(
-                "[-inf TO 10]",
-                id="negative-infinity-lower-bound",
-            ),
-            pytest.param(
-                "{-inf TO 10}",
-                id="exclusive-negative-infinity-lower-bound",
-            ),
-            pytest.param(
-                "[0 TO inf]",
-                id="positive-infinity-upper-bound",
-            ),
-            pytest.param(
-                "{0 TO inf}",
-                id="exclusive-positive-infinity-upper-bound",
-            ),
+            pytest.param("[* TO *]", id="incl"),
+            pytest.param("{* TO *}", id="excl"),
+            pytest.param("{* TO *]", id="excl-incl"),
+            pytest.param("[* TO *}", id="incl-excl"),
         ),
     )
-    def test_create_rejects_non_finite_range_boundaries(
+    def test_created_range_filter_treats_fully_open_range_as_field_exists(
         self,
         range_query,
         range_expression,
     ):
-        with pytest.raises(
-            LuceneFilterError,
-            match=re.escape(
-                f'The expression "{range_expression}" is invalid. '
-                "Range boundaries must be finite numbers."
-            ),
-        ):
-            LuceneFilter.create(range_query(range_expression))
+        lucene_filter = LuceneFilter.create(range_query(range_expression))
+
+        for value in ["a", 5, 5.5, True, False, [], {}, None]:
+            assert lucene_filter.matches({"key": value})
+
+        assert not lucene_filter.matches({})
+        assert not lucene_filter.matches({"other": 1})
+
+    def test_created_range_filter_treats_quoted_asterisk_as_literal_value(
+        self,
+        range_query,
+    ):
+        lucene_filter = LuceneFilter.create(range_query('["*" TO bar]'))
+
+        assert not lucene_filter.matches({"key": "!"}), "! < * and thus should not match"
+        assert lucene_filter.matches({"key": "*"})
+        assert lucene_filter.matches({"key": "aaa"})
+        assert not lucene_filter.matches({"key": "baz"})
+
+    def test_open_and_literal_asterisk_boundaries_are_distinguishable_in_repr(
+        self,
+        range_query,
+    ):
+        open_range = LuceneFilter.create(range_query("[* TO bar]"))
+        literal_range = LuceneFilter.create(range_query('["*" TO bar]'))
+
+        assert str(open_range) != str(literal_range)
+
+    def test_created_range_filter_quoting_forces_lexicographic_comparison(
+        self,
+        range_query,
+    ):
+        lucene_filter = LuceneFilter.create(range_query('["1" TO "10"]'))
+
+        assert lucene_filter.matches({"key": "1"})
+        assert lucene_filter.matches({"key": "10"})
+        assert lucene_filter.matches({"key": 1})
+        assert not lucene_filter.matches({"key": "2"})
+        assert not lucene_filter.matches({"key": 2})
+        assert not lucene_filter.matches({"key": "100"})
+
+    def test_created_range_filter_quoting_either_boundary_forces_string_range(
+        self,
+        range_query,
+    ):
+        lucene_filter = LuceneFilter.create(range_query('["1" TO 10]'))
+
+        assert not lucene_filter.matches({"key": 2})
+
+    def test_quoted_and_unquoted_numeric_ranges_are_distinguishable_in_repr(
+        self,
+        range_query,
+    ):
+        numeric_range = LuceneFilter.create(range_query("[1 TO 10]"))
+        string_range = LuceneFilter.create(range_query('["1" TO "10"]'))
+
+        assert str(numeric_range) != str(string_range)
 
     @pytest.mark.parametrize(
         ("range_expression", "matching_values", "non_matching_values"),
@@ -1390,7 +1306,7 @@ class TestLueceneFilter:
                     "2023-12-31T23:59:59Z",
                     "2025-01-01T00:00:00Z",
                 ),
-                id="iso-8601-utc-timestamp-range",
+                id="iso-8601-utc-ts-range",
             ),
             pytest.param(
                 "[2024-01-01T00:00:00.000Z TO 2024-01-01T00:00:00.999Z]",
@@ -1403,7 +1319,7 @@ class TestLueceneFilter:
                     "2023-12-31T23:59:59.999Z",
                     "2024-01-01T00:00:01.000Z",
                 ),
-                id="iso-8601-millisecond-timestamp-range",
+                id="iso-8601-millisecond-ts-range",
             ),
             pytest.param(
                 '["2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"]',
@@ -1416,7 +1332,7 @@ class TestLueceneFilter:
                     "2023-12-31T23:59:59+01:00",
                     "2025-01-01T00:00:00+01:00",
                 ),
-                id="quoted-iso-8601-offset-timestamp-range",
+                id="quoted-iso-8601-offset-ts-range",
             ),
         ),
     )
@@ -1449,7 +1365,7 @@ class TestLueceneFilter:
                     "2023-12-31T23:59:59Z",
                     "2025-01-01T00:00:00Z",
                 ),
-                id="iso-8601-inclusive-lower-inclusive-upper",
+                id="iso-8601-incl-lower-incl-upper",
             ),
             pytest.param(
                 "{2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z}",
@@ -1458,7 +1374,7 @@ class TestLueceneFilter:
                     "2024-01-01T00:00:00Z",
                     "2024-12-31T23:59:59Z",
                 ),
-                id="iso-8601-exclusive-lower-exclusive-upper",
+                id="iso-8601-excl-lower-excl-upper",
             ),
             pytest.param(
                 "{2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z]",
@@ -1470,7 +1386,7 @@ class TestLueceneFilter:
                     "2024-01-01T00:00:00Z",
                     "2025-01-01T00:00:00Z",
                 ),
-                id="iso-8601-exclusive-lower-inclusive-upper",
+                id="iso-8601-excl-lower-incl-upper",
             ),
             pytest.param(
                 "[2024-01-01T00:00:00Z TO 2024-12-31T23:59:59Z}",
@@ -1482,7 +1398,7 @@ class TestLueceneFilter:
                     "2023-12-31T23:59:59Z",
                     "2024-12-31T23:59:59Z",
                 ),
-                id="iso-8601-inclusive-lower-exclusive-upper",
+                id="iso-8601-incl-lower-excl-upper",
             ),
             pytest.param(
                 '["2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"]',
@@ -1495,7 +1411,7 @@ class TestLueceneFilter:
                     "2023-12-31T23:59:59+01:00",
                     "2025-01-01T00:00:00+01:00",
                 ),
-                id="quoted-iso-8601-offset-inclusive-lower-inclusive-upper",
+                id="quoted-iso-8601-offset-incl-lower-incl-upper",
             ),
             pytest.param(
                 '{"2024-01-01T00:00:00+01:00" TO "2024-12-31T23:59:59+01:00"}',
@@ -1504,7 +1420,7 @@ class TestLueceneFilter:
                     "2024-01-01T00:00:00+01:00",
                     "2024-12-31T23:59:59+01:00",
                 ),
-                id="quoted-iso-8601-offset-exclusive-lower-exclusive-upper",
+                id="quoted-iso-8601-offset-excl-lower-excl-upper",
             ),
         ),
     )
@@ -1528,23 +1444,23 @@ class TestLueceneFilter:
         (
             pytest.param(
                 "[2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z]",
-                id="reversed-inclusive-iso-8601-timestamp-range",
+                id="reverse-incl-iso-8601-ts-range",
             ),
             pytest.param(
                 "{2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z}",
-                id="reversed-exclusive-iso-8601-timestamp-range",
+                id="reverse-excl-iso-8601-ts-range",
             ),
             pytest.param(
                 "{2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z]",
-                id="reversed-exclusive-inclusive-iso-8601-timestamp-range",
+                id="reverse-excl-incl-iso-8601-ts-range",
             ),
             pytest.param(
                 "[2024-12-31T23:59:59Z TO 2024-01-01T00:00:00Z}",
-                id="reversed-inclusive-exclusive-iso-8601-timestamp-range",
+                id="reverse-incl-excl-iso-8601-ts-range",
             ),
             pytest.param(
                 '["2024-12-31T23:59:59+01:00" TO "2024-01-01T00:00:00+01:00"]',
-                id="reversed-quoted-iso-8601-offset-timestamp-range",
+                id="reverse-quoted-iso-8601-offset-ts-range",
             ),
         ),
     )
@@ -1567,19 +1483,19 @@ class TestLueceneFilter:
         (
             pytest.param(
                 "[2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00]",
-                id="unquoted-iso-8601-offset-inclusive-range",
+                id="unquoted-iso-8601-offset-incl-range",
             ),
             pytest.param(
                 "{2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00}",
-                id="unquoted-iso-8601-offset-exclusive-range",
+                id="unquoted-iso-8601-offset-excl-range",
             ),
             pytest.param(
                 "{2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00]",
-                id="unquoted-iso-8601-offset-exclusive-inclusive-range",
+                id="unquoted-iso-8601-offset-excl-incl-range",
             ),
             pytest.param(
                 "[2024-01-01T00:00:00+01:00 TO 2024-12-31T23:59:59+01:00}",
-                id="unquoted-iso-8601-offset-inclusive-exclusive-range",
+                id="unquoted-iso-8601-offset-incl-excl-range",
             ),
         ),
     )

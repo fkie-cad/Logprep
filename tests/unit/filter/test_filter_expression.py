@@ -13,15 +13,15 @@ from logprep.filter.expression.filter_expression import (
     Exists,
     FilterExpression,
     FloatFilterExpression,
-    FloatRangeFilterExpression,
     IntegerFilterExpression,
-    IntegerRangeFilterExpression,
     KeyDoesNotExistError,
     Not,
+    NumericRangeFilterExpression,
     Or,
     RegExFilterExpression,
     SigmaFilterExpression,
     StringFilterExpression,
+    StringRangeFilterExpression,
     WildcardStringFilterExpression,
 )
 from logprep.filter.lucene_filter import LuceneFilter
@@ -241,13 +241,33 @@ class TestFloatFilterExpression(ValueBasedFilterExpressionTest):
         assert self.filter.matches({"key1": {"key2": self.expected_value}})
 
 
-class TestIntegerRangeFilterExpression(ValueBasedFilterExpressionTest):
+class TestNumericRangeFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
-        self.filter = IntegerRangeFilterExpression(["key1", "key2"], 23, 42)
-        self.filter_identical = IntegerRangeFilterExpression(["key1", "key2"], 23, 42)
+        self.filter = NumericRangeFilterExpression(["key1", "key2"], 23, 42)
+        self.filter_identical = NumericRangeFilterExpression(["key1", "key2"], 23, 42)
 
     def test_string_representation(self):
         assert str(self.filter) == "key1.key2:[23 TO 42]"
+
+    def test_string_representation_with_float_bounds(self):
+        numeric_range = NumericRangeFilterExpression(["key1", "key2"], 23.0, 42.0)
+        assert str(numeric_range) == "key1.key2:[23.0 TO 42.0]"
+
+    def test_string_representation_with_open_bound(self):
+        open_upper = NumericRangeFilterExpression(["key1", "key2"], 23, None)
+        assert str(open_upper) == "key1.key2:[23 TO *]"
+
+    def test_open_lower_bound_matches_any_value_up_to_upper_bound(self):
+        open_lower = NumericRangeFilterExpression(["key1", "key2"], None, 42)
+        assert open_lower.matches({"key1": {"key2": -(10**9)}})
+        assert open_lower.matches({"key1": {"key2": 42}})
+        assert not open_lower.matches({"key1": {"key2": 43}})
+
+    def test_open_upper_bound_matches_any_value_from_lower_bound(self):
+        open_upper = NumericRangeFilterExpression(["key1", "key2"], 23, None)
+        assert open_upper.matches({"key1": {"key2": 23}})
+        assert open_upper.matches({"key1": {"key2": 10**9}})
+        assert not open_upper.matches({"key1": {"key2": 22}})
 
     def test_does_not_match_if_value_is_below_lower_bound(self):
         assert not self.filter.matches({"key1": {"key2": 23 - 1}})
@@ -255,31 +275,68 @@ class TestIntegerRangeFilterExpression(ValueBasedFilterExpressionTest):
     def test_does_not_match_if_value_is_above_upper_bound(self):
         assert not self.filter.matches({"key1": {"key2": 42 + 1}})
 
-    def test_does_not_match_when_value_is_in_range_but_as_float(self):
-        assert not self.filter.matches({"key1": {"key2": 24.0}})
-
-    def test_does_match_when_value_is_in_range(self):
+    def test_does_match_when_value_is_in_range_as_int(self):
         for i in range(23, 43):
             assert self.filter.matches({"key1": {"key2": i}})
 
+    def test_does_match_when_value_is_in_range_as_float(self):
+        assert self.filter.matches({"key1": {"key2": 24.0}})
 
-class TestFloatRangeFilterExpression(ValueBasedFilterExpressionTest):
+    def test_does_not_match_when_value_is_bool(self):
+        assert isinstance(True, int) and int(True) == 1
+        assert isinstance(False, int) and int(False) == 0
+
+        zero_to_one = NumericRangeFilterExpression(["key1", "key2"], 0, 1)
+        assert not zero_to_one.matches({"key1": {"key2": True}})
+        assert not zero_to_one.matches({"key1": {"key2": False}})
+
+    def test_does_match_when_value_is_numeric_string(self):
+        assert self.filter.matches({"key1": {"key2": "24"}})
+
+    def test_does_not_match_when_numeric_string_is_out_of_range(self):
+        assert not self.filter.matches({"key1": {"key2": "100"}})
+
+    def test_does_not_match_when_value_is_non_numeric_string(self):
+        assert not self.filter.matches({"key1": {"key2": "abc"}})
+
+
+class TestStringRangeFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
-        self.filter = FloatRangeFilterExpression(["key1", "key2"], 23.0, 42.0)
-        self.filter_identical = FloatRangeFilterExpression(["key1", "key2"], 23.0, 42.0)
+        self.filter = StringRangeFilterExpression(["key1", "key2"], "bar", "foo")
+        self.filter_identical = StringRangeFilterExpression(["key1", "key2"], "bar", "foo")
 
     def test_string_representation(self):
-        assert str(self.filter) == "key1.key2:[23.0 TO 42.0]"
+        assert str(self.filter) == "key1.key2:[bar TO foo]"
+
+    def test_string_representation_quotes_numeric_looking_bounds(self):
+        numeric_looking = StringRangeFilterExpression(["key1", "key2"], "1", "10")
+        assert str(numeric_looking) == 'key1.key2:["1" TO "10"]'
 
     def test_does_not_match_if_value_is_below_lower_bound(self):
-        assert not self.filter.matches({"key1": {"key2": 23.0 - 1.0}})
+        assert not self.filter.matches({"key1": {"key2": "baa"}})
 
     def test_does_not_match_if_value_is_above_upper_bound(self):
-        assert not self.filter.matches({"key1": {"key2": 42.0 + 1.0}})
+        assert not self.filter.matches({"key1": {"key2": "fop"}})
 
     def test_does_match_when_value_is_in_range(self):
-        for i in range(23, 43):
-            assert self.filter.matches({"key1": {"key2": float(i)}})
+        assert self.filter.matches({"key1": {"key2": "car"}})
+
+    def test_does_not_match_when_value_is_bool(self):
+        az_range = StringRangeFilterExpression(["key1", "key2"], "A", "Z")
+        assert not az_range.matches({"key1": {"key2": True}})
+        assert not az_range.matches({"key1": {"key2": False}})
+
+    def test_does_match_when_value_is_int_in_range(self):
+        digits_range = StringRangeFilterExpression(["key1", "key2"], "1", "9")
+        assert digits_range.matches({"key1": {"key2": 5}})
+
+    def test_does_match_when_value_is_float_in_range(self):
+        digits_range = StringRangeFilterExpression(["key1", "key2"], "1", "9")
+        assert digits_range.matches({"key1": {"key2": 5.5}})
+
+    def test_does_not_match_when_value_is_list_or_dict(self):
+        assert not self.filter.matches({"key1": {"key2": []}})
+        assert not self.filter.matches({"key1": {"key2": {}}})
 
 
 class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
@@ -851,7 +908,7 @@ class TestLuceneRepresentation:
                 id="integer-field-group-ranges-with-and-to-other-field",
             ),
             pytest.param(
-                "temperature:([18.5 TO 25.0] OR [33.5 TO 55.0]) " "AND status:[ok TO stable]",
+                "temperature:([18.5 TO 25.0] OR [33.5 TO 55.0]) AND status:[ok TO stable]",
                 (
                     {"temperature": 20.0, "status": "ok"},
                     {"temperature": 40.0, "status": "stable"},

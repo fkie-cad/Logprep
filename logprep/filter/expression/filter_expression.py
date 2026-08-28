@@ -297,33 +297,47 @@ class RangeBasedFilterExpression(KeyBasedFilterExpression, Generic[RangeBoundary
     def __init__(
         self,
         key: Sequence[str],
-        lower_bound: RangeBoundary,
-        upper_bound: RangeBoundary,
+        lower_bound: RangeBoundary | None,
+        upper_bound: RangeBoundary | None,
         include_lower_bound: bool = True,
         include_upper_bound: bool = True,
     ):
         super().__init__(key)
-        self._lower_bound: RangeBoundary = lower_bound
-        self._upper_bound: RangeBoundary = upper_bound
+        self._lower_bound: RangeBoundary | None = lower_bound
+        self._upper_bound: RangeBoundary | None = upper_bound
         self._include_lower_bound = include_lower_bound
         self._include_upper_bound = include_upper_bound
 
     def __repr__(self) -> str:
         opening_bracket = "[" if self._include_lower_bound else "{"
         closing_bracket = "]" if self._include_upper_bound else "}"
+        lower = self._format_bound(self._lower_bound)
+        upper = self._format_bound(self._upper_bound)
 
         return (
             f"{self.key_as_dotted_string}:"
-            f"{opening_bracket}{self._lower_bound} TO {self._upper_bound}"
+            f"{opening_bracket}{lower} TO {upper}"
             f"{closing_bracket}"
         )
 
+    def _format_bound(self, bound: RangeBoundary | None) -> str:
+        """Render a bound for repr, disambiguating an open side from a literal "*" value."""
+        if bound is None:
+            return "*"
+        if bound == "*":
+            return '"*"'
+        return str(bound)
+
     def _matches_lower_bound(self, value: RangeBoundary) -> bool:
+        if self._lower_bound is None:
+            return True
         if self._include_lower_bound:
             return value >= self._lower_bound
         return value > self._lower_bound
 
     def _matches_upper_bound(self, value: RangeBoundary) -> bool:
+        if self._upper_bound is None:
+            return True
         if self._include_upper_bound:
             return value <= self._upper_bound
         return value < self._upper_bound
@@ -336,40 +350,55 @@ class RangeBasedFilterExpression(KeyBasedFilterExpression, Generic[RangeBoundary
 
 
 class NumericRangeFilterExpression(RangeBasedFilterExpression[int | float]):
-    """Range based filter expression that matches for integers."""
+    """Range based filter expression that matches numeric values."""
 
     def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
 
-        if not isinstance(value, (int, float)):
-            if isinstance(value, str):
-                try:
-                    value = float(value)
-                except ValueError:
-                    return False
-            else:
+        if isinstance(value, str):
+            try:
+                value = float(value)
+            except ValueError:
                 return False
-        elif isinstance(value, bool):
-            # bool is a subclass of int
+        # bool is a subclass of int, but must not be treated as numeric here
+        elif isinstance(value, bool) or not isinstance(value, (int, float)):
             return False
 
         return self._matches_range(value)
 
 
 class StringRangeFilterExpression(RangeBasedFilterExpression[str]):
-    """Range based filter expression that matches for strings.
-
-    String ranges are compared lexicographically.
+    """
+    Range based filter expression that matches for strings, ints, and floats.
+    String ranges are compared lexicographically. Numerical values (int/float)
+    are converted to their string representation before comparing.
     """
 
     def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
 
-        # avoid comparing strings with other value types, which would raise a TypeError
-        if not isinstance(value, str):
+        if isinstance(value, bool):
+            return False
+        if isinstance(value, (int, float)):
+            value = str(value)
+        elif not isinstance(value, str):
             return False
 
         return self._matches_range(value)
+
+    def _format_bound(self, bound: str | None) -> str:
+        """
+        Quote a numeric-looking bound, distinguishing it from a numeric range in repr
+        (e.g. ``["1" TO "10"]`` and ``[1 TO 10]``).
+        """
+        if bound is not None and bound != "*":
+            try:
+                float(bound)
+            except ValueError:
+                pass
+            else:
+                return f'"{bound}"'
+        return super()._format_bound(bound)
 
 
 class RegExFilterExpression(KeyValueBasedFilterExpression):
