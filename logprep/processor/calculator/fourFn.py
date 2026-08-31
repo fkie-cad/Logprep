@@ -154,7 +154,7 @@ class ASTNode(ABC):
 
     @property
     @abstractmethod
-    def is_static(self) -> bool: ...
+    def is_constant(self) -> bool: ...
 
     @property
     @abstractmethod
@@ -183,7 +183,7 @@ class ConstantASTNode(TerminalASTNode):
         self.value = try_handle_number(value)
 
     @property
-    def is_static(self):
+    def is_constant(self):
         return True
 
     def __repr__(self):
@@ -201,7 +201,7 @@ class VariableASTNode(TerminalASTNode):
         self.path = path
 
     @property
-    def is_static(self):
+    def is_constant(self):
         return False
 
     def evaluate(self, context):
@@ -230,31 +230,31 @@ class CompositeASTNode(ASTNode):
         return self.__complexity
 
     @property
-    def is_static(self):
-        return all(child.is_static for child in self.children)
+    def is_constant(self):
+        return all(child.is_constant for child in self.children)
 
     def optimize(self) -> ASTNode:
         optimized_clone = CompositeASTNode(
             operation=self.operation, children=[child.optimize() for child in self.children]
         )
-        if not all(child.is_static for child in optimized_clone.children):
+        if not all(child.is_constant for child in optimized_clone.children):
             return optimized_clone
 
         try:
             my_static_value = optimized_clone.evaluate({})
             return ConstantASTNode(value=my_static_value)
         except CalculatorError as error:
-            # As every child considered consider itself static
+            # As every child considered consider itself constant
             # evaluating with an empty context should not raise
             # an MissingValueError. All other errors should already
             # be detected at compile time.
 
             # If the following assert is hit one of the children
-            # is probably wrong about itself being static.
+            # is probably wrong about itself being constant.
             assert not error, self.children
 
             # Returning the optimized_clone if asserts are disabled
-            # as this is probably still preferable to failing on
+            # as this is probably preferable to failing on optimization.
             return optimized_clone
 
     def write_description(self, context):
