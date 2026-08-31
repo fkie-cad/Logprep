@@ -2,8 +2,7 @@
 ### Breaking
 * restrict UNIX timestamp normalization to seconds, milliseconds, microseconds, and nanoseconds.
 * handle non-string `concatenator` source fields with `ProcessingWarning` instead of `ProcessingCriticalError`
-* filter: allow mixed numeric range boundaries and type coercion for range matching
-* filter: unquoted asterisks (`*`) in range expressions are now considered open boundaries
+* filter: field values are now automatically coerced in range matches
 
 ### Features
 * add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
@@ -12,6 +11,7 @@
 * generic_resolver: add content_field support
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
 * filter: add support for `*` (open boundary) in range expressions
+* filter: allow mixed numeric range boundaries and type coercion for range matching
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
