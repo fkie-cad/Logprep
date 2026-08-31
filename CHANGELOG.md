@@ -1,5 +1,14 @@
 ## Upcoming Changes
 ### Breaking
+
+### Features
+
+### Improvements
+
+### Bugfix
+
+## 21.0.0
+### Breaking
 * restrict UNIX timestamp normalization to seconds, milliseconds, microseconds, and nanoseconds.
 * handle non-string `concatenator` source fields with `ProcessingWarning` instead of `ProcessingCriticalError`
 * filter: field values are now automatically coerced in range matches
