@@ -5,7 +5,11 @@ import re
 
 import pytest
 
-from logprep.processor.calculator.fourFn import InvalidSyntaxError, compile_expression
+from logprep.processor.calculator.fourFn import (
+    DivisionByZeroError,
+    InvalidSyntaxError,
+    compile_expression,
+)
 from tests.unit.processor.base import BaseProcessorTestCase
 
 static_expression_test_cases = [
@@ -492,8 +496,54 @@ test_cases = [
     ),
 ]
 
+setup_failure_test_cases = [
+    pytest.param(
+        {
+            "filter": "field1",
+            "calculator": {
+                "calc": "round(${field1}",
+                "target_field": "result",
+            },
+        },
+        InvalidSyntaxError,
+        id="Tags failure incorrect syntax",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "3/0",
+                "target_field": "result",
+            },
+        },
+        DivisionByZeroError,
+        id="division by zero in expression",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "3/(1-1)",
+                "target_field": "result",
+            },
+        },
+        DivisionByZeroError,
+        id="division by zero on optimization",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": " 9^9^9",
+                "target_field": "result",
+            },
+        },
+        TimeoutError,
+        id="constant raises timeout on setup",
+    ),
+]
 
-failure_test_cases = [
+runtime_failure_test_cases = [
     pytest.param(
         {
             "filter": "field1 AND field2 AND field3",
@@ -586,40 +636,6 @@ failure_test_cases = [
     ),
     pytest.param(
         {
-            "filter": "field1",
-            "calculator": {
-                "calc": "round(${field1}",
-                "target_field": "result",
-            },
-        },
-        {"field1": 1337},
-        {
-            "field1": 1337,
-            "tags": ["_calculator_failure"],
-        },
-        r"ProcessingWarning.*could not be parsed",
-        id="Tags failure incorrect syntax",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "calculator": {
-                "calc": "3/0",
-                "target_field": "result",
-            },
-        },
-        {"message": "This is a message", "field1": "1.2", "field2": 4.5},
-        {
-            "message": "This is a message",
-            "field1": "1.2",
-            "field2": 4.5,
-            "tags": ["_calculator_failure"],
-        },
-        r"ProcessingWarning.*'3/0' => '3/0' results in division by zero",
-        id="division by zero",
-    ),
-    pytest.param(
-        {
             "filter": "message",
             "calculator": {
                 "calc": " 9^9^9",
@@ -632,7 +648,7 @@ failure_test_cases = [
             "tags": ["_calculator_failure"],
         },  # "STREAM ioctl timeout" for MacOS/darwin
         r"ProcessingWarning.*(Timer expired|ioctl timeout)",
-        id="raises timout",
+        id="raises timeout",
     ),
 ]
 
@@ -646,17 +662,24 @@ class TestCalculator(BaseProcessorTestCase):
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
         self._load_rule(rule)
+        self.object.setup()
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, rule, event, expected, error_message):
+    @pytest.mark.parametrize("rule, event, expected, error_message", runtime_failure_test_cases)
+    def test_testcases_failure_handling_at_runtime(self, rule, event, expected, error_message):
         self._load_rule(rule)
-
+        self.object.setup()
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(rf".*{error_message}", str(result.warnings[0]))
         assert event == expected
+
+    @pytest.mark.parametrize("rule, error_type", setup_failure_test_cases)
+    def test_testcases_failure_handling_at_setup(self, rule, error_type):
+        self._load_rule(rule)
+        with pytest.raises(error_type):
+            self.object.setup()
 
     @pytest.mark.parametrize(
         "expression, expected",

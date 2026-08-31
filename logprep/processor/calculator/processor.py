@@ -23,20 +23,15 @@ Processor Configuration
 .. automodule:: logprep.processor.calculator.rule
 """
 
-from typing import TypeAlias
+from typing import Sequence, cast
 
 from logprep.processor.calculator.fourFn import (
-    ASTNode,
     EvaluationError,
-    InvalidSyntaxError,
     MissingValueError,
-    compile_expression,
 )
 from logprep.processor.calculator.rule import CalculatorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.decorators import timeout
-
-ExpressionCacheEntry: TypeAlias = ASTNode | Exception
 
 
 class Calculator(FieldManager):
@@ -44,36 +39,31 @@ class Calculator(FieldManager):
 
     rule_class = CalculatorRule
 
-    _expression_cache: dict[str, ExpressionCacheEntry] = {}
+    @property
+    def rules(self) -> Sequence[CalculatorRule]:
+        """Returns all rules as Calculator rule"""
+        return cast(Sequence[CalculatorRule], super().rules)
 
-    def __precompile(self, expression: str) -> ExpressionCacheEntry:
-        if expression in self._expression_cache:
-            return self._expression_cache[expression]
-
-        try:
-            self._expression_cache[expression] = compile_expression(expression)
-        except InvalidSyntaxError as error:
-            self._expression_cache[expression] = error
-
-        return self._expression_cache[expression]
+    def setup(self):
+        super().setup()
+        print("SETUP")
+        for rule in self.rules:
+            rule.init_calculator()
 
     def _apply_rules(self, event, rule):
-        # TODO check all rules can be precompiled at init instead of
-        # cached/lazy loading approach.
-        cache_entry = self.__precompile(rule.calc)
-        if isinstance(cache_entry, Exception):
-            self._handle_warning_error(event, rule, cache_entry)
-            return
+        assert isinstance(rule, CalculatorRule)
 
         @timeout(seconds=rule.timeout)
         def calculate():
-            return cache_entry.evaluate(event)
+            return rule.program.evaluate(event)
 
         try:
+            print("CALCULATE")
             result = calculate()
+            print("RESULT", result)
             if result is not None:
                 self._write_target_field(event, rule, result)
-        except MissingValueError as error:
+        except MissingValueError:
             self._handle_missing_fields(
                 event,
                 rule,

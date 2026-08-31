@@ -144,7 +144,9 @@ import re
 
 from attrs import define, field, validators
 
+from logprep.processor.calculator.fourFn import ASTNode, compile_expression
 from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
+from logprep.util.decorators import timeout
 
 
 class CalculatorRule(FieldManagerRule):
@@ -173,6 +175,28 @@ class CalculatorRule(FieldManagerRule):
         def __attrs_post_init__(self):
             self.source_fields = re.findall(FIELD_PATTERN, self.calc)
             super().__attrs_post_init__()
+
+    def __init__(self, filter_rule, config, processor_name):
+        super().__init__(filter_rule, config, processor_name)
+        # TODO: do i really need init call or could je directly
+        # compile (and maybe fail at) init
+        self.__program: ASTNode | None = None
+
+    def init_calculator(self) -> None:
+
+        # NOTE: Timeouts might occur especially on optimizing
+        # when doing certain calculations (i.e. 9^9^9)
+        @timeout(seconds=self.timeout)
+        def compile():
+            program = compile_expression(self.calc)
+            self.__program = program.optimize()
+
+        compile()
+
+    @property
+    def program(self) -> ASTNode:
+        assert self.__program
+        return self.__program
 
     @property
     def calc(self):

@@ -37,10 +37,11 @@ from pyparsing import (
     one_of,
 )
 
+from logprep.abc.exceptions import LogprepException
 from logprep.util.helper import DottedTemplate, FieldValue, get_dotted_field_value
 
 
-class CalculatorError(Exception): ...
+class CalculatorError(LogprepException): ...
 
 
 class InvalidSyntaxError(CalculatorError): ...
@@ -53,6 +54,9 @@ class MissingValueError(CalculatorError):
 
 
 class EvaluationError(CalculatorError): ...
+
+
+class DivisionByZeroError(CalculatorError): ...
 
 
 epsilon = 1e-12
@@ -89,20 +93,20 @@ fn = {
 }
 
 
-class ASTDescriptionContext(Protocol):
-    def describe(self, node: "ASTNode", *children: "ASTNode") -> None: ...
+class ASTWalkContext(Protocol):
+    def visit(self, node: "ASTNode", *children: "ASTNode") -> None: ...
 
 
 NodeId: TypeAlias = int
 NodeDesc: TypeAlias = str
 
 
-class DiagramRenderContext(ASTDescriptionContext):
+class DiagramRenderContext(ASTWalkContext):
     def __init__(self):
         self.nodes: dict[NodeId, NodeDesc] = {}
         self.links: list[tuple[NodeId, NodeId]] = []
 
-    def describe(self, node, *children):
+    def visit(self, node, *children):
         self.nodes[id(node)] = repr(node)
         self.links.extend((id(node), id(child)) for child in children)
 
@@ -147,7 +151,7 @@ EvaluationContext: TypeAlias = dict[str, FieldValue]
 
 class ASTNode(ABC):
     @abstractmethod
-    def write_description(self, context: ASTDescriptionContext) -> None: ...
+    def walk(self, context: ASTWalkContext) -> None: ...
 
     @abstractmethod
     def evaluate(self, context: EvaluationContext) -> Any: ...
@@ -165,7 +169,7 @@ class ASTNode(ABC):
 
     def get_diagram(self) -> str:
         diagram_render_context = DiagramRenderContext()
-        self.write_description(diagram_render_context)
+        self.walk(diagram_render_context)
         return diagram_render_context.get_graph_viz()
 
 
@@ -174,8 +178,8 @@ class TerminalASTNode(ASTNode):
     def complexity(self):
         return 1
 
-    def write_description(self, context):
-        return context.describe(self)
+    def walk(self, context):
+        return context.visit(self)
 
 
 class ConstantASTNode(TerminalASTNode):
@@ -215,6 +219,35 @@ class VariableASTNode(TerminalASTNode):
 
     def optimize(self):
         return VariableASTNode(path=self.path)
+
+
+class NegateASTNode(ASTNode):
+    def __init__(self, inner: ASTNode):
+        self.inner = inner
+
+    @property
+    def complexity(self):
+        return self.inner.complexity + 1
+
+    @property
+    def is_constant(self):
+        return self.inner.is_constant
+
+    def walk(self, context):
+        context.visit(self, self.inner)
+        self.inner.walk(context)
+
+    def optimize(self):
+        optimized_inner = self.inner.optimize()
+        if optimized_inner.is_constant:
+            return ConstantASTNode(-optimized_inner.evaluate({}))
+        return NegateASTNode(optimized_inner)
+
+    def evaluate(self, context):
+        return -self.inner.evaluate(context)
+
+    def __repr__(self) -> str:
+        return "<negate>"
 
 
 class OperationASTNode(ASTNode):
@@ -305,10 +338,10 @@ class CompositeASTNode(ASTNode):
             # as this is probably preferable to failing on optimization.
             return optimized_clone
 
-    def write_description(self, context):
-        context.describe(self, *self.children)
+    def walk(self, context):
+        context.visit(self, *self.children)
         for child in self.children:
-            child.write_description(context)
+            child.walk(context)
 
     def evaluate(self, context):
         operands = [child.evaluate(context) for child in self.children]
@@ -362,7 +395,7 @@ def build_atom(x):
         node = node[0]
     assert isinstance(node, ASTNode)
     if len([s for s in signs if s == "-"]) % 2 == 1:
-        return CompositeASTNode("unary -", [node])
+        return NegateASTNode(node)
     return node
 
 
