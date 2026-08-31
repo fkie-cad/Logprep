@@ -34,7 +34,6 @@ import logging
 import typing
 from enum import IntEnum
 from functools import cached_property
-from typing import Optional
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
