@@ -638,11 +638,11 @@ runtime_failure_test_cases = [
         {
             "filter": "message",
             "calculator": {
-                "calc": " 9^9^9",
+                "calc": " ${a}^${a}^${a}",
                 "target_field": "result",
             },
         },
-        {"message": "This is a message"},
+        {"message": "This is a message", "a": 9},
         {
             "message": "This is a message",
             "tags": ["_calculator_failure"],

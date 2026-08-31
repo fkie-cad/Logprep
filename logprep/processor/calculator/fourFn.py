@@ -47,10 +47,10 @@ class CalculatorError(LogprepException): ...
 class InvalidSyntaxError(CalculatorError): ...
 
 
-class MissingValueError(CalculatorError):
-    def __init__(self, desc: str, value: str):
-        super().__init__(desc)
-        self.value = value
+class MissingValueError(CalculatorError): ...
+
+
+class UnknownFunctionError(CalculatorError): ...
 
 
 class EvaluationError(CalculatorError): ...
@@ -60,20 +60,6 @@ class DivisionByZeroError(CalculatorError): ...
 
 
 epsilon = 1e-12
-# map operator symbols to corresponding arithmetic and comparison operations.
-opn = {
-    "+": operator.add,
-    "-": operator.sub,
-    "*": operator.mul,
-    "/": operator.truediv,
-    "^": operator.pow,
-    ">": operator.gt,
-    "<": operator.lt,
-    ">=": operator.ge,
-    "<=": operator.le,
-    "==": operator.eq,
-    "!=": operator.ne,
-}
 
 fn = {
     "sin": math.sin,
@@ -211,7 +197,7 @@ class VariableASTNode(TerminalASTNode):
     def evaluate(self, context):
         value = get_dotted_field_value(context, self.path)
         if not value:
-            raise MissingValueError(f"Missing value for field {self.path!r}.", self.path)
+            raise MissingValueError(f"Missing value for field {self.path!r}.")
         return try_handle_number(value)
 
     def __repr__(self):
@@ -251,22 +237,26 @@ class NegateASTNode(ASTNode):
 
 
 class OperationASTNode(ASTNode):
-    operator: ClassVar[str]
+    operator_symbol: ClassVar[str]
     # NOTE: decided against handling the typing by designing the ASTNode class
     # generic. During construction of the AST the typing is dynamic
     # only the constructed is then checked for typing.
     operation_fn: ClassVar[Callable[[Any, Any], Any]]
     input_type: ClassVar[type]
-    output_type = ClassVar[type]
+    output_type: ClassVar[type]
 
     def __init__(
         self,
         lhs: ASTNode,
         rhs: ASTNode,
     ):
-
         self.lhs = lhs
         self.rhs = rhs
+
+    def walk(self, context):
+        context.visit(self, self.lhs, self.rhs)
+        self.lhs.walk(context)
+        self.rhs.walk(context)
 
     @property
     def complexity(self):
@@ -276,8 +266,8 @@ class OperationASTNode(ASTNode):
     def is_constant(self):
         return self.lhs.is_constant and self.rhs.is_constant
 
-    @abstractmethod
-    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None: ...
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
+        return None
 
     def optimize(self):
         lhs_optimized = self.lhs.optimize()
@@ -286,8 +276,8 @@ class OperationASTNode(ASTNode):
         if lhs_optimized.is_constant and rhs_optimized.is_constant:
             return ConstantASTNode(
                 self.operation_fn(
-                    lhs_optimized.evaluate(),
-                    rhs_optimized.evaluate(),
+                    lhs_optimized.evaluate({}),
+                    rhs_optimized.evaluate({}),
                 )
             )
         if specific_optimization := self._operation_specific_optimizations(
@@ -297,26 +287,202 @@ class OperationASTNode(ASTNode):
 
         return type(self)(lhs_optimized, rhs_optimized)
 
+    def evaluate(self, context):
+        return self.operation_fn(
+            self.lhs.evaluate(context),
+            self.rhs.evaluate(context),
+        )
 
-class CompositeASTNode(ASTNode):
-    # TODO: split into more specific node
-    def __init__(self, operation: str, children: Sequence[ASTNode]):
-        self.operation = operation
+
+class ArithmeticASTNode(OperationASTNode):
+    input_type = int | float
+    output_type = int | float
+
+    @abstractmethod
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None: ...
+
+    def optimize(self):
+        lhs_optimized = self.lhs.optimize()
+        rhs_optimized = self.rhs.optimize()
+
+        if lhs_optimized.is_constant and rhs_optimized.is_constant:
+            try:
+                return ConstantASTNode(
+                    self.operation_fn(
+                        lhs_optimized.evaluate({}),
+                        rhs_optimized.evaluate({}),
+                    )
+                )
+            except ZeroDivisionError as error:
+                raise DivisionByZeroError("Zero division error on optimization") from error
+        if specific_optimization := self._operation_specific_optimizations(
+            lhs_optimized, rhs_optimized
+        ):
+            return specific_optimization
+
+        return type(self)(lhs_optimized, rhs_optimized)
+
+    def evaluate(self, context):
+        try:
+            return super().evaluate(context)
+        except ZeroDivisionError as error:
+            # division and power operator might run into ZeroDevisionErrors
+            # we want to repack those into a class inheriting from LogprepException
+            raise DivisionByZeroError("Division by zero.") from error
+
+
+def _is_constant_value(node: ASTNode, value: int) -> bool:
+    return node.is_constant and node.evaluate({}) == value
+
+
+class AddASTNode(OperationASTNode):
+    operator_symbol = "+"
+    operation_fn = operator.add
+    input_type = int | float
+    output_type = int | float
+
+    def _operation_specific_optimizations(self, lhs, rhs):
+        if _is_constant_value(rhs, 0):
+            return lhs
+        if _is_constant_value(lhs, 0):
+            return rhs
+        return None
+
+
+class SubASTNode(OperationASTNode):
+    operator_symbol = "-"
+    operation_fn = operator.sub
+    input_type = int | float
+    output_type = int | float
+
+    def _operation_specific_optimizations(self, lhs, rhs):
+        if _is_constant_value(rhs, 0):
+            return lhs
+        if _is_constant_value(lhs, 0):
+            return NegateASTNode(rhs).optimize()
+        return None
+
+
+class MulASTNode(OperationASTNode):
+    operator_symbol = "*"
+    operation_fn = operator.mul
+    input_type = int | float
+    output_type = int | float
+
+    def _operation_specific_optimizations(self, lhs, rhs):
+        if _is_constant_value(rhs, 0) or _is_constant_value(lhs, 0):
+            return ConstantASTNode(0)
+        if _is_constant_value(rhs, 1):
+            return lhs
+        if _is_constant_value(lhs, 1):
+            return rhs
+        return None
+
+
+class DivASTNode(OperationASTNode):
+    operator_symbol = "/"
+    operation_fn = operator.truediv
+    input_type = int | float
+    output_type = int | float
+
+    def _operation_specific_optimizations(self, lhs, rhs):
+        if _is_constant_value(rhs, 0):
+            raise DivisionByZeroError("Expression resulted to a division by zero on optimization.")
+        if _is_constant_value(rhs, 1):
+            return lhs
+        return None
+
+
+class PowASTNode(OperationASTNode):
+    operator_symbol = "^"
+    operation_fn = operator.pow
+    input_type = int | float
+    output_type = int | float
+
+    def _operation_specific_optimizations(self, lhs, rhs):
+        if _is_constant_value(rhs, 0):
+            return ConstantASTNode(1)
+        if _is_constant_value(rhs, 1):
+            return lhs
+        if _is_constant_value(lhs, 1):
+            return ConstantASTNode(1)
+        return None
+
+
+class ComparisonASTNode(OperationASTNode):
+    input_type = int | float
+    output_type = bool
+
+
+class EqualASTNode(ComparisonASTNode):
+    operator_symbol = "=="
+    operation_fn = operator.eq
+
+
+class UnequalASTNode(ComparisonASTNode):
+    operator_symbol = "!="
+    operation_fn = operator.ne
+
+
+class LessThanASTNode(ComparisonASTNode):
+    operator_symbol = "<"
+    operation_fn = operator.lt
+
+
+class LessOrEqualThanASTNode(ComparisonASTNode):
+    operator_symbol = "<="
+    operation_fn = operator.le
+
+
+class GreaterThanASTNode(ComparisonASTNode):
+    operator_symbol = ">"
+    operation_fn = operator.gt
+
+
+class GreaterOrEqualThanASTNode(ComparisonASTNode):
+    operator_symbol = ">="
+    operation_fn = operator.ge
+
+
+OPERATORS = {
+    op.operator_symbol: op
+    for op in (
+        AddASTNode,
+        SubASTNode,
+        MulASTNode,
+        DivASTNode,
+        PowASTNode,
+        EqualASTNode,
+        UnequalASTNode,
+        LessThanASTNode,
+        LessOrEqualThanASTNode,
+        GreaterThanASTNode,
+        GreaterOrEqualThanASTNode,
+    )
+}
+
+
+class FunctionCallASTNode(ASTNode):
+    def __init__(
+        self, function_name: str, function_call: Callable[..., Any], children: Sequence[ASTNode]
+    ):
+        self.function_name = function_name
+        self.function_call = function_call
         self.children = children
-        # assume children are setup on init and persistent
-        self.__complexity = sum(child.complexity for child in children)
 
     @property
     def complexity(self):
-        return self.__complexity
+        return sum(child.complexity for child in self.children)
 
     @property
     def is_constant(self):
         return all(child.is_constant for child in self.children)
 
     def optimize(self) -> ASTNode:
-        optimized_clone = CompositeASTNode(
-            operation=self.operation, children=[child.optimize() for child in self.children]
+        optimized_clone = FunctionCallASTNode(
+            function_name=self.function_name,
+            function_call=self.function_call,
+            children=[child.optimize() for child in self.children],
         )
         if not all(child.is_constant for child in optimized_clone.children):
             return optimized_clone
@@ -348,23 +514,16 @@ class CompositeASTNode(ASTNode):
         if any(isinstance(operand, bool) for operand in operands):
             raise ValueError("boolean values cannot be used as operands")
 
-        if self.operation == "unary -":
-            assert len(operands) == 1
-            return -operands[0]
-
-        op = opn.get(self.operation) or fn.get(self.operation)
-        if not op:
-            raise Exception(f"unkown op {self.operation !r}")
         operands = [child.evaluate(context) for child in self.children]
         try:
-            return op(*operands)
+            return self.function_call(*operands)
         except Exception as error:
             raise EvaluationError(
-                f"Failed on operator {self.operation !r} with values {operands !r}"
+                f"Failed on operator {self.function_name !r} with values {operands !r}"
             ) from error
 
     def __repr__(self):
-        return f"<op {self.operation !r}>"
+        return f"<op {self.function_name !r}>"
 
 
 def build_constant(x):
@@ -404,22 +563,35 @@ def build_fn(x):
         assert isinstance(x[0], ASTNode)
         return x[0]
     assert len(x) >= 1, x
-    assert isinstance(x[0], str)
+    function_name = x[0]
+    assert isinstance(function_name, str)
+    if function_name not in fn:
+        raise UnknownFunctionError(f"Unknown function {function_name !r}.")
     assert all(
         isinstance(i, ParseResults) and len(i) == 1 and isinstance(i[0], ASTNode) for i in x[1:]
     )
-    return CompositeASTNode(x[0], [i[0] for i in x[1:]])
+
+    return FunctionCallASTNode(
+        function_name,
+        fn[function_name],
+        [i[0] for i in x[1:]],
+    )
 
 
 def build_op(x):
     assert len(x) > 0 and len(x) % 2 == 1
-    assert isinstance(x[0], ASTNode)
-    op = x[0]
+
+    lhs = x[0]
+    assert isinstance(lhs, ASTNode)
+
     for i in range(1, len(x), 2):
-        assert isinstance(x[i], str)
-        assert isinstance(x[i + 1], ASTNode)
-        op = CompositeASTNode(x[i], [op, x[i + 1]])
-    return op
+        operator, rhs = x[i], x[i + 1]
+        assert isinstance(operator, str)
+        assert isinstance(rhs, ASTNode)
+        assert operator in OPERATORS
+        operator_type = OPERATORS[operator]
+        lhs = operator_type(lhs, rhs)
+    return lhs
 
 
 def setup_bnf() -> ParserElement:
