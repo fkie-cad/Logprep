@@ -244,9 +244,7 @@ class OperationASTNode(ASTNode):
         return self.lhs.is_constant and self.rhs.is_constant
 
     @abstractmethod
-    def _operation_specific_optimizations(
-        self, lhs: ASTNode, rhs: ASTNode
-    ) -> Optional[ASTNode]: ...
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None: ...
 
     def optimize(self):
         lhs_optimized = self.lhs.optimize()
