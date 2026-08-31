@@ -70,6 +70,7 @@ dependencies = [
   "uvloop<1",
   "httptools<1",
   "more-itertools>=11.1.0",
+  "dnspython==2.8.0",
 ]
 
 [project.optional-dependencies]
