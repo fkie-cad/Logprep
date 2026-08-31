@@ -5,9 +5,9 @@ from abc import ABC, abstractmethod
 from itertools import chain, zip_longest
 from typing import Any, Generic, Sequence, TypeVar
 
-from logprep.util.helper import field_list_to_dotted_field
+from logprep.util.helper import FieldValue, field_list_to_dotted_field
 
-RangeBoundary = TypeVar("RangeBoundary", int, float, str)
+RangeBoundary = TypeVar("RangeBoundary", int | float, str)
 
 
 class FilterExpressionError(Exception):
@@ -36,7 +36,7 @@ class FilterExpression(ABC):
         """
         self.children = children
 
-    def matches(self, document: dict) -> bool:
+    def matches(self, document: dict[str, FieldValue]) -> bool:
         """Receives a document and returns True if it is matched by the expression.
 
         This is a thin wrapper that only ensures that document is a dict and returns False in case a
@@ -63,7 +63,7 @@ class FilterExpression(ABC):
             return False
 
     @abstractmethod
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         """Receives a dictionary and must return True/False
 
         Based on whether the document matches the given expression.
@@ -82,12 +82,12 @@ class FilterExpression(ABC):
         """
 
     @staticmethod
-    def _get_value(key: Sequence[str], document: dict) -> Any:
+    def _get_value(key: Sequence[str], document: dict[str, FieldValue]) -> FieldValue:
         """Return the value for the given key from the document."""
         if not key:
             raise KeyDoesNotExistError
 
-        current = document
+        current: FieldValue = document
         for item in key:
             if not isinstance(current, dict):
                 raise KeyDoesNotExistError
@@ -116,7 +116,7 @@ class Always(FilterExpression):
             return "*"
         return ""
 
-    def does_match(self, document: dict):
+    def does_match(self, document: dict[str, FieldValue]):
         return self._value
 
 
@@ -129,14 +129,14 @@ class Not(FilterExpression):
     def __repr__(self) -> str:
         return f"NOT ({repr(self.children[0])})"
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         return not self.children[0].matches(document)
 
 
 class CompoundFilterExpression(FilterExpression):
     """Base class of filter expressions that combine other filter expressions."""
 
-    def does_match(self, document: dict):
+    def does_match(self, document: dict[str, FieldValue]):
         raise NotImplementedError
 
 
@@ -146,7 +146,7 @@ class And(CompoundFilterExpression):
     def __repr__(self) -> str:
         return f'({" AND ".join([str(exp) for exp in self.children])})'
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         return all((expression.matches(document) for expression in self.children))
 
 
@@ -156,7 +156,7 @@ class Or(CompoundFilterExpression):
     def __repr__(self) -> str:
         return f'({" OR ".join([str(exp) for exp in self.children])})'
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         return any((expression.matches(document) for expression in self.children))
 
 
@@ -204,7 +204,7 @@ class KeyValueBasedFilterExpression(KeyBasedFilterExpression):
 class StringFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for a string."""
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
 
         if isinstance(value, list):
@@ -240,7 +240,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
     def _normalize_regex(regex: str) -> str:
         return f"^{regex}$"
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
 
         if isinstance(value, list):
@@ -276,7 +276,7 @@ class SigmaFilterExpression(WildcardStringFilterExpression):
 class IntegerFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for an integer."""
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
 
         return value == self._expected_value
@@ -285,7 +285,7 @@ class IntegerFilterExpression(KeyValueBasedFilterExpression):
 class FloatFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for a float."""
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
 
         return value == self._expected_value
@@ -297,33 +297,47 @@ class RangeBasedFilterExpression(KeyBasedFilterExpression, Generic[RangeBoundary
     def __init__(
         self,
         key: Sequence[str],
-        lower_bound: RangeBoundary,
-        upper_bound: RangeBoundary,
+        lower_bound: RangeBoundary | None,
+        upper_bound: RangeBoundary | None,
         include_lower_bound: bool = True,
         include_upper_bound: bool = True,
     ):
         super().__init__(key)
-        self._lower_bound: RangeBoundary = lower_bound
-        self._upper_bound: RangeBoundary = upper_bound
+        self._lower_bound: RangeBoundary | None = lower_bound
+        self._upper_bound: RangeBoundary | None = upper_bound
         self._include_lower_bound = include_lower_bound
         self._include_upper_bound = include_upper_bound
 
     def __repr__(self) -> str:
         opening_bracket = "[" if self._include_lower_bound else "{"
         closing_bracket = "]" if self._include_upper_bound else "}"
+        lower = self._format_bound(self._lower_bound)
+        upper = self._format_bound(self._upper_bound)
 
         return (
             f"{self.key_as_dotted_string}:"
-            f"{opening_bracket}{self._lower_bound} TO {self._upper_bound}"
+            f"{opening_bracket}{lower} TO {upper}"
             f"{closing_bracket}"
         )
 
+    def _format_bound(self, bound: RangeBoundary | None) -> str:
+        """Render a bound for repr, disambiguating an open side from a literal "*" value."""
+        if bound is None:
+            return "*"
+        if bound == "*":
+            return '"*"'
+        return str(bound)
+
     def _matches_lower_bound(self, value: RangeBoundary) -> bool:
+        if self._lower_bound is None:
+            return True
         if self._include_lower_bound:
             return value >= self._lower_bound
         return value > self._lower_bound
 
     def _matches_upper_bound(self, value: RangeBoundary) -> bool:
+        if self._upper_bound is None:
+            return True
         if self._include_upper_bound:
             return value <= self._upper_bound
         return value < self._upper_bound
@@ -331,48 +345,63 @@ class RangeBasedFilterExpression(KeyBasedFilterExpression, Generic[RangeBoundary
     def _matches_range(self, value: RangeBoundary) -> bool:
         return self._matches_lower_bound(value) and self._matches_upper_bound(value)
 
-    def does_match(self, document: dict):
+    def does_match(self, document: dict[str, FieldValue]):
         raise NotImplementedError
 
 
-class IntegerRangeFilterExpression(RangeBasedFilterExpression[int]):
-    """Range based filter expression that matches for integers."""
+class NumericRangeFilterExpression(RangeBasedFilterExpression[int | float]):
+    """Range based filter expression that matches numeric values."""
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
 
-        if not isinstance(value, int) or isinstance(value, bool):
-            return False
-
-        return self._matches_range(value)
-
-
-class FloatRangeFilterExpression(RangeBasedFilterExpression[float]):
-    """Range based filter expression that matches for floats."""
-
-    def does_match(self, document: dict) -> bool:
-        value = self._get_value(self.key, document)
-
-        if not isinstance(value, float) or isinstance(value, bool):
+        if isinstance(value, str):
+            try:
+                value = int(value)
+            except ValueError:
+                try:
+                    value = float(value)
+                except ValueError:
+                    return False
+        # bool is a subclass of int, but must not be treated as numeric here
+        elif isinstance(value, bool) or not isinstance(value, (int, float)):
             return False
 
         return self._matches_range(value)
 
 
 class StringRangeFilterExpression(RangeBasedFilterExpression[str]):
-    """Range based filter expression that matches for strings.
-
-    String ranges are compared lexicographically.
+    """
+    Range based filter expression that matches for strings, ints, and floats.
+    String ranges are compared lexicographically. Numerical values (int/float)
+    are converted to their string representation before comparing.
     """
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
 
-        # Avoid comparing strings with other value types, which would raise a TypeError.
-        if not isinstance(value, str):
+        if isinstance(value, bool):
+            return False
+        if isinstance(value, (int, float)):
+            value = str(value)
+        elif not isinstance(value, str):
             return False
 
         return self._matches_range(value)
+
+    def _format_bound(self, bound: str | None) -> str:
+        """
+        Quote a numeric-looking bound, distinguishing it from a numeric range in repr
+        (e.g. ``["1" TO "10"]`` and ``[1 TO 10]``).
+        """
+        if bound is not None and bound != "*":
+            try:
+                float(bound)
+            except ValueError:
+                pass
+            else:
+                return f'"{bound}"'
+        return super()._format_bound(bound)
 
 
 class RegExFilterExpression(KeyValueBasedFilterExpression):
@@ -403,7 +432,7 @@ class RegExFilterExpression(KeyValueBasedFilterExpression):
         pattern = "" if pattern is None else pattern
         return rf"{flag}^{pattern}{end_token}"
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
 
         if isinstance(value, list):
@@ -417,7 +446,7 @@ class Exists(KeyBasedFilterExpression):
     def __repr__(self) -> str:
         return f"{self.key_as_dotted_string}: *"
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         if not self.key:
             return False
 
@@ -428,7 +457,7 @@ class Exists(KeyBasedFilterExpression):
                     sub_field not in current.keys()
                 ):  # .keys() is important as it is used to "check" for dict
                     return False
-                current = current[sub_field]
+                current = current[sub_field]  # type: ignore
             # Don't check for dict instance, instead just "try" for better performance
         except AttributeError as error:
             if "has no attribute 'keys'" not in error.args[0]:
@@ -444,6 +473,6 @@ class Null(KeyBasedFilterExpression):
     def __repr__(self) -> str:
         return f"{self.key_as_dotted_string}:{None}"
 
-    def does_match(self, document: dict) -> bool:
+    def does_match(self, document: dict[str, FieldValue]) -> bool:
         value = self._get_value(self.key, document)
         return value is None

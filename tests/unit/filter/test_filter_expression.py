@@ -13,15 +13,15 @@ from logprep.filter.expression.filter_expression import (
     Exists,
     FilterExpression,
     FloatFilterExpression,
-    FloatRangeFilterExpression,
     IntegerFilterExpression,
-    IntegerRangeFilterExpression,
     KeyDoesNotExistError,
     Not,
+    NumericRangeFilterExpression,
     Or,
     RegExFilterExpression,
     SigmaFilterExpression,
     StringFilterExpression,
+    StringRangeFilterExpression,
     WildcardStringFilterExpression,
 )
 from logprep.filter.lucene_filter import LuceneFilter
@@ -241,45 +241,96 @@ class TestFloatFilterExpression(ValueBasedFilterExpressionTest):
         assert self.filter.matches({"key1": {"key2": self.expected_value}})
 
 
-class TestIntegerRangeFilterExpression(ValueBasedFilterExpressionTest):
+class TestNumericRangeFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
-        self.filter = IntegerRangeFilterExpression(["key1", "key2"], 23, 42)
-        self.filter_identical = IntegerRangeFilterExpression(["key1", "key2"], 23, 42)
+        self.filter = NumericRangeFilterExpression(["key1", "key2"], 23, 42)
+        self.filter_identical = NumericRangeFilterExpression(["key1", "key2"], 23, 42)
 
-    def test_string_representation(self):
-        assert str(self.filter) == "key1.key2:[23 TO 42]"
+    @pytest.mark.parametrize(
+        ["value", "expected"],
+        [
+            pytest.param(22, False, id="below-lower-bound"),
+            pytest.param(23, True, id="lower-bound-inclusive"),
+            pytest.param(30, True, id="int-in-range"),
+            pytest.param(42, True, id="upper-bound-inclusive"),
+            pytest.param(43, False, id="above-upper-bound"),
+            pytest.param(24.0, True, id="float-in-range"),
+            pytest.param("24", True, id="numeric-string-in-range"),
+            pytest.param("100", False, id="numeric-string-out-of-range"),
+            pytest.param("abc", False, id="non-numeric-string"),
+        ],
+    )
+    def test_does_match(self, value, expected):
+        assert self.filter.matches({"key1": {"key2": value}}) == expected
 
-    def test_does_not_match_if_value_is_below_lower_bound(self):
-        assert not self.filter.matches({"key1": {"key2": 23 - 1}})
+    @pytest.mark.parametrize(
+        ["lower", "upper", "expected"],
+        [
+            pytest.param(23, 42, "key1.key2:[23 TO 42]", id="int-bounds"),
+            pytest.param(23.0, 42.0, "key1.key2:[23.0 TO 42.0]", id="float-bounds"),
+            pytest.param(23.0, 42, "key1.key2:[23.0 TO 42]", id="mixed-bounds"),
+            pytest.param(None, 42, "key1.key2:[* TO 42]", id="lower-open-bound"),
+            pytest.param(23.0, None, "key1.key2:[23.0 TO *]", id="upper-open-bound"),
+        ],
+    )
+    def test_string_representation(self, lower, upper, expected):
+        numeric_range = NumericRangeFilterExpression(["key1", "key2"], lower, upper)
+        assert str(numeric_range) == expected
 
-    def test_does_not_match_if_value_is_above_upper_bound(self):
-        assert not self.filter.matches({"key1": {"key2": 42 + 1}})
+    def test_open_lower_bound_matches_any_value_up_to_upper_bound(self):
+        open_lower = NumericRangeFilterExpression(["key1", "key2"], None, 42)
+        assert open_lower.matches({"key1": {"key2": -(10**9)}})
+        assert open_lower.matches({"key1": {"key2": 42}})
+        assert not open_lower.matches({"key1": {"key2": 43}})
 
-    def test_does_not_match_when_value_is_in_range_but_as_float(self):
-        assert not self.filter.matches({"key1": {"key2": 24.0}})
+    def test_open_upper_bound_matches_any_value_from_lower_bound(self):
+        open_upper = NumericRangeFilterExpression(["key1", "key2"], 23, None)
+        assert open_upper.matches({"key1": {"key2": 23}})
+        assert open_upper.matches({"key1": {"key2": 10**9}})
+        assert not open_upper.matches({"key1": {"key2": 22}})
 
-    def test_does_match_when_value_is_in_range(self):
-        for i in range(23, 43):
-            assert self.filter.matches({"key1": {"key2": i}})
+    def test_does_not_match_when_value_is_bool(self):
+        assert isinstance(True, int) and int(True) == 1
+        assert isinstance(False, int) and int(False) == 0
+
+        zero_to_one = NumericRangeFilterExpression(["key1", "key2"], 0, 1)
+        assert not zero_to_one.matches({"key1": {"key2": True}})
+        assert not zero_to_one.matches({"key1": {"key2": False}})
 
 
-class TestFloatRangeFilterExpression(ValueBasedFilterExpressionTest):
+class TestStringRangeFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
-        self.filter = FloatRangeFilterExpression(["key1", "key2"], 23.0, 42.0)
-        self.filter_identical = FloatRangeFilterExpression(["key1", "key2"], 23.0, 42.0)
+        self.filter = StringRangeFilterExpression(["key1", "key2"], "bar", "foo")
+        self.filter_identical = StringRangeFilterExpression(["key1", "key2"], "bar", "foo")
 
-    def test_string_representation(self):
-        assert str(self.filter) == "key1.key2:[23.0 TO 42.0]"
+    @pytest.mark.parametrize(
+        ["value", "expected"],
+        [
+            pytest.param("baa", False, id="below-lower-bound"),
+            pytest.param("bar", True, id="lower-bound-inclusive"),
+            pytest.param("car", True, id="string-in-range"),
+            pytest.param("foo", True, id="upper-bound-inclusive"),
+            pytest.param("fop", False, id="above-upper-bound"),
+            pytest.param([], False, id="list"),
+            pytest.param({}, False, id="dict"),
+        ],
+    )
+    def test_does_match(self, value, expected):
+        assert self.filter.matches({"key1": {"key2": value}}) == expected
 
-    def test_does_not_match_if_value_is_below_lower_bound(self):
-        assert not self.filter.matches({"key1": {"key2": 23.0 - 1.0}})
-
-    def test_does_not_match_if_value_is_above_upper_bound(self):
-        assert not self.filter.matches({"key1": {"key2": 42.0 + 1.0}})
-
-    def test_does_match_when_value_is_in_range(self):
-        for i in range(23, 43):
-            assert self.filter.matches({"key1": {"key2": float(i)}})
+    @pytest.mark.parametrize(
+        ["lower", "upper", "expected"],
+        [
+            pytest.param("bar", "foo", "key1.key2:[bar TO foo]", id="standard-bounds"),
+            pytest.param(None, "foo", "key1.key2:[* TO foo]", id="lower-open-bound"),
+            pytest.param("bar", None, "key1.key2:[bar TO *]", id="upper-open-bound"),
+            pytest.param("*", "*", 'key1.key2:["*" TO "*"]', id="asterisk-bounds"),
+            pytest.param("-10.5", "10", 'key1.key2:["-10.5" TO "10"]', id="numeric-bounds"),
+        ],
+    )
+    def test_string_representation(self, lower, upper, expected):
+        numeric_range = StringRangeFilterExpression(["key1", "key2"], lower, upper)
+        assert str(numeric_range) == expected
 
 
 class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
@@ -851,7 +902,7 @@ class TestLuceneRepresentation:
                 id="integer-field-group-ranges-with-and-to-other-field",
             ),
             pytest.param(
-                "temperature:([18.5 TO 25.0] OR [33.5 TO 55.0]) " "AND status:[ok TO stable]",
+                "temperature:([18.5 TO 25.0] OR [33.5 TO 55.0]) AND status:[ok TO stable]",
                 (
                     {"temperature": 20.0, "status": "ok"},
                     {"temperature": 40.0, "status": "stable"},
