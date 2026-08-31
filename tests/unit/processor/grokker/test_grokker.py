@@ -221,6 +221,18 @@ test_cases = [
     ),
     pytest.param(
         {
+            "filter": "message",
+            "grokker": {
+                "mapping": {"message": "%{SOMEPATTERN}|%{GREEDYDATA}"},
+                "patterns": {"SOMEPATTERN": "i will not match %{DATA:never_match}"},
+            },
+        },
+        {"message": "whatever"},
+        {"message": "whatever"},
+        id="fallback match with no fields",
+    ),
+    pytest.param(
+        {
             "filter": "win\\.log.event\\._id: 123456789",
             "grokker": {
                 "mapping": {

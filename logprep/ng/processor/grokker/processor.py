@@ -79,7 +79,7 @@ class Grokker(FieldManager):
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(GrokkerRule, rule)
-        matches = []
+        any_match = False
         source_values = []
         for dotted_field, grok in rule.actions.items():
             field_value = get_dotted_field_value(event, dotted_field)
@@ -95,9 +95,11 @@ class Grokker(FieldManager):
                     f"the grok pattern might be too complex.",
                     rule,
                 ) from error
-            if result is None or result == {}:
+            if result is None:
                 continue
-            matches.append(True)
+            any_match = True
+            if result == {}:
+                continue
             add_fields_to(
                 event,
                 result,
@@ -107,7 +109,7 @@ class Grokker(FieldManager):
             )
         if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
             return
-        if not matches:
+        if not any_match:
             raise ProcessingWarning("no grok pattern matched", rule, event)
 
     async def setup(self) -> None:

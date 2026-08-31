@@ -25,6 +25,7 @@ SOFTWARE.
 
 import re
 import string
+from collections.abc import Callable
 from hashlib import md5
 from importlib import resources
 from itertools import chain
@@ -42,7 +43,7 @@ LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
 ONIGURUMA = r"\(\?<([^()]*)>\(?(([^()]*|\(([^()]*|\([^()]*\))*\))*)\)?\)"
 NON_RESOLVED_ONIGURUMA = r"\(\?<[^md5].*>"
-INT_FLOAT = {"int": int, "float": float}
+INT_FLOAT: dict[str | None, Callable[[str], int | float]] = {"int": int, "float": float}
 
 
 @define(slots=True)
@@ -53,19 +54,20 @@ class Grok:
     oniguruma = re.compile(ONIGURUMA)
 
     pattern: str | list[str] = field(
-        validator=validators.or_(
+        # TODO find a general pattern to consistently fix validator typing
+        validator=validators.or_(  # type: ignore
             validators.instance_of(str),
             validators.deep_iterable(
                 iterable_validator=validators.instance_of(list),
                 member_validator=validators.instance_of(str),
             ),
-        )
+        ),
     )
     custom_patterns_dir: str = field(default="")
     custom_patterns: dict = field(factory=dict)
     fullmatch: bool = field(default=True)
     predefined_patterns: dict = field(init=False, factory=dict, repr=False)
-    type_mappings: dict = field(init=False, factory=dict)
+    type_mappings: dict[str, str] = field(init=False, factory=dict)
     field_mappings: dict = field(init=False, factory=dict)
     regex_obj = field(init=False, default=None)
 
@@ -85,7 +87,7 @@ class Grok:
         self._load_search_pattern()
 
     @timeout(seconds=1)
-    def match(self, text):
+    def match(self, text) -> dict[str, str | int | float] | None:
         """If text is matched with pattern, return variable names
         specified(%{pattern:variable name}) in pattern and their
         corresponding values. If not matched, return None.
@@ -94,24 +96,30 @@ class Grok:
         or custom_patterns_dir.
         """
 
-        if self.fullmatch:
-            match_obj = [regex_pattern.fullmatch(text) for regex_pattern in self.regex_obj]
-        else:
-            match_obj = [regex_pattern.search(text) for regex_pattern in self.regex_obj]
+        for regex_pattern in self.regex_obj:
+            if self.fullmatch:
+                match_obj = regex_pattern.fullmatch(text)
+            else:
+                match_obj = regex_pattern.search(text)
 
-        match_obj = [match for match in match_obj if match is not None]
-        matches = [
-            {k: v for k, v in match.groupdict(None).items() if v is not None} for match in match_obj
-        ]
-        if not matches:
-            return {}
-        first_match = matches[0]
-        if self.type_mappings:
-            for key, match in first_match.items():
-                type_mapper = INT_FLOAT.get(self.type_mappings.get(key))
-                if type_mapper is not None:
-                    first_match[key] = type_mapper(match)
-        return {self.field_mappings[field_hash]: value for field_hash, value in first_match.items()}
+            if match_obj is None:
+                continue
+
+            result: dict[str, str | int | float] = {}
+            for field_hash, value in match_obj.groupdict(None).items():
+                if value is None:
+                    continue
+
+                if self.type_mappings:
+                    mapper = INT_FLOAT.get(self.type_mappings.get(field_hash))
+                    if mapper:
+                        value = mapper(value)
+
+                result[self.field_mappings[field_hash]] = value
+
+            return result
+
+        return None
 
     def _map_types(self, matches):
         for key, match in matches.items():
