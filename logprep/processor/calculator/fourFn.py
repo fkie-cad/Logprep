@@ -16,7 +16,7 @@ Copyright 2003-2019 by Paul McGuire
 import math
 import operator
 from abc import ABC, abstractmethod
-from typing import Any, Protocol, Sequence, TypeAlias
+from typing import Any, Callable, ClassVar, Protocol, Sequence, TypeAlias
 
 from pyparsing import (
     CaselessKeyword,
@@ -215,6 +215,56 @@ class VariableASTNode(TerminalASTNode):
 
     def optimize(self):
         return VariableASTNode(path=self.path)
+
+
+class OperationASTNode(ASTNode):
+    operator: ClassVar[str]
+    # NOTE: decided against handling the typing by designing the ASTNode class
+    # generic. During construction of the AST the typing is dynamic
+    # only the constructed is then checked for typing.
+    operation_fn: ClassVar[Callable[[Any, Any], Any]]
+    input_type: ClassVar[type]
+    output_type = ClassVar[type]
+
+    def __init__(
+        self,
+        lhs: ASTNode,
+        rhs: ASTNode,
+    ):
+
+        self.lhs = lhs
+        self.rhs = rhs
+
+    @property
+    def complexity(self):
+        return self.lhs.complexity + self.rhs.complexity
+
+    @property
+    def is_constant(self):
+        return self.lhs.is_constant and self.rhs.is_constant
+
+    @abstractmethod
+    def _operation_specific_optimizations(
+        self, lhs: ASTNode, rhs: ASTNode
+    ) -> Optional[ASTNode]: ...
+
+    def optimize(self):
+        lhs_optimized = self.lhs.optimize()
+        rhs_optimized = self.rhs.optimize()
+
+        if lhs_optimized.is_constant and rhs_optimized.is_constant:
+            return ConstantASTNode(
+                self.operation_fn(
+                    lhs_optimized.evaluate(),
+                    rhs_optimized.evaluate(),
+                )
+            )
+        if specific_optimization := self._operation_specific_optimizations(
+            lhs_optimized, rhs_optimized
+        ):
+            return specific_optimization
+
+        return type(self)(lhs_optimized, rhs_optimized)
 
 
 class CompositeASTNode(ASTNode):
