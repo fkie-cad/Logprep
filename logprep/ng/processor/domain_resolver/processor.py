@@ -97,9 +97,7 @@ class DomainResolver(Processor):
            Ensure to set this to a reasonable value to avoid DOS attacks by malicious domains in
            your logs. The default is set to 0.5 seconds.
         """
-        lifetime: float = field(
-            default=1.0, validator=validators.optional(validators.instance_of(float))
-        )
+        lifetime: float = field(default=1.0, validator=validators.instance_of(float))
         """Total timeout for resolving of domains including multiple attempts."""
         max_cached_domains: int = field(validator=validators.instance_of(int))
         """The maximum number of cached domains. One cache entry requires ~250 Byte, thus 10
@@ -194,7 +192,7 @@ class DomainResolver(Processor):
 
     __slots__ = ["_domain_ip_map"]
 
-    _domain_ip_map: dict[str, Optional[SuccessResult | FailedResult]]
+    _domain_ip_map: dict[str, SuccessResult | FailedResult]
 
     rule_class = DomainResolverRule
 
@@ -251,7 +249,7 @@ class DomainResolver(Processor):
         if not domain_or_url_str:
             return
 
-        url = urlsplit(domain_or_url_str)
+        url = urlsplit(str(domain_or_url_str))
         domain = url.hostname
         if url.scheme == "":
             domain = url.path
