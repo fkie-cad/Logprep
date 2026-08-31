@@ -13,7 +13,7 @@
 ### Improvements
 * add a separate cache for timeouts in `domain_resolver` to allow different lifetimes than the regular domain cache
 * add `lifetime` parameter to `domain_resolver` in addition to `timeout` parameter
-* add metrics for cached timeouts and successfully resolved domains to `domain_resolver`
+* add metrics for cached timed-out domains and successfully resolved domains to `domain_resolver`
 * prune domains from `domain_resolver` mapping that are not in the cache
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
 * docs: change processor natural naming to capital cased with whitespace (e.g. "Generic Resolver")
