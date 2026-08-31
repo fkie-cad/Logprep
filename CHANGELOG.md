@@ -11,7 +11,7 @@
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
 
 ### Improvements
-* add separate cache for timeouts in `domain_resolver` to allow different lifetimes than the regular domain cache
+* add a separate cache for timeouts in `domain_resolver` to allow different lifetimes than the regular domain cache
 * add `lifetime` parameter to `domain_resolver` in addition to `timeout` parameter
 * add metrics for cached timeouts and successfully resolved domains to `domain_resolver`
 * prune domains from `domain_resolver` mapping that are not in the cache
