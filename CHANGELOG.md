@@ -2,9 +2,8 @@
 ### Breaking
 * restrict UNIX timestamp normalization to seconds, milliseconds, microseconds, and nanoseconds.
 * handle non-string `concatenator` source fields with `ProcessingWarning` instead of `ProcessingCriticalError`
-* filter: rework range expressions to allow mixed types and type coercion
-* filter: drop support for `inf`/`nan` in range expressions
-* filter: add support for `*` (open boundary) in range expressions
+* filter: allow mixed numeric range boundaries and type coercion for range matching
+* filter: unquoted asterisks (`*`) in range expressions are now considered open boundaries
 
 ### Features
 * add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
@@ -12,6 +11,7 @@
 * generic_adder: add support for templated http urls & content_field
 * generic_resolver: add content_field support
 * field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
+* filter: add support for `*` (open boundary) in range expressions
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
@@ -37,6 +37,7 @@
 * generic_adder: allow `None` as valid input via `add`
 * grokker: allow fallback matches without named fields
 * filter: fix lucene range expressions not matching on mixed-type scenarios
+* filter: treat `inf`/`nan` as string values instead of numeric range boundaries
 
 ## 20.0.0
 ### Breaking

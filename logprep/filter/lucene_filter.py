@@ -74,7 +74,7 @@ holding :code:`"24"` matches :code:`[18 TO 65]`).
 A range mixing a numeric and a non-numeric boundary, such as :code:`[1 TO bar]`,
 falls back to a lexicographic string range instead.
 
-String range matches integer and floating-point field values too,
+String ranges match integer and floating-point field values too,
 by converting them to their string form before comparing
 (e.g. a field holding the integer :code:`5` matches :code:`[1 TO bar]`,
 since :code:`str(5)` is between :code:`"1"` and :code:`"bar"` lexicographically).
@@ -496,7 +496,7 @@ class LuceneTransformer:
             except ValueError as exc:
                 raise ValueError(f"failed to parse '{value}' as int/float") from exc
 
-        if not math.isfinite(parsed_value):
+        if isinstance(parsed_value, float) and not math.isfinite(parsed_value):
             raise ValueError(f"'{value}' is not a finite numerical value")
 
         return parsed_value

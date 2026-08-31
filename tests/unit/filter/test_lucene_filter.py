@@ -627,6 +627,12 @@ class TestLueceneFilter:
                 (-9223372036854775810, -9223372036854775807),
                 id="int-values-below-64-bit-bound",
             ),
+            pytest.param(
+                f"[-{10**400} TO {10**400}]",
+                (-(10**400), 10**400, f"-{10**400}", f"{10**400}"),
+                (-(10**400) - 1, 10**400 + 1),
+                id="int-values-above-64-bit-bound",
+            ),
         ),
     )
     def test_created_integer_range_filter_matches_values_inside_inclusive_range(

@@ -357,9 +357,12 @@ class NumericRangeFilterExpression(RangeBasedFilterExpression[int | float]):
 
         if isinstance(value, str):
             try:
-                value = float(value)
+                value = int(value)
             except ValueError:
-                return False
+                try:
+                    value = float(value)
+                except ValueError:
+                    return False
         # bool is a subclass of int, but must not be treated as numeric here
         elif isinstance(value, bool) or not isinstance(value, (int, float)):
             return False
