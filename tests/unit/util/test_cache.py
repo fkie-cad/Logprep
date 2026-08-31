@@ -99,7 +99,8 @@ class TestCache:
         assert cache.is_cached("foo")
         old_decay_time = cache.get("foo")
         time.sleep(0.1)
-        new_decay = cache.add("foo")
+        cache.add("foo")
+        new_decay = cache.get("foo")
         assert new_decay is not None
         assert old_decay_time is not None
         assert new_decay > old_decay_time
