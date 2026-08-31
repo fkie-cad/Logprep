@@ -37,7 +37,6 @@ from attrs import define, field, validators
 
 from logprep.util.decorators import timeout
 from logprep.util.helper import field_list_to_dotted_field
-from logprep.util.validators import fix_type
 
 DEFAULT_PATTERNS_DIRS = [str(resources.files(__package__) / "patterns/ecs-v1")]
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}:]*\])*)"
@@ -55,15 +54,14 @@ class Grok:
     oniguruma = re.compile(ONIGURUMA)
 
     pattern: str | list[str] = field(
-        validator=fix_type(
-            lambda: validators.or_(
-                validators.instance_of(str | float),
-                validators.deep_iterable(
-                    iterable_validator=validators.instance_of(list),
-                    member_validator=validators.instance_of(str),
-                ),
-            )
-        )
+        # TODO find a general pattern to consistently fix validator typing
+        validator=validators.or_(  # type: ignore
+            validators.instance_of(str),
+            validators.deep_iterable(
+                iterable_validator=validators.instance_of(list),
+                member_validator=validators.instance_of(str),
+            ),
+        ),
     )
     custom_patterns_dir: str = field(default="")
     custom_patterns: dict = field(factory=dict)
