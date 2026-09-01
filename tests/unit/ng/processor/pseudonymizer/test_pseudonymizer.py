@@ -8,9 +8,10 @@
 # pylint: disable=too-many-lines
 # pylint: disable=too-few-public-methods
 # pylint: disable=attribute-defined-outside-init
-
+import asyncio
 import re
 from copy import deepcopy
+from unittest import mock
 
 import pytest
 
@@ -90,17 +91,21 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
     async def test_testcases(self, testcase, rule, event, expected, regex_mapping):
         if regex_mapping is not None:
             self.regex_mapping = regex_mapping
+
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        await self.object.setup()
         await self.object.process(event)
+
         assert event.data == expected, testcase
 
     async def _load_rule(self, rule):
         config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         config["regex_mapping"] = self.regex_mapping
-        self.object = Factory.create({"pseudonymizer": config})
-        await super()._load_rule(rule)
-        await self.object.setup()
+
+        self.object = Factory.create({"test instance": config})
 
     async def test_pseudonymize_url_fields_not_in_pseudonymize(self):
         pseudonym = "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
@@ -118,8 +123,11 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             "url_fields": ["do_not_pseudo_this"],
         }
         self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
+
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        await self.object.setup()
         await self.object.process(event)
 
         assert event.data["do_not_pseudo_this"] == url
@@ -132,9 +140,10 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             "description": "description content irrelevant for these tests",
         }
         await self._load_rule(rule_dict)  # First call
+        await self.object.setup()
         expected_pattern = re.compile("(.*)")
         assert self.object._rule_tree.rules[0].pseudonyms == {"something": expected_pattern}
-        self.object._replace_regex_keywords_by_regex_expression()  # Second Call
+        await self.object._replace_regex_keywords_by_regex_expression()  # Second Call
         assert self.object._rule_tree.rules[0].pseudonyms == {"something": expected_pattern}
 
     async def test_pseudonymize_string_adds_pseudonyms(self):
@@ -167,6 +176,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(event)
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
@@ -193,6 +203,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(event)
         # 1 subdomains -> pseudonym_cache, 1 url -> url_cache
         assert self.object.metrics.new_results == 2
@@ -258,6 +269,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         }
         await self._load_rule(rule_dict)  # First call
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(event)
         assert len(event.extra_data) == 1, "Should contain only one pseudonym"
         pseudonym_event = event.extra_data[0]
@@ -294,6 +306,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         }
         await self._load_rule(rule_dict)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         assert (
             len(event.extra_data) == 1
@@ -329,6 +342,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         }
         await self._load_rule(rule_dict)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         assert len(event.extra_data) == 2, "Should contain two pseudonyms, for each value one"
         pseudonym_1 = event.extra_data[0]
@@ -371,6 +385,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         }
         await self._load_rule(rule_dict)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         extra_output = await self.object.process(event)
         pseudonym_event = extra_output.extra_data[0]
         assert pseudonym_event.data.get("pseudonym"), "pseudonym is set"
@@ -387,6 +402,16 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         object_with_encrypter = Factory.create({"pseudonymizer": config})
         assert isinstance(object_with_encrypter._encrypter, encrypter_class)
 
+    async def test_setup_initializes_encrypter_asynchronously(self):
+        with mock.patch(
+            "logprep.ng.processor.pseudonymizer.processor.asyncio.to_thread",
+            wraps=asyncio.to_thread,
+        ) as to_thread:
+            await self.object.setup()
+
+        assert any(call.args and callable(call.args[0]) for call in to_thread.await_args_list)
+        assert self.object._encrypter is not None
+
     async def test_setup_raises_invalid_configuration_on_missing_regex_mapping(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
@@ -397,6 +422,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             },
         }
         await self._load_rule(rule_dict)
+        await self.object.setup()
         self.object.rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
         error_message = (
             r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping '.*\/regex_mapping.yml'"
@@ -429,6 +455,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
         event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(deepcopy(event))
         await self.object.process(deepcopy(event))
         await self.object.process(event)

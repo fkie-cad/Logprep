@@ -33,9 +33,10 @@ from attrs import define, field, validators
 from logprep.metrics.metrics import GaugeMetric
 from logprep.ng.abc.processor import Processor
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.processor.generic_resolver.rule import GenericResolverRule
+from logprep.ng.util.getter import RefreshableGetter
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.base.rule import Rule
-from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.helper import (
     MISSING,
     FieldValue,
@@ -214,5 +215,17 @@ class GenericResolver(FieldManager):
         self.metrics.cache_load += cache_info.currsize / self.max_cache_entries
 
     async def setup(self) -> None:
+        """Set up the processor and initialize its rules."""
         await super().setup()
+
+        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
+
+        for rule in self.rules:
+            rule = typing.cast(GenericResolverRule, rule)
+            await rule.setup(self._job_tag_for_cleanup)
+
         self._cache_metrics_skip_count = 0
+
+    def _shut_down(self) -> None:
+        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
+        return super()._shut_down()

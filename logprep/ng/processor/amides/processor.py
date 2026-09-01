@@ -82,6 +82,7 @@ cache-related metrics like the number of hits and misses and the current cache l
 .. automodule:: logprep.processor.amides.rule
 """
 
+import asyncio
 import logging
 import typing
 from functools import cached_property, lru_cache
@@ -95,11 +96,11 @@ from attrs import define, field, validators
 
 from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
 from logprep.processor.amides.rule import AmidesRule
 from logprep.processor.base.rule import Rule
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import FieldValue, get_dotted_field_value
 
 logger = logging.getLogger("Amides")
@@ -205,7 +206,7 @@ class Amides(FieldManager):
 
     async def setup(self):
         await super().setup()
-        models = self._load_and_unpack_models()
+        models = await self._load_and_unpack_models()
 
         self._misuse_detector = MisuseDetector(models["single"], self._config.decision_threshold)
         self._rule_attributor = RuleAttributor(
@@ -213,21 +214,25 @@ class Amides(FieldManager):
             self._config.num_rule_attributions,
         )
 
-    def _load_and_unpack_models(self):
+    async def _load_and_unpack_models(self):
         models_path = self._config.models_path
-        if not Path(models_path).exists():
+
+        if not await asyncio.to_thread(Path(models_path).exists):
             logger.debug("Getting AMIDES models archive...")
             models_archive = Path(f"{current_process().name}-{self.name}.zip")
-            models_archive.touch()
-            models_archive.write_bytes(GetterFactory.from_string(models_path).get_raw())
+            getter = GetterFactory.from_string(str(models_path))
+            raw = await getter.get_raw()
+            await asyncio.to_thread(models_archive.write_bytes, raw)
             logger.debug("Finished getting AMIDES models archive...")
             models_path = str(models_archive.absolute())
 
+        return await asyncio.to_thread(self._load_models_from_archive, models_path)
+
+    @staticmethod
+    def _load_models_from_archive(models_path: str):
         with ZipFile(models_path, mode="r") as zip_file:
             with zip_file.open("model", mode="r") as models_file:
-                models = joblib.load(models_file)
-
-        return models
+                return joblib.load(models_file)
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(AmidesRule, rule)

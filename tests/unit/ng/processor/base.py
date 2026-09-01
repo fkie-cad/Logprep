@@ -12,6 +12,7 @@ from unittest import mock
 
 import pytest
 import responses
+from aiohttp import web
 from attrs import asdict
 from ruamel.yaml import YAML
 
@@ -20,13 +21,13 @@ from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.abc.processor import Processor
+from logprep.ng.util.getter import RefreshableGetter, RefreshableGetterError
 from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
     ProcessingCriticalError,
 )
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
-from logprep.util.getter import RefreshableGetter, RefreshableGetterError
 from tests.unit.ng.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -142,8 +143,10 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
     def test_rule_tree(self):
         assert isinstance(self.object._rule_tree, RuleTree)
 
-    def test_rule_tree_not_empty(self):
-        assert self.object._rule_tree.get_size() > 0
+    async def test_rule_tree_not_empty(self):
+        instance = self._create_test_instance(deepcopy(self.CONFIG))
+        await instance.setup()
+        assert instance._rule_tree.get_size() > 0
 
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
@@ -151,24 +154,24 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
     @mock.patch("logging.Logger.isEnabledFor", return_value=True)
     @mock.patch("logging.Logger.debug")
-    def test_load_rules_with_debug(self, mock_debug, _):
-        self.object.load_rules(
+    async def test_load_rules_with_debug(self, mock_debug, _):
+        await self.object.load_rules(
             rules_targets=self.rules_dirs,
         )
         mock_debug.assert_called()
 
-    def test_load_rules(self):
+    async def test_load_rules(self):
         self.object._rule_tree = RuleTree()
         rules_size = self.object._rule_tree.get_size()
-        self.object.load_rules(self.rules_dirs)
+        await self.object.load_rules(self.rules_dirs)
         new_rules_size = self.object._rule_tree.get_size()
         assert new_rules_size > rules_size
 
-    def test_load_rules_creates_rule_with_processor_name(self):
+    async def test_load_rules_creates_rule_with_processor_name(self):
         with mock.patch(
             "logprep.processor.base.rule.Rule.create_from_dict"
         ) as mock_create_from_dict:
-            self.object.load_rules(rules_targets=self.rules_dirs)
+            await self.object.load_rules(rules_targets=self.rules_dirs)
             mock_create_from_dict.assert_called_with(mock.ANY, self.object.name)
 
     @responses.activate
@@ -181,21 +184,24 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         )
         assert isinstance(Factory.create({"http_rule_processor": myconfig}), Processor)
 
-    def test_no_redundant_rules_are_added_to_rule_tree(self):
+    async def test_no_redundant_rules_are_added_to_rule_tree(self):
         """
         prevents a kind of DDOS where a big amount of same rules are placed into
         in the rules directories
         ensures that every rule in rule tree is unique
         """
-        self.object.load_rules(rules_targets=self.rules_dirs)
+        await self.object.load_rules(rules_targets=self.rules_dirs)
         rules_size = self.object._rule_tree.get_size()
-        self.object.load_rules(rules_targets=self.rules_dirs)
+        await self.object.load_rules(rules_targets=self.rules_dirs)
         new_rules_size = self.object._rule_tree.get_size()
         assert new_rules_size == rules_size
 
-    def test_rules_returns_all_rules(self):
+    async def test_rules_returns_all_rules(self):
+        instance = self._create_test_instance(deepcopy(self.CONFIG))
+        await instance.setup()
+
         rules = self.rules
-        object_rules = self.object.rules
+        object_rules = instance.rules
         assert len(rules) == len(object_rules)
 
     @mock.patch("logging.Logger.debug")
@@ -225,30 +231,56 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         with pytest.raises(TypeError, match=r"must be \(<class 'str'>"):
             Factory.create({"test instance": config})
 
-    def test_validation_raises_if_tree_config_is_not_exist(self):
+    async def test_validation_raises_if_tree_config_is_not_exist(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "/i/am/not/a/file/path"})
-        with pytest.raises(FileNotFoundError):
-            Factory.create({"test instance": config})
-
-    @responses.activate
-    def test_accepts_tree_config_from_http(self):
-        config = deepcopy(self.CONFIG)
-        config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
-        tree_config = Path("tests/testdata/unit/tree_config.json").read_text("utf-8")
-        responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
         processor = Factory.create({"test instance": config})
-        tree_config = json.loads(tree_config)
-        assert processor._rule_tree.tree_config.priority_dict == tree_config.get("priority_dict")
 
-    @responses.activate
-    def test_raises_http_error_raises_getter_error(self):
+        with pytest.raises(FileNotFoundError):
+            await processor.setup()
+
+    async def test_accepts_tree_config_from_http(self, aiohttp_server):
+        tree_config = Path("tests/testdata/unit/tree_config.json").read_text("utf-8")
+
+        async def handler(_: web.Request) -> web.Response:
+            return web.Response(
+                text=tree_config,
+                content_type="application/json",
+            )
+
+        app = web.Application()
+        app.router.add_get("/tree_config.yml", handler)
+        server = await aiohttp_server(app)
+
         config = deepcopy(self.CONFIG)
-        config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
-        responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
+        config["tree_config"] = str(server.make_url("/tree_config.yml"))
+
+        processor = Factory.create({"test instance": config})
+        await processor.setup()
+
+        tree_config_dict = json.loads(tree_config)
+
+        assert processor._rule_tree.tree_config.priority_dict == tree_config_dict.get(
+            "priority_dict"
+        )
+
+    async def test_raises_http_error_raises_getter_error(self, aiohttp_server):
+        async def handler(_: web.Request) -> web.Response:
+            return web.Response(status=404)
+
+        app = web.Application()
+        app.router.add_get("/tree_config.yml", handler)
+        server = await aiohttp_server(app)
+
+        config = deepcopy(self.CONFIG)
+        config["tree_config"] = str(server.make_url("/tree_config.yml"))
+
         RefreshableGetter.reset()
+
+        processor = Factory.create({"test instance": config})
+
         with pytest.raises(RefreshableGetterError, match="404"):
-            Factory.create({"test instance": config})
+            await processor.setup()
 
     @pytest.mark.parametrize(
         "metric_name, metric_class",
@@ -259,13 +291,20 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
             ("number_of_errors", CounterMetric),
         ],
     )
-    def test_rule_has_metric(self, metric_name, metric_class):
-        metric_instance = getattr(self.object.rules[0].metrics, metric_name)
+    async def test_rule_has_metric(self, metric_name, metric_class):
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        await processor.setup()
+
+        metric_instance = getattr(processor.rules[0].metrics, metric_name)
+
         assert isinstance(metric_instance, metric_class)
 
-    def test_no_metrics_with_same_name(self):
+    async def test_no_metrics_with_same_name(self):
+        processor = self._create_test_instance(deepcopy(self.CONFIG))
+        await processor.setup()
+
         metric_attributes = asdict(
-            self.object.rules[0].metrics, filter=self.asdict_filter, recurse=False
+            processor.rules[0].metrics, filter=self.asdict_filter, recurse=False
         )
         pairs = itertools.combinations(metric_attributes.values(), 2)
         for metric1, metric2 in pairs:
@@ -277,29 +316,60 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         assert isinstance(result, LogEvent)
 
     async def test_process_collects_errors_in_event_object(self):
+        processor = self._create_test_instance(deepcopy(self.CONFIG))
+        await processor.setup()
+
         with mock.patch.object(
-            self.object,
+            processor,
             "_apply_rules",
-            side_effect=ProcessingCriticalError("side effect", rule=self.object.rules[0]),
+            side_effect=ProcessingCriticalError("side effect", rule=processor.rules[0]),
         ):
-            result = await self.object.process(self.match_all_event)
+            result = await processor.process(self.match_all_event)
+
         assert len(result.errors) > 0, "minimum one error should be in result object"
 
-    def test_invalid_rule_raises(self, caplog):
+    async def test_invalid_rule_raises(self, caplog):
         rule_definition = {"filter": "test", "does_not_exist": "test"}
         with pytest.raises(ValueError):
             with caplog.at_level(10):
-                self.object.load_rules(rules_targets=[rule_definition])
+                await self.object.load_rules(rules_targets=[rule_definition])
         assert "ERROR" in caplog.text
         assert "Loading rules from" in caplog.text
 
-    def test_valid_rule_but_other_processor_raises(self):
+    async def test_valid_rule_but_other_processor_raises(self):
         rule_definitions = [
             {"filter": "test", "calculator": "1+1"},
             {"filter": "drop_me", "dropper": {"drop": ["drop_me"]}},
         ]
         with pytest.raises(InvalidRuleDefinitionError):
-            self.object.load_rules(rules_targets=rule_definitions)
+            await self.object.load_rules(rules_targets=rule_definitions)
 
     async def test_has_async_io(self):
         assert await self.object.has_asyncio() is False
+
+    async def test_setup_is_idempotent_for_rule_tree(self):
+        await self.object.setup()
+
+        first_rules = list(self.object.rules)
+        first_rule_count = self.object._rule_tree.number_of_rules
+
+        await self.object.setup()
+
+        assert self.object._rule_tree.number_of_rules == first_rule_count
+        assert len(self.object.rules) == len(first_rules)
+
+    async def test_setup_keeps_rule_tree_if_rule_loading_fails(self):
+        await self.object.setup()
+
+        rule_tree = self.object._rule_tree
+        rules = list(self.object.rules)
+
+        with mock.patch(
+            "logprep.ng.abc.processor.RuleLoader.load_rules",
+            new=mock.AsyncMock(side_effect=ValueError("rule loading failed")),
+        ):
+            with pytest.raises(ValueError, match="rule loading failed"):
+                await self.object.setup()
+
+        assert self.object._rule_tree is rule_tree
+        assert list(self.object.rules) == rules

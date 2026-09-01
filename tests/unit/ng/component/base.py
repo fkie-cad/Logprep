@@ -3,6 +3,8 @@
 import itertools
 import typing
 from abc import ABC
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from functools import partial
 from logging import getLogger
 from typing import Callable, Generic, Iterable, TypeVar
@@ -43,6 +45,25 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
     @object.setter
     def object(self, value: ComponentTypeT) -> None:
         self._object = value
+
+    @asynccontextmanager
+    async def create_and_setup_processor(
+        self,
+        *,
+        config_patch: dict | None = None,
+        override_shared: bool = False,
+    ) -> AsyncGenerator[ComponentTypeT]:
+        instance = self._create_test_instance(config_patch=config_patch)
+
+        try:
+            await instance.setup()
+
+            if override_shared:
+                self.object = instance
+
+            yield instance
+        finally:
+            await instance.shut_down()
 
     def _create_test_instance(self, config_patch: dict | None = None) -> ComponentTypeT:
         config = self.CONFIG | (config_patch if config_patch is not None else {})
@@ -200,7 +221,7 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
 
     def test_config_is_immutable(self):
         with pytest.raises(FrozenInstanceError):
-            self.object._config.type = "new_type"
+            setattr(self.object._config, "type", "new_type")
 
     async def test_health_returns_bool(self):
         await self.object.setup()
@@ -214,3 +235,18 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
         await component.shut_down()
 
         assert await component.health() is False
+
+    async def test_create_and_setup_processor_shuts_down_on_exception(self):
+        instance = self._create_test_instance()
+        instance.shut_down = mock.AsyncMock()
+
+        with mock.patch.object(
+            self,
+            "_create_test_instance",
+            return_value=instance,
+        ):
+            with pytest.raises(ValueError, match="test error"):
+                async with self.create_and_setup_processor():
+                    raise ValueError("test error")
+
+        instance.shut_down.assert_awaited_once()

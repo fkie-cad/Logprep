@@ -26,6 +26,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
     async def test_process_adds_filtered_event_to_extra_data(self):
         document = {"message": "test_message", "other": "field"}
         event = LogEvent(document, original=document, input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         assert len(event.extra_data) == 1
         filtered_event = event.extra_data[0]
@@ -90,6 +91,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         assert result.errors == []
 
     async def test_gets_matching_rules_from_rules_tree(self):
+        await self.object.setup()
         matching_rules = self.object._rule_tree.get_matching_rules({"message": "the message"})
         assert isinstance(matching_rules, list)
         assert len(matching_rules) > 0
@@ -99,6 +101,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
             f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"
         ) as mock_apply_rules:
             event = LogEvent({"message": "the message"}, original=b"", input_meta=InputMeta())
+            await self.object.setup()
             await self.object.process(event)
             mock_apply_rules.assert_called()
 
@@ -120,6 +123,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
     async def test_process_clears_internal_filtered_events_list_before_every_event(self):
         document = {"message": "test_message", "other": {"message": "my message value"}}
         event = LogEvent(document, original=document, input_meta=InputMeta())
+        await self.object.setup()
         _ = await self.object.process(event)
         assert len(self.object._event.extra_data) == 1
         event = LogEvent(document, original=document, input_meta=InputMeta())

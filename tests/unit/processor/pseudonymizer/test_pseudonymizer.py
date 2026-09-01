@@ -752,17 +752,28 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("testcase, rule, event, expected, regex_mapping", test_cases)
     def test_testcases(self, testcase, rule, event, expected, regex_mapping):
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
         if regex_mapping is not None:
-            self.regex_mapping = regex_mapping
-        self._load_rule(rule)
-        self.object.process(event)
+            config["regex_mapping"] = regex_mapping
+
+        processor = Factory.create({"test instance": config})
+        processor.setup()
+
+        try:
+            processor.process(event)
+        finally:
+            processor.shut_down()
+
         assert event == expected, testcase
 
     def _load_rule(self, rule):
         config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         config["regex_mapping"] = self.regex_mapping
-        self.object = Factory.create({"pseudonymizer": config})
-        super()._load_rule(rule)
+
+        self.object = Factory.create({"test instance": config})
         self.object.setup()
 
     def test_pseudonymize_url_fields_not_in_pseudonymize(self):

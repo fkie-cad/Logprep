@@ -487,23 +487,38 @@ class TestGrokker(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     def test_testcases(self, rule, event, expected):
-        self._load_rule(rule)
-        self.object.setup()
-        self.object.process(event)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        processor = Factory.create({"test instance": config})
+        processor.setup()
+
+        try:
+            processor.process(event)
+        finally:
+            processor.shut_down()
+
         assert event == expected
 
     @pytest.mark.parametrize("rule, event, expected, error", failure_test_cases)
     def test_testcases_failure_handling(self, rule, event, expected, error):
-        self._load_rule(rule)
-        self.object.setup()
-        if isinstance(error, str):
-            result = self.object.process(event)
-            assert len(result.warnings) == 1
-            assert re.match(rf".*{error}", str(result.warnings[0]))
-            assert event == expected
-        else:
-            result = self.object.process(event)
-            assert isinstance(result.errors[0], ProcessingCriticalError)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        processor = Factory.create({"test instance": config})
+        processor.setup()
+
+        try:
+            result = processor.process(event)
+
+            if isinstance(error, str):
+                assert len(result.warnings) == 1
+                assert re.match(rf".*{error}", str(result.warnings[0]))
+                assert event == expected
+            else:
+                assert isinstance(result.errors[0], ProcessingCriticalError)
+        finally:
+            processor.shut_down()
 
     def test_load_custom_patterns_from_http_as_zip_file(self):
         rule = {
@@ -513,19 +528,30 @@ class TestGrokker(BaseProcessorTestCase):
 
         event = {"message": "this is user-456"}
         expected = {"message": "this is user-456", "userfield": "user-456"}
+
         archive_data = GetterFactory.from_string(
             "tests/testdata/unit/grokker/patterns.zip"
         ).get_raw()
-        with mock.patch("logprep.util.getter.HttpGetter.get_raw") as mock_getter:
-            mock_getter.return_value = archive_data
-            config = deepcopy(self.CONFIG)
-            config["custom_patterns_dir"] = (
-                "http://localhost:8000/tests/testdata/unit/grokker/patterns.zip"
-            )
-            self.object = Factory.create({"grokker": config})
-            self._load_rule(rule)
-            self.object.setup()
-        self.object.process(event)
+
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+        config["custom_patterns_dir"] = (
+            "http://localhost:8000/tests/testdata/unit/grokker/patterns.zip"
+        )
+
+        processor = Factory.create({"grokker": config})
+
+        with mock.patch(
+            "logprep.util.getter.HttpGetter.get_raw",
+            return_value=archive_data,
+        ):
+            processor.setup()
+
+        try:
+            processor.process(event)
+        finally:
+            processor.shut_down()
+
         assert event == expected
 
     def test_loads_patterns_without_custom_patterns_dir(self):
@@ -534,6 +560,7 @@ class TestGrokker(BaseProcessorTestCase):
             "custom_patterns_dir": "",
         }
         grokker = Factory.create({"grokker": config})
+        grokker.setup()
         assert len(grokker.rules) > 0
 
     def test_loads_custom_patterns(self):

@@ -2,9 +2,11 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
+from copy import deepcopy
 
 from dateutil.tz import tzutc
 
+from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -20,7 +22,9 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         timestamp = "2019-07-30T14:37:42.861Z"
         document = {"@timestamp": timestamp, "winlog": {"event_id": 123}}
 
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
 
         expected = {
             "@timestamp": timestamp,
@@ -43,7 +47,9 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         timestamp = "2019-07-30T14:37:42.861+01:00"
         document = {"@timestamp": timestamp, "winlog": {"event_id": 123}}
 
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
 
         expected = {
             "@timestamp": timestamp,
@@ -63,15 +69,18 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         assert document == expected
 
     def test_an_event_extracted_datetime_and_local_utc_without_delta(self):
-        self.object._local_timezone = tzutc()
-        self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
-            self.object._local_timezone
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+
+        processor._local_timezone = tzutc()
+        processor._local_timezone_name = DatetimeExtractor._get_timezone_name(
+            processor._local_timezone
         )
 
         timestamp = "2019-07-30T14:37:42.861+00:00"
         document = {"@timestamp": timestamp, "winlog": {"event_id": 123}}
 
-        self.object.process(document)
+        processor.process(document)
 
         tz_local_name = "+0000"
         local_hour_delta, local_minute_delta, local_timezone = self._parse_local_tz(tz_local_name)

@@ -96,7 +96,9 @@ class TestGeoipEnricher(BaseProcessorTestCase):
     def test_geoip_data_added(self):
         document = {"client": {"ip": "1.2.3.4"}}
 
+        self.object.setup()
         self.object.process(document)
+        self.object.shut_down()
 
         assert document.get("geoip")
 
@@ -115,7 +117,9 @@ class TestGeoipEnricher(BaseProcessorTestCase):
     def test_source_field_is_none_emits_missing_fields_warning(self):
         document = {"client": {"ip": None}}
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
+        self.object.setup()
         self.object.process(document)
+        self.object.shut_down()
         assert document == expected
         assert len(self.object.result.warnings) == 1
         assert re.match(
@@ -138,7 +142,9 @@ class TestGeoipEnricher(BaseProcessorTestCase):
     def test_enrich_an_event_geoip(self):
         document = {"client": {"ip": "8.8.8.8"}}
 
+        self.object.setup()
         self.object.process(document)
+        self.object.shut_down()
 
         geoip = document.get("geoip")
         assert isinstance(geoip, dict)
@@ -155,14 +161,18 @@ class TestGeoipEnricher(BaseProcessorTestCase):
 
     def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
+        self.object.setup()
         result = self.object.process(document)
+        self.object.shut_down()
         assert len(result.warnings) == 1
         assert re.match(".*FieldExistsWarning.*geoip.type", str(result.warnings[0]))
 
     def test_configured_dotted_output_field(self):
         document = {"source": {"ip": "8.8.8.8"}}
 
+        self.object.setup()
         self.object.process(document)
+        self.object.shut_down()
         assert document.get("source", {}).get("geo", {}).get("ip") is not None
 
     def test_delete_source_field(self):
