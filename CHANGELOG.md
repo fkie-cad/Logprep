@@ -23,6 +23,10 @@
 * filter: allow mixed numeric range boundaries and type coercion for range matching
 
 ### Improvements
+* add a separate cache for timeouts in `domain_resolver` to allow different lifetimes than the regular domain cache
+* add `lifetime` parameter to `domain_resolver` in addition to `timeout` parameter
+* add metrics for cached timed-out domains and successfully resolved domains to `domain_resolver`
+* prune domains from `domain_resolver` mapping that are not in the cache
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
 * docs: change processor natural naming to capital cased with whitespace (e.g. "Generic Resolver")
 * docs: use processor name placeholders for most usages
@@ -39,6 +43,7 @@
 * grokker: improve performance by stopping on first matching expression
 
 ### Bugfix
+* Prune domains from `domain_resolver` mapping that are not in the cache 
 * chart: fix command handling
 * ng: fix input timeout to also accept int parameters
 * ng: fix `http_input` `collect_meta` leading to shared dicts between events

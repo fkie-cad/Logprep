@@ -14,11 +14,11 @@ Processor Configuration
         rules:
             - tests/testdata/rules/rules
         timeout: 0.5
+        lifetime: 1.0
         max_cached_domains: 20000
         max_caching_days: 1
         hash_salt: secure_salt
         cache_enabled: true
-        debug_cache: false
 
 .. autoclass:: logprep.processor.domain_resolver.processor.DomainResolver.Config
    :members:
@@ -31,38 +31,49 @@ Processor Configuration
 
 import datetime
 import logging
-import socket
 import typing
 from enum import IntEnum
 from functools import cached_property
-from multiprocessing import context
-from multiprocessing.pool import ThreadPool
-from typing import Any, Optional
 from urllib.parse import urlsplit
 
-from attrs import define, field, validators
+from attr import define, field, validators
+from dns.exception import Timeout, FormError, SyntaxError as DNSSyntaxError, TooBig
+from dns.resolver import Resolver, NXDOMAIN, LifetimeTimeout, NoAnswer, NoNameservers
 
 from logprep.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric
 from logprep.processor.domain_resolver.rule import DomainResolverRule
-from logprep.util.cache import Cache
+from logprep.util.cache import Cache, Timer
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value
 
 logger = logging.getLogger("DomainResolver")
 
 
-class ResolveStatus(IntEnum):
+class FailureType(IntEnum):
     """Status of resolving domains"""
 
-    SUCCESS = 0
-    """Resolving the domain was successful"""
-    TIMEOUT = 1
+    TIMEOUT = 0
     """Domain resolver timeout while trying to resolve the domain (this is not a socket timeout)"""
-    INVALID = 2
+    INVALID = 1
     """The resolved domain was invalid and thus not resolved"""
-    UNKNOWN = 3
+    UNKNOWN = 2
     """Tried to resolve the domain, but the domain is unknown"""
+    NO_ANSWER = 3
+    """The resolved domain was valid, but returned no data"""
+    NO_NAMESERVERS = 4
+    """Nameservers do not exist or timed out"""
+
+
+@define
+class SuccessResult:
+    resolved_ip: str
+
+
+@define
+class FailedResult:
+    failure_type: FailureType
+    error: Exception | None = None
 
 
 class DomainResolver(Processor):
@@ -85,6 +96,8 @@ class DomainResolver(Processor):
            Ensure to set this to a reasonable value to avoid DOS attacks by malicious domains in
            your logs. The default is set to 0.5 seconds.
         """
+        lifetime: float = field(default=1.0, validator=validators.instance_of(float))
+        """Total timeout for resolving of domains including multiple attempts."""
         max_cached_domains: int = field(validator=validators.instance_of(int))
         """The maximum number of cached domains. One cache entry requires ~250 Byte, thus 10
         million elements would require about 2.3 GB RAM. The cache is not persisted. Restarting
@@ -97,6 +110,10 @@ class DomainResolver(Processor):
            and OOM situations by the domain resolver cache.
 
         """
+        timeout_block_time: float = field(default=5.0, validator=validators.instance_of(float))
+        """Minutes after which a timed out domain can be resolved again."""
+        cache_prune_interval: float = field(default=3600.0, validator=validators.instance_of(float))
+        """Seconds after which decayed domains are pruned from caches."""
         max_caching_days: int = field(validator=validators.instance_of(int))
         """Number of days a domains is cached after the last time it appeared.
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
@@ -110,9 +127,6 @@ class DomainResolver(Processor):
         cache_enabled: bool = field(default=True, validator=validators.instance_of(bool))
         """If enabled activates a cache such that already seen domains do not need to be resolved
         again."""
-        debug_cache: bool = field(default=False, validator=validators.instance_of(bool))
-        """If enabled adds debug information to the current event, for example if the event
-        was retrieved from the cache or newly resolved, as well as the cache size."""
 
     @define(kw_only=True)
     class Metrics(Processor.Metrics):
@@ -139,6 +153,13 @@ class DomainResolver(Processor):
             )
         )
         """Number of urls that were resolved from cache"""
+        resolved_domains: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of domains that were successfully resolved",
+                name="domain_resolver_resolved_domains",
+            )
+        )
+        """Number of domains that were successfully resolved"""
         timeouts: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Number of timeouts that occurred while resolving a url",
@@ -146,6 +167,13 @@ class DomainResolver(Processor):
             )
         )
         """Number of timeouts that occurred while resolving a url"""
+        timeouts_cached: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of timeouts from the timeout cache for a url",
+                name="domain_resolver_timeouts_cached",
+            )
+        )
+        """Number of timeouts from the timeout cache for a url"""
         invalid_domains: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Number of invalid domains",
@@ -163,7 +191,7 @@ class DomainResolver(Processor):
 
     __slots__ = ["_domain_ip_map"]
 
-    _domain_ip_map: dict[str, Optional[str]]
+    _domain_ip_map: dict[str, SuccessResult | FailedResult]
 
     rule_class = DomainResolverRule
 
@@ -177,87 +205,133 @@ class DomainResolver(Processor):
         return typing.cast(DomainResolver.Config, self._config)
 
     @cached_property
-    def _cache(self) -> Cache:
+    def _dns_resolver(self) -> Resolver:
+        dns_resolver = Resolver()
+        dns_resolver.timeout = self.config.timeout
+        dns_resolver.lifetime = self.config.lifetime
+        return dns_resolver
+
+    @cached_property
+    def _timeout_cache(self) -> Cache:
+        cache_max_timedelta = datetime.timedelta(minutes=self.config.timeout_block_time)
+        cache = Cache(
+            max_items=self.config.max_cached_domains,
+            max_timedelta=cache_max_timedelta,
+            prune_interval=self.config.cache_prune_interval,
+        )
+        return cache
+
+    @cached_property
+    def _domain_cache(self) -> Cache:
         cache_max_timedelta = datetime.timedelta(days=self.config.max_caching_days)
-        return Cache(max_items=self.config.max_cached_domains, max_timedelta=cache_max_timedelta)
+        cache = Cache(
+            max_items=self.config.max_cached_domains,
+            max_timedelta=cache_max_timedelta,
+            prune_interval=self.config.cache_prune_interval,
+        )
+        return cache
+
+    @cached_property
+    def _domain_ip_map_prune_timer(self) -> Timer:
+        return Timer(self.config.cache_prune_interval)
 
     @cached_property
     def _hasher(self) -> SHA256Hasher:
         return SHA256Hasher()
 
-    @cached_property
-    def _thread_pool(self) -> ThreadPool:
-        return ThreadPool(processes=1)
-
-    def _apply_rules(self, event: dict[str, Any], rule: DomainResolverRule) -> None:
+    def _apply_rules(self, event: dict[str, typing.Any], rule: DomainResolverRule):
+        self._timeout_cache.prune_decayed()
+        self._domain_cache.prune_decayed()
+        self._prune_domain_ip_map()
         source_field = rule.source_fields[0]
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
             return
-        if not isinstance(domain_or_url_str, str):
-            raise ValueError("expected source_field to be a string")
 
-        url = urlsplit(domain_or_url_str)
+        url = urlsplit(str(domain_or_url_str))
         domain = url.hostname
         if url.scheme == "":
             domain = url.path
         if not domain:
+            self.metrics.invalid_domains += 1
             return
         self.metrics.total_urls += 1
         if self.config.cache_enabled:
-            self._resolve_with_cache(domain, event, rule)
+            result = self._resolve_with_cache(domain)
         else:
-            resolved_ip, _ = self._resolve_ip(domain)
-            self._add_resolve_infos_to_event(event, rule, resolved_ip)
+            result = self._resolve_ip(domain)
 
-    def _resolve_with_cache(
-        self, domain: str, event: dict[str, Any], rule: DomainResolverRule
-    ) -> None:
+        match result:
+            case SuccessResult(resolved_ip) if resolved_ip:
+                self._add_resolve_infos_to_event(event, rule, resolved_ip)
+            case FailedResult(_, error) if error:
+                self._handle_warning_error(event, rule, error)
+
+    def _resolve_with_timeout_check(self, domain: str) -> SuccessResult | FailedResult:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
-        requires_storing = self._cache.requires_storing(hash_string)
-        if requires_storing:
-            resolved_ip, status = self._resolve_ip(domain)
-            if status in (ResolveStatus.SUCCESS, ResolveStatus.UNKNOWN, ResolveStatus.TIMEOUT):
-                self._domain_ip_map.update({hash_string: resolved_ip})
-            self.metrics.resolved_new += 1
-        else:
-            resolved_ip = self._domain_ip_map.get(hash_string)
+        if self._timeout_cache.is_cached(hash_string):
+            self.metrics.timeouts_cached += 1
+            return FailedResult(FailureType.TIMEOUT)
+
+        result = self._resolve_ip(domain)
+        if isinstance(result, FailedResult) and self._is_timeout(result):
+            self._timeout_cache.add(hash_string)
+        return result
+
+    def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
+        hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
+
+        if self._domain_cache.is_cached(hash_string):
+            self._domain_cache.update_cache(hash_string)
+            result = self._domain_ip_map[hash_string]
             self.metrics.resolved_cached += 1
-        self._add_resolve_infos_to_event(event, rule, resolved_ip)
+            return result
 
-        if self.config.debug_cache:
-            self._store_debug_infos(event, requires_storing)
+        result = self._resolve_with_timeout_check(domain)
+        match result:
+            case SuccessResult(_):
+                self._domain_cache.add(hash_string)
+                self._domain_ip_map.update({hash_string: result})
+            case FailedResult(_) if not self._is_timeout(result):
+                self._domain_cache.add(hash_string)
+                self._domain_ip_map.update({hash_string: result})
+        self.metrics.resolved_new += 1
+        return result
 
-    def _add_resolve_infos_to_event(
-        self, event: dict[str, Any], rule: DomainResolverRule, resolved_ip: Optional[str]
-    ) -> None:
+    @staticmethod
+    def _is_timeout(failed_result: FailedResult) -> bool:
+        return failed_result.failure_type in (FailureType.TIMEOUT, FailureType.NO_NAMESERVERS)
+
+    def _add_resolve_infos_to_event(self, event: dict, rule, resolved_ip: str):
         if resolved_ip:
             self._write_target_field(event, rule, resolved_ip)
 
-    def _resolve_ip(self, domain: str) -> tuple[Optional[str], int]:
+    def _resolve_ip(self, domain: str) -> SuccessResult | FailedResult:
         """Resolve domain with timeout.
 
         Assumes socket default timeout is None and relies on threading to create a timeout.
         """
         try:
-            result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
-            resolved_ip = result.get(timeout=self.config.timeout)
-            return resolved_ip, ResolveStatus.SUCCESS
-        except ValueError:  # Makes no connection so does not need to be cached
+            result = self._dns_resolver.resolve(domain, "A")
+            self.metrics.resolved_domains += 1
+            return SuccessResult(result[0].address)
+        except (FormError, DNSSyntaxError, TooBig):
             self.metrics.invalid_domains += 1
-            return None, ResolveStatus.INVALID
-        except context.TimeoutError:
+            return FailedResult(FailureType.INVALID)
+        except (Timeout, LifetimeTimeout):
             self.metrics.timeouts += 1
-            return None, ResolveStatus.TIMEOUT
-        except OSError:  # Won't be timeout if default timeout is None
+            return FailedResult(FailureType.TIMEOUT)
+        except NXDOMAIN:
             self.metrics.unknown_domains += 1
-            return None, ResolveStatus.UNKNOWN
+            return FailedResult(FailureType.UNKNOWN)
+        except NoAnswer:
+            return FailedResult(FailureType.NO_ANSWER)
+        except NoNameservers as error:
+            return FailedResult(FailureType.NO_NAMESERVERS, error)
 
-    def _store_debug_infos(self, event: dict[str, Any], requires_storing: bool) -> None:
-        event_dbg = {
-            "resolved_ip_debug": {
-                "obtained_from_cache": not requires_storing,
-                "cache_size": len(self._domain_ip_map.keys()),
-            }
-        }
-        add_fields_to(event, event_dbg, overwrite_target=True)
+    def _prune_domain_ip_map(self):
+        if self._domain_ip_map_prune_timer.finished():
+            self._domain_ip_map_prune_timer.reset()
+            removed_keys = set(self._domain_ip_map.keys()).difference(self._domain_cache.keys())
+            for hash_Str in removed_keys:
+                self._domain_ip_map.pop(hash_Str)
