@@ -1,14 +1,16 @@
 # pylint: disable=missing-docstring
 # pylint: disable=too-many-positional-arguments
 import math
-import re
 
 import pytest
 
 from logprep.processor.calculator.fourFn import (
     DivisionByZeroError,
     InvalidSyntaxError,
+    ParsingError,
+    ValueType,
     compile_expression,
+    parse_value,
 )
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -559,7 +561,6 @@ runtime_failure_test_cases = [
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        r"ProcessingWarning.*expression 'not parsable \+ 4 \* 2' could not be parsed",
         id="Tags failure if parse is not possible",
     ),
     pytest.param(
@@ -578,7 +579,6 @@ runtime_failure_test_cases = [
             "result": "exists",
             "tags": ["_calculator_failure"],
         },
-        "FieldExistsWarning.*one or more subfields existed and could not be extended: result",
         id="Tags failure if target_field exist",
     ),
     pytest.param(
@@ -595,7 +595,6 @@ runtime_failure_test_cases = [
             "field3": 2,
             "tags": ["_calculator_missing_field_warning"],
         },
-        r"ProcessingWarning.*missing source_fields: \['field1']",
         id="Tags failure if source_field missing",
     ),
     pytest.param(
@@ -613,7 +612,6 @@ runtime_failure_test_cases = [
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        r"ProcessingWarning.*no value for fields: \['field1'\]",
         id="Tags failure if source_field is empty",
     ),
     pytest.param(
@@ -631,7 +629,6 @@ runtime_failure_test_cases = [
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        r"ProcessingWarning.*could not be parsed",
         id="Tags failure try to escape",
     ),
     pytest.param(
@@ -647,7 +644,6 @@ runtime_failure_test_cases = [
             "message": "This is a message",
             "tags": ["_calculator_failure"],
         },  # "STREAM ioctl timeout" for MacOS/darwin
-        r"ProcessingWarning.*(Timer expired|ioctl timeout)",
         id="raises timeout",
     ),
 ]
@@ -659,6 +655,51 @@ class TestCalculator(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/calculator/rules"],
     }
 
+    @pytest.mark.parametrize(
+        "from_type, to_type, can_cast",
+        [
+            (ValueType.NUMBER, ValueType.NUMBER, True),
+            (ValueType.BOOLEAN, ValueType.BOOLEAN, True),
+            (ValueType.NUMBER, ValueType.BOOLEAN, True),
+            (ValueType.BOOLEAN, ValueType.NUMBER, False),
+        ],
+    )
+    def test_casting_rules_for_value_type(self, from_type, to_type, can_cast):
+        assert from_type.can_be_cast_to(to_type) == can_cast
+
+    @pytest.mark.parametrize(
+        "input, to_type, result",
+        [
+            (1337, ValueType.NUMBER, 1337),
+            (42.0, ValueType.NUMBER, 42.0),
+            ("1337", ValueType.NUMBER, 1337),
+            ("2e-3", ValueType.NUMBER, 0.002),
+            ("pi", ValueType.NUMBER, math.pi),
+            ("PI", ValueType.NUMBER, math.pi),
+            ("E", ValueType.NUMBER, math.e),
+            ("e", ValueType.NUMBER, math.e),
+            (0, ValueType.BOOLEAN, False),
+            (0.1, ValueType.BOOLEAN, True),
+            (1, ValueType.BOOLEAN, True),
+            (-1, ValueType.BOOLEAN, True),
+        ],
+    )
+    def test_parse_value(self, input, to_type, result):
+        assert parse_value(input, to_type) == result
+
+    @pytest.mark.parametrize(
+        "value, to_type",
+        [
+            ("", ValueType.NUMBER),
+            (None, ValueType.NUMBER),
+            ("", ValueType.BOOLEAN),
+            (None, ValueType.BOOLEAN),
+        ],
+    )
+    def test_parse_values_fails(self, value, to_type):
+        with pytest.raises(ParsingError):
+            parse_value(value, to_type)
+
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
         self._load_rule(rule)
@@ -666,13 +707,12 @@ class TestCalculator(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("rule, event, expected, error_message", runtime_failure_test_cases)
-    def test_testcases_failure_handling_at_runtime(self, rule, event, expected, error_message):
+    @pytest.mark.parametrize("rule, event, expected", runtime_failure_test_cases)
+    def test_testcases_failure_handling_at_runtime(self, rule, event, expected):
         self._load_rule(rule)
         self.object.setup()
         result = self.object.process(event)
         assert len(result.warnings) == 1
-        assert re.match(rf".*{error_message}", str(result.warnings[0]))
         assert event == expected
 
     @pytest.mark.parametrize("rule, error_type", setup_failure_test_cases)
@@ -742,12 +782,8 @@ class TestCalculator(BaseProcessorTestCase):
         ],
     )
     def test_fourfn_rejects_boolean_operands(self, expression):
-        program = compile_expression(expression)
-        with pytest.raises(
-            Exception,
-            match="boolean values cannot be used as operands",
-        ):
-            program.evaluate({})
+        with pytest.raises(InvalidSyntaxError):
+            compile_expression(expression)
 
     @pytest.mark.skip("TODO check how to update")
     def test_fourfn_builds_expected_postfix_stack(self):

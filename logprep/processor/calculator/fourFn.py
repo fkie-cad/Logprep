@@ -16,6 +16,7 @@ Copyright 2003-2019 by Paul McGuire
 import math
 import operator
 from abc import ABC, abstractmethod
+from enum import Enum, auto
 from typing import Any, Callable, ClassVar, Protocol, Sequence, TypeAlias
 
 from pyparsing import (
@@ -47,6 +48,9 @@ class CalculatorError(LogprepException): ...
 class InvalidSyntaxError(CalculatorError): ...
 
 
+class ParsingError(CalculatorError): ...
+
+
 class MissingValueError(CalculatorError): ...
 
 
@@ -57,6 +61,50 @@ class EvaluationError(CalculatorError): ...
 
 
 class DivisionByZeroError(CalculatorError): ...
+
+
+# NOTE: The AST emulates its own typing system through enums.
+
+
+class ValueType(Enum):
+    BOOLEAN = auto()
+    NUMBER = auto()
+
+    def can_be_cast_to(self, other: "ValueType") -> bool:
+        if self == other:
+            return True
+        if self == ValueType.NUMBER and other == ValueType.BOOLEAN:
+            return True
+        return False
+
+
+def parse_value(value: Any, expected_type: ValueType) -> Any:
+    print("PARSE", value, expected_type)
+    match expected_type:
+        case ValueType.NUMBER:
+            if isinstance(value, (int, float)):
+                return value
+            if isinstance(value, bool):
+                raise ParsingError("Expected number got boolean.")
+            if isinstance(value, str):
+                if value.upper() == "PI":
+                    return math.pi
+                if value.upper() == "E":
+                    return math.e
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                try:
+                    return float(value)
+                except (TypeError, ValueError) as error:
+                    raise ParsingError(f"Could not parse input {value !r} to number") from error
+        case ValueType.BOOLEAN:
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, (int, float)):
+                return bool(value)
+            raise ParsingError(f"Could not parse {value !r}.")
+    raise ParsingError(f"Could not parse {value !r} to {expected_type}")
 
 
 epsilon = 1e-12
@@ -115,27 +163,12 @@ class DiagramRenderContext(ASTWalkContext):
         )
 
 
-def try_handle_number(value: int | float | str) -> int | float | str:
-    if isinstance(value, (int, float)):
-        return value
-    if value == "PI":
-        return math.pi  # 3.1415926535
-    if value == "E":
-        return math.e  # 2.718281828
-    try:
-        return int(value)
-    except ValueError:
-        try:
-            return float(value)
-        except ValueError:
-            ...
-    return value
-
-
 EvaluationContext: TypeAlias = dict[str, FieldValue]
 
 
 class ASTNode(ABC):
+    output_type: ClassVar[ValueType]
+
     @abstractmethod
     def walk(self, context: ASTWalkContext) -> None: ...
 
@@ -169,24 +202,31 @@ class TerminalASTNode(ASTNode):
 
 
 class ConstantASTNode(TerminalASTNode):
-    def __init__(self, value: str):
-        self.value = try_handle_number(value)
+
+    def __init__(self, value: Any):
+        self.value = parse_value(value, self.output_type)
 
     @property
     def is_constant(self):
         return True
 
     def __repr__(self):
-        return f"<value {self.value !r}>"
+        return f"<constant {self.value !r}>"
 
     def evaluate(self, context):
         return self.value
 
     def optimize(self):
-        return ConstantASTNode(value=self.value)
+        return type(self)(value=self.value)
+
+
+class ConstantNumberASTNode(ConstantASTNode):
+    output_type = ValueType.NUMBER
 
 
 class VariableASTNode(TerminalASTNode):
+    output_type = ValueType.NUMBER
+
     def __init__(self, path: str):
         self.path = path
 
@@ -198,7 +238,7 @@ class VariableASTNode(TerminalASTNode):
         value = get_dotted_field_value(context, self.path)
         if not value:
             raise MissingValueError(f"Missing value for field {self.path!r}.")
-        return try_handle_number(value)
+        return parse_value(value, self.output_type)
 
     def __repr__(self):
         return f"<variable {self.path !r}>"
@@ -208,7 +248,12 @@ class VariableASTNode(TerminalASTNode):
 
 
 class NegateASTNode(ASTNode):
+    input_type = ValueType.NUMBER
+    output_type = ValueType.NUMBER
+
     def __init__(self, inner: ASTNode):
+        if not inner.output_type.can_be_cast_to(self.output_type):
+            raise InvalidSyntaxError(f"Can not parse {inner.output_type} to {self.output_type}")
         self.inner = inner
 
     @property
@@ -226,7 +271,7 @@ class NegateASTNode(ASTNode):
     def optimize(self):
         optimized_inner = self.inner.optimize()
         if optimized_inner.is_constant:
-            return ConstantASTNode(-optimized_inner.evaluate({}))
+            return ConstantNumberASTNode(-optimized_inner.evaluate({}))
         return NegateASTNode(optimized_inner)
 
     def evaluate(self, context):
@@ -242,14 +287,20 @@ class OperationASTNode(ASTNode):
     # generic. During construction of the AST the typing is dynamic
     # only the constructed is then checked for typing.
     operation_fn: ClassVar[Callable[[Any, Any], Any]]
-    input_type: ClassVar[type]
-    output_type: ClassVar[type]
+    input_type: ClassVar[ValueType]
 
     def __init__(
         self,
         lhs: ASTNode,
         rhs: ASTNode,
     ):
+        if not lhs.output_type.can_be_cast_to(
+            self.input_type
+        ) or not rhs.output_type.can_be_cast_to(self.input_type):
+            raise InvalidSyntaxError(
+                f"Operator {self.operator_symbol !r} expects two inputs of type"
+                f" {self.input_type} got {lhs.output_type} and {rhs.output_type} instead"
+            )
         self.lhs = lhs
         self.rhs = rhs
 
@@ -274,7 +325,7 @@ class OperationASTNode(ASTNode):
         rhs_optimized = self.rhs.optimize()
 
         if lhs_optimized.is_constant and rhs_optimized.is_constant:
-            return ConstantASTNode(
+            return ConstantNumberASTNode(
                 self.operation_fn(
                     lhs_optimized.evaluate({}),
                     rhs_optimized.evaluate({}),
@@ -295,8 +346,8 @@ class OperationASTNode(ASTNode):
 
 
 class ArithmeticASTNode(OperationASTNode):
-    input_type = int | float
-    output_type = int | float
+    input_type = ValueType.NUMBER
+    output_type = ValueType.NUMBER
 
     @abstractmethod
     def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None: ...
@@ -307,7 +358,7 @@ class ArithmeticASTNode(OperationASTNode):
 
         if lhs_optimized.is_constant and rhs_optimized.is_constant:
             try:
-                return ConstantASTNode(
+                return ConstantNumberASTNode(
                     self.operation_fn(
                         lhs_optimized.evaluate({}),
                         rhs_optimized.evaluate({}),
@@ -335,11 +386,9 @@ def _is_constant_value(node: ASTNode, value: int) -> bool:
     return node.is_constant and node.evaluate({}) == value
 
 
-class AddASTNode(OperationASTNode):
+class AddASTNode(ArithmeticASTNode):
     operator_symbol = "+"
     operation_fn = operator.add
-    input_type = int | float
-    output_type = int | float
 
     def _operation_specific_optimizations(self, lhs, rhs):
         if _is_constant_value(rhs, 0):
@@ -349,11 +398,9 @@ class AddASTNode(OperationASTNode):
         return None
 
 
-class SubASTNode(OperationASTNode):
+class SubASTNode(ArithmeticASTNode):
     operator_symbol = "-"
     operation_fn = operator.sub
-    input_type = int | float
-    output_type = int | float
 
     def _operation_specific_optimizations(self, lhs, rhs):
         if _is_constant_value(rhs, 0):
@@ -363,15 +410,13 @@ class SubASTNode(OperationASTNode):
         return None
 
 
-class MulASTNode(OperationASTNode):
+class MulASTNode(ArithmeticASTNode):
     operator_symbol = "*"
     operation_fn = operator.mul
-    input_type = int | float
-    output_type = int | float
 
     def _operation_specific_optimizations(self, lhs, rhs):
         if _is_constant_value(rhs, 0) or _is_constant_value(lhs, 0):
-            return ConstantASTNode(0)
+            return ConstantNumberASTNode(0)
         if _is_constant_value(rhs, 1):
             return lhs
         if _is_constant_value(lhs, 1):
@@ -379,11 +424,9 @@ class MulASTNode(OperationASTNode):
         return None
 
 
-class DivASTNode(OperationASTNode):
+class DivASTNode(ArithmeticASTNode):
     operator_symbol = "/"
     operation_fn = operator.truediv
-    input_type = int | float
-    output_type = int | float
 
     def _operation_specific_optimizations(self, lhs, rhs):
         if _is_constant_value(rhs, 0):
@@ -393,25 +436,23 @@ class DivASTNode(OperationASTNode):
         return None
 
 
-class PowASTNode(OperationASTNode):
+class PowASTNode(ArithmeticASTNode):
     operator_symbol = "^"
     operation_fn = operator.pow
-    input_type = int | float
-    output_type = int | float
 
     def _operation_specific_optimizations(self, lhs, rhs):
         if _is_constant_value(rhs, 0):
-            return ConstantASTNode(1)
+            return ConstantNumberASTNode(1)
         if _is_constant_value(rhs, 1):
             return lhs
         if _is_constant_value(lhs, 1):
-            return ConstantASTNode(1)
+            return ConstantNumberASTNode(1)
         return None
 
 
 class ComparisonASTNode(OperationASTNode):
-    input_type = int | float
-    output_type = bool
+    input_type = ValueType.NUMBER
+    output_type = ValueType.BOOLEAN
 
 
 class EqualASTNode(ComparisonASTNode):
@@ -463,11 +504,19 @@ OPERATORS = {
 
 
 class FunctionCallASTNode(ASTNode):
+    input_type = ValueType.NUMBER
+    output_type = ValueType.NUMBER
+
+    # TODO: make all a special case
     def __init__(
         self, function_name: str, function_call: Callable[..., Any], children: Sequence[ASTNode]
     ):
         self.function_name = function_name
         self.function_call = function_call
+        if not all(child.output_type.can_be_cast_to(self.input_type) for child in children):
+            raise InvalidSyntaxError(
+                f"Not all args can be converted to {self.input_type} on function {self.function_name !r}"
+            )
         self.children = children
 
     @property
@@ -489,7 +538,7 @@ class FunctionCallASTNode(ASTNode):
 
         try:
             my_static_value = optimized_clone.evaluate({})
-            return ConstantASTNode(value=my_static_value)
+            return ConstantNumberASTNode(value=my_static_value)
         except CalculatorError as error:
             # As every child considered consider itself constant
             # evaluating with an empty context should not raise
@@ -529,7 +578,7 @@ class FunctionCallASTNode(ASTNode):
 def build_constant(x):
     assert len(x) == 1
     assert isinstance(x[0], str)
-    return ConstantASTNode(x[0])
+    return ConstantNumberASTNode(x[0])
 
 
 def build_variable(x):

@@ -26,7 +26,7 @@ Processor Configuration
 from typing import Sequence, cast
 
 from logprep.processor.calculator.fourFn import (
-    EvaluationError,
+    CalculatorError,
     MissingValueError,
 )
 from logprep.processor.calculator.rule import CalculatorRule
@@ -46,7 +46,6 @@ class Calculator(FieldManager):
 
     def setup(self):
         super().setup()
-        print("SETUP")
         for rule in self.rules:
             rule.init_calculator()
 
@@ -58,9 +57,7 @@ class Calculator(FieldManager):
             return rule.program.evaluate(event)
 
         try:
-            print("CALCULATE")
             result = calculate()
-            print("RESULT", result)
             if result is not None:
                 self._write_target_field(event, rule, result)
         except MissingValueError:
@@ -70,7 +67,7 @@ class Calculator(FieldManager):
                 rule.source_fields,
                 [None],  # TODO: interace for utility function is terrible.
             )
-        except EvaluationError as error:
+        except CalculatorError as error:
             self._handle_warning_error(event, rule, error)
         except TimeoutError as error:
             self._handle_warning_error(event, rule, error)
