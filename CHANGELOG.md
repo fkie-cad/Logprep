@@ -12,7 +12,6 @@
 ### Breaking
 * restrict UNIX timestamp normalization to seconds, milliseconds, microseconds, and nanoseconds.
 * handle non-string `concatenator` source fields with `ProcessingWarning` instead of `ProcessingCriticalError`
-* filter: field values are now automatically coerced in range matches
 
 ### Features
 * add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
@@ -30,11 +29,6 @@
 * ng: make domain resolver DNS lookups non-blocking
 * ng: initialize pseudonymizer public keys asynchronously during setup
 * ng: classify processors with asynchronous I/O during event processing correctly
-* ng: offload credentials file validation from the asynchronous event loop
-* ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
-* ng: make getter-backed setup and processing asynchronous for `geoip_enricher`, `grokker`, `requester`, `amides`, `generic_adder`, `list_comparison`, `network_comparison`, `selective_extractor`, `pseudonymizer`, and `template_replacer`
-* filter: add support for `*` (open boundary) in range expressions
-* filter: allow mixed numeric range boundaries and type coercion for range matching
 
 ### Improvements
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
@@ -59,27 +53,9 @@
 * ng: offload credentials file validation from the asynchronous event loop
 * ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
 * ng: improve asynchronous refreshable getter scheduling and isolate refresh callback failures
-* grokker: improve performance by stopping on first matching expression
-
-### Bugfix
-* chart: fix command handling
-* generic_adder: allow None as valid input via `add`
-* generic_resolver: avoid sharing mutable additions between rule configurations
-* ng: fix input timeout to also accept int parameters
-* ng: fix `http_input` `collect_meta` leading to shared dicts between events
-* ng: fix error output structure to stay consistent with non-ng
-* ng: fix asynchronous refreshable getter scheduling and isolate refresh callback failures
 * ng: share concurrent getter cache updates and initialization across callers
 * ng: make shared getter state cleanup safe during cancellation and concurrent updates
 * ng: clean up and deduplicate GenericResolver refresh callbacks and their orphaned getter targets
-* ng: fix asynchronous refreshable getter scheduling in the runner
-* generic_adder: allow `None` as valid input via `add`
-* grokker: allow fallback matches without named fields
-* filter: fix lucene range expressions not matching on mixed-type scenarios
-* filter: treat `inf`/`nan` as string values instead of numeric range boundaries
-* ng: prevent refresh callback failures from stopping subsequent refresh processing
-* ng: avoid duplicate getter refreshes while executing refresh callbacks
-* ng: share concurrent getter cache updates to avoid duplicate requests for the same target
 * ng: make processor rule tree setup atomic and safe for repeated initialization
 * ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
@@ -93,6 +69,47 @@
 * ng: fix input timeout to also accept int parameters
 * ng: fix `http_input` `collect_meta` leading to shared dicts between events
 * ng: fix error output structure to stay consistent with non-ng
+
+## 21.0.0
+### Breaking
+* restrict UNIX timestamp normalization to seconds, milliseconds, microseconds, and nanoseconds.
+* handle non-string `concatenator` source fields with `ProcessingWarning` instead of `ProcessingCriticalError`
+* filter: field values are now automatically coerced in range matches
+
+### Features
+* add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
+* introduce API-level support for asynchronous rule processing and I/O capability detection in `ng` processors
+* generic_adder: add support for templated http urls & content_field
+* generic_resolver: add content_field support
+* field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
+* filter: add support for `*` (open boundary) in range expressions
+* filter: allow mixed numeric range boundaries and type coercion for range matching
+
+### Improvements
+* docs: enable pydoc placeholders for facilitating component reuse through inheritance
+* docs: change processor natural naming to capital cased with whitespace (e.g. "Generic Resolver")
+* docs: use processor name placeholders for most usages
+* docs: hide non-init fields in docs
+* docs: add examples for generic_resolver
+* docs: improve example rendering
+* getter: handle "text/yaml" in content type resolution
+* getter: remove noisy debug log
+* vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
+* tests: add context handling framework for `test_cases`
+* ci: enforce CHANGELOG.md is updated
+* ci: enforce PR TODOs are completed
+* ci: introduce umbrella job for enforcing merge status checks with GitHub
+* grokker: improve performance by stopping on first matching expression
+
+### Bugfix
+* chart: fix command handling
+* ng: fix input timeout to also accept int parameters
+* ng: fix `http_input` `collect_meta` leading to shared dicts between events
+* ng: fix error output structure to stay consistent with non-ng
+* generic_adder: allow `None` as valid input via `add`
+* grokker: allow fallback matches without named fields
+* filter: fix lucene range expressions not matching on mixed-type scenarios
+* filter: treat `inf`/`nan` as string values instead of numeric range boundaries
 
 ## 20.0.0
 ### Breaking
