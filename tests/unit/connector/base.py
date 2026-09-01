@@ -320,16 +320,14 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert result is None
 
     def test_connector_metrics_counts_processed_events(self):
-        self.object.metrics.number_of_processed_events = 0
         self.object._get_event = mock.MagicMock(return_value=({"message": "test"}, None))
         self.object.get_next(0.01)
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events.value == 1
 
     def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
-        self.object.metrics.number_of_processed_events = 0
         self.object._get_event = mock.MagicMock(return_value=(None, None))
         self.object.get_next(0.01)
-        assert self.object.metrics.number_of_processed_events == 0
+        assert self.object.metrics.number_of_processed_events.value == 0
 
     def test_get_next_adds_timestamp_if_configured(self):
         preprocessing_config = {
@@ -642,17 +640,15 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
 
     def test_get_next_counts_number_of_processed_events(self):
-        self.object.metrics.number_of_processed_events = 0
         return_value = ({"message": "test message"}, b'{"message": "test message"}')
         self.object._get_event = mock.MagicMock(return_value=return_value)
         self.object.get_next(0.01)
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events.value == 1
 
     def test_get_next_does_not_count_number_of_processed_events_if_event_is_none(self):
-        self.object.metrics.number_of_processed_events = 0
         self.object._get_event = mock.MagicMock(return_value=(None, None))
         self.object.get_next(0.01)
-        assert self.object.metrics.number_of_processed_events == 0
+        assert self.object.metrics.number_of_processed_events.value == 0
 
     def test_get_next_has_time_measurement(self):
         mock_metric = mock.MagicMock()
@@ -661,8 +657,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         self.object._get_event = mock.MagicMock(return_value=return_value)
         self.object.get_next(0.01)
         assert isinstance(self.object.metrics.processing_time_per_event, mock.MagicMock)
-        # asserts entering context manager in metrics.metrics.Metric.measure_time
-        mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
+        mock_metric.assert_has_calls([mock.call.observe(mock.ANY)])
 
     def test_add_full_event_to_target_field_without_clear(self):
         preprocessing_config = {
@@ -691,6 +686,5 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         assert isinstance(self.object, Output)
 
     def test_store_counts_processed_events(self):
-        self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events.value == 1

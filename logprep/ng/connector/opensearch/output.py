@@ -464,7 +464,7 @@ class OpensearchOutput(Output):
         return isinstance(error, OSError)  # includes TimeoutError
 
     def _count_connection_failure(self, _: Exception) -> None:
-        self._metrics.number_of_connection_failures += 1
+        self._metrics.number_of_connection_failures.inc(1)
 
     def _describe(self) -> str:
         """Get name of Opensearch endpoint with the host."""
@@ -525,7 +525,7 @@ class OpensearchOutput(Output):
                 payload = self._serialize(event)
             except SerializationError as error:
                 logger.info("failed to serialize event %s", event, exc_info=True)
-                self._metrics.number_of_serialization_errors += 1
+                self._metrics.number_of_serialization_errors.inc(1)
                 event.mark_failed(
                     BulkError(message=f"failed to serialize event: {error}", exception=str(error))
                 )
@@ -583,17 +583,17 @@ class OpensearchOutput(Output):
                     )
                 )
         if retry_indices:
-            self._metrics.number_of_document_rejections += len(retry_indices)
+            self._metrics.number_of_document_rejections.inc(len(retry_indices))
         chunk.shrink_to(retry_indices)
         return chunk.is_resolved
 
-    @Metric.measure_time_async(metric_name="send_time_per_bulk_request")
+    @Metric.measure_time(metric_name="send_time_per_bulk_request")
     async def _send(self, chunk: _Chunk) -> dict[str, Any]:
         """One bulk network request; counts requests, documents and bytes."""
         payload = chunk.payload
-        self._metrics.number_of_bulk_requests += 1
-        self._metrics.documents_per_bulk_request += len(chunk.events)
-        self._metrics.number_of_bytes_sent += len(payload)
+        self._metrics.number_of_bulk_requests.inc(1)
+        self._metrics.documents_per_bulk_request.observe(len(chunk.events))
+        self._metrics.number_of_bytes_sent.inc(len(payload))
         return await self._search_context.bulk(body=payload)
 
     async def _resolve_chunk(self, chunk: _Chunk) -> None:
@@ -617,8 +617,8 @@ class OpensearchOutput(Output):
             logger.error("critical failure while sending bulk chunk", exc_info=True)
             chunk.fail_remaining(error)
 
-    @Metric.measure_time_async(metric_name="processing_time_per_event")
-    @Metric.measure_time_async(metric_name="send_time_per_batch")
+    @Metric.measure_time(metric_name="processing_time_per_event")
+    @Metric.measure_time(metric_name="send_time_per_batch")
     async def _store(self, events: Sequence[OutputEvent]) -> None:
         logger.debug("Flushing %d documents to opensearch", len(events))
         # TODO maybe introduce step-wise chunking in the future, if memory use becomes a problem
@@ -634,7 +634,7 @@ class OpensearchOutput(Output):
             )
         except (OpenSearchException, ConnectionError) as error:
             logger.error("Health check failed: %s", error)
-            self._metrics.number_of_errors += 1
+            self._metrics.number_of_errors.inc(1)
             return False
         return (await super().health()) and resp.get("status") in self.config.desired_cluster_status
 

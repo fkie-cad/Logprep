@@ -116,22 +116,36 @@ Processor Specific Metrics
 """
 
 import functools
+import inspect
 import time
-import typing
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, ClassVar, Generic, Self, TypeVar
 
+import attrs
 from _socket import gethostname
 from attrs import define, field, validators
 from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge, Histogram
 from prometheus_client.metrics import MetricWrapperBase
+from prometheus_client.samples import Sample
 
 from logprep.util.environ import ENV_VARS
 from logprep.util.helper import _add_field_to_silent_fail
 
+M = TypeVar("M", bound=MetricWrapperBase)
+
+
+def _collector_method(func):
+    """
+    Marks a metric method as a 1:1 wrapper of the underlying collector method.
+    The wrapper is then automatically replaced with the bound child method.
+    This happens either eagerly on init or lazily (see :code:`Metric._bind(...)`).
+    """
+    func.__collector_method__ = True
+    return func
+
 
 @define(kw_only=True, slots=False)
-class Metric(ABC):
+class Metric(ABC, Generic[M]):
     """Metric base class"""
 
     name: str = field(validator=validators.instance_of(str))
@@ -146,18 +160,41 @@ class Metric(ABC):
         ],
         factory=dict,
     )
-    _prefix: str = field(default="logprep_")
     inject_label_values: bool = field(default=True)
-    _tracker: MetricWrapperBase = field(init=False, default=None)
+    """
+    Registers the labels with metric 0 in :code:`init_collector`.
+    Otherwise registration takes place on first metric increment.
+    """
+
+    _prefix: str = field(default="logprep_")
     _registry: CollectorRegistry | None = field(default=None)
+
+    _collector: M = field(default=None, init=False)
+
+    _collector_methods: ClassVar[set[str]]
+    """Methods marked as tracked method collected on subclass init"""
+
+    _value_series_suffix: ClassVar[str]
+    """Suffix implemented by subclasses to select the right series carrying the metric value"""
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        cls._collector_methods = {
+            name
+            for super_cls in cls.__mro__
+            for name, value in vars(super_cls).items()
+            if getattr(value, "__collector_method__", False)
+        }
 
     def __attrs_post_init__(self):
         if self._registry is not None:
             return
 
-        # When this environment variable is set, the prometheus_client will automatically run in multiprocessing mode
+        # When this environment variable is set,
+        # the prometheus_client will automatically run in multiprocessing mode
         # In that mode it is not allowed to set a Registry specifically.
-        # For the non multiprocessing mode, we need to set a Registry otherwise our custom metrics never get
+        # For the non multiprocessing mode,
+        # we need to set a Registry otherwise our custom metrics never get
         # registered and then subsequently cannot be exported
         if ENV_VARS.get("PROMETHEUS_MULTIPROC_DIR", "") != "":
             self._registry = None
@@ -166,167 +203,174 @@ class Metric(ABC):
 
     @property
     @abstractmethod
-    def collector_type(self) -> type[MetricWrapperBase]:
+    def collector_type(self) -> type[M]:
         """The prometheus metric companion type"""
-
-    @property
-    def tracker(self) -> MetricWrapperBase:
-        """Returns the prometheus metric object"""
-        return self._tracker
 
     @property
     def fullname(self):
         """returns the fullname"""
         return f"{self._prefix}{self.name}"
 
-    def init_tracker(self) -> None:
-        """initializes the tracker and adds it to the trackers dict"""
+    def init_collector(self) -> None:
+        """initializes the collector and registers it"""
         try:
-            self._tracker = self._init_tracker()
+            self._collector = self._init_collector()
         except ValueError as error:
             # pylint: disable=protected-access
-            tracker = None
+            collector = None
             if self._registry:
-                tracker = self._registry._names_to_collectors.get(self.fullname)
+                # recover by getting the existing instance, which is the likely error source
+                collector = self._registry._names_to_collectors.get(self.fullname)
             # pylint: enable=protected-access
-            if tracker is not None:
-                if not isinstance(tracker, self.collector_type):
-                    raise ValueError(
-                        f"Metric {self.fullname} already exists with different type"
-                    ) from error
-                self._tracker = tracker
+            if collector is None:
+                raise
+            if not isinstance(collector, self.collector_type):
+                raise ValueError(
+                    f"Metric {self.fullname} already exists with different type"
+                ) from error
+            self._collector = collector
         if self.inject_label_values:
-            self._tracker.labels(**self.labels)
+            self._bind_default_child()
+
+    @property
+    def initialized(self) -> bool:
+        """Whether :code:`init_collector` has been called successfully"""
+        return self._collector is not None
+
+    def _labeled_child(self, labels: dict[str, str]) -> M:
+        """Return the labelled child of the collector for the given labels"""
+        return self._collector.labels(**(self.labels | labels))
+
+    def _bind_default_child(self) -> Self:
+        """Bind the default childs methods and return the metric."""
+        child_collector = self._labeled_child(self.labels)
+        for name in self._collector_methods:
+            child_collector_method = getattr(child_collector, name)
+            setattr(self, name, child_collector_method)
+        return self
+
+    def child_collector(self, labels: dict[str, str], inject_label_values: bool = True) -> Self:
+        """Return a child metric configured with the given labels"""
+        child = attrs.evolve(
+            self, labels=self.labels | labels, inject_label_values=inject_label_values
+        )
+        child.init_collector()
+        return child
 
     @abstractmethod
-    def __add__(self, other):
-        """Increment the metric by the given value"""
-
-    @abstractmethod
-    def _init_tracker(self) -> MetricWrapperBase:
+    def _init_collector(self) -> M:
         """Create the concrete prometheus metric object"""
 
-    # TODO refactor measure_time for ng reducing implicit logic relying on hasattr
+    @property
+    def value(self) -> float:
+        """The value this metric currently exports, summed over its labelled children."""
+        series_name = f"{self.fullname}{self._value_series_suffix}"
+        return sum(sample.value for sample in self.collect_samples() if sample.name == series_name)
+
+    def collect_samples(self) -> list[Sample]:
+        """Return the samples of the whole collector, including every labelled child."""
+        metrics = self._collector.collect()
+        assert isinstance(metrics, list) and len(metrics) == 1, ".collect() implementation changed"
+        return metrics[0].samples
+
     @staticmethod
     def measure_time(metric_name: str = "processing_time_per_event", self_arg: int = 0):
         """Decorate function to measure execution time for function and add results to event."""
 
-        if not ENV_VARS.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
+        perf_counter = time.perf_counter
+        append_to_event = bool(ENV_VARS.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"))
 
-            def without_append(func):
+        def decorator(func):
+            is_async = inspect.iscoroutinefunction(func)
+
+            if not append_to_event:
+
                 @functools.wraps(func)
-                def inner(*args, **kwargs):  # nosemgrep
+                async def timed_async(*args, **kwargs):
                     self = args[self_arg]
-                    metric = getattr(self.metrics, metric_name)
-                    with metric.tracker.labels(**metric.labels).time():
-                        result = func(*args, **kwargs)
-                    return result
+                    begin = perf_counter()
+                    try:
+                        return await func(*args, **kwargs)
+                    finally:
+                        duration = perf_counter() - begin
+                        getattr(self.metrics, metric_name).observe(duration)
 
-                return inner
+                @functools.wraps(func)
+                def timed(*args, **kwargs):
+                    self = args[self_arg]
+                    begin = perf_counter()
+                    try:
+                        return func(*args, **kwargs)
+                    finally:
+                        duration = perf_counter() - begin
+                        getattr(self.metrics, metric_name).observe(duration)
 
-            return without_append
+                return timed_async if is_async else timed
 
-        def with_append(func):
+            def append_measurement(self, args, duration: float) -> None:
+                # TODO refactor measure_time for ng reducing implicit logic relying on hasattr
+                is_rule = hasattr(self, "rule_type")
+                is_pipeline = hasattr(self, "_logprep_config")
+                if not (is_rule or is_pipeline):
+                    return
+                event = args[self_arg + 1]
+                if not event:
+                    return
+                if is_rule:
+                    _add_field_to_silent_fail(
+                        event=event,
+                        field=(f"processing_times.{self.rule_type}", duration),
+                        rule=None,
+                    )
+                if is_pipeline:
+                    _add_field_to_silent_fail(
+                        event=event, field=("processing_times.pipeline", duration), rule=None
+                    )
+                    _add_field_to_silent_fail(
+                        event=event, field=("processing_times.hostname", gethostname()), rule=None
+                    )
+
             @functools.wraps(func)
-            def inner(*args, **kwargs):  # nosemgrep
+            async def timed_and_appended_async(*args, **kwargs):
                 self = args[self_arg]
-                metric = getattr(self.metrics, metric_name)
-                begin = time.perf_counter()
-                result = func(*args, **kwargs)
-                duration = time.perf_counter() - begin
-                metric += duration
-
-                if hasattr(self, "rule_type"):
-                    event = args[self_arg + 1]
-                    if event:
-                        _add_field_to_silent_fail(
-                            event=event,
-                            field=(f"processing_times.{self.rule_type}", duration),
-                            rule=None,
-                        )
-                if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
-                    event = args[self_arg + 1]
-                    if event:
-                        _add_field_to_silent_fail(
-                            event=event, field=("processing_times.pipeline", duration), rule=None
-                        )
-                        _add_field_to_silent_fail(
-                            event=event,
-                            field=("processing_times.hostname", gethostname()),
-                            rule=None,
-                        )
+                begin = perf_counter()
+                try:
+                    result = await func(*args, **kwargs)
+                finally:
+                    duration = perf_counter() - begin
+                    getattr(self.metrics, metric_name).observe(duration)
+                append_measurement(self, args, duration)
                 return result
 
-            return inner
-
-        return with_append
-
-    @staticmethod
-    def measure_time_async(metric_name: str = "processing_time_per_event", self_arg: int = 0):
-        """Decorate function to measure execution time for function and add results to event."""
-
-        if not ENV_VARS.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
-
-            def without_append(func):
-                @functools.wraps(func)
-                async def inner(*args, **kwargs):  # nosemgrep
-                    self = args[self_arg]
-                    metric = getattr(self.metrics, metric_name)
-                    with metric.tracker.labels(**metric.labels).time():
-                        # TODO does this make sense for async functions?!
-                        result = await func(*args, **kwargs)
-                    return result
-
-                return inner
-
-            return without_append
-
-        def with_append(func):
             @functools.wraps(func)
-            async def inner(*args, **kwargs):  # nosemgrep
+            def timed_and_appended(*args, **kwargs):
                 self = args[self_arg]
-                metric = getattr(self.metrics, metric_name)
-                begin = time.perf_counter()
-                # TODO does this make sense for async functions?!
-                result = await func(*args, **kwargs)
-                duration = time.perf_counter() - begin
-                metric += duration
-
-                if hasattr(self, "rule_type"):
-                    event = args[self_arg + 1]
-                    if event:
-                        _add_field_to_silent_fail(
-                            event=event,
-                            field=(f"processing_times.{self.rule_type}", duration),
-                            rule=None,
-                        )
-                if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
-                    event = args[self_arg + 1]
-                    if event:
-                        _add_field_to_silent_fail(
-                            event=event, field=("processing_times.pipeline", duration), rule=None
-                        )
-                        _add_field_to_silent_fail(
-                            event=event,
-                            field=("processing_times.hostname", gethostname()),
-                            rule=None,
-                        )
+                begin = perf_counter()
+                try:
+                    result = func(*args, **kwargs)
+                finally:
+                    duration = perf_counter() - begin
+                    getattr(self.metrics, metric_name).observe(duration)
+                append_measurement(self, args, duration)
                 return result
 
-            return inner
+            return timed_and_appended_async if is_async else timed_and_appended
 
-        return with_append
+        return decorator
 
 
 @define(kw_only=True)
-class CounterMetric(Metric):
+class CounterMetric(Metric[Counter]):
     """Wrapper for prometheus Counter metric"""
+
+    _value_series_suffix: ClassVar[str] = "_total"
+    """A counter exports its value under the `_total` series"""
 
     @property
     def collector_type(self) -> type[Counter]:
         return Counter
 
-    def _init_tracker(self):
+    def _init_collector(self):
         return Counter(
             name=self.fullname,
             documentation=self.description,
@@ -334,30 +378,34 @@ class CounterMetric(Metric):
             registry=self._registry,
         )
 
-    @property
-    def tracker(self) -> Counter:
-        """Returns the prometheus metric object"""
-        return typing.cast(Counter, self._tracker)
+    @_collector_method
+    def inc(self, amount: float = 1, exemplar: dict[str, str] | None = None) -> None:
+        """Increment the counter. Rebinds to the collector's method on first call."""
+        return self._bind_default_child().inc(amount, exemplar)
 
-    def __add__(self, other: Any) -> "CounterMetric":
-        return self.add_with_labels(other, self.labels)
-
-    def add_with_labels(self, other: Any, labels: dict) -> "CounterMetric":
-        """Add with labels"""
-        labels = self.labels | labels
-        self.tracker.labels(**labels).inc(other)
-        return self
+    def add_with_labels(self, other: Any, labels: dict) -> None:
+        """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
+        self._labeled_child(labels).inc(other)
 
 
 @define(kw_only=True)
-class HistogramMetric(Metric):
+class HistogramMetric(Metric[Histogram]):
     """Wrapper for prometheus Histogram metric"""
+
+    _value_series_suffix: ClassVar[str] = "_sum"
+    """The histogram value is the sum of the observations"""
+
+    @property
+    def count(self) -> float:
+        """How many observations were made, summed over the labelled children"""
+        series = f"{self.fullname}_count"
+        return sum(sample.value for sample in self.collect_samples() if sample.name == series)
 
     @property
     def collector_type(self) -> type[Histogram]:
         return Histogram
 
-    def _init_tracker(self):
+    def _init_collector(self):
         return Histogram(
             name=self.fullname,
             documentation=self.description,
@@ -366,25 +414,28 @@ class HistogramMetric(Metric):
             registry=self._registry,
         )
 
-    @property
-    def tracker(self) -> Histogram:
-        """Returns the prometheus metric object"""
-        return typing.cast(Histogram, self._tracker)
+    @_collector_method
+    def observe(self, amount: float, exemplar: dict[str, str] | None = None) -> None:
+        """Observe a value. Rebinds to the collector's method on first call."""
+        return self._bind_default_child().observe(amount, exemplar)
 
-    def __add__(self, other):
-        self.tracker.labels(**self.labels).observe(other)
-        return self
+    def add_with_labels(self, other: Any, labels: dict) -> None:
+        """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
+        self._labeled_child(labels).observe(other)
 
 
 @define(kw_only=True)
-class GaugeMetric(Metric):
-    """Wrapper for prometheus Gauge metric""" ""
+class GaugeMetric(Metric[Gauge]):
+    """Wrapper for prometheus Gauge metric"""
+
+    _value_series_suffix: ClassVar[str] = ""
+    """A gauge exports its value under the bare metric name, without a suffix"""
 
     @property
     def collector_type(self) -> type[Gauge]:
         return Gauge
 
-    def _init_tracker(self):
+    def _init_collector(self) -> Gauge:
         return Gauge(
             name=self.fullname,
             documentation=self.description,
@@ -393,16 +444,21 @@ class GaugeMetric(Metric):
             multiprocess_mode="liveall",
         )
 
-    @property
-    def tracker(self) -> Gauge:
-        """Returns the prometheus metric object"""
-        return typing.cast(Gauge, self._tracker)
+    @_collector_method
+    def set(self, value: float) -> None:
+        """Set the gauge. Rebinds to the collector's method on first call"""
+        return self._bind_default_child().set(value)
 
-    def __add__(self, other):
-        return self.add_with_labels(other, self.labels)
+    @_collector_method
+    def inc(self, amount: float = 1) -> None:
+        """Increment the gauge. Rebinds to the collector's method on first call"""
+        return self._bind_default_child().inc(amount)
 
-    def add_with_labels(self, other, labels):
-        """Add with labels"""
-        labels = self.labels | labels
-        self.tracker.labels(**labels).set(other)
-        return self
+    @_collector_method
+    def dec(self, amount: float = 1) -> None:
+        """Decrement the gauge. Rebinds to the collector's method on first call"""
+        return self._bind_default_child().dec(amount)
+
+    def add_with_labels(self, other: Any, labels: dict) -> None:
+        """Deprecated method. Always creates a metric with labels set and adds/sets the value"""
+        self._labeled_child(labels).set(other)

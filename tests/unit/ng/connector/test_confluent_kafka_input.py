@@ -139,13 +139,12 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             _ = Factory.create({"test connector": kafka_config})
 
     async def test_error_callback_logs_error(self):
-        self.object.metrics.number_of_errors = 0
         with mock.patch("logging.Logger.error") as mock_error:
             test_error = Exception("test error")
             await self.object._error_callback(test_error)
             mock_error.assert_called()
             mock_error.assert_called_with("%s: %s", self.object.description, test_error)
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
 
     async def test_stats_callback_sets_metric_objetc_attributes(self):
         librdkafka_metrics = tuple(
@@ -163,10 +162,9 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             assert getattr(self.object.metrics, metric) == metric_value, metric
 
     async def test_stats_set_age_metric_explicitly(self):
-        self.object.metrics.librdkafka_age = 0
         json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
         await self.object._stats_callback(json_string)
-        assert self.object.metrics.librdkafka_age == 1337
+        assert self.object.metrics.librdkafka_age.value == 1337
 
     async def test_kafka_config_is_immutable(self):
         await self.object.setup()
@@ -378,15 +376,13 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         assert "Input record value is not a valid json string" in error_event.data["errors"]
 
     async def test_commit_callback_raises_warning_error_and_counts_failures(self):
-        self.object.metrics.commit_failures = 0
         with pytest.raises(InputWarning, match="Could not commit offsets"):
             await self.object._commit_callback(Exception, [mock.MagicMock()])
-        assert self.object.metrics.commit_failures == 1
+        assert self.object.metrics.commit_failures.value == 1
 
     async def test_commit_callback_counts_commit_success(self):
-        self.object.metrics.commit_success = 0
         await self.object._commit_callback(None, [mock.MagicMock()])
-        assert self.object.metrics.commit_success == 1
+        assert self.object.metrics.commit_success.value == 1
 
     async def test_commit_callback_sets_committed_offsets(self):
         self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
@@ -515,19 +511,17 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     )
     async def test_offset_metrics_not_initialized_with_default_label_values(self, metric_name):
         metric = getattr(self.object.metrics, metric_name)
-        metric_object = metric.tracker.collect()[0]
-        assert len(metric_object.samples) == 0
+        assert len(metric.collect_samples()) == 0
 
     async def test_lost_callback_counts_warnings_and_logs(self, mock_consumer):
         await self.object.setup()
-        self.object.metrics.number_of_warnings = 0
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch.object(self.object, "_commit_tracker") as tracker:
                 await self.object._lost_callback(mock_consumer, mock_partitions)
                 tracker.unregister_partition.assert_called()
         mock_warning.assert_called()
-        assert self.object.metrics.number_of_warnings == 1
+        assert self.object.metrics.number_of_warnings.value == 1
 
     async def test_assign_callback_sets_offsets_and_logs_info(self, mock_consumer, mock_tracker):
         await self.object.setup()
@@ -557,7 +551,6 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_revoke_callback_logs_warning_and_counts(self, mock_tracker):
         await self.object.setup()
 
-        self.object.metrics.number_of_warnings = 0
         self.object.output_connector = mock.AsyncMock()
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
@@ -565,7 +558,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         mock_warning.assert_called()
         mock_tracker.unregister_partition.assert_called()
-        assert self.object.metrics.number_of_warnings == 1
+        assert self.object.metrics.number_of_warnings.value == 1
 
     async def test_revoke_callback_logs_error_if_consumer_closed(
         self, mock_consumer, mock_tracker, caplog
@@ -608,6 +601,5 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_consumer.list_topics.side_effect = KafkaException("test error")
 
         await self.object.setup()
-        self.object.metrics.number_of_errors = 0
         assert not await self.object.health()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
