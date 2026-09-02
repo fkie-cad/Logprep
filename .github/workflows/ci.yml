@@ -106,6 +106,7 @@ jobs:
           uv run sphinx-apidoc -fT -o source/module_reference ../logprep
           uv run make clean html
   documentation-preview:
+    if: github.event.action == 'opened'
     runs-on: ubuntu-latest
     steps:
       - uses: readthedocs/actions/preview@b8bba1484329bda1a3abe986df7ebc80a8950333 # https://github.com/readthedocs/actions/releases/tag/v1.5
