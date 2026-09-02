@@ -1,7 +1,9 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+
 import pytest
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.timestamper.rule import TimestamperRule
 
 
@@ -17,15 +19,19 @@ class TestTimestamperRule:
     @pytest.mark.parametrize(
         ["rule", "error", "message"],
         [
-            (
+            pytest.param(
                 {
                     "filter": "message",
-                    "timestamper": {"source_fields": ["message"], "target_field": "@timestamp"},
+                    "timestamper": {
+                        "source_fields": ["message"],
+                        "target_field": "@timestamp",
+                    },
                 },
                 None,
                 None,
+                id="source field",
             ),
-            (
+            pytest.param(
                 {
                     "filter": "message",
                     "timestamper": {
@@ -36,8 +42,29 @@ class TestTimestamperRule:
                 },
                 None,
                 None,
+                id="source format with source field",
             ),
-            (
+            pytest.param(
+                {
+                    "filter": "message",
+                    "timestamper": {},
+                },
+                None,
+                None,
+                id="source fields omitted",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "timestamper": {
+                        "source_fields": [],
+                    },
+                },
+                None,
+                None,
+                id="source fields empty",
+            ),
+            pytest.param(
                 {
                     "filter": "message",
                     "timestamper": {
@@ -47,6 +74,42 @@ class TestTimestamperRule:
                 },
                 ValueError,
                 r"Length of 'source_fields' must be <= 1",
+                id="multiple source fields",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "timestamper": {
+                        "source_format": "UNIX",
+                    },
+                },
+                InvalidRuleDefinitionError,
+                r"source_format requires source_fields",
+                id="source format without source fields",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "timestamper": {
+                        "source_timezone": "Europe/Berlin",
+                    },
+                },
+                InvalidRuleDefinitionError,
+                r"source_timezone requires source_fields",
+                id="source timezone without source fields",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "timestamper": {
+                        "source_fields": [],
+                        "source_format": "UNIX",
+                        "source_timezone": "Europe/Berlin",
+                    },
+                },
+                InvalidRuleDefinitionError,
+                r"source_format, source_timezone require source_fields",
+                id="source configuration with empty source fields",
             ),
         ],
     )

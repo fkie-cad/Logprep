@@ -42,6 +42,19 @@ A speaking example:
             },
         }
 
+If :code:`source_fields` is omitted or empty, the current time is used.
+In this case, :code:`source_format` and :code:`source_timezone` must not be configured.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Timestamper rule using the current time
+
+    filter: "winlog.event_id: 123456789"
+    timestamper:
+        target_field: "@timestamp"
+        target_timezone: Europe/Berlin
+    description: example timestamper rule using the current time
+
 
 .. autoclass:: logprep.processor.timestamper.rule.TimestamperRule.Config
    :members:
@@ -62,6 +75,7 @@ from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
@@ -73,14 +87,17 @@ class TimestamperRule(FieldManagerRule):
         """Config for TimestamperRule"""
 
         source_fields: list = field(
+            factory=list,
             validator=[
                 validators.instance_of(list),
-                validators.min_len(1),
+                validators.min_len(0),
                 validators.max_len(1),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
-            ]
+            ],
         )
-        """The field from where to get the time from as list with one element"""
+        """The field from where to get the time from as list with one element.
+        If omitted or empty, the current time will be used.
+        """
         target_field: str = field(validator=validators.instance_of(str), default="@timestamp")
         """The field where to write the processed values to, defaults to :code:`@timestamp`"""
         source_format: list = field(
@@ -121,21 +138,53 @@ class TimestamperRule(FieldManagerRule):
         If you don't want this behavior, you have to use the :code:`datetime.strptime` syntax.
         With this syntax, the :code:`timestamper`errors out with a :code:`TimeParserException` and
         a tag :code:`_timestamper_failure` will be added to the event.
+
+        This option must not be configured if :code:`source_fields` is omitted or empty.
         """
         source_timezone: ZoneInfo = field(
-            validator=(validators.instance_of(ZoneInfo)),
+            validator=validators.instance_of(ZoneInfo),
             converter=lambda x: ZoneInfo(x) if isinstance(x, str) else x,
             default=ZoneInfo("UTC"),
         )
-        """ timezone of source_fields. defaults to :code:`UTC`"""
+        """ timezone of source_fields. defaults to :code:`UTC`.
+        This option must not be configured if :code:`source_fields` is omitted or empty.
+        """
         target_timezone: ZoneInfo = field(
-            validator=(validators.instance_of(ZoneInfo)),
+            validator=validators.instance_of(ZoneInfo),
             converter=lambda x: ZoneInfo(x) if isinstance(x, str) else x,
             default=ZoneInfo("UTC"),
         )
         """ timezone for target_field. defaults to :code:`UTC`"""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+
+    @classmethod
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        """Normalize and validate the timestamper rule configuration"""
+        super().normalize_rule_dict(rule)
+        cls._validate_source_configuration(rule)
+
+    @staticmethod
+    def _validate_source_configuration(rule: dict) -> None:
+        """Validate configuration options that require source_fields"""
+        config = rule.get("timestamper")
+
+        if not isinstance(config, dict) or config.get("source_fields"):
+            return
+
+        invalid_options = [
+            option for option in ("source_format", "source_timezone") if option in config
+        ]
+
+        if not invalid_options:
+            return
+
+        if len(invalid_options) == 1:
+            message = f"{invalid_options[0]} requires source_fields"
+        else:
+            message = f"{', '.join(invalid_options)} require source_fields"
+
+        raise InvalidRuleDefinitionError(message)
 
     @property
     def config(self) -> Config:
