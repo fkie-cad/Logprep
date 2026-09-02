@@ -17,6 +17,7 @@ import math
 import operator
 from abc import ABC, abstractmethod
 from enum import Enum, auto
+from re import RegexFlag
 from typing import Any, Callable, ClassVar, Protocol, Sequence, TypeAlias
 
 from pyparsing import (
@@ -79,7 +80,6 @@ class ValueType(Enum):
 
 
 def parse_value(value: Any, expected_type: ValueType) -> Any:
-    print("PARSE", value, expected_type)
     match expected_type:
         case ValueType.NUMBER:
             if isinstance(value, (int, float)):
@@ -105,6 +105,13 @@ def parse_value(value: Any, expected_type: ValueType) -> Any:
                 return bool(value)
             raise ParsingError(f"Could not parse {value !r}.")
     raise ParsingError(f"Could not parse {value !r} to {expected_type}")
+
+
+def read_hex_number(value: Any) -> int:
+    try:
+        return int(value, 16)
+    except (ValueError, TypeError) as error:
+        raise ParsingError(f"Failed to parse {value !r} as hex_number.") from error
 
 
 epsilon = 1e-12
@@ -224,6 +231,10 @@ class ConstantNumberASTNode(ConstantASTNode):
     output_type = ValueType.NUMBER
 
 
+class ConstantBooleanASTNode(ConstantASTNode):
+    output_type = ValueType.BOOLEAN
+
+
 class VariableASTNode(TerminalASTNode):
     output_type = ValueType.NUMBER
 
@@ -234,39 +245,58 @@ class VariableASTNode(TerminalASTNode):
     def is_constant(self):
         return False
 
+    def _preprocess_field_data(self, value: Any) -> Any:
+        return value
+
     def evaluate(self, context):
         value = get_dotted_field_value(context, self.path)
         if not value:
             raise MissingValueError(f"Missing value for field {self.path!r}.")
+        value = self._preprocess_field_data(value)
         return parse_value(value, self.output_type)
 
     def __repr__(self):
         return f"<variable {self.path !r}>"
 
     def optimize(self):
-        return VariableASTNode(path=self.path)
+        return type(self)(path=self.path)
 
 
-class NegateASTNode(ASTNode):
+class HexNumberVariableASTNode(VariableASTNode):
+    def _preprocess_field_data(self, value):
+        return read_hex_number(value)
+
+
+class CompositeASTNode(ASTNode):
+    input_type: ClassVar[ValueType]
+
+    def __init__(self, *children: ASTNode):
+        if not all(child.output_type.can_be_cast_to(self.input_type) for child in children):
+            raise InvalidSyntaxError(f"Can not parse all inputs to {self.input_type}.")
+
+        self.children = children
+
+    @property
+    def complexity(self):
+        return sum(child.complexity for child in self.children) + 1
+
+    @property
+    def is_constant(self):
+        return all(child.is_constant for child in self.children)
+
+    def walk(self, context):
+        context.visit(self, *self.children)
+        for child in self.children:
+            child.walk(context)
+
+
+class NegateASTNode(CompositeASTNode):
     input_type = ValueType.NUMBER
     output_type = ValueType.NUMBER
 
     def __init__(self, inner: ASTNode):
-        if not inner.output_type.can_be_cast_to(self.output_type):
-            raise InvalidSyntaxError(f"Can not parse {inner.output_type} to {self.output_type}")
+        super().__init__(inner)
         self.inner = inner
-
-    @property
-    def complexity(self):
-        return self.inner.complexity + 1
-
-    @property
-    def is_constant(self):
-        return self.inner.is_constant
-
-    def walk(self, context):
-        context.visit(self, self.inner)
-        self.inner.walk(context)
 
     def optimize(self):
         optimized_inner = self.inner.optimize()
@@ -281,41 +311,21 @@ class NegateASTNode(ASTNode):
         return "<negate>"
 
 
-class OperationASTNode(ASTNode):
+class OperationASTNode(CompositeASTNode):
     operator_symbol: ClassVar[str]
     # NOTE: decided against handling the typing by designing the ASTNode class
     # generic. During construction of the AST the typing is dynamic
     # only the constructed is then checked for typing.
     operation_fn: ClassVar[Callable[[Any, Any], Any]]
-    input_type: ClassVar[ValueType]
 
     def __init__(
         self,
         lhs: ASTNode,
         rhs: ASTNode,
     ):
-        if not lhs.output_type.can_be_cast_to(
-            self.input_type
-        ) or not rhs.output_type.can_be_cast_to(self.input_type):
-            raise InvalidSyntaxError(
-                f"Operator {self.operator_symbol !r} expects two inputs of type"
-                f" {self.input_type} got {lhs.output_type} and {rhs.output_type} instead"
-            )
+        super().__init__(lhs, rhs)
         self.lhs = lhs
         self.rhs = rhs
-
-    def walk(self, context):
-        context.visit(self, self.lhs, self.rhs)
-        self.lhs.walk(context)
-        self.rhs.walk(context)
-
-    @property
-    def complexity(self):
-        return self.lhs.complexity + self.rhs.complexity
-
-    @property
-    def is_constant(self):
-        return self.lhs.is_constant and self.rhs.is_constant
 
     def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         return None
@@ -343,6 +353,9 @@ class OperationASTNode(ASTNode):
             self.lhs.evaluate(context),
             self.rhs.evaluate(context),
         )
+
+    def __repr__(self) -> str:
+        return f"<op {self.operator_symbol}>"
 
 
 class ArithmeticASTNode(OperationASTNode):
@@ -454,6 +467,14 @@ class ComparisonASTNode(OperationASTNode):
     input_type = ValueType.NUMBER
     output_type = ValueType.BOOLEAN
 
+    def optimize(self):
+        if not all(child.is_constant for child in self.children):
+            return type(self)(
+                self.lhs,
+                self.rhs,
+            )
+        return ConstantBooleanASTNode(self.evaluate({}))
+
 
 class EqualASTNode(ComparisonASTNode):
     operator_symbol = "=="
@@ -485,7 +506,48 @@ class GreaterOrEqualThanASTNode(ComparisonASTNode):
     operation_fn = operator.ge
 
 
-OPERATORS = {
+class RangeCheckASTNode(CompositeASTNode):
+    input_type = ValueType.NUMBER
+    output_type = ValueType.NUMBER
+
+    def __init__(
+        self,
+        lower_bound: ASTNode,
+        lower_bound_is_inclusive: bool,
+        value: ASTNode,
+        upper_bound: ASTNode,
+        upper_bound_is_inclusive: bool,
+    ):
+        super().__init__(lower_bound, value, upper_bound)
+        self.lower_bound = lower_bound
+        self.lower_bound_is_inclusive = lower_bound_is_inclusive
+        self.value = value
+        self.upper_bound = upper_bound
+        self.upper_bound_is_inclusive = upper_bound_is_inclusive
+
+    def optimize(self):
+        if self.is_constant:
+            return ConstantBooleanASTNode(self.evaluate({}))
+        return type(self)(
+            self.lower_bound,
+            self.lower_bound_is_inclusive,
+            self.value,
+            self.upper_bound,
+            self.upper_bound_is_inclusive,
+        )
+
+    def evaluate(self, context):
+        value = self.value.evaluate(context)
+        lower_bound = self.lower_bound.evaluate(context)
+        op = operator.le if self.lower_bound_is_inclusive else operator.lt
+        if not op(lower_bound, value):
+            return False
+        upper_bound = self.upper_bound.evaluate(context)
+        op = operator.le if self.upper_bound_is_inclusive else operator.lt
+        return op(value, upper_bound)
+
+
+ARITHMETIC_OPERATORS = {
     op.operator_symbol: op
     for op in (
         AddASTNode,
@@ -493,6 +555,12 @@ OPERATORS = {
         MulASTNode,
         DivASTNode,
         PowASTNode,
+    )
+}
+
+COMPARISON_OPERATORS = {
+    op.operator_symbol: op
+    for op in (
         EqualASTNode,
         UnequalASTNode,
         LessThanASTNode,
@@ -503,7 +571,7 @@ OPERATORS = {
 }
 
 
-class FunctionCallASTNode(ASTNode):
+class FunctionCallASTNode(CompositeASTNode):
     input_type = ValueType.NUMBER
     output_type = ValueType.NUMBER
 
@@ -511,13 +579,9 @@ class FunctionCallASTNode(ASTNode):
     def __init__(
         self, function_name: str, function_call: Callable[..., Any], children: Sequence[ASTNode]
     ):
+        super().__init__(*children)
         self.function_name = function_name
         self.function_call = function_call
-        if not all(child.output_type.can_be_cast_to(self.input_type) for child in children):
-            raise InvalidSyntaxError(
-                f"Not all args can be converted to {self.input_type} on function {self.function_name !r}"
-            )
-        self.children = children
 
     @property
     def complexity(self):
@@ -581,10 +645,23 @@ def build_constant(x):
     return ConstantNumberASTNode(x[0])
 
 
+def build_constant_from_hex(x):
+    assert len(x) == 1
+    assert isinstance(x[0], str)
+    hex_number = read_hex_number(x[0])
+    return ConstantNumberASTNode(hex_number)
+
+
 def build_variable(x):
     assert len(x) == 1
     assert isinstance(x[0], str)
     return VariableASTNode(x[0])
+
+
+def build_hex_variable(x):
+    assert len(x) == 1
+    assert isinstance(x[0], str)
+    return HexNumberVariableASTNode(x[0])
 
 
 def build_atom(x):
@@ -627,20 +704,65 @@ def build_fn(x):
     )
 
 
-def build_op(x):
+def build_arithmetic_operation(x):
     assert len(x) > 0 and len(x) % 2 == 1
 
     lhs = x[0]
     assert isinstance(lhs, ASTNode)
 
     for i in range(1, len(x), 2):
-        operator, rhs = x[i], x[i + 1]
-        assert isinstance(operator, str)
+        operator_symbol, rhs = x[i], x[i + 1]
+        assert isinstance(operator_symbol, str)
         assert isinstance(rhs, ASTNode)
-        assert operator in OPERATORS
-        operator_type = OPERATORS[operator]
+        assert operator_symbol in ARITHMETIC_OPERATORS
+        operator_type = ARITHMETIC_OPERATORS[operator_symbol]
         lhs = operator_type(lhs, rhs)
     return lhs
+
+
+def build_comparison_operation(x):
+    if len(x) == 1:
+        assert isinstance(x[0], ASTNode)
+        return x[0]
+
+    if len(x) > 5:
+        raise InvalidSyntaxError("Comparisons can not be chained.")
+
+    if len(x) == 5:
+        lower_bound = x[0]
+        lower_op = x[1]
+        value = x[2]
+        upper_op = x[3]
+        upper_bound = x[4]
+        assert isinstance(lower_bound, ASTNode)
+        assert isinstance(lower_op, str)
+        assert isinstance(value, ASTNode)
+        assert isinstance(upper_op, str)
+        assert isinstance(upper_bound, ASTNode)
+        if not all(op in ("<", "<=") for op in (lower_op, upper_op)):
+            raise InvalidSyntaxError(
+                f"Range check required comparison to be '<' or '<=' got {lower_op !r} and {upper_op !r}."
+            )
+        return RangeCheckASTNode(
+            lower_bound,
+            lower_op == "<=",
+            value,
+            upper_bound,
+            upper_op == "<=",
+        )
+
+    if len(x) != 3:
+        raise InvalidSyntaxError("Comparisons needs two operands.")
+
+    lhs = x[0]
+    operator_symbol = x[1]
+    rhs = x[2]
+    assert isinstance(lhs, ASTNode)
+    assert isinstance(operator_symbol, str)
+    assert isinstance(rhs, ASTNode)
+    assert operator_symbol in COMPARISON_OPERATORS
+    operator_type = COMPARISON_OPERATORS[operator_symbol]
+    return operator_type(lhs, rhs)
 
 
 def setup_bnf() -> ParserElement:
@@ -672,10 +794,34 @@ def setup_bnf() -> ParserElement:
     #                    Optional(e + Word("+-"+nums, nums)))
     # or use provided pyparsing_common.number, but convert back to str:
     # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
-    fnumber = Regex(r"[+-]?[a-zA-Z0-9]+(?:\.\d*)?(?:[eE][+-]?\d+)?")
+    fnumber = Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?")
     fnumber.set_parse_action(build_constant)
     variable = Suppress("${") + Regex(DottedTemplate.braceidpattern) + Suppress("}")
     variable.set_parse_action(build_variable)
+
+    hex_number = Regex(r"0x[0-9a-f]")
+    number_from_hex = (
+        Suppress("from_hex")
+        + Suppress("(")
+        + Regex(r"(0x)?[a-f0-9]+", flags=RegexFlag.IGNORECASE)
+        + Suppress(")")
+    )
+    hex_number.set_parse_action(build_constant_from_hex)
+    number_from_hex.set_parse_action(build_constant_from_hex)
+
+    variable_as_hex = (
+        Suppress("from_hex")
+        + Suppress("(")
+        + Optional(Suppress("0x"))
+        + Suppress("${")
+        + Regex(DottedTemplate.braceidpattern)
+        + Suppress("}")
+        + Suppress(")")
+    )
+    variable_as_hex.set_parse_action(build_hex_variable)
+
+    hex_number_handling = hex_number | number_from_hex | variable_as_hex
+
     ident = Word(alphas, alphanums + "_$")
     plus, minus, mult, div = map(Literal, "+-*/")
     lpar, rpar = map(Suppress, "()")
@@ -688,7 +834,10 @@ def setup_bnf() -> ParserElement:
 
     fn_call = ident + lpar - expr_list + rpar
     fn_call.set_parse_action(build_fn)
-    atom = addop[...] + ((fn_call | pi | e | fnumber | ident | variable) | Group(lpar + bnf + rpar))
+    atom = addop[...] + (
+        (hex_number_handling | fn_call | pi | e | fnumber | ident | variable)
+        | Group(lpar + bnf + rpar)
+    )
     atom.set_parse_action(build_atom)
     # A Forward declaration is required because the power expression recursively
     # references itself on the right-hand side of the exponent operator.
@@ -697,17 +846,17 @@ def setup_bnf() -> ParserElement:
     # 2^3^2 = 2^(3^2), not (2^3)^2.
     power_expr = Forward()
     power_expr <<= atom + (expop + power_expr)[...]
-    power_expr.add_parse_action(build_op)
+    power_expr.add_parse_action(build_arithmetic_operation)
 
     multiplicative_expr = power_expr + (multop + power_expr)[...]
-    multiplicative_expr.add_parse_action(build_op)
+    multiplicative_expr.add_parse_action(build_arithmetic_operation)
 
     additive_expr = multiplicative_expr + (addop + multiplicative_expr)[...]
-    additive_expr.add_parse_action(build_op)
+    additive_expr.add_parse_action(build_arithmetic_operation)
 
     # Optional allows at most one comparison; chained comparisons are not supported.
-    comparison_expr = additive_expr + Optional(comparisonop + additive_expr)
-    comparison_expr.add_parse_action(build_op)
+    comparison_expr = additive_expr + (comparisonop + additive_expr)[...]
+    comparison_expr.add_parse_action(build_comparison_operation)
 
     bnf <<= comparison_expr
 
@@ -719,7 +868,7 @@ _BNF = setup_bnf()
 
 def compile_expression(expression: str) -> ASTNode:
     try:
-        root_node = _BNF.parse_string(expression)[0]
+        root_node = _BNF.parse_string(expression, parse_all=True)[0]
     except (ParseException, ParseSyntaxException) as error:
         raise InvalidSyntaxError("Error raising expression.") from error
     assert isinstance(root_node, ASTNode)

@@ -48,6 +48,20 @@ static_expression_test_cases = [
     ("2^3+2", 2**3 + 2),
     ("2^3+5", 2**3 + 5),
     ("2^9", 2**9),
+    ("2 > 1", True),
+    ("1 > 1", False),
+    ("1 > 2", False),
+    ("1 >= 1", True),
+    ("1 >= 2", False),
+    ("5 < 6", True),
+    ("5 < 5", False),
+    ("5 <= 5", True),
+    ("1 < 2 < 3", True),
+    ("1 < 1 < 3", False),
+    ("1 < 3 < 3", False),
+    ("1 <= 2 <= 3", True),
+    ("1 <= 1 < 3", True),
+    ("1 < 3 <= 3", True),
     ("sgn(-2)", -1),
     ("sgn(0)", 0),
     ("sgn(0.1)", 1),
@@ -439,7 +453,6 @@ test_cases = [
         {"message": "This is a message", "field1": "ff"},
         {"message": "This is a message", "field1": "ff", "new_field": 255},
         id="convert hex to int",
-        marks=pytest.mark.skip("Check function templating."),
     ),
     pytest.param(
         {
@@ -452,7 +465,6 @@ test_cases = [
         {"message": "This is a message", "field1": "0xff"},
         {"message": "This is a message", "field1": "0xff", "new_field": 255},
         id="convert hex to int with prefix",
-        marks=pytest.mark.skip("Check function templating."),
     ),
     pytest.param(
         {
@@ -465,7 +477,6 @@ test_cases = [
         {"message": "This is a message", "field1": "FF"},
         {"message": "This is a message", "field1": "FF", "new_field": 255},
         id="convert hex to int with prefix",
-        marks=pytest.mark.skip("Define how to handle from_hex"),
     ),
 ]
 
@@ -698,6 +709,7 @@ class TestCalculator(BaseProcessorTestCase):
     )
     def test_static_expression(self, expression, expected):
         program = compile_expression(expression)
+        print(program.get_diagram())
         result = program.evaluate({})
         assert result == expected
 
@@ -733,14 +745,14 @@ class TestCalculator(BaseProcessorTestCase):
     @pytest.mark.parametrize(
         "expression",
         [
-            "1 < 2 < 3",
             "1 < 2 == 2",
         ],
     )
     def test_fourfn_rejects_chained_comparisons(self, expression):
 
         with pytest.raises(InvalidSyntaxError):
-            compile_expression(expression)
+            prog = compile_expression(expression)
+            print(prog.get_diagram())
 
     @pytest.mark.parametrize(
         "expression",
@@ -794,45 +806,3 @@ class TestCalculator(BaseProcessorTestCase):
             "+",
             ">=",
         ]
-
-    @pytest.mark.parametrize(
-        "failing_expression",
-        [
-            pytest.param("1 +", id="parse error"),
-            pytest.param("1 / 0", id="evaluation error"),
-        ],
-    )
-    @pytest.mark.skip("TODO check if this can be removed or needs update")
-    def test_calculator_clears_expression_stack_after_failure(
-        self,
-        failing_expression,
-    ):
-        rule = {
-            "filter": "field1",
-            "calculator": {
-                "calc": "${field1}",
-                "target_field": "result",
-            },
-        }
-        self._load_rule(rule)
-
-        bnf = self.object.bnf
-        failing_event = {"field1": failing_expression}
-
-        result = self.object.process(failing_event)
-
-        assert len(result.warnings) == 1
-        assert self.object.bnf is bnf
-        assert bnf.exprStack == []
-
-        valid_event = {"field1": "2 + 3"}
-
-        result = self.object.process(valid_event)
-
-        assert result.warnings == []
-        assert valid_event == {
-            "field1": "2 + 3",
-            "result": 5,
-        }
-        assert self.object.bnf is bnf
-        assert bnf.exprStack == []
