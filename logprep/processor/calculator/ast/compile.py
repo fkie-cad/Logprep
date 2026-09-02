@@ -40,42 +40,42 @@ from logprep.processor.calculator.ast.util import read_hex_number
 from logprep.util.helper import DottedTemplate
 
 
-def _build_constant(x):
-    assert len(x) == 1
-    assert isinstance(x[0], str)
-    return ConstantNumberASTNode(x[0])
+def _build_constant(parsed: ParseResults) -> ASTNode:
+    assert len(parsed) == 1
+    assert isinstance(parsed[0], str)
+    return ConstantNumberASTNode(parsed[0])
 
 
-def _build_constant_from_hex(x):
-    assert len(x) == 1
-    assert isinstance(x[0], str)
-    hex_number = read_hex_number(x[0])
+def _build_constant_from_hex(parsed: ParseResults) -> ASTNode:
+    assert len(parsed) == 1
+    assert isinstance(parsed[0], str)
+    hex_number = read_hex_number(parsed[0])
     return ConstantNumberASTNode(hex_number)
 
 
-def _build_variable(x):
-    assert len(x) == 1
-    assert isinstance(x[0], str)
-    return VariableASTNode(x[0])
+def _build_variable(parsed: ParseResults) -> ASTNode:
+    assert len(parsed) == 1
+    assert isinstance(parsed[0], str)
+    return VariableASTNode(parsed[0])
 
 
-def _build_hex_variable(x):
-    assert len(x) == 1
-    assert isinstance(x[0], str)
-    return HexNumberVariableASTNode(x[0])
+def _build_hex_variable(parsed: ParseResults) -> ASTNode:
+    assert len(parsed) == 1
+    assert isinstance(parsed[0], str)
+    return HexNumberVariableASTNode(parsed[0])
 
 
-def _build_atom(x):
-    if len(x) == 1:
-        if isinstance(x[0], ASTNode):
-            return x[0]
-        assert isinstance(x[0], ParseResults)
-        assert len(x[0]) == 1 and isinstance(x[0][0], ASTNode)
-        return x[0][0]
-    assert len(x) >= 2
-    signs = x[:-1]
+def _build_atom(parsed: ParseResults) -> ASTNode:
+    if len(parsed) == 1:
+        if isinstance(parsed[0], ASTNode):
+            return parsed[0]
+        assert isinstance(parsed[0], ParseResults)
+        assert len(parsed[0]) == 1 and isinstance(parsed[0][0], ASTNode)
+        return parsed[0][0]
+    assert len(parsed) >= 2
+    signs = parsed[:-1]
     assert all(sign in ("+", "-") for sign in signs), signs
-    node = x[-1]
+    node = parsed[-1]
     if isinstance(node, ParseResults):
         assert len(node) == 1
         node = node[0]
@@ -85,15 +85,15 @@ def _build_atom(x):
     return node
 
 
-def _build_fn(x):
-    if len(x) == 1:
-        assert isinstance(x[0], ASTNode)
-        return x[0]
-    assert len(x) >= 1, x
-    function_name = x[0]
+def _build_fn(parsed: ParseResults) -> ASTNode:
+    if len(parsed) == 1:
+        assert isinstance(parsed[0], ASTNode)
+        return parsed[0]
+    assert len(parsed) >= 1, parsed
+    function_name = parsed[0]
     assert isinstance(function_name, str)
-    assert all(isinstance(i, ParseResults) and len(i) == 1 for i in x[1:])
-    params = [i[0] for i in x[1:]]
+    assert all(isinstance(i, ParseResults) and len(i) == 1 for i in parsed[1:])
+    params = [i[0] for i in parsed[1:]]
     assert all(isinstance(param, ASTNode) for param in params)
     if function_name == "all":
         return AllFunctionASTNode(*params)
@@ -109,14 +109,14 @@ def _build_fn(x):
     )
 
 
-def _build_arithmetic_operation(x):
-    assert len(x) > 0 and len(x) % 2 == 1
+def _build_arithmetic_operation(parsed: ParseResults) -> ASTNode:
+    assert len(parsed) > 0 and len(parsed) % 2 == 1
 
-    lhs = x[0]
+    lhs = parsed[0]
     assert isinstance(lhs, ASTNode)
 
-    for i in range(1, len(x), 2):
-        operator_symbol, rhs = x[i], x[i + 1]
+    for i in range(1, len(parsed), 2):
+        operator_symbol, rhs = parsed[i], parsed[i + 1]
         assert isinstance(operator_symbol, str)
         assert isinstance(rhs, ASTNode)
         assert operator_symbol in ARITHMETIC_OPERATORS
@@ -125,20 +125,20 @@ def _build_arithmetic_operation(x):
     return lhs
 
 
-def _build_comparison_operation(x):
-    if len(x) == 1:
-        assert isinstance(x[0], ASTNode)
-        return x[0]
+def _build_comparison_operation(parsed: ParseResults) -> ASTNode:
+    if len(parsed) == 1:
+        assert isinstance(parsed[0], ASTNode)
+        return parsed[0]
 
-    if len(x) > 5:
+    if len(parsed) > 5:
         raise InvalidSyntaxError("Comparisons can not be chained.")
 
-    if len(x) == 5:
-        lower_bound = x[0]
-        lower_op = x[1]
-        value = x[2]
-        upper_op = x[3]
-        upper_bound = x[4]
+    if len(parsed) == 5:
+        lower_bound = parsed[0]
+        lower_op = parsed[1]
+        value = parsed[2]
+        upper_op = parsed[3]
+        upper_bound = parsed[4]
         assert isinstance(lower_bound, ASTNode)
         assert isinstance(lower_op, str)
         assert isinstance(value, ASTNode)
@@ -156,12 +156,12 @@ def _build_comparison_operation(x):
             upper_op == "<=",
         )
 
-    if len(x) != 3:
+    if len(parsed) != 3:
         raise InvalidSyntaxError("Comparisons needs two operands.")
 
-    lhs = x[0]
-    operator_symbol = x[1]
-    rhs = x[2]
+    lhs = parsed[0]
+    operator_symbol = parsed[1]
+    rhs = parsed[2]
     assert isinstance(lhs, ASTNode)
     assert isinstance(operator_symbol, str)
     assert isinstance(rhs, ASTNode)
@@ -171,24 +171,8 @@ def _build_comparison_operation(x):
 
 
 def _setup_bnf() -> ParserElement:
-    """
-    expop                 :: '^'
-    multop                :: '*' | '/'
-    addop                 :: '+' | '-'
-    comparisonop          :: '>' | '<' | '>=' | '<=' | '==' | '!='
-    integer               :: ['+' | '-'] '0'..'9'+
-    atom                  :: PI | E | real | fn '(' comparison_expr ')' | '(' comparison_expr ')'
-    power_expr            :: atom [expop power_expr]*
-    multiplicative_expr   :: power_expr [multop power_expr]*
-    additive_expr         :: multiplicative_expr [addop multiplicative_expr]*
-    comparison_expr       :: additive_expr [comparisonop additive_expr]
-    """
-
     bnf = Forward()
 
-    # use CaselessKeyword for e and pi, to avoid accidentally matching
-    # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
-    # and CaselessKeyword only match whole words
     e = CaselessKeyword("E")
     e.set_parse_action(_build_constant)
 
@@ -241,11 +225,7 @@ def _setup_bnf() -> ParserElement:
         | Group(lpar + bnf + rpar)
     )
     atom.set_parse_action(_build_atom)
-    # A Forward declaration is required because the power expression recursively
-    # references itself on the right-hand side of the exponent operator.
-    # By defining exponentiation as "atom [ ^ power_expression ]..." instead of
-    # "atom [ ^ atom ]...", exponents are evaluated from right to left:
-    # 2^3^2 = 2^(3^2), not (2^3)^2.
+
     power_expr = Forward()
     power_expr <<= atom + (expop + power_expr)[...]
     power_expr.add_parse_action(_build_arithmetic_operation)

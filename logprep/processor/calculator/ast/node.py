@@ -27,13 +27,13 @@ NodeDesc: TypeAlias = str
 
 
 class DiagramRenderContext(ASTWalkContext):
-    def __init__(self):
+    def __init__(self) -> None:
         self.__counter = 0
         self.__id_to_counter: dict[NodeId, int] = {}
         self.nodes: dict[NodeId, NodeDesc] = {}
         self.links: list[tuple[NodeId, NodeId]] = []
 
-    def visit(self, node, *children):
+    def visit(self, node: "ASTNode", *children: "ASTNode"):
         if id(node) not in self.__id_to_counter:
             self.__id_to_counter[id(node)] = self.__counter
             self.__counter += 1
