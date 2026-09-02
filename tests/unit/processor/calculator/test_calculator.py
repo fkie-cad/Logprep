@@ -404,35 +404,6 @@ test_cases = [
     ),
     pytest.param(
         {
-            "filter": "*",
-            "calculator": {
-                "calc": "${field\\\\1} + ${key.field\\\\2}"
-                "+${key.sou\\\\rce.sou\\\\rce\\.\\\\field3}",
-                "target_field": "wrapper.calc\\.res\\\\ult",
-                "delete_source_fields": True,
-            },
-        },
-        {"key": {"sou\\rce": {"sou\\rce.\\field3": 2}, "field\\2": 6}, "field\\1": 4},
-        {"wrapper": {"calc.res\\ult": 12}},
-        id="handles dotted fields & escaping in basic operands",
-        marks=pytest.mark.skip("check about function templating"),
-    ),
-    pytest.param(
-        {
-            "filter": "*",
-            "calculator": {
-                "calc": "${spec.calc\\.op\\\\erator}(${spec.ca\\\\lc\\.value})",
-                "target_field": "result",
-                "delete_source_fields": True,
-            },
-        },
-        {"spec": {"calc.op\\erator": "round", "ca\\lc.value": "PI"}},
-        {"result": 3},
-        id="handles dotted fields & escaping in operators",
-        marks=pytest.mark.skip("Check about expression templating"),
-    ),
-    pytest.param(
-        {
             "filter": "duration",
             "calculator": {
                 "calc": "${duration} * 10e5",
