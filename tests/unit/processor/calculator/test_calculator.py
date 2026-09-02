@@ -21,6 +21,7 @@ static_expression_test_cases = [
     ("-E", -math.e),
     ("9 + 3 + 6", 9 + 3 + 6),
     ("9 + 3 / 11", 9 + 3.0 / 11),
+    ("15 + 10 % 3", 15 + 10 % 3),
     ("(9 + 3)", (9 + 3)),
     ("(9+3) / 11", (9 + 3.0) / 11),
     ("9 - 12 - 6", 9 - 12 - 6),
@@ -74,8 +75,15 @@ static_expression_test_cases = [
     ("-(sgn(cos(PI/4)))", -1),
     ("hypot(3, 4)", 5),
     ("multiply(3, 7)", 21),
+    ("all(3>2,2>1)", True),
+    ("all(3>2,1>1)", False),
     ("all(1,1,1)", True),
     ("all(1,1,1,1,1,0)", False),
+    ("any(3>2,2>1)", True),
+    ("any(0,0,0,0)", False),
+    ("any(0,0,0,1)", True),
+    ("any(3>3,2>1)", True),
+    ("any(3>3,2>2)", False),
 ]
 
 dynamic_expression_testcases = [
@@ -772,8 +780,6 @@ class TestCalculator(BaseProcessorTestCase):
     def test_builds_expected_ast(self):
         program = compile_expression("10 * cos( ${t} * pi + ${phase}) > 1 + 2 * (3 + 4)")
         diagram = program.get_diagram()
-        # print(diagram)
-        # assert False
-        with open("tests/testdata/unit/calculator/ast/diagram.gv", "r") as fp:
+        with open("tests/testdata/unit/calculator/ast/diagram.gv", "r", encoding="utf-8") as fp:
             expected = fp.read()
         assert diagram == expected

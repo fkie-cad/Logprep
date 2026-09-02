@@ -437,6 +437,16 @@ class DivASTNode(ArithmeticASTNode):
         return None
 
 
+class ModASTNode(ArithmeticASTNode):
+    operator_symbol = "%"
+    operation_fn = operator.mod
+
+    def _operation_specific_optimizations(self, lhs, rhs):
+        if _is_constant_value(rhs, 0):
+            raise DivisionByZeroError("Expression resulted to a division by zero on optimization.")
+        return None
+
+
 class PowASTNode(ArithmeticASTNode):
     operator_symbol = "^"
     operation_fn = operator.pow
@@ -542,6 +552,7 @@ ARITHMETIC_OPERATORS = {
         SubASTNode,
         MulASTNode,
         DivASTNode,
+        ModASTNode,
         PowASTNode,
     )
 }
@@ -642,6 +653,31 @@ class AllFunctionASTNode(CompositeASTNode):
         return "<all>"
 
 
+class AnyFunctionASTNode(CompositeASTNode):
+    input_type = ValueType.BOOLEAN
+    output_type = ValueType.BOOLEAN
+
+    def evaluate(self, context):
+        for child in self.children:
+            if child.evaluate(context):
+                return True
+        return False
+
+    def optimize(self):
+        if all(child.is_constant for child in self.children):
+            return ConstantBooleanASTNode(any(child.evaluate({}) for child in self.children))
+        if any(child.is_constant and child.evaluate({}) for child in self.children):
+            return ConstantBooleanASTNode(True)
+        optimized_children = [child.optimize() for child in self.children if not child.is_constant]
+        if len(optimized_children) == 1:
+            return optimized_children[0]
+        optimized_children.sort(key=lambda child: child.complexity)
+        return type(self)(*optimized_children)
+
+    def __repr__(self):
+        return "<any>"
+
+
 def build_constant(x):
     assert len(x) == 1
     assert isinstance(x[0], str)
@@ -699,6 +735,9 @@ def build_fn(x):
     assert all(isinstance(param, ASTNode) for param in params)
     if function_name == "all":
         return AllFunctionASTNode(*params)
+    if function_name == "any":
+        return AnyFunctionASTNode(*params)
+
     if not NumericFunctionCallASTNode.implements(function_name):
         raise UnknownFunctionError(f"Unknown function {function_name !r}.")
 
@@ -827,10 +866,10 @@ def setup_bnf() -> ParserElement:
     hex_number_handling = hex_number | number_from_hex | variable_as_hex
 
     ident = Word(alphas, alphanums + "_$")
-    plus, minus, mult, div = map(Literal, "+-*/")
+    plus, minus, mult, div, mod = map(Literal, "+-*/%")
     lpar, rpar = map(Suppress, "()")
     addop = plus | minus
-    multop = mult | div
+    multop = mult | div | mod
     expop = Literal("^")
     comparisonop = one_of(">= <= == != > <")
 
