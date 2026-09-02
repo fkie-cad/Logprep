@@ -25,7 +25,7 @@ Processor Configuration
 
 from typing import Sequence, cast
 
-from logprep.processor.calculator.fourFn import (
+from logprep.processor.calculator.ast.exceptions import (
     CalculatorError,
     MissingValueError,
 )

@@ -4,12 +4,16 @@ import math
 
 import pytest
 
-from logprep.processor.calculator.fourFn import (
+from logprep.processor.calculator.ast.compile import (
+    compile_expression,
+)
+from logprep.processor.calculator.ast.exceptions import (
     DivisionByZeroError,
     InvalidSyntaxError,
     ParsingError,
+)
+from logprep.processor.calculator.ast.util import (
     ValueType,
-    compile_expression,
     parse_value,
 )
 from tests.unit.processor.base import BaseProcessorTestCase

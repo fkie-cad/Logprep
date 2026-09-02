@@ -144,7 +144,8 @@ import re
 
 from attrs import define, field, validators
 
-from logprep.processor.calculator.fourFn import ASTNode, compile_expression
+from logprep.processor.calculator.ast.compile import compile_expression
+from logprep.processor.calculator.ast.node import ASTNode
 from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
 from logprep.util.decorators import timeout
 
