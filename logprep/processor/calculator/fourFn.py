@@ -116,23 +116,6 @@ def read_hex_number(value: Any) -> int:
 
 epsilon = 1e-12
 
-fn = {
-    "sin": math.sin,
-    "cos": math.cos,
-    "tan": math.tan,
-    "exp": math.exp,
-    "abs": abs,
-    "trunc": int,
-    "from_hex": lambda a: int(a, 16),
-    "round": round,
-    "sgn": lambda a: -1 if a < -epsilon else 1 if a > epsilon else 0,
-    # functions with multiple arguments
-    "multiply": lambda a, b: a * b,
-    "hypot": math.hypot,
-    # functions with a variable number of arguments
-    "all": lambda *a: all(a),
-}
-
 
 class ASTWalkContext(Protocol):
     def visit(self, node: "ASTNode", *children: "ASTNode") -> None: ...
@@ -144,26 +127,31 @@ NodeDesc: TypeAlias = str
 
 class DiagramRenderContext(ASTWalkContext):
     def __init__(self):
+        self.__counter = 0
+        self.__id_to_counter: dict[NodeId, int] = {}
         self.nodes: dict[NodeId, NodeDesc] = {}
         self.links: list[tuple[NodeId, NodeId]] = []
 
     def visit(self, node, *children):
+        if id(node) not in self.__id_to_counter:
+            self.__id_to_counter[id(node)] = self.__counter
+            self.__counter += 1
         self.nodes[id(node)] = repr(node)
         self.links.extend((id(node), id(child)) for child in children)
 
     def get_graph_viz(self) -> str:
 
         def _node_ref(node_id: NodeId) -> str:
-            return f"n{node_id}"
+            return f"n{self.__id_to_counter[node_id]}"
 
         return "\n".join(
             ["digraph {"]
             + [
-                f'\t{_node_ref(node_id)} [label="{node_desc}"]'
+                f'    {_node_ref(node_id)} [label = "{node_desc}";];'
                 for node_id, node_desc in self.nodes.items()
             ]
             + [
-                f"\t{_node_ref(parent_id)} -> {_node_ref(child_id)}"
+                f"    {_node_ref(parent_id)} -> {_node_ref(child_id)};"
                 for parent_id, child_id in self.links
             ]
             + ["}"]
@@ -250,7 +238,7 @@ class VariableASTNode(TerminalASTNode):
 
     def evaluate(self, context):
         value = get_dotted_field_value(context, self.path)
-        if not value:
+        if value is None:
             raise MissingValueError(f"Missing value for field {self.path!r}.")
         value = self._preprocess_field_data(value)
         return parse_value(value, self.output_type)
@@ -355,7 +343,7 @@ class OperationASTNode(CompositeASTNode):
         )
 
     def __repr__(self) -> str:
-        return f"<op {self.operator_symbol}>"
+        return f"<op {self.operator_symbol !r}>"
 
 
 class ArithmeticASTNode(OperationASTNode):
@@ -572,71 +560,86 @@ COMPARISON_OPERATORS = {
 
 
 class FunctionCallASTNode(CompositeASTNode):
-    input_type = ValueType.NUMBER
-    output_type = ValueType.NUMBER
 
-    # TODO: make all a special case
-    def __init__(
-        self, function_name: str, function_call: Callable[..., Any], children: Sequence[ASTNode]
-    ):
+    supported_functions: ClassVar[dict[str, Callable[..., Any]]]
+
+    @classmethod
+    def implements(cls, function_name: str) -> bool:
+        return function_name in cls.supported_functions
+
+    def __init__(self, function_name: str, children: Sequence[ASTNode]):
         super().__init__(*children)
+        if function_name not in self.supported_functions:
+            raise UnknownFunctionError(f"Unknown function {function_name !r}")
         self.function_name = function_name
-        self.function_call = function_call
-
-    @property
-    def complexity(self):
-        return sum(child.complexity for child in self.children)
-
-    @property
-    def is_constant(self):
-        return all(child.is_constant for child in self.children)
 
     def optimize(self) -> ASTNode:
-        optimized_clone = FunctionCallASTNode(
+        optimized_clone = type(self)(
             function_name=self.function_name,
-            function_call=self.function_call,
             children=[child.optimize() for child in self.children],
         )
         if not all(child.is_constant for child in optimized_clone.children):
             return optimized_clone
 
-        try:
-            my_static_value = optimized_clone.evaluate({})
-            return ConstantNumberASTNode(value=my_static_value)
-        except CalculatorError as error:
-            # As every child considered consider itself constant
-            # evaluating with an empty context should not raise
-            # an MissingValueError. All other errors should already
-            # be detected at compile time.
-
-            # If the following assert is hit one of the children
-            # is probably wrong about itself being constant.
-            assert not error, self.children
-
-            # Returning the optimized_clone if asserts are disabled
-            # as this is probably preferable to failing on optimization.
-            return optimized_clone
-
-    def walk(self, context):
-        context.visit(self, *self.children)
-        for child in self.children:
-            child.walk(context)
+        my_static_value = optimized_clone.evaluate({})
+        # TODO: make generic
+        return ConstantNumberASTNode(value=my_static_value)
 
     def evaluate(self, context):
         operands = [child.evaluate(context) for child in self.children]
-        if any(isinstance(operand, bool) for operand in operands):
-            raise ValueError("boolean values cannot be used as operands")
-
-        operands = [child.evaluate(context) for child in self.children]
         try:
-            return self.function_call(*operands)
+            return self.supported_functions[self.function_name](*operands)
         except Exception as error:
             raise EvaluationError(
                 f"Failed on operator {self.function_name !r} with values {operands !r}"
             ) from error
 
     def __repr__(self):
-        return f"<op {self.function_name !r}>"
+        return f"<func {self.function_name !r}>"
+
+
+class NumericFunctionCallASTNode(FunctionCallASTNode):
+    supported_functions = {
+        "sin": math.sin,
+        "cos": math.cos,
+        "tan": math.tan,
+        "exp": math.exp,
+        "abs": abs,
+        "trunc": int,
+        "from_hex": lambda a: int(a, 16),
+        "round": round,
+        "sgn": lambda a: -1 if a < -epsilon else 1 if a > epsilon else 0,
+        # functions with multiple arguments
+        "multiply": lambda a, b: a * b,
+        "hypot": math.hypot,
+    }
+    input_type = ValueType.NUMBER
+    output_type = ValueType.NUMBER
+
+
+class AllFunctionASTNode(CompositeASTNode):
+    input_type = ValueType.BOOLEAN
+    output_type = ValueType.BOOLEAN
+
+    def evaluate(self, context):
+        for child in self.children:
+            if not child.evaluate(context):
+                return False
+        return True
+
+    def optimize(self):
+        if all(child.is_constant for child in self.children):
+            return ConstantBooleanASTNode(all(child.evaluate({}) for child in self.children))
+        if any(child.is_constant and not child.evaluate({}) for child in self.children):
+            return ConstantBooleanASTNode(False)
+        optimized_children = [child.optimize() for child in self.children if not child.is_constant]
+        if len(optimized_children) == 1:
+            return optimized_children[0]
+        optimized_children.sort(key=lambda child: child.complexity)
+        return type(self)(*optimized_children)
+
+    def __repr__(self):
+        return "<all>"
 
 
 def build_constant(x):
@@ -691,16 +694,17 @@ def build_fn(x):
     assert len(x) >= 1, x
     function_name = x[0]
     assert isinstance(function_name, str)
-    if function_name not in fn:
+    assert all(isinstance(i, ParseResults) and len(i) == 1 for i in x[1:])
+    params = [i[0] for i in x[1:]]
+    assert all(isinstance(param, ASTNode) for param in params)
+    if function_name == "all":
+        return AllFunctionASTNode(*params)
+    if not NumericFunctionCallASTNode.implements(function_name):
         raise UnknownFunctionError(f"Unknown function {function_name !r}.")
-    assert all(
-        isinstance(i, ParseResults) and len(i) == 1 and isinstance(i[0], ASTNode) for i in x[1:]
-    )
 
-    return FunctionCallASTNode(
+    return NumericFunctionCallASTNode(
         function_name,
-        fn[function_name],
-        [i[0] for i in x[1:]],
+        params,
     )
 
 
@@ -875,140 +879,5 @@ def compile_expression(expression: str) -> ASTNode:
     return root_node
 
 
-class BNF(Forward):
-    """
-    expop                 :: '^'
-    multop                :: '*' | '/'
-    addop                 :: '+' | '-'
-    comparisonop          :: '>' | '<' | '>=' | '<=' | '==' | '!='
-    integer               :: ['+' | '-'] '0'..'9'+
-    atom                  :: PI | E | real | fn '(' comparison_expr ')' | '(' comparison_expr ')'
-    power_expr            :: atom [expop power_expr]*
-    multiplicative_expr   :: power_expr [multop power_expr]*
-    additive_expr         :: multiplicative_expr [addop multiplicative_expr]*
-    comparison_expr       :: additive_expr [comparisonop additive_expr]
-    """
-
-    exprStack: list
-
-    # use CaselessKeyword for e and pi, to avoid accidentally matching
-    # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
-    # and CaselessKeyword only match whole words
-    e = CaselessKeyword("E")
-    pi = CaselessKeyword("PI")
-    # fnumber = Combine(Word("+-"+nums, nums) +
-    #                    Optional("." + Optional(Word(nums))) +
-    #                    Optional(e + Word("+-"+nums, nums)))
-    # or use provided pyparsing_common.number, but convert back to str:
-    # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
-    fnumber = Regex(r"[+-]?[a-zA-Z0-9]+(?:\.\d*)?(?:[eE][+-]?\d+)?")
-
-    ident = Word(alphas, alphanums + "_$")
-
-    plus, minus, mult, div = map(Literal, "+-*/")
-    lpar, rpar = map(Suppress, "()")
-    addop = plus | minus
-    multop = mult | div
-    expop = Literal("^")
-    comparisonop = one_of(">= <= == != > <")
-
-    def __new__(cls):
-        if not hasattr(cls, "instance"):
-            cls.instance = super(BNF, cls).__new__(cls)
-        return cls.instance
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.exprStack = []
-        expr_list = DelimitedList(Group(self))
-
-        # add parse action that replaces the function identifier with a (name, number of args) tuple
-        def insert_fn_argcount_tuple(t):
-            _fn = t.pop(0)
-            num_args = len(t[0])
-            t.insert(0, (_fn, num_args))
-
-        fn_call = (self.ident + self.lpar - Group(expr_list) + self.rpar).set_parse_action(
-            insert_fn_argcount_tuple
-        )
-        atom = (
-            self.addop[...]
-            + (
-                (fn_call | self.pi | self.e | self.fnumber | self.ident).set_parse_action(
-                    self.push_first
-                )
-                | Group(self.lpar + self + self.rpar)
-            )
-        ).set_parse_action(self.push_unary_minus)
-
-        # A Forward declaration is required because the power expression recursively
-        # references itself on the right-hand side of the exponent operator.
-        # By defining exponentiation as "atom [ ^ power_expression ]..." instead of
-        # "atom [ ^ atom ]...", exponents are evaluated from right to left:
-        # 2^3^2 = 2^(3^2), not (2^3)^2.
-        power_expr = Forward()
-        power_expr <<= atom + (self.expop + power_expr).set_parse_action(self.push_first)[...]
-
-        multiplicative_expr = (
-            power_expr + (self.multop + power_expr).set_parse_action(self.push_first)[...]
-        )
-        additive_expr = (
-            multiplicative_expr
-            + (self.addop + multiplicative_expr).set_parse_action(self.push_first)[...]
-        )
-
-        # Optional allows at most one comparison; chained comparisons are not supported.
-        comparison_expr = additive_expr + Optional(
-            (self.comparisonop + additive_expr).set_parse_action(self.push_first)
-        )
-
-        forward_self: Forward = self  # narrow the type for mypy before using Forward.__ilshift__
-        forward_self <<= comparison_expr
-
-    def push_first(self, toks):
-        self.exprStack.append(toks[0])
-
-    def push_unary_minus(self, toks):
-        for t in toks:
-            if t == "-":
-                self.exprStack.append("unary -")
-            else:
-                break
-
-    @staticmethod
-    def reject_boolean_operands(*operands):
-        if any(isinstance(operand, bool) for operand in operands):
-            raise ValueError("boolean values cannot be used as operands")
-
-    def evaluate_stack(self):
-        op, num_args = self.exprStack.pop(), 0
-        if isinstance(op, tuple):
-            op, num_args = op
-        if op == "unary -":
-            operand = self.evaluate_stack()
-            self.reject_boolean_operands(operand)
-            return -operand
-        if op in opn:
-            # Operands are pushed onto the stack in reverse order
-            op2 = self.evaluate_stack()
-            op1 = self.evaluate_stack()
-            self.reject_boolean_operands(op1, op2)
-            return opn[op](op1, op2)
-        if op == "PI":
-            return math.pi  # 3.1415926535
-        if op == "E":
-            return math.e  # 2.718281828
-        if op in fn:
-            # note: args are pushed onto the stack in reverse order
-            args = reversed([self.evaluate_stack() for _ in range(num_args)])
-            return fn[op](*args)
-        if op[0].isalpha():
-            raise ValueError(f"invalid identifier '{op}'")
-        # try to evaluate as int first, then as float if int fails
-        try:
-            return int(op)
-        except ValueError:
-            try:
-                return float(op)
-            except ValueError:
-                return op
+# TODO: remove when ng is implemented
+class BNF(Forward): ...

@@ -624,9 +624,10 @@ runtime_failure_test_cases = [
         {"message": "This is a message", "a": 9},
         {
             "message": "This is a message",
+            "a": 9,
             "tags": ["_calculator_failure"],
         },  # "STREAM ioctl timeout" for MacOS/darwin
-        id="raises timeout",
+        id="raises timeout on runtime",
     ),
 ]
 
@@ -768,41 +769,11 @@ class TestCalculator(BaseProcessorTestCase):
         with pytest.raises(InvalidSyntaxError):
             compile_expression(expression)
 
-    @pytest.mark.skip("TODO check how to update")
-    def test_fourfn_builds_expected_postfix_stack(self):
-        """
-        Ensure that expressions are converted into the expected execution order.
-
-        The test protects the existing postfix stack structure so that future parser
-        changes do not alter the evaluation order unintentionally. Intentional changes
-        to the order must also update this test.
-        """
-        bnf = None  # BNF()
-        expression = "round((PI + 2) * 3 ^ 2 ^ 2 / 4 - -5, 2) >= multiply(2, 3) + E"
-
-        bnf.parse_string(expression, parse_all=True)  # pylint: disable=E1123,E1121
-
-        assert bnf.exprStack == [
-            "PI",
-            "2",
-            "+",
-            "3",
-            "2",
-            "2",
-            "^",
-            "^",
-            "*",
-            "4",
-            "/",
-            "5",
-            "unary -",
-            "-",
-            "2",
-            ("round", 2),
-            "2",
-            "3",
-            ("multiply", 2),
-            "E",
-            "+",
-            ">=",
-        ]
+    def test_builds_expected_ast(self):
+        program = compile_expression("10 * cos( ${t} * pi + ${phase}) > 1 + 2 * (3 + 4)")
+        diagram = program.get_diagram()
+        # print(diagram)
+        # assert False
+        with open("tests/testdata/unit/calculator/ast/diagram.gv", "r") as fp:
+            expected = fp.read()
+        assert diagram == expected
