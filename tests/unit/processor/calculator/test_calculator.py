@@ -761,7 +761,7 @@ class TestCalculator(BaseProcessorTestCase):
             "1 < 2 == 2",
         ],
     )
-    def test_fourfn_rejects_chained_comparisons(self, expression):
+    def test_ast_rejects_chained_comparisons(self, expression):
 
         with pytest.raises(InvalidSyntaxError):
             prog = compile_expression(expression)
@@ -777,7 +777,7 @@ class TestCalculator(BaseProcessorTestCase):
             "all(1, 1) * 2",
         ],
     )
-    def test_fourfn_rejects_boolean_operands(self, expression):
+    def test_ast_rejects_boolean_operands(self, expression):
         with pytest.raises(InvalidSyntaxError):
             compile_expression(expression)
 
