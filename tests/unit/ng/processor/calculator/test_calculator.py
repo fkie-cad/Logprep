@@ -17,7 +17,7 @@ from logprep.ng.processor.calculator.processor import Calculator
 from logprep.processor.calculator.fourFn import BNF
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.calculator.test_calculator import (
-    failure_test_cases as non_ng_failure_testcases,
+    runtime_failure_test_cases as non_ng_failure_testcases,
 )
 from tests.unit.processor.calculator.test_calculator import (
     test_cases as non_ng_testcases,
