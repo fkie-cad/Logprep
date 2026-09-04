@@ -13,6 +13,7 @@ from logprep.processor.calculator.ast.exceptions import (
     InvalidSyntaxError,
     ParsingError,
 )
+from logprep.processor.calculator.ast.node import get_ast_diagram
 from logprep.processor.calculator.ast.util import (
     ValueType,
     parse_value,
@@ -721,9 +722,8 @@ class TestCalculator(BaseProcessorTestCase):
         static_expression_test_cases,
     )
     def test_static_expression(self, expression, expected):
-        program = parse_expression(expression)
-        print(program.get_diagram())
-        result = program.evaluate({})
+        parsed = parse_expression(expression)
+        result = parsed.evaluate({})
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -731,9 +731,9 @@ class TestCalculator(BaseProcessorTestCase):
         static_expression_test_cases,
     )
     def test_static_expression_optimized(self, expression, expected):
-        program = parse_expression(expression)
-        program_optimized = program.optimize()
-        result = program_optimized.evaluate({})
+        parsed = parse_expression(expression)
+        parsed_optimized = parsed.optimize()
+        result = parsed_optimized.evaluate({})
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -741,8 +741,8 @@ class TestCalculator(BaseProcessorTestCase):
         dynamic_expression_testcases,
     )
     def test_dynamic_expressions(self, expression, context, expected):
-        program = parse_expression(expression)
-        result = program.evaluate(context)
+        parsed = parse_expression(expression)
+        result = parsed.evaluate(context)
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -750,9 +750,9 @@ class TestCalculator(BaseProcessorTestCase):
         dynamic_expression_testcases,
     )
     def test_dynamic_expressions_optimized(self, expression, context, expected):
-        program = parse_expression(expression)
-        program_optimized = program.optimize()
-        result = program_optimized.evaluate(context)
+        parsed = parse_expression(expression)
+        parsed_optimized = parsed.optimize()
+        result = parsed_optimized.evaluate(context)
         assert result == expected
 
     @pytest.mark.parametrize(
@@ -764,8 +764,7 @@ class TestCalculator(BaseProcessorTestCase):
     def test_ast_rejects_chained_comparisons(self, expression):
 
         with pytest.raises(InvalidSyntaxError):
-            prog = parse_expression(expression)
-            print(prog.get_diagram())
+            parse_expression(expression)
 
     @pytest.mark.parametrize(
         "expression",
@@ -781,9 +780,9 @@ class TestCalculator(BaseProcessorTestCase):
         with pytest.raises(InvalidSyntaxError):
             parse_expression(expression)
 
-    def test_builds_expected_ast(self):
-        program = parse_expression("10 * cos( ${t} * pi + ${phase}) > 1 + 2 * (3 + 4)")
-        diagram = program.get_diagram()
+    def test_get_ast_diagram(self):
+        parsed = parse_expression("10 * cos( ${t} * pi + ${phase}) > 1 + 2 * (3 + 4)")
+        diagram = get_ast_diagram(parsed)
         expected = """
             digraph {
                 n0 [label = "<op '>'>";];

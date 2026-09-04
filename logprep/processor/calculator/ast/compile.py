@@ -179,8 +179,8 @@ def _map_actions(*mappings: tuple[ParserElement, Callable[[ParseResults], ASTNod
         element.set_parse_action(action)
 
 
-def _setup_bnf() -> ParserElement:
-    bnf = Forward()
+def _setup_syntax() -> ParserElement:
+    expression = Forward()
 
     constant = CaselessKeyword("E") | CaselessKeyword("PI")
     number = Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?")
@@ -207,29 +207,34 @@ def _setup_bnf() -> ParserElement:
 
     hex_number_handling = hex_number | number_from_hex | variable_as_hex
 
-    addop = one_of(["+", "-"])
-    multop = one_of(["*", "/", "%"])
-    expop = one_of(["^"])
-    comparisonop = one_of([">=", "<=", "==", "!=", ">", "<"])
+    addition_operators = one_of(["+", "-"])
+    multiplication_operators = one_of(["*", "/", "%"])
+    power_operators = one_of(["^"])
+    comparison_operators = one_of([">=", "<=", "==", "!=", ">", "<"])
 
-    expr_list = DelimitedList(Group(bnf))
-
-    fn_call = Word(alphas, alphanums + "_$") + Suppress("(") - expr_list + Suppress(")")
-    atom = addop[...] + (
-        (hex_number_handling | fn_call | constant | number | variable)
-        | Group(Suppress("(") + bnf + Suppress(")"))
+    function_call = (
+        Word(alphas, alphanums + "_$")
+        + Suppress("(")
+        - DelimitedList(Group(expression))
+        + Suppress(")")
+    )
+    atomic_expression = addition_operators[...] + (
+        (hex_number_handling | function_call | constant | number | variable)
+        | Group(Suppress("(") + expression + Suppress(")"))
     )
 
-    power_expr = Forward()
-    power_expr <<= atom + (expop + power_expr)[...]
+    power_operation = Forward()
+    power_operation <<= atomic_expression + (power_operators + power_operation)[...]
 
-    multiplicative_expr = power_expr + (multop + power_expr)[...]
+    multiplicative_operation = power_operation + (multiplication_operators + power_operation)[...]
 
-    additive_expr = multiplicative_expr + (addop + multiplicative_expr)[...]
+    additive_operation = (
+        multiplicative_operation + (addition_operators + multiplicative_operation)[...]
+    )
 
-    comparison_expr = additive_expr + (comparisonop + additive_expr)[...]
+    comparison_operation = additive_operation + (comparison_operators + additive_operation)[...]
 
-    bnf <<= comparison_expr
+    expression <<= comparison_operation
 
     _map_actions(
         (constant, _build_constant),
@@ -238,22 +243,22 @@ def _setup_bnf() -> ParserElement:
         (hex_number, _build_constant_from_hex),
         (number_from_hex, _build_constant_from_hex),
         (variable_as_hex, _build_hex_variable),
-        (fn_call, _build_fn),
-        (atom, _build_atom),
-        (power_expr, _build_arithmetic_operation),
-        (multiplicative_expr, _build_arithmetic_operation),
-        (additive_expr, _build_arithmetic_operation),
-        (comparison_expr, _build_comparison_operation),
+        (function_call, _build_fn),
+        (atomic_expression, _build_atom),
+        (power_operation, _build_arithmetic_operation),
+        (multiplicative_operation, _build_arithmetic_operation),
+        (additive_operation, _build_arithmetic_operation),
+        (comparison_operation, _build_comparison_operation),
     )
-    return bnf
+    return expression
 
 
-_BNF = _setup_bnf()
+_SYNTAX = _setup_syntax()
 
 
 def parse_expression(expression: str) -> ASTNode:
     try:
-        root_node = _BNF.parse_string(expression, parse_all=True)[0]
+        root_node = _SYNTAX.parse_string(expression, parse_all=True)[0]
     except (ParseException, ParseSyntaxException) as error:
         raise InvalidSyntaxError("Error raising expression.") from error
     assert isinstance(root_node, ASTNode)

@@ -59,6 +59,12 @@ class DiagramRenderContext(ASTWalkContext):
         )
 
 
+def get_ast_diagram(node: "ASTNode") -> str:
+    diagram_render_context = DiagramRenderContext()
+    node.walk(diagram_render_context)
+    return diagram_render_context.get_graph_viz()
+
+
 EvaluationContext: TypeAlias = dict[str, FieldValue]
 
 
@@ -81,11 +87,6 @@ class ASTNode(ABC):
 
     @abstractmethod
     def optimize(self) -> "ASTNode": ...
-
-    def get_diagram(self) -> str:
-        diagram_render_context = DiagramRenderContext()
-        self.walk(diagram_render_context)
-        return diagram_render_context.get_graph_viz()
 
 
 class TerminalASTNode(ASTNode):
