@@ -67,6 +67,17 @@ def get_ast_diagram(node: "ASTNode") -> str:
 
 EvaluationContext: TypeAlias = dict[str, FieldValue]
 
+EMPTY_CONTEXT: EvaluationContext = {}
+
+
+def _constant_value(node: "ASTNode"):
+    assert node.is_constant
+    return node.evaluate(EMPTY_CONTEXT)
+
+
+def _is_constant_value(node: "ASTNode", value: int) -> bool:
+    return node.is_constant and _constant_value(node) == value
+
 
 class ASTNode(ABC):
     output_type: ClassVar[ValueType]
@@ -123,6 +134,12 @@ class ConstantNumberASTNode(ConstantASTNode):
 
 class ConstantBooleanASTNode(ConstantASTNode):
     output_type = ValueType.BOOLEAN
+
+
+_VALUE_CLASS: dict[ValueType, type[ConstantASTNode]] = {
+    ValueType.NUMBER: ConstantNumberASTNode,
+    ValueType.BOOLEAN: ConstantBooleanASTNode,
+}
 
 
 class VariableASTNode(TerminalASTNode):
@@ -192,7 +209,7 @@ class NegateASTNode(CompositeASTNode):
     def optimize(self):
         optimized_inner = self.inner.optimize()
         if optimized_inner.is_constant:
-            return ConstantNumberASTNode(-optimized_inner.evaluate({}))
+            return ConstantNumberASTNode(-_constant_value(optimized_inner))
         return NegateASTNode(optimized_inner)
 
     def evaluate(self, context):
@@ -228,8 +245,8 @@ class OperationASTNode(CompositeASTNode):
         if lhs_optimized.is_constant and rhs_optimized.is_constant:
             return ConstantNumberASTNode(
                 self.operation_fn(
-                    lhs_optimized.evaluate({}),
-                    rhs_optimized.evaluate({}),
+                    _constant_value(lhs_optimized),
+                    _constant_value(rhs_optimized),
                 )
             )
         if specific_optimization := self._operation_specific_optimizations(
@@ -264,8 +281,8 @@ class ArithmeticASTNode(OperationASTNode):
             try:
                 return ConstantNumberASTNode(
                     self.operation_fn(
-                        lhs_optimized.evaluate({}),
-                        rhs_optimized.evaluate({}),
+                        _constant_value(lhs_optimized),
+                        _constant_value(rhs_optimized),
                     )
                 )
             except ZeroDivisionError as error:
@@ -284,10 +301,6 @@ class ArithmeticASTNode(OperationASTNode):
             # division and power operator might run into ZeroDevisionErrors
             # we want to repack those into a class inheriting from LogprepException
             raise DivisionByZeroError("Division by zero.") from error
-
-
-def _is_constant_value(node: ASTNode, value: int) -> bool:
-    return node.is_constant and node.evaluate({}) == value
 
 
 class AddASTNode(ArithmeticASTNode):
@@ -374,7 +387,7 @@ class ComparisonASTNode(OperationASTNode):
                 self.lhs,
                 self.rhs,
             )
-        return ConstantBooleanASTNode(self.evaluate({}))
+        return ConstantBooleanASTNode(_constant_value(self))
 
 
 class EqualASTNode(ComparisonASTNode):
@@ -428,7 +441,7 @@ class RangeCheckASTNode(CompositeASTNode):
 
     def optimize(self):
         if self.is_constant:
-            return ConstantBooleanASTNode(self.evaluate({}))
+            return ConstantBooleanASTNode(_constant_value(self))
         return type(self)(
             self.lower_bound,
             self.lower_bound_is_inclusive,
@@ -495,9 +508,8 @@ class FunctionCallASTNode(CompositeASTNode):
         if not all(child.is_constant for child in optimized_clone.children):
             return optimized_clone
 
-        my_static_value = optimized_clone.evaluate({})
-        # TODO: make generic
-        return ConstantNumberASTNode(value=my_static_value)
+        my_static_value = _constant_value(optimized_clone)
+        return _VALUE_CLASS[self.input_type](value=my_static_value)
 
     def evaluate(self, context):
         operands = [child.evaluate(context) for child in self.children]
@@ -547,8 +559,8 @@ class AllFunctionASTNode(CompositeASTNode):
 
     def optimize(self):
         if all(child.is_constant for child in self.children):
-            return ConstantBooleanASTNode(all(child.evaluate({}) for child in self.children))
-        if any(child.is_constant and not child.evaluate({}) for child in self.children):
+            return ConstantBooleanASTNode(all(_constant_value(child) for child in self.children))
+        if any(child.is_constant and not _constant_value(child) for child in self.children):
             return ConstantBooleanASTNode(False)
         optimized_children = [child.optimize() for child in self.children if not child.is_constant]
         if len(optimized_children) == 1:
@@ -572,8 +584,8 @@ class AnyFunctionASTNode(CompositeASTNode):
 
     def optimize(self):
         if all(child.is_constant for child in self.children):
-            return ConstantBooleanASTNode(any(child.evaluate({}) for child in self.children))
-        if any(child.is_constant and child.evaluate({}) for child in self.children):
+            return ConstantBooleanASTNode(any(_constant_value(child) for child in self.children))
+        if any(child.is_constant and _constant_value(child) for child in self.children):
             return ConstantBooleanASTNode(True)
         optimized_children = [child.optimize() for child in self.children if not child.is_constant]
         if len(optimized_children) == 1:
