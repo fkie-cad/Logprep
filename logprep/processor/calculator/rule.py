@@ -144,7 +144,7 @@ import re
 
 from attrs import define, field, validators
 
-from logprep.processor.calculator.ast.compile import compile_expression
+from logprep.processor.calculator.ast.compile import parse_expression
 from logprep.processor.calculator.ast.node import ASTNode
 from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
 from logprep.util.context_managers import timeout
@@ -179,20 +179,14 @@ class CalculatorRule(FieldManagerRule):
 
     def __init__(self, filter_rule, config, processor_name):
         super().__init__(filter_rule, config, processor_name)
-
+        assert isinstance(self._config, CalculatorRule.Config)
         with timeout(seconds=self.timeout):
-            print(self.calc)
-            compiled_expression = compile_expression(self.calc)
-            self.__compiled_expression = compiled_expression.optimize()
+            compiled_expression = parse_expression(self._config.calc)
+            self.__parsed_expression = compiled_expression.optimize()
 
     @property
-    def compiled_expression(self) -> ASTNode:
-        return self.__compiled_expression
-
-    @property
-    def calc(self):
-        """Returns the calculation expression"""
-        return self._config.calc
+    def parsed_expression(self) -> ASTNode:
+        return self.__parsed_expression
 
     @property
     def timeout(self):

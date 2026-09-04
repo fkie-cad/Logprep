@@ -251,7 +251,7 @@ def _setup_bnf() -> ParserElement:
 _BNF = _setup_bnf()
 
 
-def compile_expression(expression: str) -> ASTNode:
+def parse_expression(expression: str) -> ASTNode:
     try:
         root_node = _BNF.parse_string(expression, parse_all=True)[0]
     except (ParseException, ParseSyntaxException) as error:

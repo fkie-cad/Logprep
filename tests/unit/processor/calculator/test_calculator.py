@@ -6,7 +6,7 @@ import re
 import pytest
 
 from logprep.processor.calculator.ast.compile import (
-    compile_expression,
+    parse_expression,
 )
 from logprep.processor.calculator.ast.exceptions import (
     DivisionByZeroError,
@@ -721,7 +721,7 @@ class TestCalculator(BaseProcessorTestCase):
         static_expression_test_cases,
     )
     def test_static_expression(self, expression, expected):
-        program = compile_expression(expression)
+        program = parse_expression(expression)
         print(program.get_diagram())
         result = program.evaluate({})
         assert result == expected
@@ -731,7 +731,7 @@ class TestCalculator(BaseProcessorTestCase):
         static_expression_test_cases,
     )
     def test_static_expression_optimized(self, expression, expected):
-        program = compile_expression(expression)
+        program = parse_expression(expression)
         program_optimized = program.optimize()
         result = program_optimized.evaluate({})
         assert result == expected
@@ -741,7 +741,7 @@ class TestCalculator(BaseProcessorTestCase):
         dynamic_expression_testcases,
     )
     def test_dynamic_expressions(self, expression, context, expected):
-        program = compile_expression(expression)
+        program = parse_expression(expression)
         result = program.evaluate(context)
         assert result == expected
 
@@ -750,7 +750,7 @@ class TestCalculator(BaseProcessorTestCase):
         dynamic_expression_testcases,
     )
     def test_dynamic_expressions_optimized(self, expression, context, expected):
-        program = compile_expression(expression)
+        program = parse_expression(expression)
         program_optimized = program.optimize()
         result = program_optimized.evaluate(context)
         assert result == expected
@@ -764,7 +764,7 @@ class TestCalculator(BaseProcessorTestCase):
     def test_ast_rejects_chained_comparisons(self, expression):
 
         with pytest.raises(InvalidSyntaxError):
-            prog = compile_expression(expression)
+            prog = parse_expression(expression)
             print(prog.get_diagram())
 
     @pytest.mark.parametrize(
@@ -779,10 +779,10 @@ class TestCalculator(BaseProcessorTestCase):
     )
     def test_ast_rejects_boolean_operands(self, expression):
         with pytest.raises(InvalidSyntaxError):
-            compile_expression(expression)
+            parse_expression(expression)
 
     def test_builds_expected_ast(self):
-        program = compile_expression("10 * cos( ${t} * pi + ${phase}) > 1 + 2 * (3 + 4)")
+        program = parse_expression("10 * cos( ${t} * pi + ${phase}) > 1 + 2 * (3 + 4)")
         diagram = program.get_diagram()
         expected = """
             digraph {

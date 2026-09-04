@@ -48,7 +48,7 @@ class Calculator(FieldManager):
         rule = cast(CalculatorRule, rule)
         try:
             with timeout(seconds=rule.timeout):
-                result = rule.compiled_expression.evaluate(event)
+                result = rule.parsed_expression.evaluate(event)
 
             if result is not None:
                 self._write_target_field(event, rule, result)
