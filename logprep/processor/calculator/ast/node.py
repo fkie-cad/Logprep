@@ -15,7 +15,7 @@ from logprep.processor.calculator.ast.util import (
     parse_value,
     read_hex_number,
 )
-from logprep.util.helper import FieldValue, get_dotted_field_value
+from logprep.util.helper import MISSING, FieldValue, get_dotted_field_value_with_missing
 
 
 class ASTWalkContext(Protocol):
@@ -134,14 +134,14 @@ class VariableASTNode(TerminalASTNode):
     def is_constant(self):
         return False
 
-    def _preprocess_field_data(self, value: Any) -> Any:
+    def _get_context_value(self, context: EvaluationContext) -> Any:
+        value = get_dotted_field_value_with_missing(context, self.path)
+        if value is MISSING:
+            raise MissingValueError(f"Missing value for field {self.path!r}.")
         return value
 
     def evaluate(self, context):
-        value = get_dotted_field_value(context, self.path)
-        if value is None:
-            raise MissingValueError(f"Missing value for field {self.path!r}.")
-        value = self._preprocess_field_data(value)
+        value = self._get_context_value(context)
         return parse_value(value, self.output_type)
 
     def __repr__(self):
@@ -152,8 +152,9 @@ class VariableASTNode(TerminalASTNode):
 
 
 class HexNumberVariableASTNode(VariableASTNode):
-    def _preprocess_field_data(self, value):
-        return read_hex_number(value)
+    def _get_context_value(self, context):
+        raw_value = super()._get_context_value(context)
+        return read_hex_number(raw_value)
 
 
 class CompositeASTNode(ASTNode):

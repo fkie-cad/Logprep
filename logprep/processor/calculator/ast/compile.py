@@ -1,13 +1,14 @@
 # pylint: disable=missing-docstring
 # pylint: disable=invalid-name
+
 from re import RegexFlag
+from typing import Callable
 
 from pyparsing import (
     CaselessKeyword,
     DelimitedList,
     Forward,
     Group,
-    Literal,
     Optional,
     ParseException,
     ParserElement,
@@ -37,7 +38,7 @@ from logprep.processor.calculator.ast.node import (
     VariableASTNode,
 )
 from logprep.processor.calculator.ast.util import read_hex_number
-from logprep.util.helper import DottedTemplate
+from logprep.util.helper import VARIABLE_PATTERN
 
 
 def _build_constant(parsed: ParseResults) -> ASTNode:
@@ -170,77 +171,80 @@ def _build_comparison_operation(parsed: ParseResults) -> ASTNode:
     return operator_type(lhs, rhs)
 
 
+_HEX_PATTERN = r"[a-fA-F0-9]+"
+
+
+def _map_actions(*mappings: tuple[ParserElement, Callable[[ParseResults], ASTNode]]) -> None:
+    for element, action in mappings:
+        element.set_parse_action(action)
+
+
 def _setup_bnf() -> ParserElement:
     bnf = Forward()
 
-    e = CaselessKeyword("E")
-    e.set_parse_action(_build_constant)
-
-    pi = CaselessKeyword("PI")
-    pi.set_parse_action(_build_constant)
-
+    constant = CaselessKeyword("E") | CaselessKeyword("PI")
     number = Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?")
-    number.set_parse_action(_build_constant)
 
-    variable = Suppress("${") + Regex(DottedTemplate.braceidpattern) + Suppress("}")
-    variable.set_parse_action(_build_variable)
+    variable = Suppress("${") + Regex(VARIABLE_PATTERN) + Suppress("}")
 
-    hex_number = Regex(r"0x[0-9a-f]")
+    hex_number = Regex(rf"0x{_HEX_PATTERN}")
     number_from_hex = (
         Suppress("from_hex")
         + Suppress("(")
-        + Regex(r"(0x)?[a-f0-9]+", flags=RegexFlag.IGNORECASE)
+        + Regex(rf"(0x)?{_HEX_PATTERN}", flags=RegexFlag.IGNORECASE)
         + Suppress(")")
     )
-    hex_number.set_parse_action(_build_constant_from_hex)
-    number_from_hex.set_parse_action(_build_constant_from_hex)
 
     variable_as_hex = (
         Suppress("from_hex")
         + Suppress("(")
         + Optional(Suppress("0x"))
         + Suppress("${")
-        + Regex(DottedTemplate.braceidpattern)
+        + Regex(VARIABLE_PATTERN)
         + Suppress("}")
         + Suppress(")")
     )
-    variable_as_hex.set_parse_action(_build_hex_variable)
 
     hex_number_handling = hex_number | number_from_hex | variable_as_hex
 
-    ident = Word(alphas, alphanums + "_$")
-    plus, minus, mult, div, mod = map(Literal, "+-*/%")
-    lpar, rpar = map(Suppress, "()")
-    addop = plus | minus
-    multop = mult | div | mod
-    expop = Literal("^")
-    comparisonop = one_of(">= <= == != > <")
+    addop = one_of(["+", "-"])
+    multop = one_of(["*", "/", "%"])
+    expop = one_of(["^"])
+    comparisonop = one_of([">=", "<=", "==", "!=", ">", "<"])
 
     expr_list = DelimitedList(Group(bnf))
 
-    fn_call = ident + lpar - expr_list + rpar
-    fn_call.set_parse_action(_build_fn)
+    fn_call = Word(alphas, alphanums + "_$") + Suppress("(") - expr_list + Suppress(")")
     atom = addop[...] + (
-        (hex_number_handling | fn_call | pi | e | number | ident | variable)
-        | Group(lpar + bnf + rpar)
+        (hex_number_handling | fn_call | constant | number | variable)
+        | Group(Suppress("(") + bnf + Suppress(")"))
     )
-    atom.set_parse_action(_build_atom)
 
     power_expr = Forward()
     power_expr <<= atom + (expop + power_expr)[...]
-    power_expr.add_parse_action(_build_arithmetic_operation)
 
     multiplicative_expr = power_expr + (multop + power_expr)[...]
-    multiplicative_expr.add_parse_action(_build_arithmetic_operation)
 
     additive_expr = multiplicative_expr + (addop + multiplicative_expr)[...]
-    additive_expr.add_parse_action(_build_arithmetic_operation)
 
     comparison_expr = additive_expr + (comparisonop + additive_expr)[...]
-    comparison_expr.add_parse_action(_build_comparison_operation)
 
     bnf <<= comparison_expr
 
+    _map_actions(
+        (constant, _build_constant),
+        (number, _build_constant),
+        (variable, _build_variable),
+        (hex_number, _build_constant_from_hex),
+        (number_from_hex, _build_constant_from_hex),
+        (variable_as_hex, _build_hex_variable),
+        (fn_call, _build_fn),
+        (atom, _build_atom),
+        (power_expr, _build_arithmetic_operation),
+        (multiplicative_expr, _build_arithmetic_operation),
+        (additive_expr, _build_arithmetic_operation),
+        (comparison_expr, _build_comparison_operation),
+    )
     return bnf
 
 

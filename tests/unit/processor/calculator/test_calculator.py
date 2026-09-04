@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=too-many-positional-arguments
 import math
+import re
 
 import pytest
 
@@ -784,6 +785,41 @@ class TestCalculator(BaseProcessorTestCase):
     def test_builds_expected_ast(self):
         program = compile_expression("10 * cos( ${t} * pi + ${phase}) > 1 + 2 * (3 + 4)")
         diagram = program.get_diagram()
-        with open("tests/testdata/unit/calculator/ast/diagram.gv", "r", encoding="utf-8") as fp:
-            expected = fp.read()
-        assert diagram == expected
+        expected = """
+            digraph {
+                n0 [label = "<op '>'>";];
+                n1 [label = "<op '*'>";];
+                n2 [label = "<constant 10>";];
+                n3 [label = "<func 'cos'>";];
+                n4 [label = "<op '+'>";];
+                n5 [label = "<op '*'>";];
+                n6 [label = "<variable 't'>";];
+                n7 [label = "<constant 3.141592653589793>";];
+                n8 [label = "<variable 'phase'>";];
+                n9 [label = "<op '+'>";];
+                n10 [label = "<constant 1>";];
+                n11 [label = "<op '*'>";];
+                n12 [label = "<constant 2>";];
+                n13 [label = "<op '+'>";];
+                n14 [label = "<constant 3>";];
+                n15 [label = "<constant 4>";];
+                n0 -> n1;
+                n0 -> n9;
+                n1 -> n2;
+                n1 -> n3;
+                n3 -> n4;
+                n4 -> n5;
+                n4 -> n8;
+                n5 -> n6;
+                n5 -> n7;
+                n9 -> n10;
+                n9 -> n11;
+                n11 -> n12;
+                n11 -> n13;
+                n13 -> n14;
+                n13 -> n15;
+            }
+        """
+        diagram, _ = re.subn(r"\s+", " ", diagram)
+        expected, _ = re.subn(r"\s+", " ", expected)
+        assert diagram.strip() == expected.strip()
