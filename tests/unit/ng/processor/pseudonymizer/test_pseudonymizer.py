@@ -86,14 +86,14 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         else:
             Factory.create({"name": config})
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, regex_mapping", test_cases)
-    async def test_testcases(self, testcase, rule, event, expected, regex_mapping):
+    @pytest.mark.parametrize("rule, event, expected, regex_mapping", test_cases)
+    async def test_testcases(self, rule, event, expected, regex_mapping):
         if regex_mapping is not None:
             self.regex_mapping = regex_mapping
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
-        assert event.data == expected, testcase
+        assert event.data == expected
 
     async def _load_rule(self, rule):
         config = deepcopy(self.CONFIG)

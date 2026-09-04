@@ -3,6 +3,8 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-public-methods
 # pylint: disable=line-too-long
+# pylint: disable=too-many-lines
+
 import re
 from copy import deepcopy
 
@@ -15,11 +17,11 @@ from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
 )
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [  # testcase, rule, event, expected, regex_mapping
-    (
-        "simple pseudonymization",
+example_test_cases = [
+    pytest.param(
         {
             "filter": "event_id: 1234",
             "pseudonymizer": {"mapping": {"something": "RE_WHOLE_FIELD"}},
@@ -31,9 +33,13 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             "something": "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>",
         },
         None,
+        id="simple pseudonymization",
     ),
-    (
-        "pseudonymization_of_field_does_not_happen_if_already_pseudonymized",
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    pytest.param(
         {
             "filter": "event_id: 1234",
             "pseudonymizer": {"mapping": {"something": "RE_WHOLE_FIELD"}},
@@ -48,9 +54,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             "something": "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>",
         },
         None,
+        id="pseudonymization_of_field_does_not_happen_if_already_pseudonymized",
     ),
-    (
-        "pseudonymize_two_fields",
+    pytest.param(
         {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
@@ -81,9 +87,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             }
         },
         None,
+        id="pseudonymize_two_fields",
     ),
-    (
-        "match_regex_mapping_with_partial_match",
+    pytest.param(
         {
             "filter": 'winlog.event_id: 789 AND winlog.provider_name: "Test123"',
             "pseudonymizer": {
@@ -107,9 +113,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             }
         },
         None,
+        id="match_regex_mapping_with_partial_match",
     ),
-    (
-        "match replace whole field 1",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {"mapping": {"pseudo_this": "RE_WHOLE_FIELD_CAP"}},
@@ -125,9 +131,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="match replace whole field 1",
     ),
-    (
-        "match replace whole field 2",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {"mapping": {"pseudo_this": "RE_WHOLE_FIELD_EMPTY_CAPS"}},
@@ -143,9 +149,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="match replace whole field 2",
     ),
-    (
-        "match_capture_group_surrounded",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {"mapping": {"pseudo_this": "RE_CAP"}},
@@ -163,9 +169,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="match_capture_group_surrounded",
     ),
-    (
-        "match_capture_group_right",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {"mapping": {"pseudo_this": "RE_PATTERN_CAP"}},
@@ -182,9 +188,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="match_capture_group_right",
     ),
-    (
-        "match_capture_group_left",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {"mapping": {"pseudo_this": "RE_CAP_PATTERN"}},
@@ -201,9 +207,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="match_capture_group_left",
     ),
-    (
-        "match_two_capture_groups_covering_match",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {"mapping": {"pseudo_this": "RE_TWO_CAPS"}},
@@ -220,9 +226,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="match_two_capture_groups_covering_match",
     ),
-    (
-        "match_two_capture_groups_with_gap",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {"mapping": {"pseudo_this": "RE_TWO_CAPS_WITH_GAP"}},
@@ -240,9 +246,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="match_two_capture_groups_with_gap",
     ),
-    (
-        "pseudonymize_url_subdomain",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -263,9 +269,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_subdomain",
     ),
-    (
-        "pseudonymize_url_subdomain_without_scheme",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -285,9 +291,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_subdomain_without_scheme",
     ),
-    (
-        "pseudonymize_url_path",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -307,9 +313,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_path",
     ),
-    (
-        "pseudonymize_url_query_values",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -331,9 +337,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_query_values",
     ),
-    (
-        "pseudonymize_url_query_values_substrings",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -357,9 +363,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_query_values_substrings",
     ),
-    (
-        "pseudonymize_url_subdomain_in_sentence",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -380,9 +386,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_subdomain_in_sentence",
     ),
-    (
-        "pseudonymize_two_identical_urls_subdomain",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -406,9 +412,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_two_identical_urls_subdomain",
     ),
-    (
-        "pseudonymize_two_different_urls",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -433,9 +439,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_two_different_urls",
     ),
-    (
-        "pseudonymize_url_username_password",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -458,9 +464,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_username_password",
     ),
-    (
-        "pseudonymize_url_fragment",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -480,9 +486,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_fragment",
     ),
-    (
-        "pseudonymize_url_fragment_with_path_and_query",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -506,9 +512,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_fragment_with_path_and_query",
     ),
-    (
-        "pseudonymize_url_except_port",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -528,9 +534,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_except_port",
     ),
-    (
-        "pseudonymize_no_valid_html",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -551,9 +557,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_no_valid_html",
     ),
-    (
-        "pseudonymize_multiple_url_fields",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -583,9 +589,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_multiple_url_fields",
     ),
-    (
-        "pseudonymize_url_and_cap_groups",
+    pytest.param(
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -608,9 +614,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+        id="pseudonymize_url_and_cap_groups",
     ),
-    (
-        "pseudonymize_list_with_one_element",
+    pytest.param(
         {
             "filter": "pseudo_this",
             "pseudonymizer": {
@@ -628,9 +634,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ],
         },
         None,
+        id="pseudonymize_list_with_one_element",
     ),
-    (
-        "pseudonymize_list_with_two_equal_element",
+    pytest.param(
         {
             "filter": "pseudo_this",
             "pseudonymizer": {
@@ -649,9 +655,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ],
         },
         None,
+        id="pseudonymize_list_with_two_equal_element",
     ),
-    (
-        "pseudonymize_list_with_two_different_element",
+    pytest.param(
         {
             "filter": "pseudo_this",
             "pseudonymizer": {
@@ -670,9 +676,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ],
         },
         None,
+        id="pseudonymize_list_with_two_different_element",
     ),
-    (
-        "pseudonymize_one_element_from_list_with_two_different_elements",
+    pytest.param(
         {
             "filter": "pseudo_this",
             "pseudonymizer": {
@@ -691,8 +697,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ],
         },
         None,
+        id="pseudonymize_one_element_from_list_with_two_different_elements",
     ),
-]
+)
 
 
 class TestPseudonymizer(BaseProcessorTestCase):
@@ -737,11 +744,12 @@ class TestPseudonymizer(BaseProcessorTestCase):
             (
                 {"outputs": [{"kafka": "topic", "opensearch": "index_1"}]},
                 ValueError,
-                "Length of 'outputs' must be <= 1",
+                "not allowed to have more than one mapping item",
             ),
         ],
     )
-    def test_config_validation(self, config_change, error, msg):
+    def test_config_validation(self, config_change, error, msg, context, provision_context):
+        provision_context(context)
         config = deepcopy(self.CONFIG)
         config |= config_change
         if error:
@@ -750,13 +758,13 @@ class TestPseudonymizer(BaseProcessorTestCase):
         else:
             Factory.create({"name": config})
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, regex_mapping", test_cases)
-    def test_testcases(self, testcase, rule, event, expected, regex_mapping):
+    @pytest.mark.parametrize("rule, event, expected, regex_mapping", test_cases)
+    def test_testcases(self, rule, event, expected, regex_mapping):
         if regex_mapping is not None:
             self.regex_mapping = regex_mapping
         self._load_rule(rule)
         self.object.process(event)
-        assert event == expected, testcase
+        assert event == expected
 
     def _load_rule(self, rule):
         config = deepcopy(self.CONFIG)
