@@ -744,12 +744,11 @@ class TestPseudonymizer(BaseProcessorTestCase):
             (
                 {"outputs": [{"kafka": "topic", "opensearch": "index_1"}]},
                 ValueError,
-                "not allowed to have more than one mapping item",
+                "Length of 'outputs' must be <= 1",
             ),
         ],
     )
-    def test_config_validation(self, config_change, error, msg, context, provision_context):
-        provision_context(context)
+    def test_config_validation(self, config_change, error, msg):
         config = deepcopy(self.CONFIG)
         config |= config_change
         if error:
