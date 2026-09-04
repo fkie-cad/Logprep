@@ -1,9 +1,12 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=missing-function-docstring
 import logging
+from time import sleep
 from unittest import mock
 
-from logprep.util.context_managers import logqueue_listener, disable_loggers
+import pytest
+
+from logprep.util.context_managers import disable_loggers, logqueue_listener, timeout
 
 LOGGER = logging.getLogger()
 
@@ -62,3 +65,12 @@ class TestContextManagers:
                     logger.disabled = original_logger_states[logger.name]
                 except (AttributeError, KeyError):
                     pass
+
+    def test_timeout_context_manager(self):
+        with timeout(seconds=1):
+            sleep(0.9)
+        expected_message = "my-error-message"
+        with pytest.raises(TimeoutError) as error:
+            with timeout(seconds=1, error_message=expected_message):
+                sleep(1.1)
+        assert expected_message in str(error)

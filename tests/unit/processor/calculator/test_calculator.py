@@ -713,9 +713,8 @@ class TestCalculator(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("rule, error_type", setup_failure_test_cases)
     def test_testcases_failure_handling_at_setup(self, rule, error_type):
-        self._load_rule(rule)
         with pytest.raises(error_type):
-            self.object.setup()
+            self._load_rule(rule)
 
     @pytest.mark.parametrize(
         "expression, expected",

@@ -31,7 +31,7 @@ from logprep.processor.calculator.ast.exceptions import (
 )
 from logprep.processor.calculator.rule import CalculatorRule
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.decorators import timeout
+from logprep.util.context_managers import timeout
 
 
 class Calculator(FieldManager):
@@ -44,20 +44,12 @@ class Calculator(FieldManager):
         """Returns all rules as Calculator rule"""
         return cast(Sequence[CalculatorRule], super().rules)
 
-    def setup(self):
-        super().setup()
-        for rule in self.rules:
-            rule.init_calculator()
-
     def _apply_rules(self, event, rule):
-        assert isinstance(rule, CalculatorRule)
-
-        @timeout(seconds=rule.timeout)
-        def calculate():
-            return rule.program.evaluate(event)
-
+        rule = cast(CalculatorRule, rule)
         try:
-            result = calculate()
+            with timeout(seconds=rule.timeout):
+                result = rule.compiled_expression.evaluate(event)
+
             if result is not None:
                 self._write_target_field(event, rule, result)
         except MissingValueError:
