@@ -62,23 +62,4 @@ class Timestamper(FieldManager):
         if self._handle_missing_fields(event, rule, rule.source_fields, [source_value]):
             return None
 
-        return self._parse_datetime(str(source_value), event, rule)
-
-    @staticmethod
-    def _parse_datetime(
-        source_value: str,
-        event: dict,
-        rule: TimestamperRule,
-    ) -> datetime.datetime:
-        """Parse a timestamp value according to the configured source formats."""
-        for source_format in rule.source_format:
-            try:
-                return TimeParser.parse_datetime(
-                    source_value,
-                    source_format,
-                    rule.source_timezone,
-                )
-            except TimeParserException:
-                continue
-
-        raise ProcessingWarning("Could not parse timestamp", rule, event)
+        return rule.parse_datetime(str(source_value), event)

@@ -1,11 +1,15 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.base.exceptions import (
+    InvalidRuleDefinitionError,
+    ProcessingWarning,
+)
 from logprep.processor.timestamper.rule import TimestamperRule
 
 
@@ -145,6 +149,7 @@ class TestTimestamperRule:
         else:
             rule_instance = TimestamperRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
+
             for key, value in rule.get("timestamper").items():
                 assert hasattr(rule_instance._config, key)
 
@@ -191,3 +196,82 @@ class TestTimestamperRule:
 
         assert rule.source_format is None
         assert rule.source_timezone is None
+
+    @pytest.mark.parametrize(
+        "source_value, source_format, source_timezone, expected",
+        [
+            pytest.param(
+                "2009-06-15 13:45:30Z",
+                ["ISO8601"],
+                "UTC",
+                datetime(2009, 6, 15, 13, 45, 30, tzinfo=UTC),
+                id="iso8601",
+            ),
+            pytest.param(
+                "1700000000",
+                ["UNIX"],
+                "UTC",
+                datetime(2023, 11, 14, 22, 13, 20, tzinfo=UTC),
+                id="unix",
+            ),
+            pytest.param(
+                "2000 12 31 - 22:59:59",
+                ["%Y %m %d - %H:%M:%S"],
+                "Europe/Berlin",
+                datetime(
+                    2000,
+                    12,
+                    31,
+                    22,
+                    59,
+                    59,
+                    tzinfo=ZoneInfo("Europe/Berlin"),
+                ),
+                id="custom format with source timezone",
+            ),
+            pytest.param(
+                "2000 12 31 - 22:59:59",
+                ["%Y %m %d", "%Y %m %d - %H:%M:%S"],
+                "UTC",
+                datetime(2000, 12, 31, 22, 59, 59, tzinfo=UTC),
+                id="uses matching source format",
+            ),
+        ],
+    )
+    def test_parse_datetime(
+        self,
+        source_value,
+        source_format,
+        source_timezone,
+        expected,
+    ):
+        event = {"message": source_value}
+        rule = TimestamperRule.create_from_dict(
+            {
+                "filter": "message",
+                "timestamper": {
+                    "source_fields": ["message"],
+                    "source_format": source_format,
+                    "source_timezone": source_timezone,
+                },
+            }
+        )
+
+        result = rule.parse_datetime(source_value, event)
+
+        assert result == expected
+
+    def test_parse_datetime_raises_processing_warning_if_no_format_matches(self):
+        event = {"message": "not a timestamp"}
+        rule = TimestamperRule.create_from_dict(
+            {
+                "filter": "message",
+                "timestamper": {
+                    "source_fields": ["message"],
+                    "source_format": ["UNIX", "%Y-%m-%d"],
+                },
+            }
+        )
+
+        with pytest.raises(ProcessingWarning, match=r"Could not parse timestamp"):
+            rule.parse_datetime(event["message"], event)

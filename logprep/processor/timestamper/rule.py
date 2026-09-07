@@ -70,13 +70,18 @@ Examples for timestamper:
 
 """
 
+import datetime
 import typing
 from zoneinfo import ZoneInfo
 
 from attrs import Factory, define, field, validators
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.base.exceptions import (
+    InvalidRuleDefinitionError,
+    ProcessingWarning,
+)
 from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.util.time import TimeParser, TimeParserException
 
 
 def _validate_source_option(instance, attribute, value) -> None:
@@ -208,3 +213,20 @@ class TimestamperRule(FieldManagerRule):
     def source_timezone(self) -> ZoneInfo | None:
         """returns the source timezone"""
         return self.config.source_timezone
+
+    def parse_datetime(self, source_value: str, event: dict) -> datetime.datetime:
+        """Parse a timestamp value according to the configured source formats"""
+        assert self.source_format is not None
+        assert self.source_timezone is not None
+
+        for source_format in self.source_format:
+            try:
+                return TimeParser.parse_datetime(
+                    source_value,
+                    source_format,
+                    self.source_timezone,
+                )
+            except TimeParserException:
+                continue
+
+        raise ProcessingWarning("Could not parse timestamp", self, event)
