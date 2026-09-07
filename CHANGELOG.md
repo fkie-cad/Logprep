@@ -3,9 +3,11 @@
 
 ### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
+* calculator: extended expression functionality
 
 ### Improvements
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
+* calculator: optimized runtime expression evaluation
 
 ### Bugfix
 
