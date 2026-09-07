@@ -39,6 +39,8 @@
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
 * grokker: improve performance by stopping on first matching expression
+* nix: add git to dev shell
+
 
 ### Bugfix
 * chart: fix command handling
