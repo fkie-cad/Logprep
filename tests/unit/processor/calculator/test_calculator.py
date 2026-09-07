@@ -5,9 +5,6 @@ import re
 
 import pytest
 
-from logprep.processor.calculator.ast.compile import (
-    parse_expression,
-)
 from logprep.processor.calculator.ast.exceptions import (
     DivisionByZeroError,
     InvalidSyntaxError,
@@ -15,9 +12,13 @@ from logprep.processor.calculator.ast.exceptions import (
     UnknownFunctionError,
 )
 from logprep.processor.calculator.ast.node import get_ast_diagram
+from logprep.processor.calculator.ast.parse import (
+    parse_expression,
+)
 from logprep.processor.calculator.ast.util import (
     ValueType,
     parse_value,
+    read_hex_number,
 )
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -134,13 +135,13 @@ dynamic_expression_testcases = [
     ),
     pytest.param(
         "all(${a} + 0 == ${a}, 0 + ${a} == ${a})",
-        {"a": True},
+        {"a": 1},
         True,
         id="trigger addition optimizations",
     ),
     pytest.param(
         "all(0 - ${a} == - ${a}, ${a} - 0 == ${a}, ${a} - ${a} == 0)",
-        {"a": True},
+        {"a": 1},
         True,
         id="trigger subtraction optimizations",
     ),
@@ -770,13 +771,48 @@ class TestCalculator(BaseProcessorTestCase):
         [
             ("", ValueType.NUMBER),
             (None, ValueType.NUMBER),
+            ("nope", ValueType.NUMBER),
+            (True, ValueType.NUMBER),
+            (False, ValueType.NUMBER),
+            ([], ValueType.NUMBER),
+            (["123"], ValueType.NUMBER),
+            ({}, ValueType.NUMBER),
+            ({"123": 123}, ValueType.NUMBER),
             ("", ValueType.BOOLEAN),
             (None, ValueType.BOOLEAN),
+            ("True", ValueType.BOOLEAN),
+            ("true", ValueType.BOOLEAN),
+            ("TRUE", ValueType.BOOLEAN),
+            ([], ValueType.BOOLEAN),
+            ([True], ValueType.BOOLEAN),
+            ({}, ValueType.BOOLEAN),
+            ({"True": True}, ValueType.BOOLEAN),
+            (123, None),
         ],
     )
     def test_parse_values_fails(self, value, to_type):
         with pytest.raises(ParsingError):
             parse_value(value, to_type)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            None,
+            "",
+            "nope",
+            True,
+            False,
+            123,
+            12.3,
+            [],
+            ["FF"],
+            {},
+            {"ff": "ff"},
+        ],
+    )
+    def test_read_hex_number(self, value):
+        with pytest.raises(ParsingError):
+            read_hex_number(value)
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument

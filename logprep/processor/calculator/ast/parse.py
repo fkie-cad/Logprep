@@ -123,8 +123,9 @@ def _build_arithmetic_operation(parsed: ParseResults) -> ASTNode:
 
 
 def _build_comparison_operation(parsed: ParseResults) -> ASTNode:
+    assert len(parsed) % 2 == 1
+    assert all(isinstance(parsed[i], ASTNode) for i in range(0, len(parsed), 2))
     if len(parsed) == 1:
-        assert isinstance(parsed[0], ASTNode)
         return parsed[0]
 
     if len(parsed) > 5:
@@ -153,15 +154,10 @@ def _build_comparison_operation(parsed: ParseResults) -> ASTNode:
             upper_op == "<=",
         )
 
-    if len(parsed) != 3:
-        raise InvalidSyntaxError("Comparisons needs two operands.")
-
     lhs = parsed[0]
     operator_symbol = parsed[1]
     rhs = parsed[2]
-    assert isinstance(lhs, ASTNode)
     assert isinstance(operator_symbol, str)
-    assert isinstance(rhs, ASTNode)
     assert operator_symbol in COMPARISON_OPERATORS
     operator_type = COMPARISON_OPERATORS[operator_symbol]
     return operator_type(lhs, rhs)

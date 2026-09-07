@@ -24,10 +24,10 @@ class ValueType(Enum):
 def parse_value(value: Any, expected_type: ValueType) -> Any:
     match expected_type:
         case ValueType.NUMBER:
-            if isinstance(value, (int, float)):
-                return value
             if isinstance(value, bool):
                 raise ParsingError("Expected number got boolean.")
+            if isinstance(value, (int, float)):
+                return value
             if isinstance(value, str):
                 if value.upper() == "PI":
                     return math.pi
