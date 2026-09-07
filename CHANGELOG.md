@@ -5,6 +5,7 @@
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
 
 ### Improvements
+* timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
 
 ### Bugfix
 
