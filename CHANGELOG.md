@@ -24,7 +24,7 @@
 * ci: enforce CHANGELOG.md is updated
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
-* nix: fix git setup for macosx
+* nix: add git to dev shell
 
 ### Bugfix
 * chart: fix command handling
