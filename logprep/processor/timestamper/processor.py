@@ -24,7 +24,6 @@ Processor Configuration
 .. automodule:: logprep.processor.timestamper.rule
 """
 
-import datetime
 import typing
 
 from logprep.processor.base.exceptions import ProcessingWarning
@@ -42,24 +41,27 @@ class Timestamper(FieldManager):
 
     def _apply_rules(self, event: dict, rule: Rule) -> None:
         rule = typing.cast(TimestamperRule, rule)
-
-        parsed_datetime = self._get_datetime(event, rule)
-        if parsed_datetime is None:
-            return
-
-        result = parsed_datetime.astimezone(rule.target_timezone).isoformat().replace("+00:00", "Z")
-        self._write_target_field(event, rule, result)
-
-    def _get_datetime(self, event: dict, rule: TimestamperRule) -> datetime.datetime | None:
-        """Return the datetime to use for timestamp generation.
-
-        If no source field is configured, the current time is used.
-        """
-        if not rule.source_fields:
-            return TimeParser.now(rule.target_timezone)
-
         source_value = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [source_value]):
-            return None
+            return
+        source_value = str(source_value)
 
-        return rule.parse_datetime(str(source_value), event)
+        source_timezone, target_timezone, source_formats = (
+            rule.source_timezone,
+            rule.target_timezone,
+            rule.source_format,
+        )
+        parsed_successfully = False
+        for source_format in source_formats:
+            try:
+                parsed_datetime = TimeParser.parse_datetime(
+                    source_value, source_format, source_timezone
+                )
+            except TimeParserException:
+                continue
+            result = parsed_datetime.astimezone(target_timezone).isoformat().replace("+00:00", "Z")
+            self._write_target_field(event, rule, result)
+            parsed_successfully = True
+            break
+        if not parsed_successfully:
+            raise ProcessingWarning(str("Could not parse timestamp"), rule, event)

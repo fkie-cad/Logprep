@@ -334,6 +334,14 @@ class Rule:
     def failure_tags(self):
         return self._config.tag_on_failure
 
+    # pylint: enable=C0111
+
+    @classmethod
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        """normalizes rule dict before create rule config object
+        can be used for deprecating rule language.
+        """
+
     @classmethod
     def create_from_dict(cls, rule: dict, processor_name: str | None = None) -> "Rule":
         """Create a Rule instance from a dictionary.
@@ -353,6 +361,7 @@ class Rule:
             If the rule configuration is invalid or missing required fields.
         """
 
+        cls.normalize_rule_dict(rule)
         filter_expression = Rule._create_filter_expression(rule)
         cls.rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
         if not cls.rule_type:

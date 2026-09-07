@@ -2,7 +2,6 @@
 ### Breaking
 
 ### Features
-* timestamper: support generating timestamps from the current time when no `source_fields` are configured
 
 ### Improvements
 
