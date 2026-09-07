@@ -4,11 +4,17 @@
 # pylint: disable=too-many-positional-arguments
 
 import re
+from datetime import UTC, datetime
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from logprep.processor.field_manager.processor import FieldManager
+from logprep.util.time import TimeParser
 from tests.unit.processor.base import BaseProcessorTestCase
+
+FIXED_NOW = datetime(2026, 9, 2, 10, 15, 30, 123456, tzinfo=UTC)
 
 test_cases = [  # testcase, rule, event, expected
     (
@@ -444,6 +450,42 @@ test_cases = [  # testcase, rule, event, expected
     ),
 ]
 
+current_time_test_cases = [
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {},
+        },
+        {
+            "message": "whatever",
+        },
+        {
+            "message": "whatever",
+            "@timestamp": "2026-09-02T10:15:30.123456Z",
+        },
+        ZoneInfo("UTC"),
+        id="uses current time when source fields are omitted",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": [],
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "whatever",
+        },
+        {
+            "message": "whatever",
+            "@timestamp": "2026-09-02T12:15:30.123456+02:00",
+        },
+        ZoneInfo("Europe/Berlin"),
+        id="uses current time when source fields are empty",
+    ),
+]
+
 failure_test_cases = [
     (
         "parsing timestamp fails on empty message",
@@ -619,6 +661,25 @@ class TestTimestamper(BaseProcessorTestCase):
         self._load_rule(rule)
         self.object.process(event)
         assert event == expected, testcase
+
+    @pytest.mark.parametrize(
+        "rule, event, expected, target_timezone",
+        current_time_test_cases,
+    )
+    def test_uses_current_time_without_source_fields(
+        self,
+        rule,
+        event,
+        expected,
+        target_timezone,
+    ):
+        self._load_rule(rule)
+
+        with patch.object(TimeParser, "now", return_value=FIXED_NOW) as mock_now:
+            self.object.process(event)
+
+        mock_now.assert_called_once_with(target_timezone)
+        assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
