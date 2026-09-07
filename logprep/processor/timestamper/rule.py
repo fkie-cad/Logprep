@@ -75,7 +75,6 @@ from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
@@ -157,34 +156,6 @@ class TimestamperRule(FieldManagerRule):
         """ timezone for target_field. defaults to :code:`UTC`"""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
-
-    @classmethod
-    def normalize_rule_dict(cls, rule: dict) -> None:
-        """Normalize and validate the timestamper rule configuration"""
-        super().normalize_rule_dict(rule)
-        cls._validate_source_configuration(rule)
-
-    @staticmethod
-    def _validate_source_configuration(rule: dict) -> None:
-        """Validate configuration options that require source_fields"""
-        config = rule.get("timestamper")
-
-        if not isinstance(config, dict) or config.get("source_fields"):
-            return
-
-        invalid_options = [
-            option for option in ("source_format", "source_timezone") if option in config
-        ]
-
-        if not invalid_options:
-            return
-
-        if len(invalid_options) == 1:
-            message = f"{invalid_options[0]} requires source_fields"
-        else:
-            message = f"{', '.join(invalid_options)} require source_fields"
-
-        raise InvalidRuleDefinitionError(message)
 
     @property
     def config(self) -> Config:
