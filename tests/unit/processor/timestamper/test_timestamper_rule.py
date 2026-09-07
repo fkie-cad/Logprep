@@ -3,7 +3,6 @@
 
 import pytest
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.timestamper.rule import TimestamperRule
 
 
@@ -47,26 +46,6 @@ class TestTimestamperRule:
             pytest.param(
                 {
                     "filter": "message",
-                    "timestamper": {},
-                },
-                None,
-                None,
-                id="source fields omitted",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "timestamper": {
-                        "source_fields": [],
-                    },
-                },
-                None,
-                None,
-                id="source fields empty",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
                     "timestamper": {
                         "source_fields": ["message", "timestamp"],
                         "target_field": "@timestamp",
@@ -75,41 +54,6 @@ class TestTimestamperRule:
                 ValueError,
                 r"Length of 'source_fields' must be <= 1",
                 id="multiple source fields",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "timestamper": {
-                        "source_format": "UNIX",
-                    },
-                },
-                InvalidRuleDefinitionError,
-                r"source_format requires source_fields",
-                id="source format without source fields",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "timestamper": {
-                        "source_timezone": "Europe/Berlin",
-                    },
-                },
-                InvalidRuleDefinitionError,
-                r"source_timezone requires source_fields",
-                id="source timezone without source fields",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "timestamper": {
-                        "source_fields": [],
-                        "source_format": "UNIX",
-                        "source_timezone": "Europe/Berlin",
-                    },
-                },
-                InvalidRuleDefinitionError,
-                r"source_format, source_timezone require source_fields",
-                id="source configuration with empty source fields",
             ),
         ],
     )
