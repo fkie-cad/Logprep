@@ -85,7 +85,12 @@ from logprep.util.time import TimeParser, TimeParserException
 
 
 def _validate_source_option(instance, attribute, value) -> None:
-    """Validate source options when current time is used"""
+    """Validate source options depending on source_fields"""
+    if instance.source_fields and value is None:
+        raise InvalidRuleDefinitionError(
+            f"{attribute.name} must not be None when source_fields is configured"
+        )
+
     if not instance.source_fields and value is not None:
         raise InvalidRuleDefinitionError(
             f"{attribute.name} is not allowed when source_fields is omitted or empty"

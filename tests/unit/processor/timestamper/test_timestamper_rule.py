@@ -140,6 +140,30 @@ class TestTimestamperRule:
                 r"source_timezone is not allowed when source_fields is omitted or empty",
                 id="source timezone with empty source fields",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "timestamper": {
+                        "source_fields": ["message"],
+                        "source_format": None,
+                    },
+                },
+                InvalidRuleDefinitionError,
+                r"source_format must not be None when source_fields is configured",
+                id="source format none with source fields",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "timestamper": {
+                        "source_fields": ["message"],
+                        "source_timezone": None,
+                    },
+                },
+                InvalidRuleDefinitionError,
+                r"source_timezone must not be None when source_fields is configured",
+                id="source timezone none with source fields",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
