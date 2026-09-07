@@ -52,7 +52,7 @@ class Calculator(FieldManager):
                 event,
                 rule,
                 rule.source_fields,
-                [None],  # TODO: interace for utility function is terrible.
+                [None],
             )
         except CalculatorError as error:
             self._handle_warning_error(event, rule, error)

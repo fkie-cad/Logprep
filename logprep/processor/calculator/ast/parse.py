@@ -1,5 +1,6 @@
+"""Functionality to parse expressions to an abstract syntax tree"""
+
 # pylint: disable=missing-docstring
-# pylint: disable=invalid-name
 
 from re import RegexFlag
 from typing import Callable
@@ -144,14 +145,15 @@ def _build_comparison_operation(parsed: ParseResults) -> ASTNode:
         assert isinstance(upper_bound, ASTNode)
         if not all(op in ("<", "<=") for op in (lower_op, upper_op)):
             raise InvalidSyntaxError(
-                f"Range check required comparison to be '<' or '<=' got {lower_op !r} and {upper_op !r}."
+                "Range check required comparison to be '<' or '<='"
+                f" got {lower_op !r} and {upper_op !r}."
             )
         return RangeCheckASTNode(
             lower_bound,
-            lower_op == "<=",
             value,
             upper_bound,
-            upper_op == "<=",
+            lower_bound_is_inclusive=lower_op == "<=",
+            upper_bound_is_inclusive=upper_op == "<=",
         )
 
     lhs = parsed[0]
@@ -172,6 +174,8 @@ def _map_actions(*mappings: tuple[ParserElement, Callable[[ParseResults], ASTNod
 
 
 def _setup_syntax() -> ParserElement:
+    # pylint: disable=too-many-locals
+
     expression = Forward()
 
     constant = CaselessKeyword("E") | CaselessKeyword("PI")
@@ -249,6 +253,26 @@ _SYNTAX = _setup_syntax()
 
 
 def parse_expression(expression: str) -> ASTNode:
+    """Parse an expression into an abstract syntax tree.
+
+    Parameters
+    ----------
+    expression : str
+        A string containing the expression to be parsed.
+
+    Returns
+    -------
+    ASTNode
+        The root node to of the abstract syntax tree generated from the
+        expression passed.
+
+    Raises
+    ------
+    InvalidSyntaxError
+        Raised if the parsed expression can not be parsed.
+    UnknownFunctionError
+        Raised if an unknown function is raised.
+    """
     try:
         root_node = _SYNTAX.parse_string(expression, parse_all=True)[0]
     except (ParseException, ParseSyntaxException) as error:

@@ -144,8 +144,8 @@ import re
 
 from attrs import define, field, validators
 
-from logprep.processor.calculator.ast.parse import parse_expression
 from logprep.processor.calculator.ast.node import ASTNode
+from logprep.processor.calculator.ast.parse import parse_expression
 from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
 from logprep.util.context_managers import timeout
 
@@ -186,6 +186,7 @@ class CalculatorRule(FieldManagerRule):
 
     @property
     def parsed_expression(self) -> ASTNode:
+        """The parsed and optimized calculation expression"""
         return self.__parsed_expression
 
     @property
