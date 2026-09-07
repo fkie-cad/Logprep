@@ -1,14 +1,14 @@
 import math
 import operator
+import typing
 from abc import ABC, abstractmethod
+from types import EllipsisType
 from typing import Any, Callable, ClassVar, Protocol, Sequence, TypeAlias
 
 from logprep.processor.calculator.ast.exceptions import (
     DivisionByZeroError,
-    EvaluationError,
     InvalidSyntaxError,
     MissingValueError,
-    UnknownFunctionError,
 )
 from logprep.processor.calculator.ast.util import (
     ValueType,
@@ -243,12 +243,15 @@ class OperationASTNode(CompositeASTNode):
         rhs_optimized = self.rhs.optimize()
 
         if lhs_optimized.is_constant and rhs_optimized.is_constant:
-            return ConstantNumberASTNode(
-                self.operation_fn(
-                    _constant_value(lhs_optimized),
-                    _constant_value(rhs_optimized),
+            try:
+                return _VALUE_CLASS[self.output_type](
+                    self.operation_fn(
+                        _constant_value(lhs_optimized),
+                        _constant_value(rhs_optimized),
+                    )
                 )
-            )
+            except ZeroDivisionError as error:
+                raise DivisionByZeroError("Zero division error on optimization") from error
         if specific_optimization := self._operation_specific_optimizations(
             lhs_optimized, rhs_optimized
         ):
@@ -269,38 +272,6 @@ class OperationASTNode(CompositeASTNode):
 class ArithmeticASTNode(OperationASTNode):
     input_type = ValueType.NUMBER
     output_type = ValueType.NUMBER
-
-    @abstractmethod
-    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None: ...
-
-    def optimize(self):
-        lhs_optimized = self.lhs.optimize()
-        rhs_optimized = self.rhs.optimize()
-
-        if lhs_optimized.is_constant and rhs_optimized.is_constant:
-            try:
-                return ConstantNumberASTNode(
-                    self.operation_fn(
-                        _constant_value(lhs_optimized),
-                        _constant_value(rhs_optimized),
-                    )
-                )
-            except ZeroDivisionError as error:
-                raise DivisionByZeroError("Zero division error on optimization") from error
-        if specific_optimization := self._operation_specific_optimizations(
-            lhs_optimized, rhs_optimized
-        ):
-            return specific_optimization
-
-        return type(self)(lhs_optimized, rhs_optimized)
-
-    def evaluate(self, context):
-        try:
-            return super().evaluate(context)
-        except ZeroDivisionError as error:
-            # division and power operator might run into ZeroDevisionErrors
-            # we want to repack those into a class inheriting from LogprepException
-            raise DivisionByZeroError("Division by zero.") from error
 
 
 class AddASTNode(ArithmeticASTNode):
@@ -341,7 +312,15 @@ class MulASTNode(ArithmeticASTNode):
         return None
 
 
-class DivASTNode(ArithmeticASTNode):
+class DivArithmeticASTNode(ArithmeticASTNode):
+    def evaluate(self, context):
+        try:
+            return super().evaluate(context)
+        except ZeroDivisionError as error:
+            raise DivisionByZeroError("Division by zero.") from error
+
+
+class DivASTNode(DivArithmeticASTNode):
     operator_symbol = "/"
     operation_fn = operator.truediv
 
@@ -353,7 +332,7 @@ class DivASTNode(ArithmeticASTNode):
         return None
 
 
-class ModASTNode(ArithmeticASTNode):
+class ModASTNode(DivArithmeticASTNode):
     operator_symbol = "%"
     operation_fn = operator.mod
 
@@ -363,7 +342,7 @@ class ModASTNode(ArithmeticASTNode):
         return None
 
 
-class PowASTNode(ArithmeticASTNode):
+class PowASTNode(DivArithmeticASTNode):
     operator_symbol = "^"
     operation_fn = operator.pow
 
@@ -380,14 +359,6 @@ class PowASTNode(ArithmeticASTNode):
 class ComparisonASTNode(OperationASTNode):
     input_type = ValueType.NUMBER
     output_type = ValueType.BOOLEAN
-
-    def optimize(self):
-        if not all(child.is_constant for child in self.children):
-            return type(self)(
-                self.lhs,
-                self.rhs,
-            )
-        return ConstantBooleanASTNode(_constant_value(self))
 
 
 class EqualASTNode(ComparisonASTNode):
@@ -443,10 +414,10 @@ class RangeCheckASTNode(CompositeASTNode):
         if self.is_constant:
             return ConstantBooleanASTNode(_constant_value(self))
         return type(self)(
-            self.lower_bound,
+            self.lower_bound.optimize(),
             self.lower_bound_is_inclusive,
-            self.value,
-            self.upper_bound,
+            self.value.optimize(),
+            self.upper_bound.optimize(),
             self.upper_bound_is_inclusive,
         )
 
@@ -486,23 +457,49 @@ COMPARISON_OPERATORS = {
 }
 
 
+ArgBounds: TypeAlias = tuple[int | EllipsisType, int | EllipsisType]
+
+
 class FunctionCallASTNode(CompositeASTNode):
 
-    supported_functions: ClassVar[dict[str, Callable[..., Any]]]
+    supported_functions: ClassVar[dict[str, tuple[ArgBounds, Callable[..., Any]]]]
 
     @classmethod
-    def implements(cls, function_name: str) -> bool:
-        return function_name in cls.supported_functions
+    def create(
+        cls, function_name: str, children: Sequence[ASTNode]
+    ) -> typing.Optional["FunctionCallASTNode"]:
+        if function_name not in cls.supported_functions:
+            return None
+        arg_bounds, function = cls.supported_functions[function_name]
+        min_param_count, max_param_count = arg_bounds
+        if min_param_count is not Ellipsis and len(children) < min_param_count:
+            raise InvalidSyntaxError(
+                f"Function {function_name !r} required at least {min_param_count} paramters got {len(children)}"
+            )
+        if max_param_count is not Ellipsis and len(children) > max_param_count:
+            raise InvalidSyntaxError(
+                f"Function {function_name !r} allows at maximum {max_param_count} paramters got {len(children)}"
+            )
 
-    def __init__(self, function_name: str, children: Sequence[ASTNode]):
+        return cls(function_name, function, arg_bounds, children)
+
+    def __init__(
+        self,
+        function_name: str,
+        function: Callable[..., Any],
+        arg_bounds: ArgBounds,
+        children: Sequence[ASTNode],
+    ):
         super().__init__(*children)
-        if function_name not in self.supported_functions:
-            raise UnknownFunctionError(f"Unknown function {function_name !r}")
         self.function_name = function_name
+        self.function = function
+        self.arg_bounds = arg_bounds
 
     def optimize(self) -> ASTNode:
         optimized_clone = type(self)(
             function_name=self.function_name,
+            function=self.function,
+            arg_bounds=self.arg_bounds,
             children=[child.optimize() for child in self.children],
         )
         if not all(child.is_constant for child in optimized_clone.children):
@@ -513,12 +510,8 @@ class FunctionCallASTNode(CompositeASTNode):
 
     def evaluate(self, context):
         operands = [child.evaluate(context) for child in self.children]
-        try:
-            return self.supported_functions[self.function_name](*operands)
-        except Exception as error:
-            raise EvaluationError(
-                f"Failed on operator {self.function_name !r} with values {operands !r}"
-            ) from error
+        _arg_count, function = self.supported_functions[self.function_name]
+        return function(*operands)
 
     def __repr__(self):
         return f"<func {self.function_name !r}>"
@@ -530,18 +523,18 @@ _EPSILON = 1e-12
 
 class NumericFunctionCallASTNode(FunctionCallASTNode):
     supported_functions = {
-        "sin": math.sin,
-        "cos": math.cos,
-        "tan": math.tan,
-        "exp": math.exp,
-        "abs": abs,
-        "trunc": int,
-        "from_hex": lambda a: int(a, 16),
-        "round": round,
-        "sgn": lambda a: -1 if a < -_EPSILON else 1 if a > _EPSILON else 0,
-        # functions with multiple arguments
-        "multiply": lambda a, b: a * b,
-        "hypot": math.hypot,
+        "sin": ((1, 1), math.sin),
+        "cos": ((1, 1), math.cos),
+        "tan": ((1, 1), math.tan),
+        "exp": ((1, 1), math.exp),
+        "abs": ((1, 1), abs),
+        "trunc": ((1, 1), int),
+        "round": ((1, 2), round),
+        "sgn": ((1, 1), lambda a: -1 if a < -_EPSILON else 1 if a > _EPSILON else 0),
+        "multiply": ((2, 2), lambda a, b: a * b),
+        "hypot": ((1, ...), math.hypot),
+        "min": ((2, ...), min),
+        "max": ((2, ...), max),
     }
     input_type = ValueType.NUMBER
     output_type = ValueType.NUMBER
@@ -563,8 +556,6 @@ class AllFunctionASTNode(CompositeASTNode):
         if any(child.is_constant and not _constant_value(child) for child in self.children):
             return ConstantBooleanASTNode(False)
         optimized_children = [child.optimize() for child in self.children if not child.is_constant]
-        if len(optimized_children) == 1:
-            return optimized_children[0]
         optimized_children.sort(key=lambda child: child.complexity)
         return type(self)(*optimized_children)
 
@@ -588,8 +579,6 @@ class AnyFunctionASTNode(CompositeASTNode):
         if any(child.is_constant and _constant_value(child) for child in self.children):
             return ConstantBooleanASTNode(True)
         optimized_children = [child.optimize() for child in self.children if not child.is_constant]
-        if len(optimized_children) == 1:
-            return optimized_children[0]
         optimized_children.sort(key=lambda child: child.complexity)
         return type(self)(*optimized_children)
 

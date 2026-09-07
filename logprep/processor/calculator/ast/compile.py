@@ -22,7 +22,10 @@ from pyparsing import (
     one_of,
 )
 
-from logprep.processor.calculator.ast.exceptions import InvalidSyntaxError
+from logprep.processor.calculator.ast.exceptions import (
+    InvalidSyntaxError,
+    UnknownFunctionError,
+)
 from logprep.processor.calculator.ast.node import (
     ARITHMETIC_OPERATORS,
     COMPARISON_OPERATORS,
@@ -34,7 +37,6 @@ from logprep.processor.calculator.ast.node import (
     NegateASTNode,
     NumericFunctionCallASTNode,
     RangeCheckASTNode,
-    UnknownFunctionError,
     VariableASTNode,
 )
 from logprep.processor.calculator.ast.util import read_hex_number
@@ -87,9 +89,6 @@ def _build_atom(parsed: ParseResults) -> ASTNode:
 
 
 def _build_fn(parsed: ParseResults) -> ASTNode:
-    if len(parsed) == 1:
-        assert isinstance(parsed[0], ASTNode)
-        return parsed[0]
     assert len(parsed) >= 1, parsed
     function_name = parsed[0]
     assert isinstance(function_name, str)
@@ -101,13 +100,10 @@ def _build_fn(parsed: ParseResults) -> ASTNode:
     if function_name == "any":
         return AnyFunctionASTNode(*params)
 
-    if not NumericFunctionCallASTNode.implements(function_name):
-        raise UnknownFunctionError(f"Unknown function {function_name !r}.")
+    if numeric_function := NumericFunctionCallASTNode.create(function_name, params):
+        return numeric_function
 
-    return NumericFunctionCallASTNode(
-        function_name,
-        params,
-    )
+    raise UnknownFunctionError(f"Unknown function {function_name !r}.")
 
 
 def _build_arithmetic_operation(parsed: ParseResults) -> ASTNode:
@@ -215,7 +211,7 @@ def _setup_syntax() -> ParserElement:
     function_call = (
         Word(alphas, alphanums + "_$")
         + Suppress("(")
-        - DelimitedList(Group(expression))
+        - Optional(DelimitedList(Group(expression)))
         + Suppress(")")
     )
     atomic_expression = addition_operators[...] + (

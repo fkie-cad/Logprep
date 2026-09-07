@@ -12,6 +12,7 @@ from logprep.processor.calculator.ast.exceptions import (
     DivisionByZeroError,
     InvalidSyntaxError,
     ParsingError,
+    UnknownFunctionError,
 )
 from logprep.processor.calculator.ast.node import get_ast_diagram
 from logprep.processor.calculator.ast.util import (
@@ -32,6 +33,7 @@ static_expression_test_cases = [
     ("(9+3) / 11", (9 + 3.0) / 11),
     ("9 - 12 - 6", 9 - 12 - 6),
     ("9 - (12 - 6)", 9 - (12 - 6)),
+    ("0 - 5", -5),
     ("2*3.14159", 2 * 3.14159),
     ("3.1415926535*3.1415926535 / 10", 3.1415926535 * 3.1415926535 / 10),
     ("PI * PI / 10", math.pi * math.pi / 10),
@@ -40,6 +42,7 @@ static_expression_test_cases = [
     ("round(PI^2)", round(math.pi**2)),
     ("6.02E23 * 8.048", 6.02e23 * 8.048),
     ("e / 3", math.e / 3),
+    ("5 % 2", 5 % 2),
     ("sin(PI/2)", math.sin(math.pi / 2)),
     ("10+sin(PI/4)^2", 10 + math.sin(math.pi / 4) ** 2),
     ("trunc(E)", int(math.e)),
@@ -55,6 +58,10 @@ static_expression_test_cases = [
     ("2^3+2", 2**3 + 2),
     ("2^3+5", 2**3 + 5),
     ("2^9", 2**9),
+    ("1 == 1", True),
+    ("1 == 1.001", False),
+    ("1 != 1", False),
+    ("1 != 1.001", True),
     ("2 > 1", True),
     ("1 > 1", False),
     ("1 > 2", False),
@@ -90,6 +97,8 @@ static_expression_test_cases = [
     ("any(0,0,0,1)", True),
     ("any(3>3,2>1)", True),
     ("any(3>3,2>2)", False),
+    ("all(1*2,2*1,2/1,1+0,0+1,1-0)", True),
+    ("any(0*4,0/2,0%2)", False),
 ]
 
 dynamic_expression_testcases = [
@@ -122,6 +131,78 @@ dynamic_expression_testcases = [
         {"a": 1, "b": 2.0, "c": "3"},
         7.0,
         id="arithmetic with variables (mixed types) test",
+    ),
+    pytest.param(
+        "all(${a} + 0 == ${a}, 0 + ${a} == ${a})",
+        {"a": True},
+        True,
+        id="trigger addition optimizations",
+    ),
+    pytest.param(
+        "all(0 - ${a} == - ${a}, ${a} - 0 == ${a}, ${a} - ${a} == 0)",
+        {"a": True},
+        True,
+        id="trigger subtraction optimizations",
+    ),
+    pytest.param(
+        "all(${a} * 1, 1 * ${a}, ${a} / 1, ${a} % 2)",
+        {"a": 5},
+        True,
+        id="trigger multiplication optimizations",
+    ),
+    pytest.param(
+        "any(0 * 0, 0 * ${a}, ${a} * 0)",
+        {"a": 1},
+        False,
+        id="trigger multiplication optimizations 2",
+    ),
+    pytest.param(
+        "all(${a}^0==1, 1^${a} == 1, ${a}^1 == ${a})",
+        {"a": 5},
+        True,
+        id="trigger power optimizations",
+    ),
+    pytest.param(
+        "(1 + 1) / ${b}",
+        {"b": 4},
+        0.5,
+        id="trigger partial operand optimization",
+    ),
+    pytest.param(
+        "(1 -1 ) - (${a} - 0)",
+        {"a": 123},
+        -123,
+        id="trigger subtraction optimization",
+    ),
+    pytest.param(
+        "-(1 + ${b}) < ${b}",
+        {"b": 4},
+        True,
+        id="trigger partial operand optimization",
+    ),
+    pytest.param(
+        "round(${a} * pi, 2)",
+        {"a": 2},
+        6.28,
+        id="trigger function parameter optimization",
+    ),
+    pytest.param(
+        "all(${a}, 1 < 0)",
+        {"a": 123},
+        False,
+        id="trigger all optimization",
+    ),
+    pytest.param(
+        "any(${a}, 1 == 1)",
+        {"a": 0},
+        True,
+        id="trigger any optimization",
+    ),
+    pytest.param(
+        "1 < ${b} < (1 + 2)",
+        {"b": 2},
+        True,
+        id="trigger partial range optimization",
     ),
 ]
 
@@ -756,29 +837,50 @@ class TestCalculator(BaseProcessorTestCase):
         assert result == expected
 
     @pytest.mark.parametrize(
-        "expression",
+        "expression,error_type",
         [
-            "1 < 2 == 2",
+            ("(1 < 2) + 1", InvalidSyntaxError),
+            ("1 + (1 < 2)", InvalidSyntaxError),
+            ("-(1 < 2)", InvalidSyntaxError),
+            ("unknown()", UnknownFunctionError),
+            ("unknown(1,2,3)", UnknownFunctionError),
+            ("cos()", InvalidSyntaxError),
+            ("cos(1, 2)", InvalidSyntaxError),
+            ("(1 < 2) == (2 < 3)", InvalidSyntaxError),
+            ("all(1, 1) * 2", InvalidSyntaxError),
+            ("1 < 2 == 2", InvalidSyntaxError),
+            ("1 < 2 < 3 < 4", InvalidSyntaxError),
         ],
     )
-    def test_ast_rejects_chained_comparisons(self, expression):
-
-        with pytest.raises(InvalidSyntaxError):
+    def test_invalid_syntax_raises(self, expression, error_type):
+        with pytest.raises(error_type):
             parse_expression(expression)
 
     @pytest.mark.parametrize(
         "expression",
         [
-            "(1 < 2) + 1",
-            "1 + (1 < 2)",
-            "-(1 < 2)",
-            "(1 < 2) == (2 < 3)",
-            "all(1, 1) * 2",
+            "${a} / (1-1)",
+            "${a} % (1-1)",
+            "0^-1",
         ],
     )
-    def test_ast_rejects_boolean_operands(self, expression):
-        with pytest.raises(InvalidSyntaxError):
-            parse_expression(expression)
+    def test_division_by_zero_on_optimization_raises(self, expression):
+        parsed = parse_expression(expression)
+        with pytest.raises(DivisionByZeroError):
+            parsed.optimize()
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "${a} / (1-1)",
+            "${a} % (1-1)",
+            "0 ^ -(${a})",
+        ],
+    )
+    def test_division_by_zero_on_evaluate(self, expression):
+        parsed = parse_expression(expression)
+        with pytest.raises(DivisionByZeroError):
+            parsed.evaluate({"a": 2})
 
     def test_get_ast_diagram(self):
         parsed = parse_expression("10 * cos( ${t} * pi + ${phase}) > 1 + 2 * (3 + 4)")
