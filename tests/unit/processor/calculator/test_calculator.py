@@ -810,7 +810,7 @@ class TestCalculator(BaseProcessorTestCase):
             {"ff": "ff"},
         ],
     )
-    def test_read_hex_number(self, value):
+    def test_read_hex_number_raises(self, value):
         with pytest.raises(ParsingError):
             read_hex_number(value)
 
