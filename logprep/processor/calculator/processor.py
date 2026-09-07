@@ -23,7 +23,7 @@ Processor Configuration
 .. automodule:: logprep.processor.calculator.rule
 """
 
-from typing import Sequence, cast
+from typing import cast
 
 from logprep.processor.calculator.ast.exceptions import (
     CalculatorError,
@@ -38,11 +38,6 @@ class Calculator(FieldManager):
     """A Processor to calculate with and without field values"""
 
     rule_class = CalculatorRule
-
-    @property
-    def rules(self) -> Sequence[CalculatorRule]:
-        """Returns all rules as Calculator rule"""
-        return cast(Sequence[CalculatorRule], super().rules)
 
     def _apply_rules(self, event, rule):
         rule = cast(CalculatorRule, rule)
