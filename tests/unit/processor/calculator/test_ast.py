@@ -47,6 +47,8 @@ static_expression_test_cases = [
     ("trunc(-E)", int(-math.e)),
     ("from_hex(4B)", 75),
     ("round(E)", round(math.e)),
+    ("Round(e)", round(math.e)),
+    ("ROUND(e)", round(math.e)),
     ("round(-E)", round(-math.e)),
     ("E^PI", math.e**math.pi),
     ("exp(0)", 1),
@@ -97,6 +99,7 @@ static_expression_test_cases = [
     ("any(3>3,2>2)", False),
     ("all(1*2,2*1,2/1,1+0,0+1,1-0)", True),
     ("any(0*4,0/2,0%2)", False),
+    ("not(1==1)", False),
 ]
 
 dynamic_expression_testcases = [
@@ -195,6 +198,12 @@ dynamic_expression_testcases = [
         {"a": 0},
         True,
         id="trigger any optimization",
+    ),
+    pytest.param(
+        "NOT(OR(${a}, 1 != 1))",
+        {"a": 1},
+        False,
+        id="trigger not optimization",
     ),
     pytest.param(
         "1 < ${b} < (1 + 2)",

@@ -25,18 +25,15 @@ from pyparsing import (
 
 from logprep.processor.calculator.ast.exceptions import (
     InvalidSyntaxError,
-    UnknownFunctionError,
 )
+from logprep.processor.calculator.ast.function_registry import try_create_function_node
 from logprep.processor.calculator.ast.node import (
     ARITHMETIC_OPERATORS,
     COMPARISON_OPERATORS,
-    AllFunctionASTNode,
-    AnyFunctionASTNode,
     ASTNode,
     ConstantNumberASTNode,
     HexNumberVariableASTNode,
     NegateASTNode,
-    NumericFunctionCallASTNode,
     RangeCheckASTNode,
     VariableASTNode,
 )
@@ -96,15 +93,7 @@ def _build_fn(parsed: ParseResults) -> ASTNode:
     assert all(isinstance(i, ParseResults) and len(i) == 1 for i in parsed[1:])
     params = [i[0] for i in parsed[1:]]
     assert all(isinstance(param, ASTNode) for param in params)
-    if function_name == "all":
-        return AllFunctionASTNode(*params)
-    if function_name == "any":
-        return AnyFunctionASTNode(*params)
-
-    if numeric_function := NumericFunctionCallASTNode.create(function_name, params):
-        return numeric_function
-
-    raise UnknownFunctionError(f"Unknown function {function_name !r}.")
+    return try_create_function_node(function_name, *params)
 
 
 def _build_arithmetic_operation(parsed: ParseResults) -> ASTNode:

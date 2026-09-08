@@ -1,11 +1,8 @@
 """Implementation of the abstract syntax tree"""
 
-import math
 import operator
-import typing
 from abc import ABC, abstractmethod
-from types import EllipsisType
-from typing import Any, Callable, ClassVar, Protocol, Sequence, TypeAlias
+from typing import Any, Callable, ClassVar, Protocol, TypeAlias
 
 from logprep.processor.calculator.ast.exceptions import (
     DivisionByZeroError,
@@ -623,80 +620,43 @@ COMPARISON_OPERATORS = {
 }
 
 
-ArgBounds: TypeAlias = tuple[int | EllipsisType, int | EllipsisType]
-FunctionInfos: TypeAlias = tuple[ArgBounds, Callable[..., Any]]
-
-
 class FunctionCallASTNode(CompositeASTNode):
     """A node representing a function call"""
-
-    supported_functions: ClassVar[dict[str, FunctionInfos]]
-    """Information about supported functions and how to invoke them"""
-
-    @classmethod
-    def create(
-        cls, function_name: str, children: Sequence[ASTNode]
-    ) -> typing.Optional["FunctionCallASTNode"]:
-        """Factory method for Function calls.
-
-
-        Parameters
-        ----------
-        function_name : str
-            The name of the function that should be called.
-        children : Sequence[ASTNode]
-            The syntax tree nodes that represent the parameters for the call.
-
-        Returns
-        -------
-        Optional[FunctionCallASTNode]
-            A syntax tree node representing a function call, if the function is
-            known, None if the function name is unknown.
-
-        Raises
-        ------
-        InvalidSyntaxError
-            Raised if the number of passed children does not match the number of
-            expected parameters.
-        """
-        if function_name not in cls.supported_functions:
-            return None
-        arg_bounds, function = cls.supported_functions[function_name]
-        min_param_count, max_param_count = arg_bounds
-        if min_param_count is not Ellipsis and len(children) < min_param_count:
-            raise InvalidSyntaxError(
-                f"Function {function_name !r} required at least"
-                f" {min_param_count} paramters got {len(children)}"
-            )
-        if max_param_count is not Ellipsis and len(children) > max_param_count:
-            raise InvalidSyntaxError(
-                f"Function {function_name !r} allows at maximum"
-                f" {max_param_count} paramters got {len(children)}"
-            )
-
-        return cls(function_name, function, arg_bounds, children)
 
     def __init__(
         self,
         function_name: str,
-        function: Callable[..., Any],
-        arg_bounds: ArgBounds,
-        children: Sequence[ASTNode],
+        *children: ASTNode,
     ):
         super().__init__(*children)
         self.function_name = function_name
         """The name of the function"""
+
+    def __repr__(self):
+        return f"<func {self.function_name !r}>"
+
+
+class ProxyFunctionCallASTNode(FunctionCallASTNode):
+    """Base class for FunctionCall nodes that utilize a callback function"""
+
+    def __init__(
+        self,
+        function_name: str,
+        *children: ASTNode,
+        function: Callable[..., Any],
+    ):
+        super().__init__(function_name, *children)
         self.function = function
         """The actual function to call"""
-        self.arg_bounds = arg_bounds
-        """Information about the number of arguments"""
+
+    def evaluate(self, context):
+        return self.function(*(child.evaluate(context) for child in self.children))
 
     def optimize(self) -> ASTNode:
         optimized_clone = type(self)(
-            function_name=self.function_name,
+            self.function_name,
+            *(child.optimize() for child in self.children),
             function=self.function,
-            arg_bounds=self.arg_bounds,
-            children=[child.optimize() for child in self.children],
         )
         if not all(child.is_constant for child in optimized_clone.children):
             return optimized_clone
@@ -704,44 +664,44 @@ class FunctionCallASTNode(CompositeASTNode):
         my_static_value = _constant_value(optimized_clone)
         return _VALUE_CLASS[self.input_type](value=my_static_value)
 
-    def evaluate(self, context):
-        operands = [child.evaluate(context) for child in self.children]
-        _arg_count, function = self.supported_functions[self.function_name]
-        return function(*operands)
 
-    def __repr__(self):
-        return f"<func {self.function_name !r}>"
-
-
-_EPSILON = 1e-12
-
-
-class NumericFunctionCallASTNode(FunctionCallASTNode):
+class NumericFunctionCallASTNode(ProxyFunctionCallASTNode):
     """A node representing functions that take numbers and return a number"""
 
-    supported_functions = {
-        "sin": ((1, 1), math.sin),
-        "cos": ((1, 1), math.cos),
-        "tan": ((1, 1), math.tan),
-        "exp": ((1, 1), math.exp),
-        "abs": ((1, 1), abs),
-        "trunc": ((1, 1), int),
-        "round": ((1, 2), round),
-        "sgn": ((1, 1), lambda a: -1 if a < -_EPSILON else 1 if a > _EPSILON else 0),
-        "multiply": ((2, 2), lambda a, b: a * b),
-        "hypot": ((1, ...), math.hypot),
-        "min": ((2, ...), min),
-        "max": ((2, ...), max),
-    }
     input_type = ValueType.NUMBER
     output_type = ValueType.NUMBER
 
 
-class AllFunctionASTNode(CompositeASTNode):
-    """A node representing an 'all' function call."""
+class LogicFunctionASTNode(FunctionCallASTNode):
+    """Base type for functions operating on booleans"""
 
     input_type = ValueType.BOOLEAN
     output_type = ValueType.BOOLEAN
+
+
+class NotFunctionASTNode(LogicFunctionASTNode):
+    """A node representing the 'not' function."""
+
+    def evaluate(self, context):
+        return not parse_value(
+            self.children[0].evaluate(context),
+            self.input_type,
+        )
+
+    def optimize(self):
+        optimized_inner = self.children[0].optimize()
+        if optimized_inner.is_constant:
+            return ConstantBooleanASTNode(
+                not parse_value(
+                    _constant_value(optimized_inner),
+                    ValueType.BOOLEAN,
+                )
+            )
+        return type(self)(self.function_name, optimized_inner)
+
+
+class AllFunctionASTNode(LogicFunctionASTNode):
+    """A node representing an 'all' function call."""
 
     def evaluate(self, context):
         for child in self.children:
@@ -756,13 +716,10 @@ class AllFunctionASTNode(CompositeASTNode):
             return ConstantBooleanASTNode(False)
         optimized_children = [child.optimize() for child in self.children if not child.is_constant]
         optimized_children.sort(key=lambda child: child.complexity)
-        return type(self)(*optimized_children)
-
-    def __repr__(self):
-        return "<all>"
+        return type(self)(self.function_name, *optimized_children)
 
 
-class AnyFunctionASTNode(CompositeASTNode):
+class AnyFunctionASTNode(LogicFunctionASTNode):
     """A node representing an 'any' function call"""
 
     input_type = ValueType.BOOLEAN
@@ -781,7 +738,4 @@ class AnyFunctionASTNode(CompositeASTNode):
             return ConstantBooleanASTNode(True)
         optimized_children = [child.optimize() for child in self.children if not child.is_constant]
         optimized_children.sort(key=lambda child: child.complexity)
-        return type(self)(*optimized_children)
-
-    def __repr__(self):
-        return "<any>"
+        return type(self)(self.function_name, *optimized_children)
