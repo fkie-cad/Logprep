@@ -33,7 +33,6 @@ import logging
 import typing
 from datetime import timedelta
 from enum import IntEnum, auto
-from functools import cached_property
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
