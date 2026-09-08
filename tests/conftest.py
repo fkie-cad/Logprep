@@ -3,6 +3,7 @@
 import contextlib
 import functools
 import json
+import shutil
 from collections.abc import Generator, Sequence
 from multiprocessing import active_children, set_start_method
 from pathlib import Path
@@ -109,7 +110,9 @@ def mock_env(env_dict):
 
 
 @pytest.fixture
-def provision_context(tmp_path, monkeypatch) -> Generator[Callable[[dict], None]]:
+def provision_context(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
+) -> Generator[Callable[[dict], None]]:
     """
     Return a helper that provisions a ``test_cases`` context for a rule.
 
@@ -142,6 +145,7 @@ def provision_context(tmp_path, monkeypatch) -> Generator[Callable[[dict], None]
       test is switched into, so a rule's relative file path resolves to it without
       any rewriting. The working directory is only changed when a file path is provided.
     """
+    project_root = pytestconfig.rootpath
     with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
 
         def _provision(context: dict) -> None:
@@ -154,10 +158,16 @@ def provision_context(tmp_path, monkeypatch) -> Generator[Callable[[dict], None]
                         content_type=spec.get("content_type", "application/json"),
                     )
                 else:
-                    monkeypatch.chdir(tmp_path)
-                    file_path = Path(path.removeprefix("file://"))
+                    file_path = tmp_path / path.removeprefix("file://")
                     file_path.parent.mkdir(parents=True, exist_ok=True)
-                    file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
+                    if "refpath" in spec:
+                        ref_path = Path(spec["refpath"])
+                        src_path = ref_path if ref_path.is_absolute() else project_root / ref_path
+                        shutil.copy(src_path, file_path)
+                    else:
+                        file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
+
+            monkeypatch.chdir(tmp_path)
 
         yield _provision
 
