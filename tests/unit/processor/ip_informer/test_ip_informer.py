@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
 
 import pytest
 
