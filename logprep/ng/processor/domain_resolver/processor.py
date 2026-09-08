@@ -200,9 +200,21 @@ class DomainResolver(Processor):
         )
         """Number of unknown domains that were trying to be resolved"""
 
-    __slots__ = ["_domain_ip_map"]
+    __slots__ = [
+        "_domain_ip_map",
+        "_dns_resolver",
+        "_timeout_cache",
+        "_domain_cache",
+        "_domain_ip_map_prune_timer",
+        "_hasher",
+    ]
 
     _domain_ip_map: dict[str, SuccessResult | FailedResult]
+    _dns_resolver: Resolver
+    _timeout_cache: Cache
+    _domain_cache: Cache
+    _domain_ip_map_prune_timer: Timer
+    _hasher: SHA256Hasher
 
     rule_class = DomainResolverRule
 
@@ -215,40 +227,28 @@ class DomainResolver(Processor):
         """Provides the properly typed rule configuration object"""
         return typing.cast(DomainResolver.Config, self._config)
 
-    @cached_property
-    def _dns_resolver(self) -> Resolver:
-        dns_resolver = Resolver()
-        dns_resolver.timeout = self.config.timeout
-        dns_resolver.lifetime = self.config.lifetime
-        return dns_resolver
+    def setup(self):
+        super().setup()
+        self._dns_resolver = Resolver()
+        self._dns_resolver.timeout = self.config.timeout
+        self._dns_resolver.lifetime = self.config.lifetime
 
-    @cached_property
-    def _timeout_cache(self) -> Cache:
         cache_max_timedelta = timedelta(minutes=self.config.timeout_block_time).total_seconds()
-        cache = Cache(
+        self._timeout_cache = Cache(
             max_items=self.config.max_cached_domains,
             max_timedelta=cache_max_timedelta,
             prune_interval=self.config.cache_prune_interval,
         )
-        return cache
 
-    @cached_property
-    def _domain_cache(self) -> Cache:
         cache_max_timedelta = timedelta(days=self.config.max_caching_days).total_seconds()
-        cache = Cache(
+        self._domain_cache = Cache(
             max_items=self.config.max_cached_domains,
             max_timedelta=cache_max_timedelta,
             prune_interval=self.config.cache_prune_interval,
         )
-        return cache
 
-    @cached_property
-    def _domain_ip_map_prune_timer(self) -> Timer:
-        return Timer(self.config.cache_prune_interval)
-
-    @cached_property
-    def _hasher(self) -> SHA256Hasher:
-        return SHA256Hasher()
+        self._domain_ip_map_prune_timer = Timer(self.config.cache_prune_interval)
+        self._hasher = SHA256Hasher()
 
     def _apply_rules(self, event: dict[str, typing.Any], rule: DomainResolverRule):
         self._timeout_cache.prune_decayed()

@@ -23,6 +23,10 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDomainResolver(BaseProcessorTestCase):
+    def setup_method(self):
+        super().setup_method()
+        self.object.setup()
+
     CONFIG = {
         "type": "domain_resolver",
         "rules": ["tests/testdata/unit/domain_resolver/rules"],
@@ -122,6 +126,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config.update({"max_cached_domains": 10, "cache_prune_interval": 0.1})
         domain_resolver: DomainResolver = cast(DomainResolver, Factory.create({"resolver": config}))
+        domain_resolver.setup()
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -157,6 +162,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config.update({"max_cached_domains": 10})
         domain_resolver: DomainResolver = cast(DomainResolver, Factory.create({"resolver": config}))
+        domain_resolver.setup()
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -204,6 +210,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         }
 
         domain_resolver: DomainResolver = cast(DomainResolver, Factory.create({"resolver": config}))
+        domain_resolver.setup()
         self._load_rule(rule)
         with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
@@ -213,6 +220,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             assert len(domain_resolver._timeout_cache) == 0
 
         domain_resolver: DomainResolver = cast(DomainResolver, Factory.create({"resolver": config}))
+        domain_resolver.setup()
         self._load_rule(rule)
         with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = LifetimeTimeout
@@ -252,6 +260,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config.update({"cache_enabled": False})
         domain_resolver = Factory.create({"resolver": config})
+        domain_resolver.setup()
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
