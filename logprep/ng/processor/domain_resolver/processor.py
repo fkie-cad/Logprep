@@ -342,5 +342,5 @@ class DomainResolver(Processor):
         if self._domain_ip_map_prune_timer.finished():
             self._domain_ip_map_prune_timer.reset()
             removed_keys = set(self._domain_ip_map.keys()).difference(self._domain_cache.keys())
-            for hash_Str in removed_keys:
-                self._domain_ip_map.pop(hash_Str)
+            for hash_str in removed_keys:
+                self._domain_ip_map.pop(hash_str)
