@@ -32,7 +32,7 @@ Processor Configuration
 import logging
 import typing
 from datetime import timedelta
-from enum import IntEnum
+from enum import IntEnum, auto
 from functools import cached_property
 from urllib.parse import urlsplit
 
@@ -53,15 +53,15 @@ logger = logging.getLogger("DomainResolver")
 class FailureType(IntEnum):
     """Status of resolving domains"""
 
-    TIMEOUT = 0
+    TIMEOUT = auto()
     """Domain resolver timeout while trying to resolve the domain (this is not a socket timeout)"""
-    INVALID = 1
+    INVALID = auto()
     """The resolved domain was invalid and thus not resolved"""
-    UNKNOWN = 2
+    UNKNOWN = auto()
     """Tried to resolve the domain, but the domain is unknown"""
-    NO_ANSWER = 3
+    NO_ANSWER = auto()
     """The resolved domain was valid, but returned no data"""
-    NO_NAMESERVERS = 4
+    NO_NAMESERVERS = auto()
     """Nameservers do not exist or timed out"""
 
 
