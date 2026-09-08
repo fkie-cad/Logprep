@@ -39,7 +39,7 @@ from attr import define, field, validators
 from dns.exception import Timeout, FormError, SyntaxError as DNSSyntaxError, TooBig
 from dns.resolver import Resolver, NXDOMAIN, LifetimeTimeout, NoAnswer, NoNameservers
 
-from logprep.abc.processor import Processor
+from logprep.ng.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache, Timer
@@ -226,8 +226,8 @@ class DomainResolver(Processor):
         """Provides the properly typed rule configuration object"""
         return typing.cast(DomainResolver.Config, self._config)
 
-    def setup(self):
-        super().setup()
+    async def setup(self):
+        await super().setup()
         self._dns_resolver = Resolver()
         self._dns_resolver.timeout = self.config.timeout
         self._dns_resolver.lifetime = self.config.lifetime
@@ -249,7 +249,7 @@ class DomainResolver(Processor):
         self._domain_ip_map_prune_timer = Timer(self.config.cache_prune_interval)
         self._hasher = SHA256Hasher()
 
-    def _apply_rules(self, event: dict[str, typing.Any], rule: DomainResolverRule):
+    async def _apply_rules(self, event: dict[str, typing.Any], rule: DomainResolverRule):
         self._timeout_cache.prune_decayed()
         self._domain_cache.prune_decayed()
         self._prune_domain_ip_map()

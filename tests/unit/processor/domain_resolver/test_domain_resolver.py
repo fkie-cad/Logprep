@@ -7,7 +7,6 @@ from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
-import pytest
 from dns.resolver import LifetimeTimeout, NoNameservers, NoAnswer
 
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
@@ -101,7 +100,6 @@ class TestDomainResolver(BaseProcessorTestCase):
             self.object.process(document)
         assert document == expected
 
-    @pytest.mark.skip_autouse
     def test_domain_invalid(self):
         rule = {
             "filter": "fqdn",
