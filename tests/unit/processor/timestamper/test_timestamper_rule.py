@@ -1,4 +1,6 @@
 # pylint: disable=missing-docstring
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
 
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
@@ -11,7 +13,7 @@ from logprep.processor.base.exceptions import (
 )
 from logprep.processor.timestamper.rule import TimestamperRule
 
-example_test_cases = [
+test_cases = [
     pytest.param(
         {
             "filter": "message",
@@ -79,11 +81,6 @@ example_test_cases = [
         None,
         id="use current time with a target timezone",
     ),
-]
-
-
-test_cases = [
-    *example_test_cases,
     pytest.param(
         {
             "filter": "message",
@@ -125,6 +122,7 @@ test_cases = [
         {
             "filter": "message",
             "timestamper": {
+                "source_fields": [],
                 "source_format": "UNIX",
             },
         },
@@ -137,6 +135,7 @@ test_cases = [
         {
             "filter": "message",
             "timestamper": {
+                "source_fields": [],
                 "source_timezone": "Europe/Berlin",
             },
         },
@@ -174,7 +173,7 @@ test_cases = [
 ]
 
 
-example_parse_datetime_test_cases = [
+parse_datetime_test_cases = [
     pytest.param(
         {
             "source_format": ["ISO8601"],
@@ -230,11 +229,6 @@ example_parse_datetime_test_cases = [
         None,
         id="try multiple source formats",
     ),
-]
-
-
-parse_datetime_test_cases = [
-    *example_parse_datetime_test_cases,
     pytest.param(
         {
             "source_format": ["UNIX", "%Y-%m-%d"],
