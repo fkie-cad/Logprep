@@ -45,7 +45,7 @@
 * grokker: improve performance by stopping on first matching expression
 
 ### Bugfix
-* Prune domains from `domain_resolver` mapping that are not in the cache 
+* prune domains from `domain_resolver` mapping that are not in the cache
 * chart: fix command handling
 * ng: fix input timeout to also accept int parameters
 * ng: fix `http_input` `collect_meta` leading to shared dicts between events
