@@ -67,11 +67,13 @@ class FailureType(IntEnum):
 
 @define
 class SuccessResult:
+    """Result object for successfully resolved domains"""
     resolved_ip: str
 
 
 @define
 class FailedResult:
+    """Result object for unsuccessfully resolved domains"""
     failure_type: FailureType
     error: Exception | None = None
 
