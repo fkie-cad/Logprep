@@ -96,8 +96,10 @@ class DomainResolver(Processor):
            Ensure to set this to a reasonable value to avoid DOS attacks by malicious domains in
            your logs. The default is set to 0.5 seconds.
         """
+
         lifetime: float = field(default=1.0, validator=validators.instance_of(float))
         """Total timeout for resolving of domains including multiple attempts."""
+
         max_cached_domains: int = field(validator=validators.instance_of(int))
         """The maximum number of cached domains. One cache entry requires ~250 Byte, thus 10
         million elements would require about 2.3 GB RAM. The cache is not persisted. Restarting
@@ -110,10 +112,13 @@ class DomainResolver(Processor):
            and OOM situations by the domain resolver cache.
 
         """
+
         timeout_block_time: float = field(default=5.0, validator=validators.instance_of(float))
         """Minutes after which a timed out domain can be resolved again."""
+
         cache_prune_interval: float = field(default=3600.0, validator=validators.instance_of(float))
         """Seconds after which decayed domains are pruned from caches."""
+
         max_caching_days: int = field(validator=validators.instance_of(int))
         """Number of days a domains is cached after the last time it appeared.
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
@@ -122,8 +127,10 @@ class DomainResolver(Processor):
         exceeded (see `domain_resolver.max_cached_domains`),the oldest cached resolved domains will
         be discarded first.Thus, it is possible that a domain is re-added to the cache before
         max_caching_days has elapsed if it was discarded due to the size limit."""
+
         hash_salt: str = field(validator=validators.instance_of(str))
         """A salt that is used for hashing."""
+
         cache_enabled: bool = field(default=True, validator=validators.instance_of(bool))
         """If enabled activates a cache such that already seen domains do not need to be resolved
         again."""
