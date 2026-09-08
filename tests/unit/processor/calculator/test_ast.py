@@ -19,7 +19,34 @@ from logprep.processor.calculator.ast.util import (
     read_hex_number,
 )
 
-static_expression_test_cases = [
+static_expression_example_test_cases = [
+    ("123", 123),
+    ("-E", -math.e),
+    ("pi * 1e9", math.pi * 1e9),
+    ("1 + 2 * 3", 7),
+    ("(1 + 2) * 3", 9),
+    ("3 / 2", 1.5),
+    ("3 % 2", 1),
+    ("0x2a", 42),
+    ("from_hex(2A)", 42),
+    ("1 == 1", True),
+    ("1 == 1.0000001", False),
+    ("1 != 1.0000001", True),
+    ("1 > 2", False),
+    ("1 < 2", True),
+    ("2 >= 2", True),
+    ("2 <= 2", True),
+    ("1 < 2 < 3", True),
+    ("round(pi, 3)", 3.142),
+    ("hypot(3, 4)", 5),
+    ("-(SIGN(COS(PI/4)))", -1),
+    ("all(1,1,1,0)", False),
+    ("any(0,0,0,1)", True),
+    ("not(1==1)", False),
+    ("AND(1 < 2 < 3,NOT( 5 > 6))", True),
+]
+
+static_expression_test_cases = static_expression_example_test_cases + [
     ("9", 9),
     ("-9", -9),
     ("--9", 9),
@@ -58,8 +85,6 @@ static_expression_test_cases = [
     ("2^3+2", 2**3 + 2),
     ("2^3+5", 2**3 + 5),
     ("2^9", 2**9),
-    ("1 == 1", True),
-    ("1 == 1.001", False),
     ("1 != 1", False),
     ("1 != 1.001", True),
     ("2 > 1", True),
@@ -85,8 +110,6 @@ static_expression_test_cases = [
     ("sgn(cos(PI/2))", 0),
     ("sgn(cos(PI*3/4))", -1),
     ("+(sgn(cos(PI/4)))", 1),
-    ("-(sgn(cos(PI/4)))", -1),
-    ("hypot(3, 4)", 5),
     ("multiply(3, 7)", 21),
     ("all(3>2,2>1)", True),
     ("all(3>2,1>1)", False),
@@ -94,12 +117,10 @@ static_expression_test_cases = [
     ("all(1,1,1,1,1,0)", False),
     ("any(3>2,2>1)", True),
     ("any(0,0,0,0)", False),
-    ("any(0,0,0,1)", True),
     ("any(3>3,2>1)", True),
     ("any(3>3,2>2)", False),
     ("all(1*2,2*1,2/1,1+0,0+1,1-0)", True),
     ("any(0*4,0/2,0%2)", False),
-    ("not(1==1)", False),
 ]
 
 dynamic_expression_testcases = [

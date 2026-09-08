@@ -39,6 +39,7 @@ The |PROCESSOR_NAME| supports the following arithmetic operators:
 * :code:`-` subtraction
 * :code:`*` multiplication
 * :code:`/` division
+* :code:`%` modulo
 * :code:`^` exponentiation
 
 The |PROCESSOR_NAME| supports the following comparison operators:
@@ -50,11 +51,22 @@ The |PROCESSOR_NAME| supports the following comparison operators:
 * :code:`==` equal
 * :code:`!=` not equal
 
-Comparison expressions return either :code:`True` or :code:`False`. Arithmetic expressions on both
-sides of a comparison are evaluated before the comparison itself.
+Furthermore the following range checks are supported
 
-Only one comparison operator is allowed per expression. Chained comparisons such as
-:code:`1 < 2 < 3` or :code:`1 < 2 == 2` are not supported.
+* :code:`a < b < c`
+* :code:`a <= b < c`
+* :code:`a < b <= c`
+* :code:`a <= b <= c`
+
+Comparison and range check expressions return either :code:`True` or :code:`False`.
+Arithmetic expression are evaluated before the comparison expressions.
+
+The comparison and range operator can only compare numbers, boolean
+values are not allowed as operands.
+:code:`(1 < 2) < 3` or :code:`1 < 2 == 2` are not supported.
+
+.. datatemplate:import-module:: logprep.processor.calculator.ast.function_registry
+   :template: calc-function-renderer.tmpl
 
 Boolean values are final results and cannot be reused as operands in arithmetic or comparison
 operations. Unary negation of boolean values is also not supported. This applies to boolean values
@@ -74,69 +86,10 @@ For example, expressions such as :code:`(1 < 2) + 1`, :code:`(1 < 2) == (2 < 3)`
 Following is a list of example calculation expressions. All factors and operators can be retrieved
 from a field using the schema :code:`${your.dotted.field}`:
 
-* :code:`9` => :code:`9`
-* :code:`-9` => :code:`-9`
-* :code:`--9` => :code:`9`
-* :code:`-E` => :code:`-math.e`
-* :code:`9 + 3 + 6` => :code:`9 + 3 + 6`
-* :code:`9 + 3 / 11` => :code:`9 + 3.0 / 11`
-* :code:`(9 + 3)` => :code:`(9 + 3)`
-* :code:`(9+3) / 11` => :code:`(9 + 3.0) / 11`
-* :code:`9 - 12 - 6` => :code:`9 - 12 - 6`
-* :code:`9 - (12 - 6)` => :code:`9 - (12 - 6)`
-* :code:`2*3.14159` => :code:`2 * 3.14159`
-* :code:`3.1415926535*3.1415926535 / 10` => :code:`3.1415926535 * 3.1415926535 / 10`
-* :code:`PI * PI / 10` => :code:`math.pi * math.pi / 10`
-* :code:`PI*PI/10` => :code:`math.pi * math.pi / 10`
-* :code:`PI^2` => :code:`math.pi ** 2`
-* :code:`round(PI^2)` => :code:`round(math.pi ** 2)`
-* :code:`6.02E23 * 8.048` => :code:`6.02e23 * 8.048`
-* :code:`e / 3` => :code:`math.e / 3`
-* :code:`sin(PI/2)` => :code:`math.sin(math.pi / 2)`
-* :code:`10+sin(PI/4)^2` => :code:`10 + math.sin(math.pi / 4) ** 2`
-* :code:`trunc(E)` => :code:`int(math.e)`
-* :code:`trunc(-E)` => :code:`int(-math.e)`
-* :code:`round(E)` => :code:`round(math.e)`
-* :code:`round(-E)` => :code:`round(-math.e)`
-* :code:`E^PI` => :code:`math.e ** math.pi`
-* :code:`exp(0)` => :code:`1`
-* :code:`exp(1)` => :code:`math.e`
-* :code:`2^3^2` => :code:`2 ** 3 ** 2`
-* :code:`(2^3)^2` => :code:`(2 ** 3) ** 2`
-* :code:`2^3+2` => :code:`2 ** 3 + 2`
-* :code:`2^3+5` => :code:`2 ** 3 + 5`
-* :code:`2^9` => :code:`2 ** 9`
-* :code:`sgn(-2)` => :code:`-1`
-* :code:`sgn(0)` => :code:`0`
-* :code:`sgn(0.1)` => :code:`1`
-* :code:`round(E, 3)` => :code:`round(math.e, 3)`
-* :code:`round(PI^2, 3)` => :code:`round(math.pi ** 2, 3)`
-* :code:`sgn(cos(PI/4))` => :code:`1`
-* :code:`sgn(cos(PI/2))` => :code:`0`
-* :code:`sgn(cos(PI*3/4))` => :code:`-1`
-* :code:`+(sgn(cos(PI/4)))` => :code:`1`
-* :code:`-(sgn(cos(PI/4)))` => :code:`-1`
-* :code:`hypot(3, 4)` => :code:`5`
-* :code:`multiply(3, 7)` => :code:`21`
-* :code:`all(1,1,1)` => :code:`True`
-* :code:`all(1,1,1,1,1,0)` => :code:`False`
-* :code:`2 > 1` => :code:`True`
-* :code:`2 > 2` => :code:`False`
-* :code:`1 < 2` => :code:`True`
-* :code:`1 < 1` => :code:`False`
-* :code:`2 >= 2` => :code:`True`
-* :code:`2 >= 3` => :code:`False`
-* :code:`1 <= 1` => :code:`True`
-* :code:`2 <= 1` => :code:`False`
-* :code:`1 == 1` => :code:`True`
-* :code:`1 == 2` => :code:`False`
-* :code:`1 != 2` => :code:`True`
-* :code:`1 != 1` => :code:`False`
-* :code:`1 + 2 < 4` => :code:`True`
-* :code:`2 * 3 == 6` => :code:`True`
-* :code:`2 ^ 3 >= 8` => :code:`True`
+.. datatemplate:import-module:: tests.unit.processor.calculator.test_ast
+   :template: calc-renderer.tmpl
 
-The calc expression is not whitespace sensitive.
+The calc expression is not whitespace or case sensitive.
 
 """
 
