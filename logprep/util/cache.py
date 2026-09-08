@@ -1,9 +1,9 @@
 """Module for caching items and checking if they need to be stored (again)."""
 
 import time
+from datetime import timedelta
 from typing import Union
 
-import datetime
 from collections import OrderedDict
 
 
@@ -31,7 +31,10 @@ class Cache(OrderedDict):
     """Caches items along with a timestamp of when they were last stored."""
 
     def __init__(
-        self, max_items=1000000, max_timedelta=datetime.timedelta(days=90.0), prune_interval=5
+        self,
+        max_items=1000000,
+        max_timedelta=timedelta(days=90).total_seconds(),
+        prune_interval=5,
     ):
         self._max_items = max_items
         self._max_timedelta = max_timedelta
@@ -51,7 +54,7 @@ class Cache(OrderedDict):
         if last_stored is None:
             return False
 
-        if datetime.datetime.now() - last_stored > self._max_timedelta:
+        if time.time() - last_stored > self._max_timedelta:
             self.pop(item)
             return False
         return True
@@ -68,7 +71,7 @@ class Cache(OrderedDict):
         if self.update_cache(item):
             return
 
-        self[item] = datetime.datetime.now()
+        self[item] = time.time()
         if len(self) > self._max_items:
             self.popitem(last=False)
 
@@ -83,14 +86,14 @@ class Cache(OrderedDict):
         """
         last_stored = self.get(item)
         if last_stored is not None:
-            self[item] = datetime.datetime.now()
+            self[item] = time.time()
             return True
         return False
 
     def prune_decayed(self):
         """Prune cache if timer is finished."""
         if self._prune_timer.finished():
-            now = datetime.datetime.now()
+            now = time.time()
             to_prune = [key for key, added in self.items() if now - added > self._max_timedelta]
             for item in to_prune:
                 if item in self:

@@ -1,8 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import datetime
 import time
 from collections import OrderedDict
+from datetime import timedelta
 
 import pytest
 
@@ -12,7 +12,7 @@ from logprep.util.cache import Cache, Timer
 @pytest.fixture(name="cache")
 def cache_fixture():
     return Cache(
-        max_items=3, max_timedelta=datetime.timedelta(milliseconds=100), prune_interval=0.1
+        max_items=3, max_timedelta=0.1, prune_interval=0.1
     )
 
 
@@ -42,11 +42,11 @@ class TestCache:
     def test_init_default(self):
         default_cache = Cache()
         assert default_cache._max_items == 1000000
-        assert default_cache._max_timedelta == datetime.timedelta(days=90)
+        assert default_cache._max_timedelta == timedelta(days=90).total_seconds()
 
     def test_init_custom(self, cache: Cache):
         assert cache._max_items == 3
-        assert cache._max_timedelta == datetime.timedelta(milliseconds=100)
+        assert cache._max_timedelta == 0.1
 
     def test_new_cache_is_empty(self, cache: Cache):
         assert not cache
@@ -59,7 +59,7 @@ class TestCache:
             time.sleep(0.1)  # nosemgrep
 
     def test_is_cached_zero_deltatime(self, cache: Cache):
-        cache._max_timedelta = datetime.timedelta(days=0)
+        cache._max_timedelta = 0
         for _ in range(10):
             assert not cache.is_cached("foo")
 

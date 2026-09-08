@@ -29,9 +29,9 @@ Processor Configuration
 .. automodule:: logprep.processor.domain_resolver.rule
 """
 
-import datetime
 import logging
 import typing
+from datetime import timedelta
 from enum import IntEnum
 from functools import cached_property
 from urllib.parse import urlsplit
@@ -213,7 +213,7 @@ class DomainResolver(Processor):
 
     @cached_property
     def _timeout_cache(self) -> Cache:
-        cache_max_timedelta = datetime.timedelta(minutes=self.config.timeout_block_time)
+        cache_max_timedelta = timedelta(minutes=self.config.timeout_block_time).total_seconds()
         cache = Cache(
             max_items=self.config.max_cached_domains,
             max_timedelta=cache_max_timedelta,
@@ -223,7 +223,7 @@ class DomainResolver(Processor):
 
     @cached_property
     def _domain_cache(self) -> Cache:
-        cache_max_timedelta = datetime.timedelta(days=self.config.max_caching_days)
+        cache_max_timedelta = timedelta(days=self.config.max_caching_days).total_seconds()
         cache = Cache(
             max_items=self.config.max_cached_domains,
             max_timedelta=cache_max_timedelta,

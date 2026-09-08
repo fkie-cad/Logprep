@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import datetime
 import re
 import time
 from copy import deepcopy
@@ -152,7 +151,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_timeout_cache_gets_pruned(self):
         def mark_cache_item_as_decayed_and_return_hash(resolver):
             cached_hash_to_decay = next(iter(resolver._timeout_cache))
-            resolver._timeout_cache[cached_hash_to_decay] = datetime.datetime.min
+            resolver._timeout_cache[cached_hash_to_decay] = 0
             return cached_hash_to_decay
 
         config = deepcopy(self.CONFIG)
