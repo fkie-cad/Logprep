@@ -6,7 +6,6 @@
 import re
 from datetime import UTC, datetime
 from unittest.mock import patch
-from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -16,9 +15,15 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 FIXED_NOW = datetime(2026, 9, 2, 10, 15, 30, 123456, tzinfo=UTC)
 
-test_cases = [  # testcase, rule, event, expected
-    (
-        "normalizes unix timestamp with seconds precision",
+
+@pytest.fixture(autouse=True)
+def mock_now():
+    with patch.object(TimeParser, "now", return_value=FIXED_NOW):
+        yield
+
+
+example_test_cases = [
+    pytest.param(
         {
             "filter": "message",
             "timestamper": {
@@ -35,7 +40,133 @@ test_cases = [  # testcase, rule, event, expected
             "message": "1700000000",
             "@timestamp": "2023-11-14T23:13:20+01:00",
         },
+        id="normalize a UNIX timestamp",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1700000000.123",
+        },
+        {
+            "message": "1700000000.123",
+            "@timestamp": "2023-11-14T23:13:20.123000+01:00",
+        },
+        id="normalize a fractional UNIX timestamp",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+            },
+        },
+        {
+            "message": "2009-06-15 13:45:30Z",
+        },
+        {
+            "message": "2009-06-15 13:45:30Z",
+            "@timestamp": "2009-06-15T13:45:30Z",
+        },
+        id="normalize an ISO8601 timestamp",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "%Y %m %d - %H:%M:%S",
+            },
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+            "@timestamp": "2000-12-31T22:59:59Z",
+        },
+        id="normalize a timestamp with a custom source format",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "%Y %m %d - %H:%M:%S",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+            "@timestamp": "2000-12-31T23:59:59+01:00",
+        },
+        id="convert a timestamp to another timezone",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": ["ISO8601", "UNIX"],
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1642160449843",
+        },
+        {
+            "message": "1642160449843",
+            "@timestamp": "2022-01-14T12:40:49.843000+01:00",
+        },
+        id="try multiple source formats",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {},
+        },
+        {
+            "message": "whatever",
+        },
+        {
+            "message": "whatever",
+            "@timestamp": "2026-09-02T10:15:30.123456Z",
+        },
+        id="use the current time when source fields are omitted",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "whatever",
+        },
+        {
+            "message": "whatever",
+            "@timestamp": "2026-09-02T12:15:30.123456+02:00",
+        },
+        id="use the current time with a target timezone",
+    ),
+]
+
+
+test_cases = [
+    *[(test_case.id, *test_case.values) for test_case in example_test_cases],
     (
         "normalizes unix timestamp with milliseconds precision",
         {
@@ -93,25 +224,6 @@ test_cases = [  # testcase, rule, event, expected
             # The timestamp is normalized from nanoseconds, but datetime only supports
             # microsecond precision. Therefore 123456789 ns is rounded to 123457 us.
             "@timestamp": "2023-11-14T23:13:20.123457+01:00",
-        },
-    ),
-    (
-        "parses fractional unix timestamp with seconds precision",
-        {
-            "filter": "message",
-            "timestamper": {
-                "source_fields": ["message"],
-                "source_format": "UNIX",
-                "source_timezone": "UTC",
-                "target_timezone": "Europe/Berlin",
-            },
-        },
-        {
-            "message": "1700000000.123",
-        },
-        {
-            "message": "1700000000.123",
-            "@timestamp": "2023-11-14T23:13:20.123000+01:00",
         },
     ),
     (
@@ -194,55 +306,17 @@ test_cases = [  # testcase, rule, event, expected
         "parses iso8601 without pattern",
         {
             "filter": "message",
-            "timestamper": {"source_fields": ["message"], "target_field": "@timestamp"},
-        },
-        {
-            "message": "2009-06-15 13:45:30Z",
-        },
-        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30Z"},
-    ),
-    (
-        "parses iso8601 to default target field",
-        {
-            "filter": "message",
-            "timestamper": {"source_fields": ["message"]},
-        },
-        {
-            "message": "2009-06-15 13:45:30Z",
-        },
-        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30Z"},
-    ),
-    (
-        "parses by datetime source format",
-        {
-            "filter": "message",
-            "timestamper": {"source_fields": ["message"], "source_format": "%Y %m %d - %H:%M:%S"},
-        },
-        {
-            "message": "2000 12 31 - 22:59:59",
-        },
-        {
-            "message": "2000 12 31 - 22:59:59",
-            "@timestamp": "2000-12-31T22:59:59Z",
-        },
-    ),
-    (
-        "converts timezone information",
-        {
-            "filter": "message",
             "timestamper": {
                 "source_fields": ["message"],
-                "source_format": "%Y %m %d - %H:%M:%S",
-                "source_timezone": "UTC",
-                "target_timezone": "Europe/Berlin",
+                "target_field": "@timestamp",
             },
         },
         {
-            "message": "2000 12 31 - 22:59:59",
+            "message": "2009-06-15 13:45:30Z",
         },
         {
-            "message": "2000 12 31 - 22:59:59",
-            "@timestamp": "2000-12-31T23:59:59+01:00",
+            "message": "2009-06-15 13:45:30Z",
+            "@timestamp": "2009-06-15T13:45:30Z",
         },
     ),
     (
@@ -252,25 +326,6 @@ test_cases = [  # testcase, rule, event, expected
             "timestamper": {
                 "source_fields": ["message"],
                 "source_format": "UNIX",
-                "source_timezone": "UTC",
-                "target_timezone": "Europe/Berlin",
-            },
-        },
-        {
-            "message": "1642160449843",
-        },
-        {
-            "message": "1642160449843",
-            "@timestamp": "2022-01-14T12:40:49.843000+01:00",
-        },
-    ),
-    (
-        "parses ISO8601 timestamp first and then UNIX after it failed",
-        {
-            "filter": "message",
-            "timestamper": {
-                "source_fields": ["message"],
-                "source_format": ["ISO8601", "UNIX"],
                 "source_timezone": "UTC",
                 "target_timezone": "Europe/Berlin",
             },
@@ -420,7 +475,10 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "timestamper": {
                 "source_fields": ["message"],
-                "source_format": ["%Y %m %d", "%Y %m %d - %H:%M:%S"],
+                "source_format": [
+                    "%Y %m %d",
+                    "%Y %m %d - %H:%M:%S",
+                ],
             },
         },
         {
@@ -437,7 +495,10 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "timestamper": {
                 "source_fields": ["message"],
-                "source_format": ["%Y %m %d - %H:%M:%S", "%Y %m %d - %H:%M:%S"],
+                "source_format": [
+                    "%Y %m %d - %H:%M:%S",
+                    "%Y %m %d - %H:%M:%S",
+                ],
             },
         },
         {
@@ -450,41 +511,6 @@ test_cases = [  # testcase, rule, event, expected
     ),
 ]
 
-current_time_test_cases = [
-    pytest.param(
-        {
-            "filter": "message",
-            "timestamper": {},
-        },
-        {
-            "message": "whatever",
-        },
-        {
-            "message": "whatever",
-            "@timestamp": "2026-09-02T10:15:30.123456Z",
-        },
-        ZoneInfo("UTC"),
-        id="uses current time when source fields are omitted",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "timestamper": {
-                "source_fields": [],
-                "target_timezone": "Europe/Berlin",
-            },
-        },
-        {
-            "message": "whatever",
-        },
-        {
-            "message": "whatever",
-            "@timestamp": "2026-09-02T12:15:30.123456+02:00",
-        },
-        ZoneInfo("Europe/Berlin"),
-        id="uses current time when source fields are empty",
-    ),
-]
 
 failure_test_cases = [
     (
@@ -588,7 +614,10 @@ failure_test_cases = [
         {
             "message": "2000 12 31 - 22:59:59",
         },
-        {"message": "2000 12 31 - 22:59:59", "tags": ["_timestamper_failure"]},
+        {
+            "message": "2000 12 31 - 22:59:59",
+            "tags": ["_timestamper_failure"],
+        },
         r"Could not parse timestamp",
     ),
     (
@@ -603,7 +632,10 @@ failure_test_cases = [
         {
             "@timestamp": "2000-12-31T22:59:59Z",
         },
-        {"@timestamp": "2000-12-31T22:59:59Z", "tags": ["_timestamper_failure"]},
+        {
+            "@timestamp": "2000-12-31T22:59:59Z",
+            "tags": ["_timestamper_failure"],
+        },
         r"Could not parse timestamp",
     ),
     (
@@ -618,7 +650,10 @@ failure_test_cases = [
         {
             "@timestamp": "2000-12-31T22:59:59Z",
         },
-        {"@timestamp": "2000-12-31T22:59:59Z", "tags": ["_timestamper_failure"]},
+        {
+            "@timestamp": "2000-12-31T22:59:59Z",
+            "tags": ["_timestamper_failure"],
+        },
         r"Could not parse timestamp",
     ),
     (
@@ -633,17 +668,30 @@ failure_test_cases = [
         {
             "message": "2019-09-07T15:50",
         },
-        {"message": "2019-09-07T15:50", "tags": ["_timestamper_failure"]},
+        {
+            "message": "2019-09-07T15:50",
+            "tags": ["_timestamper_failure"],
+        },
         r"Could not parse timestamp",
     ),
     (
         "raises if source field is none",
-        {"filter": "message", "timestamper": {"source_fields": ["@timestamp"]}},
-        {"message": "this does not matter"},
-        {"message": "this does not matter", "tags": ["_timestamper_missing_field_warning"]},
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["@timestamp"],
+            },
+        },
+        {
+            "message": "this does not matter",
+        },
+        {
+            "message": "this does not matter",
+            "tags": ["_timestamper_missing_field_warning"],
+        },
         r"missing source_fields: \['@timestamp']",
     ),
-]  # testcase, rule, event, expected
+]
 
 
 class TestTimestamper(BaseProcessorTestCase):
@@ -663,25 +711,9 @@ class TestTimestamper(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @pytest.mark.parametrize(
-        "rule, event, expected, target_timezone",
-        current_time_test_cases,
+        "testcase, rule, event, expected, error_message",
+        failure_test_cases,
     )
-    def test_uses_current_time_without_source_fields(
-        self,
-        rule,
-        event,
-        expected,
-        target_timezone,
-    ):
-        self._load_rule(rule)
-
-        with patch.object(TimeParser, "now", return_value=FIXED_NOW) as mock_now:
-            self.object.process(event)
-
-        mock_now.assert_called_once_with(target_timezone)
-        assert event == expected
-
-    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
         self._load_rule(rule)
         result = self.object.process(event)
