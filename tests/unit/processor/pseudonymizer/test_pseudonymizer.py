@@ -112,7 +112,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "match replace whole field 1",
         {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"mapping": {"pseudo_this": "RE_WHOLE_FIELD_CAP"}},
+            "pseudonymizer": {"mapping": {"pseudo_this": "RE_WHOLE_FIELD"}},
         },
         {
             "filter_this": "does_not_matter",
@@ -699,11 +699,11 @@ class TestPseudonymizer(BaseProcessorTestCase):
     CONFIG = {
         "type": "pseudonymizer",
         "outputs": [{"kafka": "topic"}],
-        "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
-        "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
+        "pubkey_analyst": "example_analyst_pub.pem",
+        "pubkey_depseudo": "example_depseudo_pub.pem",
         "hash_salt": "a_secret_tasty_ingredient",
         "rules": ["tests/testdata/unit/pseudonymizer/rules"],
-        "regex_mapping": "tests/testdata/unit/pseudonymizer/regex_mapping.yml",
+        "regex_mapping": "pseudonymizer_regex_mapping.json",
         "max_cached_pseudonyms": 1000000,
     }
 
@@ -769,7 +769,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         pseudonym = "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
 
         url = "https://www.do-not-pseudo.this.de"
-        regex_pattern = "RE_WHOLE_FIELD_CAP"
+        regex_pattern = "RE_WHOLE_FIELD"
         event = {
             "filter_this": "does_not_matter",
             "do_not_pseudo_this": url,
@@ -780,7 +780,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "pseudonymizer": {"mapping": {"pseudo_this": regex_pattern}},
             "url_fields": ["do_not_pseudo_this"],
         }
-        self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
+        self.regex_mapping = "pseudonymizer_regex_mapping.json"
         self._load_rule(rule)
         self.object.process(event)
 

@@ -195,13 +195,8 @@ def provision_context(
                         content_type=spec.get("content_type", "application/json"),
                     )
                 else:
-                    file_path: Path = tmp_path / path.removeprefix("file://")
-                    if not isinstance(file_path, Path):
-                        raise TypeError("file_path is not a valid Path")
-                    file_path.parent.mkdir(
-                        parents=True,
-                        exist_ok=True,
-                    )
+                    file_path = tmp_path / path.removeprefix("file://")
+                    file_path.parent.mkdir(parents=True, exist_ok=True)
                     if "refpath" in spec:
                         ref_path = Path(spec["refpath"])
                         src_path = ref_path if ref_path.is_absolute() else project_root / ref_path
