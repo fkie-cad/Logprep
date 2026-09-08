@@ -59,7 +59,7 @@ class Cache(OrderedDict):
             return False
         return True
 
-    def add(self, item: Union[int, str]):
+    def add(self, item: int | str):
         """Add the item into the cache or update its timestamp.
 
         Parameters

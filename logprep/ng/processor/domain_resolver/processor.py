@@ -195,7 +195,7 @@ class DomainResolver(Processor):
 
     rule_class = DomainResolverRule
 
-    def __init__(self, name: str, configuration: Processor.Config):
+    def __init__(self, name: str, configuration: Processor.Config) -> None:
         super().__init__(name, configuration)
         self._domain_ip_map = {}
 
