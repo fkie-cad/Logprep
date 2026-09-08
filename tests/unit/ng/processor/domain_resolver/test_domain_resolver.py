@@ -207,7 +207,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         self._load_rule(rule)
         with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            result = domain_resolver._resolve_with_timeout_check("domain")
+            result = domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, SuccessResult)
             assert result.resolved_ip == "1.2.3.4"
             assert len(domain_resolver._timeout_cache) == 0
@@ -217,21 +217,21 @@ class TestDomainResolver(BaseProcessorTestCase):
         with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = LifetimeTimeout
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            result = domain_resolver._resolve_with_timeout_check("domain")
+            result = domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, FailedResult)
             assert result.failure_type == FailureType.TIMEOUT
             assert len(domain_resolver._timeout_cache) == 1
 
         with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            result = domain_resolver._resolve_with_timeout_check("domain")
+            result = domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, FailedResult)
             assert result.failure_type == FailureType.TIMEOUT
             assert len(domain_resolver._timeout_cache) == 1
 
             domain_resolver._timeout_cache.clear()
 
-            result = domain_resolver._resolve_with_timeout_check("domain")
+            result = domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, SuccessResult)
             assert result.resolved_ip == "1.2.3.4"
             assert len(domain_resolver._timeout_cache) == 0

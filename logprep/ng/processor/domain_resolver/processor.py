@@ -276,17 +276,6 @@ class DomainResolver(Processor):
             case FailedResult(_, error) if error:
                 self._handle_warning_error(event, rule, error)
 
-    def _resolve_with_timeout_check(self, domain: str) -> SuccessResult | FailedResult:
-        hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
-        if self._timeout_cache.is_cached(hash_string):
-            self.metrics.timeouts_cached += 1
-            return FailedResult(FailureType.TIMEOUT)
-
-        result = self._resolve_ip(domain)
-        if isinstance(result, FailedResult) and self._is_timeout(result):
-            self._timeout_cache.add(hash_string)
-        return result
-
     def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
 
@@ -296,20 +285,22 @@ class DomainResolver(Processor):
             self.metrics.resolved_cached += 1
             return result
 
-        result = self._resolve_with_timeout_check(domain)
+        if self._timeout_cache.is_cached(hash_string):
+            self.metrics.timeouts_cached += 1
+            return FailedResult(FailureType.TIMEOUT)
+
+        result = self._resolve_ip(domain)
         match result:
             case SuccessResult(_):
                 self._domain_cache.add(hash_string)
                 self._domain_ip_map.update({hash_string: result})
-            case FailedResult(_) if not self._is_timeout(result):
+            case FailedResult(FailureType.TIMEOUT | FailureType.NO_NAMESERVERS):
+                self._timeout_cache.add(hash_string)
+            case FailedResult(_):
                 self._domain_cache.add(hash_string)
                 self._domain_ip_map.update({hash_string: result})
         self.metrics.resolved_new += 1
         return result
-
-    @staticmethod
-    def _is_timeout(failed_result: FailedResult) -> bool:
-        return failed_result.failure_type in (FailureType.TIMEOUT, FailureType.NO_NAMESERVERS)
 
     def _add_resolve_infos_to_event(self, event: dict, rule, resolved_ip: str):
         if resolved_ip:
