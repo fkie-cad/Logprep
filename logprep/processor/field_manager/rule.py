@@ -98,7 +98,7 @@ class FieldManagerRule(Rule):
                 validators.instance_of(list),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ],
-            default=[],
+            factory=list,
         )
         """The fields from where to get the values which should be processed, requires
         :code:`target_field`."""
@@ -113,7 +113,7 @@ class FieldManagerRule(Rule):
                     value_validator=validators.instance_of(str),
                 ),
             ],
-            default={},
+            factory=dict,
         )
         """A key-value mapping from source fields to target fields. Can be used to copy/move
         multiple fields at once. If you want to move fields set :code:`delete_source_fields` to
@@ -135,6 +135,7 @@ class FieldManagerRule(Rule):
         """If set to :code:`True` missing fields will be ignored, no warning is logged and the event
         is not tagged with the failure tag. Defaults to :code:`False`"""
         deduplicate: bool = field(validator=validators.instance_of(bool), default=True)
+        """If set to :code:`True` fields that would be duplicated by merging are deduplicated and only written once"""
 
         def __attrs_post_init__(self):
             # ensures no split operations during processing

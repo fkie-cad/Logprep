@@ -73,6 +73,9 @@ class StringSplitterRule(FieldManagerRule):
         By this definition, the empty string (no characters) and strings containing only `whitespace <https://docs.python.org/3/library/stdtypes.html#str.isspace>`_ count as 'empty'.
         The default setting is to keep empty list values."""
 
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
+
     @property
     def config(self) -> Config:
         """returns the config as typed StringSplitterRule.Config"""
