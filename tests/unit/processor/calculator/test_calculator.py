@@ -14,6 +14,31 @@ test_cases = [
         {
             "filter": "message",
             "calculator": {
+                "calc": "1+${field1}",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "1"},
+        {"message": "This is a message", "field1": "1", "new_field": 2},
+        id="Sums integers from single field",
+    ),
+    pytest.param(
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${duration} * 10e5",
+                "target_field": "duration",
+                "overwrite_target": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": 10000.0},
+        id="Time conversion ms -> ns",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
                 "calc": "2>1",
                 "target_field": "new_field",
             },
@@ -21,6 +46,107 @@ test_cases = [
         {"message": "This is a message"},
         {"message": "This is a message", "new_field": True},
         id="compare is greater than (>)",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "MIN(${a},${c}) < ${b} < MAX(${a}, ${c})",
+                "target_field": "b_is_in_range",
+            },
+        },
+        {"message": "This is a message", "a": 6, "b": 5, "c": 3},
+        {"message": "This is a message", "a": 6, "b": 5, "c": 3, "b_is_in_range": True},
+        id="Range check",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "AND(${a} > 6, ${a} % 2)",
+                "target_field": "a_is_gt_6_and_odd",
+            },
+        },
+        {"message": "This is a message", "a": 9},
+        {"message": "This is a message", "a": 9, "a_is_gt_6_and_odd": True},
+        id="Logic example",
+    ),
+    pytest.param(
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${missing_field} * 10e5",
+                "target_field": "duration",
+                "ignore_missing_fields": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": "0.01"},
+        id="Ignore missing source fields",
+    ),
+    pytest.param(
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "target",
+                "merge_with_target": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3]},
+        {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3, 12]},
+        id="Extend list",
+    ),
+    pytest.param(
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "field1",
+                "overwrite_target": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"field1": 12, "field2": "4", "field3": 2},
+        id="overwrites target",
+    ),
+    pytest.param(
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"result": 12},
+        id="Delete source fields",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "calculator": {
+                "calc": "${key.field1} + ${key.source.field2} +${key.source.source.field3}",
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"key": {"source": {"source": {"field3": 2}, "field2": 6}, "field1": 4}},
+        {"result": 12},
+        id="Handles dotted fields",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "from_hex(${field1})",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "ff"},
+        {"message": "This is a message", "field1": "ff", "new_field": 255},
+        id="Convert hex to int",
     ),
     pytest.param(
         {
@@ -194,18 +320,6 @@ test_cases = [
         {
             "filter": "message",
             "calculator": {
-                "calc": "1+${field1}",
-                "target_field": "new_field",
-            },
-        },
-        {"message": "This is a message", "field1": "1"},
-        {"message": "This is a message", "field1": "1", "new_field": 2},
-        id="sums integers from single field",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "calculator": {
                 "calc": "1+${field1}+${field2}",
                 "target_field": "result",
             },
@@ -264,84 +378,6 @@ test_cases = [
     ),
     pytest.param(
         {
-            "filter": "field2 AND field3",
-            "calculator": {
-                "calc": "${field1} + ${field2} +${field3}",
-                "target_field": "field1",
-                "overwrite_target": True,
-            },
-        },
-        {"field1": "6", "field2": "4", "field3": 2},
-        {"field1": 12, "field2": "4", "field3": 2},
-        id="overwrites target",
-    ),
-    pytest.param(
-        {
-            "filter": "field2 AND field3",
-            "calculator": {
-                "calc": "${field1} + ${field2} +${field3}",
-                "target_field": "result",
-                "delete_source_fields": True,
-            },
-        },
-        {"field1": "6", "field2": "4", "field3": 2},
-        {"result": 12},
-        id="delete source fields",
-    ),
-    pytest.param(
-        {
-            "filter": "field2 AND field3",
-            "calculator": {
-                "calc": "${field1} + ${field2} +${field3}",
-                "target_field": "target",
-                "merge_with_target": True,
-            },
-        },
-        {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3]},
-        {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3, 12]},
-        id="extend list",
-    ),
-    pytest.param(
-        {
-            "filter": "*",
-            "calculator": {
-                "calc": "${key.field1} + ${key.source.field2} +${key.source.source.field3}",
-                "target_field": "result",
-                "delete_source_fields": True,
-            },
-        },
-        {"key": {"source": {"source": {"field3": 2}, "field2": 6}, "field1": 4}},
-        {"result": 12},
-        id="handles dotted fields",
-    ),
-    pytest.param(
-        {
-            "filter": "duration",
-            "calculator": {
-                "calc": "${duration} * 10e5",
-                "target_field": "duration",
-                "overwrite_target": True,
-            },
-        },
-        {"duration": "0.01"},
-        {"duration": 10000.0},
-        id="Time conversion ms -> ns",
-    ),
-    pytest.param(
-        {
-            "filter": "duration",
-            "calculator": {
-                "calc": "${missing_field} * 10e5",
-                "target_field": "duration",
-                "ignore_missing_fields": True,
-            },
-        },
-        {"duration": "0.01"},
-        {"duration": "0.01"},
-        id="Ignore missing source fields",
-    ),
-    pytest.param(
-        {
             "filter": "message",
             "calculator": {
                 "calc": "from_hex(0x${field1})",
@@ -351,18 +387,6 @@ test_cases = [
         {"message": "This is a message", "field1": "ff"},
         {"message": "This is a message", "field1": "ff", "new_field": 255},
         id="convert hex to int",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "calculator": {
-                "calc": "from_hex(${field1})",
-                "target_field": "new_field",
-            },
-        },
-        {"message": "This is a message", "field1": "0xff"},
-        {"message": "This is a message", "field1": "0xff", "new_field": 255},
-        id="convert hex to int with prefix",
     ),
     pytest.param(
         {

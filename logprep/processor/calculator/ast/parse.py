@@ -7,6 +7,7 @@ from typing import Callable
 
 from pyparsing import (
     CaselessKeyword,
+    CaselessLiteral,
     DelimitedList,
     Forward,
     Group,
@@ -174,14 +175,14 @@ def _setup_syntax() -> ParserElement:
 
     hex_number = Regex(rf"0x{_HEX_PATTERN}")
     number_from_hex = (
-        Suppress("from_hex")
+        Suppress(CaselessLiteral("from_hex"))
         + Suppress("(")
         + Regex(rf"(0x)?{_HEX_PATTERN}", flags=RegexFlag.IGNORECASE)
         + Suppress(")")
     )
 
     variable_as_hex = (
-        Suppress("from_hex")
+        Suppress(CaselessLiteral("from_hex"))
         + Suppress("(")
         + Optional(Suppress("0x"))
         + Suppress("${")

@@ -101,6 +101,8 @@ static_expression_test_cases = static_expression_example_test_cases + [
     ("1 <= 2 <= 3", True),
     ("1 <= 1 < 3", True),
     ("1 < 3 <= 3", True),
+    ("FROM_HEX(2a)", 42),
+    ("From_Hex(2A)", 42),
     ("sgn(-2)", -1),
     ("sgn(0)", 0),
     ("sgn(0.1)", 1),

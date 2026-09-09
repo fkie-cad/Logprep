@@ -6,7 +6,7 @@
 
 {# --- actual template --- #}
 {% set primary = data.static_expression_example_test_cases %}
-CALC EXAMPLES
+
 {% for item in primary %}
    {{- render_case(item[0], item[1]) }}
 {% endfor %}

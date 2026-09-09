@@ -33,6 +33,35 @@ A speaking example:
    :inherited-members:
    :no-undoc-members:
 
+Expression syntax for |PROCESSOR_NAME|:
+------------------------------------------------
+
+The |PROCESSOR_NAME| can handle the following atomic expressions:
+
+.. list-table:: Available expressions
+   :header-rows: 1
+
+   * - Type
+     - Examples
+     - Description
+   * - Numeric Values
+     - :code:`123`, :code:`- 0.123`, :code:`1e-5`
+     - Integers or floats (with scientific notation).
+   * - Variables
+     - :code:`${field1}`, :code:`${nested.field}`
+     - A value to be read from the event, specified via its path. Will be parsed
+       to numeric values.
+   * - Constants
+     - :code:`pi`, :code:`e`, :code:`PI`. :code:`E`
+     - The values for pi and the euler number (case insensitive).
+   * - Hex-Numbers (as constants)
+     - :code:`0xFF`, :code:`from_hex(FF)`, :code:`FROM_HEX(FF)`
+     - Integer can be given in in hex format either via the :code:`0x`-prefix
+       or the build-in :code:`from_hex` function.
+   * - Hex-Numbers (as variables)
+     - :code:`from_hex(${path.to.field})`, :code:`from_hex(0x${field})` (legacy)
+     - Read a hex number from string found on the event at the specified path.
+
 The |PROCESSOR_NAME| supports the following arithmetic operators:
 
 * :code:`+` addition
@@ -41,6 +70,8 @@ The |PROCESSOR_NAME| supports the following arithmetic operators:
 * :code:`/` division
 * :code:`%` modulo
 * :code:`^` exponentiation
+
+These take numeric values as operands and return a numeric value as a result.
 
 The |PROCESSOR_NAME| supports the following comparison operators:
 
@@ -51,6 +82,9 @@ The |PROCESSOR_NAME| supports the following comparison operators:
 * :code:`==` equal
 * :code:`!=` not equal
 
+These take numeric values as operands and return a boolean value (:code:`True`
+or :code:`False`) as a result.
+
 Furthermore the following range checks are supported
 
 * :code:`a < b < c`
@@ -58,22 +92,30 @@ Furthermore the following range checks are supported
 * :code:`a < b <= c`
 * :code:`a <= b <= c`
 
-Comparison and range check expressions return either :code:`True` or :code:`False`.
-Arithmetic expression are evaluated before the comparison expressions.
+Where :code:`a`, :code:`b` and :code:`c` are numeric values and the yielded
+result is a boolean.
 
-The comparison and range operator can only compare numbers, boolean
-values are not allowed as operands.
-:code:`(1 < 2) < 3` or :code:`1 < 2 == 2` are not supported.
+Arithmetic expression are evaluated before comparisons and range checks.
+
+.. warning::
+    Comparisons, range checks and some functions return boolean values.
+    Because unary minus, operators, range checks and most functions can only
+    accept numbers not booleans the following examples would result in
+    a syntax error:
+
+    * :code:`(1 < 2) < 3`
+    * :code:`1 < 2 == 2`
+    * :code:`-(1 < 2)`
+    * :code:`(1 < 2) + 1`
+    * :code:`(1 < 2) == (2 < 3)`
+    * :code:`all(1, 1) * 2`
+
+
+The following functions are available, where the function names a case-insensitive:
 
 .. datatemplate:import-module:: logprep.processor.calculator.ast.function_registry
-   :template: calc-function-renderer.tmpl
+   :template: calculator/function-renderer.tmpl
 
-Boolean values are final results and cannot be reused as operands in arithmetic or comparison
-operations. Unary negation of boolean values is also not supported. This applies to boolean values
-returned by comparisons as well as boolean-returning functions such as :code:`all`.
-
-For example, expressions such as :code:`(1 < 2) + 1`, :code:`(1 < 2) == (2 < 3)`,
-:code:`-(1 < 2)`, and :code:`all(1, 1) * 2` are not supported.
 
 .. warning::
 
@@ -87,9 +129,17 @@ Following is a list of example calculation expressions. All factors and operator
 from a field using the schema :code:`${your.dotted.field}`:
 
 .. datatemplate:import-module:: tests.unit.processor.calculator.test_ast
-   :template: calc-renderer.tmpl
+   :template: calculator/examples-renderer.tmpl
 
 The calc expression is not whitespace or case sensitive.
+
+
+Examples for |PROCESSOR_NAME|:
+------------------------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.calculator.test_calculator
+   :template: testcase-renderer.tmpl
+
 
 """
 
