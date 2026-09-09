@@ -162,6 +162,23 @@ example_test_cases = [
         },
         id="use the current time with a target timezone",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "target_field": "normalized_timestamp",
+            },
+        },
+        {
+            "message": "2009-06-15 13:45:30Z",
+        },
+        {
+            "message": "2009-06-15 13:45:30Z",
+            "normalized_timestamp": "2009-06-15T13:45:30Z",
+        },
+        id="write normalized timestamp to target field",
+    ),
 ]
 
 
