@@ -41,6 +41,9 @@ class PipelineManager:
                 for processor_config in self.configuration.pipeline
             ]
 
+            for processor in processors:
+                await processor.config.tree_config
+
             named_outputs = {
                 output_name: cast(Output, recorder.create({output_name: output}))
                 for output_name, output in self.configuration.output.items()
