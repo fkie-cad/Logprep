@@ -47,7 +47,6 @@ from attrs import define, field, validators
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
-from logprep.util import getter
 from logprep.util.helper import FieldValue, deduplicate_with_order
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -103,7 +102,7 @@ class RuleTree:
     def __init__(
         self,
         root: Node | None = None,
-        config: str | None = None,
+        config: Config | None = None,
     ):
         """Rule tree initialization function.
 
@@ -114,16 +113,12 @@ class RuleTree:
         ----------
         root: Node, optional
             Node that should be used as the new rule tree's root node.
-        config: str, optional
-            Path to a tree configuration.
+        config: Config, optional
+            A tree configuration.
         """
         self._rule_mapping = {}
-        self.tree_config = RuleTree.Config()
-        if config:
-            config_data = getter.GetterFactory.from_string(config).get_dict()
-            self.tree_config = RuleTree.Config(**config_data)
+        self.tree_config = config if config is not None else RuleTree.Config()
         self.rule_parser = RuleParser(self.tree_config.tag_map)
-
         self._root = Node(None) if root is None else root
 
     @property

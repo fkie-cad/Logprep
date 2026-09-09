@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-import responses
+from aiohttp import web
 
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
@@ -203,25 +203,42 @@ class TestAmides(BaseProcessorTestCase[Amides]):
             cached_checksum = hashlib.md5(cached_file.read_bytes()).hexdigest()  # nosemgrep
             assert expected_checksum == cached_checksum
 
-    @responses.activate
-    async def test_setup_get_model_via_http_getter(self, tmp_path, monkeypatch):
-        model_uri = "http://model-path-target/model.zip"
+    async def test_setup_get_model_via_http_getter(
+        self,
+        tmp_path,
+        monkeypatch,
+        aiohttp_server,
+    ):
         model_original = Path(self.CONFIG["models_path"])
         model_original_content = model_original.read_bytes()
         expected_checksum = hashlib.md5(model_original_content).hexdigest()  # nosemgrep
-        responses.add(responses.GET, model_uri, model_original_content)
+
+        async def handler(_: web.Request) -> web.Response:
+            return web.Response(
+                body=model_original_content,
+                content_type="application/zip",
+            )
+
+        app = web.Application()
+        app.router.add_get("/model.zip", handler)
+        server = await aiohttp_server(app)
 
         config = deepcopy(self.CONFIG)
-        config["models_path"] = model_uri
+        config["models_path"] = str(server.make_url("/model.zip"))
         self.object = Factory.create({"amides": config})
 
         with monkeypatch.context() as monkey_context:
             monkey_context.chdir(tmp_path)
+
             await self.object.setup()
-            loaded_file = Path(f"{current_process().name}-{self.object.name}.zip")
-            assert loaded_file.exists()
-            loaded_checksum = hashlib.md5(loaded_file.read_bytes()).hexdigest()  # nosemgrep
-            assert expected_checksum == loaded_checksum
+
+            downloaded_file = Path(f"{current_process().name}-{self.object.name}.zip")
+
+            assert downloaded_file.exists()
+
+            downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
+
+            assert expected_checksum == downloaded_checksum
 
     async def test_normalizer_returns_empty_string(self):
         with mock.patch.object(self.object, "_normalizer") as mock_normalizer:

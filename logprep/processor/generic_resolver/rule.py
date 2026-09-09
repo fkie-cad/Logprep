@@ -268,7 +268,7 @@ class GenericResolverRule(FieldManagerRule):
         ignore_case: bool = field(validator=validators.instance_of(bool), default=False)
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
-        additions: dict[str, FieldValue] = field(default={}, eq=False, init=False)
+        additions: dict[str, FieldValue] = field(factory=dict, eq=False, init=False)
         """Contains a dictionary of field names and values that should be added."""
 
         @property

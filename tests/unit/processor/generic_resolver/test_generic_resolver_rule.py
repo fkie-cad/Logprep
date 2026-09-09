@@ -415,3 +415,15 @@ class TestGenericResolverRule:
                     },
                 }
             )
+
+    def test_additions_are_not_shared_between_configs(self):
+        first = GenericResolverRule.Config(
+            field_mapping={"source": "target"},
+            resolve_list={},
+        )
+        second = GenericResolverRule.Config(
+            field_mapping={"source": "target"},
+            resolve_list={},
+        )
+
+        assert first.additions is not second.additions

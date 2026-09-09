@@ -24,6 +24,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
 
     def test_process_returns_list_of_tuples(self):
         document = {"message": "test_message", "other": "field"}
+        self.object.setup()
         tuple_list = self.object.process(document)
         assert isinstance(tuple_list, ProcessorResult)
         assert len(tuple_list.data) > 0
@@ -104,11 +105,13 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         assert result.processor_name == "Test Instance Name"
 
     def test_gets_matching_rules_from_rules_tree(self):
+        self.object.setup()
         matching_rules = self.object._rule_tree.get_matching_rules({"message": "the message"})
         assert isinstance(matching_rules, list)
         assert len(matching_rules) > 0
 
     def test_apply_rules_is_called(self):
+        self.object.setup()
         with mock.patch(
             f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"
         ) as mock_apply_rules:
@@ -135,6 +138,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
 
     def test_process_clears_internal_filtered_events_list_before_every_event(self):
         document = {"message": "test_message", "other": {"message": "my message value"}}
+        self.object.setup()
         _ = self.object.process(document)
         assert len(self.object.result.data) == 1
         _ = self.object.process(document)
