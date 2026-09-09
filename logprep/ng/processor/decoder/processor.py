@@ -11,7 +11,7 @@ The `decoder` processor decodes or parses field values from the configured
 * nginx parser for kubernetes ingress
 * syslog_rfc3164
 * syslog_rfc3164_local
-* syslog_rfc5324
+* syslog_rfc5424
 * logfmt
 * cri
 * docker
