@@ -196,8 +196,10 @@ class TimestamperRule(FieldManagerRule):
         )
         """ timezone for target_field. defaults to :code:`UTC`"""
 
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
     @property
     def config(self) -> Config:

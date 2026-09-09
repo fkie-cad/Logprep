@@ -27,7 +27,8 @@ to the labels of the category :code:`action`:
    :noindex:
 """
 
-from typing import Iterable
+import typing
+from collections.abc import Iterable
 
 from attrs import define, field, validators
 
@@ -42,23 +43,27 @@ class LabelerRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for Labeler"""
 
-        label: dict = field(
+        label: dict[str, Iterable[str]] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(Iterable),
+                    value_validator=validators.instance_of((list, set)),
                 ),
             ]
         )
         """Mapping of a category and a list of labels to add"""
 
-    # pylint: disable=C0111
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
+
+    @property
+    def config(self) -> Config:
+        return typing.cast(LabelerRule.Config, self._config)
+
     @property
     def label(self) -> dict:
-        return self._config.label
-
-    # pylint: enable=C0111
+        return self.config.label
 
     @property
     def prefixed_label(self) -> dict:
@@ -66,16 +71,16 @@ class LabelerRule(FieldManagerRule):
 
     def conforms_to_schema(self, schema: LabelingSchema) -> bool:
         """Check if labels are valid."""
-        return schema.validate_labels(self._config.label)
+        return schema.validate_labels(self.config.label)
 
     def add_parent_labels_from_schema(self, schema: LabelingSchema):
         """Add parent labels to this rule according to a given schema."""
-        expanded_label = {}
+        expanded_label: dict = {}
 
-        for category in self._config.label:
+        for category in self.config.label:
             expanded_label[category] = set()
-            for label in self._config.label[category]:
+            for label in self.config.label[category]:
                 expanded_label[category].add(label)
                 for parent in schema.get_parent_labels(category, label):
                     expanded_label[category].add(parent)
-            self._config.label[category] = expanded_label[category]
+            self.config.label[category] = expanded_label[category]
