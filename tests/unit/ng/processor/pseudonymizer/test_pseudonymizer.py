@@ -163,14 +163,11 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             }
         }
         await self._load_rule(rule_dict)
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
-        assert self.object.metrics.new_results == 1
-        assert self.object.metrics.cached_results == 1
-        assert self.object.metrics.num_cache_entries == 1
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.cached_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
 
     async def test_resolve_from_cache_pseudonymize_urls(self):
         rule_dict = {
@@ -189,16 +186,13 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             "and_pseudo_this": "https://www.pseudo.this.de",
         }
         await self._load_rule(rule_dict)
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
         # 1 subdomains -> pseudonym_cache, 1 url -> url_cache
-        assert self.object.metrics.new_results == 2
+        assert self.object.metrics.new_results.value == 2
         # second url is cached, no string pseudonymization needed
-        assert self.object.metrics.cached_results == 1
-        assert self.object.metrics.num_cache_entries == 2, "same as new results"
+        assert self.object.metrics.cached_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 2, "same as new results"
 
     @pytest.mark.parametrize(
         "url, expected",
@@ -425,15 +419,11 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         }
         await self._load_rule(rule_dict)
 
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(deepcopy(event))
         await self.object.process(deepcopy(event))
         await self.object.process(event)
         # because the event is the same, the result is cached
-        # metrics are mocked by integers and incremented by cache_info results
-        assert self.object.metrics.new_results == 3
-        assert self.object.metrics.cached_results == 3
-        assert self.object.metrics.num_cache_entries == 3
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.cached_results.value == 2
+        assert self.object.metrics.num_cache_entries.value == 1

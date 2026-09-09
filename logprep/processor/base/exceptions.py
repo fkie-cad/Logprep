@@ -53,7 +53,7 @@ class ProcessingError(LogprepException):
     """Base class for exceptions related to processing events."""
 
     def __init__(self, message: str, rule: "Rule"):
-        rule.metrics.number_of_errors += 1
+        rule.metrics.number_of_errors.inc(1)
         super().__init__(f"{self.__class__.__name__}: {message}")
 
 
@@ -75,7 +75,7 @@ class ProcessingWarning(Warning):
     ):
         self.tags = tags if tags else []
         if rule:
-            rule.metrics.number_of_warnings += 1
+            rule.metrics.number_of_warnings.inc(1)
             message += f", {rule.id=}, {rule.description=}"
         message += f", {event=}"
         super().__init__(f"{self.__class__.__name__}: {message}")

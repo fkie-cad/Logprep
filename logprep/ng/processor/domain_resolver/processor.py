@@ -189,7 +189,7 @@ class DomainResolver(Processor):
             domain = url.path
         if not domain:
             return
-        self.metrics.total_urls += 1
+        self.metrics.total_urls.inc(1)
         if self.config.cache_enabled:
             self._resolve_with_cache(domain, event, rule)
         else:
@@ -205,10 +205,10 @@ class DomainResolver(Processor):
             resolved_ip, status = self._resolve_ip(domain)
             if status in (ResolveStatus.SUCCESS, ResolveStatus.UNKNOWN, ResolveStatus.TIMEOUT):
                 self._domain_ip_map.update({hash_string: resolved_ip})
-            self.metrics.resolved_new += 1
+            self.metrics.resolved_new.inc(1)
         else:
             resolved_ip = self._domain_ip_map.get(hash_string)
-            self.metrics.resolved_cached += 1
+            self.metrics.resolved_cached.inc(1)
         self._add_resolve_infos_to_event(event, rule, resolved_ip)
 
         if self.config.debug_cache:
@@ -230,13 +230,13 @@ class DomainResolver(Processor):
             resolved_ip = result.get(timeout=self.config.timeout)
             return resolved_ip, ResolveStatus.SUCCESS
         except ValueError:  # Makes no connection so does not need to be cached
-            self.metrics.invalid_domains += 1
+            self.metrics.invalid_domains.inc(1)
             return None, ResolveStatus.INVALID
         except context.TimeoutError:
-            self.metrics.timeouts += 1
+            self.metrics.timeouts.inc(1)
             return None, ResolveStatus.TIMEOUT
         except OSError:  # Won't be timeout if default timeout is None
-            self.metrics.unknown_domains += 1
+            self.metrics.unknown_domains.inc(1)
             return None, ResolveStatus.UNKNOWN
 
     def _store_debug_infos(self, event: dict[str, FieldValue], requires_storing: bool) -> None:

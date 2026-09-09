@@ -50,7 +50,6 @@ class TestConsoleOutput(BaseOutputTestCase):
         mock_pprint.assert_called()
 
     def test_store_handles_errors(self):
-        self.object.metrics.number_of_errors = 0
         event = LogEvent(
             {"message": "test message"},
             original=b"",
@@ -60,12 +59,11 @@ class TestConsoleOutput(BaseOutputTestCase):
             mocked_function.side_effect = Exception("Test exception")
             self.object.store(event)
         mocked_function.assert_called()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
         # assert event.state == EventStateType.FAILED
 
     def test_store_custom_handles_errors(self):
-        self.object.metrics.number_of_errors = 0
         event = LogEvent(
             {"message": "test message"},
             original=b"",
@@ -76,12 +74,11 @@ class TestConsoleOutput(BaseOutputTestCase):
             mocked_function.side_effect = Exception("Test exception")
             self.object.store_custom(event, "stdout")
         mocked_function.assert_called()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
         # assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
 
     def test_store_handles_errors_failed_event(self):
-        self.object.metrics.number_of_errors = 0
         event = LogEvent(
             {"message": "test message"},
             original=b"",
@@ -92,12 +89,11 @@ class TestConsoleOutput(BaseOutputTestCase):
             mocked_function.side_effect = Exception("Test exception")
             self.object.store(event)
         mocked_function.assert_called()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
         # assert event.state == EventStateType.FAILED
 
     def test_store_custom_handles_errors_failed_event(self):
-        self.object.metrics.number_of_errors = 0
         event = LogEvent(
             {"message": "test message"},
             original=b"",
@@ -108,6 +104,6 @@ class TestConsoleOutput(BaseOutputTestCase):
             mocked_function.side_effect = Exception("Test exception")
             self.object.store_custom(event, "stdout")
         mocked_function.assert_called()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
         # assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"

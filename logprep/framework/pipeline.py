@@ -377,13 +377,13 @@ class Pipeline:
             case CriticalOutputError():
                 event = self._get_output_error_event(item)
             case PipelineResult(input_event, errors):
-                self.metrics.number_of_failed_events += 1
+                self.metrics.number_of_failed_events.inc(1)
                 event = {
                     "event": str(input_event),
                     "errors": ", ".join((str(error.message) for error in errors)),
                 }
             case CriticalInputError():
-                self.metrics.number_of_failed_events += 1
+                self.metrics.number_of_failed_events.inc(1)
                 event = {"event": str(item.raw_input), "errors": str(item.message)}
             case list():
                 event = [{"event": str(i), "errors": "Unknown error"} for i in item]
@@ -420,15 +420,15 @@ class Pipeline:
                 event = [
                     {"event": str(i["event"]), "errors": str(i["errors"])} for i in item.raw_input
                 ]
-                self.metrics.number_of_failed_events += len(event)
+                self.metrics.number_of_failed_events.inc(len(event))
                 return event
             case CriticalOutputError({"errors": error, "event": event}):
-                self.metrics.number_of_failed_events += 1
+                self.metrics.number_of_failed_events.inc(1)
                 return {"event": str(event), "errors": str(error)}
             case CriticalOutputError(raw_input) if isinstance(raw_input, (list, tuple)):
                 event = [{"event": str(i), "errors": str(item.message)} for i in raw_input]
-                self.metrics.number_of_failed_events += len(event)
+                self.metrics.number_of_failed_events.inc(len(event))
                 return event
             case _:
-                self.metrics.number_of_failed_events += 1
+                self.metrics.number_of_failed_events.inc(1)
                 return {"event": str(item.raw_input), "errors": str(item.message)}

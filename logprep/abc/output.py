@@ -17,7 +17,7 @@ class OutputError(LogprepException):
     """Base class for Output related exceptions."""
 
     def __init__(self, output: "Output", message: str) -> None:
-        output.metrics.number_of_errors += 1
+        output.metrics.number_of_errors.inc(1)
         super().__init__(f"{self.__class__.__name__} in {output.description}: {message}")
 
 
@@ -25,7 +25,7 @@ class OutputWarning(LogprepException):
     """Base class for Output related warnings."""
 
     def __init__(self, output: "Output", message: str) -> None:
-        output.metrics.number_of_warnings += 1
+        output.metrics.number_of_warnings.inc(1)
         super().__init__(f"{self.__class__.__name__} in {output.description}: {message}")
 
 

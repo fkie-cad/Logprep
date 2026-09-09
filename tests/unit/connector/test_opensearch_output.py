@@ -107,11 +107,10 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             mock_error.assert_called()
 
     def test_health_counts_metrics_on_failure(self):
-        self.object.metrics.number_of_errors = 0
         self.object._search_context = mock.MagicMock()
         self.object._search_context.cluster.health.side_effect = SearchException
         assert not self.object.health()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
 
     def test_health_returns_false_on_cluster_status_not_green(self):
         self.object._search_context = mock.MagicMock()

@@ -208,10 +208,10 @@ class GenericResolver(FieldManager):
         self._cache_metrics_skip_count = 0
 
         cache_info = self._get_lru_cached_value_from_list.cache_info()
-        self.metrics.new_results += cache_info.misses
-        self.metrics.cached_results += cache_info.hits
-        self.metrics.num_cache_entries += cache_info.currsize
-        self.metrics.cache_load += cache_info.currsize / self.max_cache_entries
+        self.metrics.new_results.set(cache_info.misses)
+        self.metrics.cached_results.set(cache_info.hits)
+        self.metrics.num_cache_entries.set(cache_info.currsize)
+        self.metrics.cache_load.set(cache_info.currsize / self.max_cache_entries)
 
     async def setup(self) -> None:
         await super().setup()

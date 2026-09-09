@@ -644,20 +644,18 @@ class TestHttpConnector(BaseInputTestCase):
         assert connector.target.startswith("http://")
 
     def test_get_event_sets_message_backlog_size_metric(self):
-        self.object.metrics.message_backlog_size = 0
         random_number = random.randint(1, 100)
         for number in range(random_number):
             self.object.messages.put({"message": f"my message{number}"})
         self.object.get_next(0.001)
-        assert self.object.metrics.message_backlog_size == random_number
+        assert self.object.metrics.message_backlog_size.value == random_number
 
     def test_enpoints_count_requests(self):
-        self.object.metrics.number_of_http_requests = 0
         self.object.setup()
         random_number = random.randint(1, 100)
         for number in range(random_number):
             self.client.post("/json", json={"message": f"my message{number}"})
-        assert self.object.metrics.number_of_http_requests == random_number
+        assert self.object.metrics.number_of_http_requests.value == random_number
 
     @pytest.mark.parametrize("endpoint", ["json", "plaintext", "jsonl"])
     def test_endpoint_handles_gzip_compression(self, endpoint):
@@ -723,11 +721,10 @@ class TestHttpConnector(BaseInputTestCase):
 
     @responses.activate
     def test_health_counts_errors(self):
-        self.object.metrics.number_of_errors = 0
         endpoint = self.object.health_endpoints[0]
         responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)  # bad
         assert not self.object.health()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
 
     def test_health_endpoints_are_shortened(self):
         config = deepcopy(self.CONFIG)

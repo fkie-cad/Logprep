@@ -40,6 +40,7 @@ of the :code:`target_url`.
 
 import json
 import logging
+import typing
 from functools import cached_property
 
 import requests
@@ -135,24 +136,29 @@ class HttpOutput(Output):
                     )
                 )
             ),
-            validator=validators.instance_of(str | bool),
+            validator=validators.instance_of((str, bool)),
         )
         """Switch to disable ssl verification or path to certificate"""
+
+    @cached_property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(HttpOutput.Config, self._config)
 
     @property
     def user(self):
         """Return the user that is used for the http request"""
-        return self._config.user
+        return self.config.user
 
     @property
     def password(self):
         """Return the password that is used for the http request"""
-        return self._config.password
+        return self.config.password
 
     @property
     def timeout(self):
         """Return the timeout in seconds for the http request"""
-        return self._config.timeout
+        return self.config.timeout
 
     @cached_property
     def _headers(self):
@@ -161,7 +167,7 @@ class HttpOutput(Output):
     @property
     def verify(self):
         """Return the ssl verify status that is used for the http request"""
-        return self._config.verify
+        return self.config.verify
 
     @property
     def statistics(self) -> str:
@@ -173,7 +179,7 @@ class HttpOutput(Output):
                 lambda x: x.name.endswith("_total")
                 and "number_of_warnings" not in x.name  # blocklisted metric
                 and "number_of_errors" not in x.name,  # blocklisted metric
-                getattr(self.metrics, metric.name).tracker.collect()[0].samples,
+                getattr(self.metrics, metric.name).collect_samples(),
             )
             for sample in samples:
                 key = (
@@ -187,14 +193,15 @@ class HttpOutput(Output):
     def store(self, document: tuple[str, dict | list[dict]] | dict) -> None:
         if isinstance(document, tuple):
             target, payload = document
-            target = f"{self._config.target_url}{target}"
+            target = f"{self.config.target_url}{target}"
             self.store_custom(payload, target)
         else:
-            target = self._config.target_url
+            target = self.config.target_url
             self.store_custom(document, target)
 
     def store_custom(self, document: dict | tuple | list | str, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
+        request_data: str | bytes
         if isinstance(document, (tuple, list)):
             request_data = self._encoder.encode_lines(document)
             document_count = len(document)
@@ -206,7 +213,7 @@ class HttpOutput(Output):
             request_data = document.replace(";", "\n")
         else:
             error = TypeError(f"Document type {type(document)} is not supported")
-            self.metrics.number_of_failed_events += 1
+            self.metrics.number_of_failed_events.inc(1)
             logger.error(str(error))
             return
         try:
@@ -227,25 +234,25 @@ class HttpOutput(Output):
                     },
                 )
                 response.raise_for_status()
-                self.metrics.number_of_processed_events += document_count
-                self.metrics.number_of_http_requests += 1
+                self.metrics.number_of_processed_events.inc(document_count)
+                self.metrics.number_of_http_requests.inc(1)
             except requests.RequestException as error:
                 logger.error("Failed to send event: %s", str(error))
                 logger.debug("Failed event: %s", document)
-                self.metrics.number_of_failed_events += document_count
-                self.metrics.number_of_http_requests += 1
+                self.metrics.number_of_failed_events.inc(document_count)
+                self.metrics.number_of_http_requests.inc(1)
                 if not isinstance(error, requests.exceptions.HTTPError):
                     raise error
         except requests.exceptions.ConnectionError as error:
             logger.error(error)
-            self.metrics.connection_errors += 1
+            self.metrics.connection_errors.inc(1)
             if isinstance(error, requests.exceptions.Timeout):
-                self.metrics.timeouts += 1
+                self.metrics.timeouts.inc(1)
         except requests.exceptions.MissingSchema as error:
             raise ConnectionError(
-                f"No schema set in target-url: {self._config.get('target_url')}"
+                f"No schema set in target-url: {self.config.target_url}"
             ) from error
         except requests.exceptions.Timeout as error:
             # other timeouts than connection timeouts are handled here
             logger.error(error)
-            self.metrics.timeouts += 1
+            self.metrics.timeouts.inc(1)

@@ -69,13 +69,12 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
             _ = Factory.create({"test connector": kafka_config})
 
     def test_error_callback_logs_error(self):
-        self.object.metrics.number_of_errors = 0
         with mock.patch("logging.Logger.error") as mock_error:
             test_error = Exception("test error")
             self.object._error_callback(test_error)
             mock_error.assert_called()
             mock_error.assert_called_with("%s: %s", self.object.description, test_error)
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
 
     def test_stats_callback_sets_metric_object_attributes(self):
         librdkafka_metrics = tuple(
@@ -93,10 +92,9 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
             assert getattr(self.object.metrics, metric) == metric_value, metric
 
     def test_stats_set_age_metric_explicitly(self):
-        self.object.metrics.librdkafka_age = 0
         json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
         self.object._stats_callback(json_string)
-        assert self.object.metrics.librdkafka_age == 1337
+        assert self.object.metrics.librdkafka_age.value == 1337
 
     def test_kafka_config_is_immutable(self):
         self.object.setup()
@@ -156,9 +154,8 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
-        self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events.value == 1
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
         kafka_config = {"myconfig": "the config", "bootstrap.servers": "localhost:9092"}
@@ -202,20 +199,17 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         mock_error.assert_called()
 
     def test_health_counts_metrics_on_kafka_exception(self):
-        self.object.metrics.number_of_errors = 0
         self.object._admin = mock.MagicMock()
         self.object._admin.list_topics.side_effect = KafkaException("test error")
         assert not self.object.health()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
 
     def test_shutdown_logs_and_counts_error_if_queue_not_fully_flushed(self):
-        self.object.metrics.number_of_errors = 0
         self.object._producer = mock.MagicMock()
         self.object._producer.flush.return_value = 1
         with mock.patch("logging.Logger.error") as mock_error:
             self.object.shut_down()
         mock_error.assert_called()
-        self.object.metrics.number_of_errors = 1
 
     def test_health_returns_bool(self):
         with mock.patch.object(self.object, "_admin"):

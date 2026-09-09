@@ -361,7 +361,7 @@ class Pseudonymizer(FieldManager):
                 pseudonymized_query_parts, safe="<pseudonym:>", doseq=True
             )
             url_string = url_string.replace(parsed_url.query, pseudonymized_query)
-        self.metrics.pseudonymized_urls += 1
+        self.metrics.pseudonymized_urls.inc(1)
         return url_string
 
     def _wrap_hash(self, hash_string: str) -> str:
@@ -374,9 +374,9 @@ class Pseudonymizer(FieldManager):
             if is_lru_cached(f)
         ]
 
-        self.metrics.new_results += sum(c.misses for c in caches)
-        self.metrics.cached_results += sum(c.hits for c in caches)
-        self.metrics.num_cache_entries += sum(c.currsize for c in caches)
-        self.metrics.cache_load += (sum(c.currsize for c in caches)) / (
-            sum(typing.cast(int, c.maxsize) for c in caches)
+        self.metrics.new_results.set(sum(c.misses for c in caches))
+        self.metrics.cached_results.set(sum(c.hits for c in caches))
+        self.metrics.num_cache_entries.set(sum(c.currsize for c in caches))
+        self.metrics.cache_load.set(
+            (sum(c.currsize for c in caches)) / (sum(typing.cast(int, c.maxsize) for c in caches))
         )

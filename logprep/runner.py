@@ -129,7 +129,7 @@ class Runner:
                 self._logger.error("Restart count exceeded. Exiting.")
                 sys.exit(self.exit_code)
             if self._manager.error_queue is not None:
-                self.metrics.number_of_events_in_error_queue += self._manager.error_queue.qsize()
+                self.metrics.number_of_events_in_error_queue.set(self._manager.error_queue.qsize())
             self._manager.restart_failed_pipeline()
 
     def stop(self) -> None:

@@ -142,8 +142,6 @@ class PipelineManager:
             factory=lambda: CounterMetric(
                 description="Number of pipeline starts",
                 name="number_of_pipeline_starts",
-                labels={"component": "manager"},
-                inject_label_values=False,
             )
         )
         """Number of pipeline starts"""
@@ -241,14 +239,14 @@ class PipelineManager:
         while len(self._pipelines) < count:
             new_pipeline_index = len(self._pipelines) + 1
             self._pipelines.append(self._create_pipeline(new_pipeline_index))
-            self.metrics.number_of_pipeline_starts += 1
+            self.metrics.number_of_pipeline_starts.inc(1)
 
     def _decrease_to_count(self, count: int):
         while len(self._pipelines) > count:
             pipeline_process = self._pipelines.pop()
             pipeline_process.stop()  # type: ignore
             pipeline_process.join()
-            self.metrics.number_of_pipeline_stops += 1
+            self.metrics.number_of_pipeline_stops.inc(1)
 
     def restart_failed_pipeline(self):
         """Remove one pipeline at a time."""
@@ -266,7 +264,7 @@ class PipelineManager:
         for index, failed_pipeline in failed_pipelines:
             pipeline_index = index + 1
             self._pipelines.pop(index)
-            self.metrics.number_of_failed_pipelines += 1
+            self.metrics.number_of_failed_pipelines.inc(1)
             if self.prometheus_exporter:
                 self.prometheus_exporter.mark_process_dead(failed_pipeline.pid)
             self._pipelines.insert(index, self._create_pipeline(pipeline_index))

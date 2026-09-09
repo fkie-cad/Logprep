@@ -11,7 +11,6 @@ import pytest
 import schedule
 from attrs import asdict
 from attrs.exceptions import FrozenInstanceError
-from prometheus_client import Counter, Gauge, Histogram
 
 from logprep.abc.component import Component
 from logprep.factory import Factory
@@ -115,9 +114,7 @@ class BaseComponentTestCase(ABC):
             )
             metric_name = metric_name.replace("logprep_", "")
             metric_attribute = getattr(self.object.metrics, metric_name)
-            assert metric_attribute.tracker is not None
-            possibile_tracker_types = (Counter, Gauge, Histogram)
-            assert isinstance(metric_attribute.tracker, possibile_tracker_types)
+            assert metric_attribute.initialized
 
     def test_all_metric_attributes_are_tested(self):
         if self.object.__class__.Metrics is Component.Metrics:

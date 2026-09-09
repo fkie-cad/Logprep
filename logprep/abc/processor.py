@@ -197,7 +197,7 @@ class Processor(Component):
     @Metric.measure_time(self_arg=1)
     def _process_rule(self, rule, event):
         self._apply_rules_wrapper(event, rule)
-        rule.metrics.number_of_processed_events += 1
+        rule.metrics.number_of_processed_events.inc(1)
         return event
 
     def _process_rule_tree_multiple_times(self, tree: RuleTree, event: dict) -> None:
