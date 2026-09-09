@@ -141,6 +141,7 @@ The calc expression is not whitespace sensitive.
 """
 
 import re
+import typing
 
 from attrs import define, field, validators
 
@@ -168,7 +169,10 @@ class CalculatorRule(FieldManagerRule):
         """If set to :code:`True` missing fields will be ignored, no warning is logged,
         and the event is not tagged with the a failure tag. As soon as one field is missing
         no calculation is performed at all. Defaults to :code:`False`"""
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
         def __attrs_post_init__(self):
             self.source_fields = re.findall(FIELD_PATTERN, self.calc)
@@ -177,9 +181,9 @@ class CalculatorRule(FieldManagerRule):
     @property
     def calc(self):
         """Returns the calculation expression"""
-        return self._config.calc
+        return typing.cast(CalculatorRule.Config, self._config).calc
 
     @property
     def timeout(self):
         """Returns the timeout"""
-        return self._config.timeout
+        return typing.cast(CalculatorRule.Config, self._config).timeout
