@@ -2,6 +2,7 @@
 # pylint: disable=duplicate-code
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
+
 import pytest
 
 from tests.conftest import normalize_test_cases
