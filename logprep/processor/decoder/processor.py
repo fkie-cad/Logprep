@@ -64,7 +64,9 @@ class Decoder(FieldManager):
     ) -> list[FieldValue]:
         decoder_rule = typing.cast(DecoderRule, rule)
         decoder = DECODERS[decoder_rule.source_format]
-        return self._decode(event, decoder_rule, decoder, source_field_values)
+        return self._decode(
+            event, decoder_rule, decoder, [value for value in source_field_values if value != ""]
+        )
 
     def _decode(
         self,

@@ -62,7 +62,7 @@ class GeoipEnricherRule(FieldManagerRule):
                 validators.min_len(1),
                 validators.max_len(1),
             ],
-            default=[],
+            factory=list,
         )
         """Field to get geoip information for."""
         target_field: str = field(validator=validators.instance_of(str), default="geoip")
@@ -78,7 +78,7 @@ class GeoipEnricherRule(FieldManagerRule):
                     value_validator=validators.instance_of(str),
                 ),
             ],
-            default=Factory(dict),
+            factory=dict,
         )
         """(Optional) Rewrites the default output subfield locations to custom output subfield
         locations. Must be in the form of key value mapping pairs
@@ -103,8 +103,11 @@ class GeoipEnricherRule(FieldManagerRule):
                 geometry.coordinates: client.geo.coordinates
             description: '...'
         """
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
     @property
     def config(self) -> Config:

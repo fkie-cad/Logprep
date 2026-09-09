@@ -64,6 +64,7 @@ A speaking example for event enrichment via external api:
 
 import inspect
 import re
+import typing
 
 import requests
 from attrs import define, field, validators
@@ -176,8 +177,11 @@ class RequesterRule(FieldManagerRule):
         to be used on the request"""
         cert: str = field(validator=validators.instance_of(str), default="")
         """(Optional) SSL client certificate as path to ssl client cert file (.pem)."""
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
         def __attrs_post_init__(self):
             def collect_fields(value: FieldValue, fields: list[str]) -> list[str]:
@@ -202,6 +206,6 @@ class RequesterRule(FieldManagerRule):
 
     @property
     def target_field_mapping(self):
-        return self._config.target_field_mapping
+        return typing.cast(RequesterRule.Config, self._config).target_field_mapping
 
     # pylint: enable=missing-docstring

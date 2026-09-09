@@ -44,16 +44,18 @@ can store all missing keys.
    :noindex:
 """
 
+import typing
+
 from attrs import define, field, validators
 
-from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.processor.base.rule import Rule
 
 
-class KeyCheckerRule(FieldManagerRule):
+class KeyCheckerRule(Rule):
     """key_checker rule"""
 
     @define(kw_only=True)
-    class Config(FieldManagerRule.Config):
+    class Config(Rule.Config):
         """key_checker rule config"""
 
         source_fields: set = field(
@@ -67,7 +69,30 @@ class KeyCheckerRule(FieldManagerRule):
             converter=set,
         )
         """List of fields to check for."""
+
         target_field: str = field(validator=validators.instance_of(str))
         """The field where to write the processed values to. """
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
-        ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+
+        overwrite_target: bool = field(validator=validators.instance_of(bool), default=False)
+
+        merge_with_target: bool = field(validator=validators.instance_of(bool), default=False)
+
+    @property
+    def config(self) -> Config:
+        return typing.cast(KeyCheckerRule.Config, self._config)
+
+    @property
+    def source_fields(self) -> set[str]:
+        return self.config.source_fields
+
+    @property
+    def target_field(self) -> str:
+        return self.config.target_field
+
+    @property
+    def overwrite_target(self) -> bool:
+        return self.config.overwrite_target
+
+    @property
+    def merge_with_target(self) -> bool:
+        return self.config.merge_with_target

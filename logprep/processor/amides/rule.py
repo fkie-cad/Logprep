@@ -51,10 +51,13 @@ class AmidesRule(FieldManagerRule):
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
                 validators.min_len(1),
                 validators.max_len(1),
-            ]
+            ],
         )
         target_field: str = field(validator=validators.instance_of(str), default="amides")
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(
             init=False, repr=False, eq=False, default=False, validator=validators.instance_of(bool)
         )
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""

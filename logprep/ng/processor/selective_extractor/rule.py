@@ -158,7 +158,9 @@ class SelectiveExtractorRule(FieldManagerRule):
         target_field: str = field(default="", init=False, repr=False, eq=False)
         overwrite_target: bool = field(default=False, init=False, repr=False, eq=False)
         merge_with_target: bool = field(default=False, init=False, repr=False, eq=False)
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
         def __attrs_post_init__(self):
             super().__attrs_post_init__()

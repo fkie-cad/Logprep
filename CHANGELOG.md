@@ -3,6 +3,7 @@
 
 ### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
+* field_manager: add flag for deactivating deduplication
 
 ### Improvements
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`

@@ -43,6 +43,7 @@ Examples for timestamp_differ:
 """
 
 import re
+import typing
 
 from attrs import define, field, validators
 
@@ -83,8 +84,11 @@ class TimestampDifferRule(FieldManagerRule):
         show_unit: bool = field(default=False)
         """(Optional) Specifies whether the unit (s, ms, ns) should be part of the output.
         Defaults to :code:`False`."""
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
         def __attrs_post_init__(self):
             field_format_str = re.findall(FIELD_PATTERN, self.diff)
@@ -97,15 +101,19 @@ class TimestampDifferRule(FieldManagerRule):
 
     # pylint: disable=missing-function-docstring
     @property
+    def config(self):
+        return typing.cast(TimestampDifferRule.Config, self._config)
+
+    @property
     def output_format(self):
-        return self._config.output_format
+        return self.config.output_format
 
     @property
     def source_field_formats(self):
-        return self._config.source_field_formats
+        return self.config.source_field_formats
 
     @property
     def show_unit(self):
-        return self._config.show_unit
+        return self.config.show_unit
 
     # pylint: enable=missing-function-docstring
