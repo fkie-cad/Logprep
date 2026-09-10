@@ -7,9 +7,10 @@ import pytest
 from pyparsing import ParseException
 
 from logprep.processor.calculator.fourFn import BNF
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [
+example_test_cases = [
     pytest.param(
         {
             "filter": "message",
@@ -22,6 +23,48 @@ test_cases = [
         {"message": "This is a message", "new_field": True},
         id="compare is greater than (>)",
     ),
+    pytest.param(
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"result": 12},
+        id="delete source fields",
+    ),
+    pytest.param(
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "field1",
+                "overwrite_target": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"field1": 12, "field2": "4", "field3": 2},
+        id="overwrites target",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "from_hex(${field1})",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "0xff"},
+        {"message": "This is a message", "field1": "0xff", "new_field": 255},
+        id="convert hex to int with prefix",
+    ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
     pytest.param(
         {
             "filter": "message",
@@ -267,32 +310,6 @@ test_cases = [
             "filter": "field2 AND field3",
             "calculator": {
                 "calc": "${field1} + ${field2} +${field3}",
-                "target_field": "field1",
-                "overwrite_target": True,
-            },
-        },
-        {"field1": "6", "field2": "4", "field3": 2},
-        {"field1": 12, "field2": "4", "field3": 2},
-        id="overwrites target",
-    ),
-    pytest.param(
-        {
-            "filter": "field2 AND field3",
-            "calculator": {
-                "calc": "${field1} + ${field2} +${field3}",
-                "target_field": "result",
-                "delete_source_fields": True,
-            },
-        },
-        {"field1": "6", "field2": "4", "field3": 2},
-        {"result": 12},
-        id="delete source fields",
-    ),
-    pytest.param(
-        {
-            "filter": "field2 AND field3",
-            "calculator": {
-                "calc": "${field1} + ${field2} +${field3}",
                 "target_field": "target",
                 "merge_with_target": True,
             },
@@ -383,18 +400,6 @@ test_cases = [
         {
             "filter": "message",
             "calculator": {
-                "calc": "from_hex(${field1})",
-                "target_field": "new_field",
-            },
-        },
-        {"message": "This is a message", "field1": "0xff"},
-        {"message": "This is a message", "field1": "0xff", "new_field": 255},
-        id="convert hex to int with prefix",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "calculator": {
                 "calc": "from_hex(0x${field1})",
                 "target_field": "new_field",
             },
@@ -403,7 +408,7 @@ test_cases = [
         {"message": "This is a message", "field1": "FF", "new_field": 255},
         id="convert hex to int with prefix",
     ),
-]
+)
 
 
 failure_test_cases = [
@@ -556,13 +561,16 @@ class TestCalculator(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/calculator/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(
+        self, rule, event, expected, context, provision_context
+    ):  # pylint: disable=unused-argument
+        provision_context(context)
         self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
+    @pytest.mark.parametrize(["rule", "event", "expected", "error_message"], failure_test_cases)
     def test_testcases_failure_handling(self, rule, event, expected, error_message):
         self._load_rule(rule)
 

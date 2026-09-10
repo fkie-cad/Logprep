@@ -8,9 +8,10 @@ import pytest
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.processor.decoder.decoders import parse_logfmt
 from logprep.util.typing import is_list_of
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [
+example_test_cases = [
     pytest.param(
         {
             "filter": "message",
@@ -41,6 +42,23 @@ test_cases = [
         },
         id="decodes_simple_json_to_target_field_dotted",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "source_format": "base64",
+            },
+        },
+        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
+        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "new_field": "this,is,the,message"},
+        id="decodes_simple_base64",
+    ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
     pytest.param(
         {
             "filter": "json_message OR escaped_message",
@@ -106,19 +124,6 @@ test_cases = [
             "escaped.field\\": {"to.decode": "decode value"},
         },
         id="decodes_json_with_mapping_to_corresponding_target_fields_dotted_and_backslashes",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "source_fields": ["message"],
-                "target_field": "new_field",
-                "source_format": "base64",
-            },
-        },
-        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
-        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "new_field": "this,is,the,message"},
-        id="decodes_simple_base64",
     ),
     pytest.param(
         {
@@ -611,7 +616,7 @@ test_cases = [
         },
         id="base64 double quote escape",
     ),
-]
+)
 
 failure_test_cases = [
     pytest.param(
@@ -803,19 +808,14 @@ class TestDecoder(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/decoder/rules"],
     }
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        test_cases,
-    )
-    def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         result = self.object.process(event)
         assert event == expected, f"{result.errors}"
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        failure_test_cases,
-    )
+    @pytest.mark.parametrize(["rule", "event", "expected"], failure_test_cases)
     def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
         result = self.object.process(event)
