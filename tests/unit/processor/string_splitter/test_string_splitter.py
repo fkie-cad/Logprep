@@ -22,6 +22,34 @@ example_test_cases = [
         ["this", "is", "the", "message"],
         id="splits_without_delimiter_on_whitespace",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": False,
+            },
+        },
+        {"message": ",,this,,"},
+        ["", "", "this", "", ""],
+        id="splits_one_item_with_multiple_delimiter_and_no_drop_empty",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        {"message": " , ,this, ,"},
+        ["this"],
+        id="splits_one_item_with_multiple_delimiter_and_empty_fields",
+    ),
 ]
 
 test_cases = normalize_test_cases(
@@ -67,34 +95,6 @@ test_cases = normalize_test_cases(
         {"message": ",,this,,"},
         ["this"],
         id="splits_one_item_with_multiple_delimiter_and_drop_empty",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "string_splitter": {
-                "source_fields": ["message"],
-                "target_field": "result",
-                "delimiter": ",",
-                "drop_empty": False,
-            },
-        },
-        {"message": ",,this,,"},
-        ["", "", "this", "", ""],
-        id="splits_one_item_with_multiple_delimiter_and_no_drop_empty",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "string_splitter": {
-                "source_fields": ["message"],
-                "target_field": "result",
-                "delimiter": ",",
-                "drop_empty": True,
-            },
-        },
-        {"message": " , ,this, ,"},
-        ["this"],
-        id="splits_one_item_with_multiple_delimiter_and_empty_fields",
     ),
     pytest.param(
         {
@@ -184,14 +184,14 @@ class TestStringSplitter(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/string_splitter/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected, context", test_cases)
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
     def test_testcases(self, rule, event, expected, context, provision_context):
         provision_context(context)
         self._load_rule(rule)
         self.object.process(event)
         assert event["result"] == expected
 
-    @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
+    @pytest.mark.parametrize(["rule", "event", "expected", "error_message"], failure_test_cases)
     def test_testcases_failure_handling(self, rule, event, expected, error_message):
         self._load_rule(rule)
         result = self.object.process(event)
