@@ -37,15 +37,41 @@ example_test_cases = [
     ),
     pytest.param(
         {
-            "filter": "message",
+            "filter": "field2 AND field3",
             "calculator": {
-                "calc": "MIN(${a},${c}) < ${b} < MAX(${a}, ${c})",
-                "target_field": "b_is_in_range",
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "result",
+                "delete_source_fields": True,
             },
         },
-        {"message": "This is a message", "a": 6, "b": 5, "c": 3},
-        {"message": "This is a message", "a": 6, "b": 5, "c": 3, "b_is_in_range": True},
-        id="Range check",
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"result": 12},
+        id="delete source fields",
+    ),
+    pytest.param(
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "field1",
+                "overwrite_target": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"field1": 12, "field2": "4", "field3": 2},
+        id="overwrites target",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "from_hex(${field1})",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "0xff"},
+        {"message": "This is a message", "field1": "0xff", "new_field": 255},
+        id="convert hex to int with prefix",
     ),
 ]
 
@@ -91,6 +117,18 @@ test_cases = normalize_test_cases(
     ),
     pytest.param(
         {
+            "filter": "message",
+            "calculator": {
+                "calc": "MIN(${a},${c}) < ${b} < MAX(${a}, ${c})",
+                "target_field": "b_is_in_range",
+            },
+        },
+        {"message": "This is a message", "a": 6, "b": 5, "c": 3},
+        {"message": "This is a message", "a": 6, "b": 5, "c": 3, "b_is_in_range": True},
+        id="Range check",
+    ),
+    pytest.param(
+        {
             "filter": "field2 AND field3",
             "calculator": {
                 "calc": "${field1} + ${field2} +${field3}",
@@ -100,7 +138,7 @@ test_cases = normalize_test_cases(
         },
         {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3]},
         {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3, 12]},
-        id="Extend list",
+        id="extend list",
     ),
     pytest.param(
         {
@@ -380,6 +418,59 @@ test_cases = normalize_test_cases(
         {"field1": "6", "field2": "4", "field3": 2},
         {"field1": "6", "field2": "4", "field3": 2, "result": True},
         id="logical evaluates fields",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "calculator": {
+                "calc": "${field\\\\1} + ${key.field\\\\2}"
+                "+${key.sou\\\\rce.sou\\\\rce\\.\\\\field3}",
+                "target_field": "wrapper.calc\\.res\\\\ult",
+                "delete_source_fields": True,
+            },
+        },
+        {"key": {"sou\\rce": {"sou\\rce.\\field3": 2}, "field\\2": 6}, "field\\1": 4},
+        {"wrapper": {"calc.res\\ult": 12}},
+        id="handles dotted fields & escaping in basic operands",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "calculator": {
+                "calc": "${spec.calc\\.op\\\\erator}(${spec.ca\\\\lc\\.value})",
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"spec": {"calc.op\\erator": "round", "ca\\lc.value": "PI"}},
+        {"result": 3},
+        id="handles dotted fields & escaping in operators",
+    ),
+    pytest.param(
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${duration} * 10e5",
+                "target_field": "duration",
+                "overwrite_target": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": 10000.0},
+        id="Time conversion ms -> ns",
+    ),
+    pytest.param(
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${missing_field} * 10e5",
+                "target_field": "duration",
+                "ignore_missing_fields": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": "0.01"},
+        id="Ignore missing source fields",
     ),
     pytest.param(
         {
