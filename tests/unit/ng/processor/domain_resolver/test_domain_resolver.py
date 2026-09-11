@@ -87,6 +87,22 @@ class TestDomainResolver(BaseProcessorTestCase):
             mock_resolve.assert_called_once()
         assert event.data.get("reoslved_ip") is None
 
+    async def test_domain_is_no_string(self):
+        await self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        await self._load_rule(rule)
+        document = {"fqdn": 123}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
+            mock_resolve.assert_not_called()
+        assert document.get("resolved_ip") is None
+
     async def test_url_to_ip_resolved_and_added(self):
         await self.object.setup()
         rule = {

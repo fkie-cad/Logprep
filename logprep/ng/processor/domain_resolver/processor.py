@@ -258,7 +258,11 @@ class DomainResolver(Processor):
         if not domain_or_url_str:
             return
 
-        url = urlsplit(str(domain_or_url_str))
+        if not isinstance(domain_or_url_str, str):
+            self.metrics.invalid_domains += 1
+            return
+
+        url = urlsplit(domain_or_url_str)
         domain = url.hostname
         if url.scheme == "":
             domain = url.path
