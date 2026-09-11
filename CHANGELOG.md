@@ -25,6 +25,7 @@
 * filter: allow mixed numeric range boundaries and type coercion for range matching
 
 ### Improvements
+* docs: add examples for calculator, decoder, deduplicator, dissector, field_manager, ip_informer, key_checker, replacer, selective_extractor, string_splitter
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
 * docs: change processor natural naming to capital cased with whitespace (e.g. "Generic Resolver")
 * docs: use processor name placeholders for most usages

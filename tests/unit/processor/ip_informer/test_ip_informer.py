@@ -1,14 +1,16 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
 
 import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [
-    (
-        "single field with ipv4 address",
+example_test_cases: list = [
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -36,9 +38,13 @@ test_cases = [
                 }
             },
         },
+        id="single field with ipv4 address",
     ),
-    (
-        "single field with ipv6 address",
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -71,9 +77,9 @@ test_cases = [
                 }
             },
         },
+        id="single field with ipv6 address",
     ),
-    (
-        "list field with ipv4 and ipv6 addresses",
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -120,9 +126,9 @@ test_cases = [
                 },
             },
         },
+        id="list field with ipv4 and ipv6 addresses",
     ),
-    (
-        "list and single field with ipv4 and ipv6 addresses",
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -184,9 +190,9 @@ test_cases = [
                 },
             },
         },
+        id="list and single field with ipv4 and ipv6 addresses",
     ),
-    (
-        "single field with ipv4 address and filtered properties",
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -204,9 +210,9 @@ test_cases = [
                 }
             },
         },
+        id="single field with ipv4 address and filtered properties",
     ),
-    (
-        "get field value for non existent property",
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -224,9 +230,9 @@ test_cases = [
                 }
             },
         },
+        id="get field value for non existent property",
     ),
-    (
-        "ignore missing fields",
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -245,12 +251,12 @@ test_cases = [
                 }
             },
         },
+        id="ignore missing fields",
     ),
-]  # testcase, rule, event, expected
+)  # testcase, rule, event, expected
 
-failure_test_cases = [
-    (
-        "single field is not a ip address",
+failure_test_cases = normalize_test_cases(
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -260,9 +266,9 @@ failure_test_cases = [
         },
         {"ip": "not an ip"},
         {"ip": "not an ip", "tags": ["_ip_informer_failure"]},
+        id="single field is not a ip address",
     ),
-    (
-        "missing fields",
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -281,9 +287,9 @@ failure_test_cases = [
             },
             "tags": ["_ip_informer_missing_field_warning"],
         },
+        id="missing fields",
     ),
-    (
-        "single field is not an ip address and other field is an ip address",
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -313,9 +319,9 @@ failure_test_cases = [
             },
             "tags": ["_ip_informer_failure"],
         },
+        id="single field is not an ip address and other field is an ip address",
     ),
-    (
-        "single field is not an ip address and other field is a list with valid ips",
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -359,9 +365,9 @@ failure_test_cases = [
             },
             "tags": ["_ip_informer_failure"],
         },
+        id="single field is not an ip address and other field is a list with valid ips",
     ),
-    (
-        "not valid ip in list",
+    pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
@@ -404,8 +410,9 @@ failure_test_cases = [
             },
             "tags": ["_ip_informer_failure"],
         },
+        id="not valid ip in list",
     ),
-]  # testcase, rule, event, expected
+)
 
 
 class TestIpInformer(BaseProcessorTestCase):
@@ -414,16 +421,18 @@ class TestIpInformer(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/ip_informer/rules/"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_testcases(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         self.object.process(event)
-        assert event == expected, testcase
+        assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], failure_test_cases)
+    def test_testcases_failure_handling(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert event == expected, testcase
+        assert event == expected
