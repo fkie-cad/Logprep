@@ -208,6 +208,7 @@ from ruamel.yaml.scanner import ScannerError
 from schedule import Scheduler
 
 from logprep.abc.component import Component
+from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
@@ -1034,6 +1035,7 @@ class Configuration:
                 InvalidRuleDefinitionError,
                 RefreshableGetterError,
                 LuceneFilterError,
+                LogprepException,
             ) as error:
                 errors.append(error)
             except FileNotFoundError as error:

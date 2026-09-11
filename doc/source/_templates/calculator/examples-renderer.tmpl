@@ -1,0 +1,12 @@
+.. -*- mode: rst -*-
+
+{% macro render_case(expression, result) %}
+* :code:`{{expression}}` => :code:`{{result }}`
+{% endmacro %}
+
+{# --- actual template --- #}
+{% set primary = data.static_expression_example_test_cases %}
+
+{% for item in primary %}
+   {{- render_case(item[0], item[1]) }}
+{% endfor %}

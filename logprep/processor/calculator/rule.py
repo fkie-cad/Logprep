@@ -33,13 +33,45 @@ A speaking example:
    :inherited-members:
    :no-undoc-members:
 
+Expression syntax for |PROCESSOR_NAME|:
+------------------------------------------------
+
+The |PROCESSOR_NAME| can handle the following atomic expressions:
+
+.. list-table:: Available expressions
+   :header-rows: 1
+
+   * - Type
+     - Examples
+     - Description
+   * - Numeric Values
+     - :code:`123`, :code:`- 0.123`, :code:`1e-5`
+     - Integers or floats (with scientific notation).
+   * - Variables
+     - :code:`${field1}`, :code:`${nested.field}`
+     - A value to be read from the event, specified via its path. Will be parsed
+       to numeric values.
+   * - Constants
+     - :code:`pi`, :code:`e`, :code:`PI`. :code:`E`
+     - The values for pi and the euler number (case insensitive).
+   * - Hex-Numbers (as constants)
+     - :code:`0xFF`, :code:`from_hex(FF)`, :code:`FROM_HEX(FF)`
+     - Integer can be given in in hex format either via the :code:`0x`-prefix
+       or the build-in :code:`from_hex` function.
+   * - Hex-Numbers (as variables)
+     - :code:`from_hex(${path.to.field})`, :code:`from_hex(0x${field})` (legacy)
+     - Read a hex number from string found on the event at the specified path.
+
 The |PROCESSOR_NAME| supports the following arithmetic operators:
 
 * :code:`+` addition
 * :code:`-` subtraction
 * :code:`*` multiplication
 * :code:`/` division
+* :code:`%` modulo
 * :code:`^` exponentiation
+
+These take numeric values as operands and return a numeric value as a result.
 
 The |PROCESSOR_NAME| supports the following comparison operators:
 
@@ -50,18 +82,40 @@ The |PROCESSOR_NAME| supports the following comparison operators:
 * :code:`==` equal
 * :code:`!=` not equal
 
-Comparison expressions return either :code:`True` or :code:`False`. Arithmetic expressions on both
-sides of a comparison are evaluated before the comparison itself.
+These take numeric values as operands and return a boolean value (:code:`True`
+or :code:`False`) as a result.
 
-Only one comparison operator is allowed per expression. Chained comparisons such as
-:code:`1 < 2 < 3` or :code:`1 < 2 == 2` are not supported.
+Furthermore the following range checks are supported
 
-Boolean values are final results and cannot be reused as operands in arithmetic or comparison
-operations. Unary negation of boolean values is also not supported. This applies to boolean values
-returned by comparisons as well as boolean-returning functions such as :code:`all`.
+* :code:`a < b < c`
+* :code:`a <= b < c`
+* :code:`a < b <= c`
+* :code:`a <= b <= c`
 
-For example, expressions such as :code:`(1 < 2) + 1`, :code:`(1 < 2) == (2 < 3)`,
-:code:`-(1 < 2)`, and :code:`all(1, 1) * 2` are not supported.
+Where :code:`a`, :code:`b` and :code:`c` are numeric values and the yielded
+result is a boolean.
+
+Arithmetic expression are evaluated before comparisons and range checks.
+
+.. warning::
+    Comparisons, range checks and some functions return boolean values.
+    Because unary minus, operators, range checks and most functions can only
+    accept numbers not booleans the following examples would result in
+    a syntax error:
+
+    * :code:`(1 < 2) < 3`
+    * :code:`1 < 2 == 2`
+    * :code:`-(1 < 2)`
+    * :code:`(1 < 2) + 1`
+    * :code:`(1 < 2) == (2 < 3)`
+    * :code:`all(1, 1) * 2`
+
+
+The following functions are available, where the function names a case-insensitive:
+
+.. datatemplate:import-module:: logprep.processor.calculator.ast.function_registry
+   :template: calculator/function-renderer.tmpl
+
 
 .. warning::
 
@@ -74,69 +128,18 @@ For example, expressions such as :code:`(1 < 2) + 1`, :code:`(1 < 2) == (2 < 3)`
 Following is a list of example calculation expressions. All factors and operators can be retrieved
 from a field using the schema :code:`${your.dotted.field}`:
 
-* :code:`9` => :code:`9`
-* :code:`-9` => :code:`-9`
-* :code:`--9` => :code:`9`
-* :code:`-E` => :code:`-math.e`
-* :code:`9 + 3 + 6` => :code:`9 + 3 + 6`
-* :code:`9 + 3 / 11` => :code:`9 + 3.0 / 11`
-* :code:`(9 + 3)` => :code:`(9 + 3)`
-* :code:`(9+3) / 11` => :code:`(9 + 3.0) / 11`
-* :code:`9 - 12 - 6` => :code:`9 - 12 - 6`
-* :code:`9 - (12 - 6)` => :code:`9 - (12 - 6)`
-* :code:`2*3.14159` => :code:`2 * 3.14159`
-* :code:`3.1415926535*3.1415926535 / 10` => :code:`3.1415926535 * 3.1415926535 / 10`
-* :code:`PI * PI / 10` => :code:`math.pi * math.pi / 10`
-* :code:`PI*PI/10` => :code:`math.pi * math.pi / 10`
-* :code:`PI^2` => :code:`math.pi ** 2`
-* :code:`round(PI^2)` => :code:`round(math.pi ** 2)`
-* :code:`6.02E23 * 8.048` => :code:`6.02e23 * 8.048`
-* :code:`e / 3` => :code:`math.e / 3`
-* :code:`sin(PI/2)` => :code:`math.sin(math.pi / 2)`
-* :code:`10+sin(PI/4)^2` => :code:`10 + math.sin(math.pi / 4) ** 2`
-* :code:`trunc(E)` => :code:`int(math.e)`
-* :code:`trunc(-E)` => :code:`int(-math.e)`
-* :code:`round(E)` => :code:`round(math.e)`
-* :code:`round(-E)` => :code:`round(-math.e)`
-* :code:`E^PI` => :code:`math.e ** math.pi`
-* :code:`exp(0)` => :code:`1`
-* :code:`exp(1)` => :code:`math.e`
-* :code:`2^3^2` => :code:`2 ** 3 ** 2`
-* :code:`(2^3)^2` => :code:`(2 ** 3) ** 2`
-* :code:`2^3+2` => :code:`2 ** 3 + 2`
-* :code:`2^3+5` => :code:`2 ** 3 + 5`
-* :code:`2^9` => :code:`2 ** 9`
-* :code:`sgn(-2)` => :code:`-1`
-* :code:`sgn(0)` => :code:`0`
-* :code:`sgn(0.1)` => :code:`1`
-* :code:`round(E, 3)` => :code:`round(math.e, 3)`
-* :code:`round(PI^2, 3)` => :code:`round(math.pi ** 2, 3)`
-* :code:`sgn(cos(PI/4))` => :code:`1`
-* :code:`sgn(cos(PI/2))` => :code:`0`
-* :code:`sgn(cos(PI*3/4))` => :code:`-1`
-* :code:`+(sgn(cos(PI/4)))` => :code:`1`
-* :code:`-(sgn(cos(PI/4)))` => :code:`-1`
-* :code:`hypot(3, 4)` => :code:`5`
-* :code:`multiply(3, 7)` => :code:`21`
-* :code:`all(1,1,1)` => :code:`True`
-* :code:`all(1,1,1,1,1,0)` => :code:`False`
-* :code:`2 > 1` => :code:`True`
-* :code:`2 > 2` => :code:`False`
-* :code:`1 < 2` => :code:`True`
-* :code:`1 < 1` => :code:`False`
-* :code:`2 >= 2` => :code:`True`
-* :code:`2 >= 3` => :code:`False`
-* :code:`1 <= 1` => :code:`True`
-* :code:`2 <= 1` => :code:`False`
-* :code:`1 == 1` => :code:`True`
-* :code:`1 == 2` => :code:`False`
-* :code:`1 != 2` => :code:`True`
-* :code:`1 != 1` => :code:`False`
-* :code:`1 + 2 < 4` => :code:`True`
-* :code:`2 * 3 == 6` => :code:`True`
-* :code:`2 ^ 3 >= 8` => :code:`True`
+.. datatemplate:import-module:: tests.unit.processor.calculator.test_ast
+   :template: calculator/examples-renderer.tmpl
 
-The calc expression is not whitespace sensitive.
+The calc expression is not whitespace or case sensitive.
+
+
+Examples for |PROCESSOR_NAME|:
+------------------------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.calculator.test_calculator
+   :template: testcase-renderer.tmpl
+
 
 """
 
@@ -144,7 +147,10 @@ import re
 
 from attrs import define, field, validators
 
+from logprep.processor.calculator.ast.node import ASTNode
+from logprep.processor.calculator.ast.parse import parse_expression
 from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
+from logprep.util.context_managers import timeout
 
 
 class CalculatorRule(FieldManagerRule):
@@ -174,10 +180,17 @@ class CalculatorRule(FieldManagerRule):
             self.source_fields = re.findall(FIELD_PATTERN, self.calc)
             super().__attrs_post_init__()
 
+    def __init__(self, filter_rule, config, processor_name):
+        super().__init__(filter_rule, config, processor_name)
+        assert isinstance(self._config, CalculatorRule.Config)
+        with timeout(seconds=self.timeout):
+            compiled_expression = parse_expression(self._config.calc)
+            self.__parsed_expression = compiled_expression.optimize()
+
     @property
-    def calc(self):
-        """Returns the calculation expression"""
-        return self._config.calc
+    def parsed_expression(self) -> ASTNode:
+        """The parsed and optimized calculation expression"""
+        return self.__parsed_expression
 
     @property
     def timeout(self):

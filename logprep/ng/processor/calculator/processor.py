@@ -23,18 +23,17 @@ Processor Configuration
 .. automodule:: logprep.processor.calculator.rule
 """
 
-import typing
-from functools import cached_property
-from typing import Callable
-
-from pyparsing import ParseException, ParseSyntaxException
+from typing import cast
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
-from logprep.processor.calculator.fourFn import BNF
+from logprep.processor.calculator.ast.exceptions import (
+    CalculatorError,
+    MissingValueError,
+)
 from logprep.processor.calculator.rule import CalculatorRule
-from logprep.util.decorators import timeout
-from logprep.util.helper import FieldValue, get_source_fields_dict, resolve_template
+from logprep.util.context_managers import timeout
+from logprep.util.helper import FieldValue
 
 
 class Calculator(FieldManager):
@@ -43,47 +42,21 @@ class Calculator(FieldManager):
     rule_class = CalculatorRule
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
-        rule = typing.cast(CalculatorRule, rule)
-        source_field_dict = get_source_fields_dict(event, rule)
-        if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
-            return
-        if self._has_missing_values(event, rule, source_field_dict):
-            return
-
-        expression = resolve_template(rule.calc, source_field_dict)
+        rule = cast(CalculatorRule, rule)
         try:
-            result = self._calculate(event, rule, expression)
+            with timeout(seconds=rule.timeout):
+                result = rule.parsed_expression.evaluate(event)
+
             if result is not None:
                 self._write_target_field(event, rule, result)
+        except MissingValueError:
+            self._handle_missing_fields(
+                event,
+                rule,
+                rule.source_fields,
+                [None],  # TODO: interace for utility function is terrible.
+            )
+        except CalculatorError as error:
+            self._handle_warning_error(event, rule, error)
         except TimeoutError as error:
             self._handle_warning_error(event, rule, error)
-
-    @cached_property
-    def bnf(self) -> BNF:
-        """Holds the Backus-Naur Form definition
-
-        Returns
-        -------
-        Forward
-            a pyparsing Forward object
-        """
-        return BNF()
-
-    def _calculate(self, event: dict, rule: CalculatorRule, expression: str) -> Callable:
-        @timeout(seconds=rule.timeout)
-        def calculate(event, rule: CalculatorRule, expression: str) -> float | None:
-            try:
-                _ = self.bnf.parse_string(expression, parse_all=True)
-                return self.bnf.evaluate_stack()
-            except (ParseException, ParseSyntaxException) as error:
-                error.msg = f"({self.name}): expression '{error.line}' could not be parsed"
-                self._handle_warning_error(event, rule, error)
-            except ArithmeticError as error:
-                error.args = (
-                    f"({self.name}): expression '{rule.calc}' => '{expression}' results in "
-                    + f"{error.args[0]}",
-                )
-                self._handle_warning_error(event, rule, error)
-            return None
-
-        return calculate(event, rule, expression)

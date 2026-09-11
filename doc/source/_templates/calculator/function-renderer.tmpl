@@ -1,0 +1,50 @@
+.. -*- mode: rst -*-
+
+{%- macro render_bounds(bounds) %}
+{%- if bounds[0] == bounds[1] -%}
+{{bounds[0]}}
+{%- elif bounds[1] is not number -%}
+{{bounds[0]}} or more
+{%- else  -%}
+{{bounds[0]}} to {{bounds[1]}}
+{%- endif -%}
+{% endmacro %}
+
+{%- macro render_input_type(info) %}
+{%- if info.node_type.input_type | string is equalto 'ValueType.NUMBER' -%}
+Number
+{%- else -%}
+Boolean or Number
+{%- endif -%}
+{% endmacro %}
+
+{%- macro render_output_type(info) %}
+{%- if info.node_type.output_type | string is equalto 'ValueType.NUMBER' -%}
+Number
+{%- else -%}
+Boolean
+{%- endif -%}
+{% endmacro %}
+
+{% macro render_entry(entry) %}
+   * - {% for name in entry.names %}:code:`{{name}}`{%if not loop.last%},{% endif %} {% endfor %}
+     - {{ render_input_type(entry)}}
+     - {{ render_bounds(entry.arg_bounds) }}
+     - {{ render_output_type(entry) }}
+     - {{ entry.description -}}
+{% endmacro %}
+
+{# --- actual template --- #}
+{% set registry = data.FUNCTION_REGISTRY %}
+
+.. list-table:: Available Functions
+   :header-rows: 1
+
+   * - Names
+     - Input Type
+     - Parameter Count
+     - Output Type
+     - Description
+{% for entry in registry %}
+   {{- render_entry(entry) }}
+{% endfor %}
