@@ -25,9 +25,6 @@ from logprep.util.pseudo.encrypter import (
 )
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.pseudonymizer.test_pseudonymizer import (
-    default_context,
-)
-from tests.unit.processor.pseudonymizer.test_pseudonymizer import (
     test_cases as non_ng_test_cases,
 )
 
@@ -38,11 +35,11 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
     CONFIG = {
         "type": "pseudonymizer",
         "outputs": [{"kafka": "topic"}],
-        "pubkey_analyst": "example_analyst_pub.pem",
-        "pubkey_depseudo": "example_depseudo_pub.pem",
+        "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
+        "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
         "hash_salt": "a_secret_tasty_ingredient",
         "rules": ["tests/testdata/unit/pseudonymizer/rules"],
-        "regex_mapping": "pseudonymizer_regex_mapping.json",
+        "regex_mapping": "tests/testdata/unit/pseudonymizer/regex_mapping.yml",
         "max_cached_pseudonyms": 1000000,
     }
 
@@ -89,14 +86,14 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         else:
             Factory.create({"name": config})
 
-    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
-    async def test_testcases(self, rule, event, expected, context, provision_context):
-        provision_context(context)
-        self.regex_mapping = "pseudonymizer_regex_mapping.json"
+    @pytest.mark.parametrize("testcase, rule, event, expected, regex_mapping", test_cases)
+    async def test_testcases(self, testcase, rule, event, expected, regex_mapping):
+        if regex_mapping is not None:
+            self.regex_mapping = regex_mapping
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
-        assert event.data == expected
+        assert event.data == expected, testcase
 
     async def _load_rule(self, rule):
         config = deepcopy(self.CONFIG)
@@ -105,10 +102,30 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         await super()._load_rule(rule)
         await self.object.setup()
 
-    async def test_replace_regex_keywords_by_regex_expression_is_idempotent(
-        self, provision_context
-    ):
-        provision_context(default_context)
+    async def test_pseudonymize_url_fields_not_in_pseudonymize(self):
+        pseudonym = "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
+
+        url = "https://www.do-not-pseudo.this.de"
+        regex_pattern = "RE_WHOLE_FIELD_CAP"
+        event = {
+            "filter_this": "does_not_matter",
+            "do_not_pseudo_this": url,
+            "pseudo_this": "test",
+        }
+        rule = {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {"mapping": {"pseudo_this": regex_pattern}},
+            "url_fields": ["do_not_pseudo_this"],
+        }
+        self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
+        await self._load_rule(rule)
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await self.object.process(event)
+
+        assert event.data["do_not_pseudo_this"] == url
+        assert event.data["pseudo_this"] == pseudonym
+
+    async def test_replace_regex_keywords_by_regex_expression_is_idempotent(self):
         rule_dict = {
             "filter": "event_id: 1234",
             "pseudonymizer": {"mapping": {"something": "RE_WHOLE_FIELD"}},
@@ -120,14 +137,12 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         self.object._replace_regex_keywords_by_regex_expression()  # Second Call
         assert self.object._rule_tree.rules[0].pseudonyms == {"something": expected_pattern}
 
-    async def test_pseudonymize_string_adds_pseudonyms(self, provision_context):
-        provision_context(default_context)
+    async def test_pseudonymize_string_adds_pseudonyms(self):
         self.object._event = LogEvent({"does not": "matter"}, original=b"", input_meta=InputMeta())
         assert self.object._pseudonymize_string("foo").startswith("<pseudonym:")
         assert len(self.object._event.extra_data) == 1
 
-    async def test_resolve_from_cache_pseudonym(self, provision_context):
-        provision_context(default_context)
+    async def test_resolve_from_cache_pseudonym(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
@@ -157,8 +172,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         assert self.object.metrics.cached_results == 1
         assert self.object.metrics.num_cache_entries == 1
 
-    async def test_resolve_from_cache_pseudonymize_urls(self, provision_context):
-        provision_context(default_context)
+    async def test_resolve_from_cache_pseudonymize_urls(self):
         rule_dict = {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -219,13 +233,11 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             ),
         ],
     )
-    async def test_pseudonymize_url(self, url, expected, provision_context):
-        provision_context(default_context)
+    async def test_pseudonymize_url(self, url, expected):
         self.object._event = LogEvent({"does not": "matter"}, original=b"", input_meta=InputMeta())
         assert self.object._pseudonymize_url(url) == expected
 
-    async def test_process_returns_extra_output(self, provision_context):
-        provision_context(default_context)
+    async def test_process_returns_extra_output(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
@@ -258,9 +270,8 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         assert pseudonym_event.data.get("@timestamp"), "timestamp is set if present in event"
 
     async def test_extra_output_contains_only_one_pseudonym_even_if_pseudonym_appears_multiple_times_in_event(
-        self, provision_context
+        self,
     ):
-        provision_context(default_context)
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
@@ -295,10 +306,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         assert pseudonym_event.data.get("origin"), "encrypted original is set"
         assert pseudonym_event.data.get("@timestamp"), "timestamp is set if present in event"
 
-    async def test_extra_output_contains_different_pseudonyms_for_different_values(
-        self, provision_context
-    ):
-        provision_context(default_context)
+    async def test_extra_output_contains_different_pseudonyms_for_different_values(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
@@ -340,8 +348,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
             "origin"
         ), "origins should differ"
 
-    async def test_ignores_missing_field_but_add_warning(self, provision_context):
-        provision_context(default_context)
+    async def test_ignores_missing_field_but_add_warning(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
@@ -374,17 +381,13 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         "mode, encrypter_class",
         [("CTR", DualPKCS1HybridCTREncrypter), ("GCM", DualPKCS1HybridGCMEncrypter)],
     )
-    async def test_uses_encrypter(self, mode, encrypter_class, provision_context):
-        provision_context(default_context)
+    async def test_uses_encrypter(self, mode, encrypter_class):
         config = deepcopy(self.CONFIG)
         config["mode"] = mode
         object_with_encrypter = Factory.create({"pseudonymizer": config})
         assert isinstance(object_with_encrypter._encrypter, encrypter_class)
 
-    async def test_setup_raises_invalid_configuration_on_missing_regex_mapping(
-        self, provision_context
-    ):
-        provision_context(default_context)
+    async def test_setup_raises_invalid_configuration_on_missing_regex_mapping(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
@@ -395,12 +398,13 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         }
         await self._load_rule(rule_dict)
         self.object.rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
-        error_message = r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping 'pseudonymizer_regex_mapping.json'"
+        error_message = (
+            r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping '.*\/regex_mapping.yml'"
+        )
         with pytest.raises(InvalidConfigurationError, match=error_message):
             await self.object.setup()
 
-    async def test_cache_metrics_updated(self, provision_context):
-        provision_context(default_context)
+    async def test_cache_metrics_updated(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
@@ -433,19 +437,3 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         assert self.object.metrics.new_results == 3
         assert self.object.metrics.cached_results == 3
         assert self.object.metrics.num_cache_entries == 3
-
-    @pytest.mark.skip(reason="could not fix @MichaelHoff")
-    def test_setup_populates_cached_properties(self):
-        pass
-
-    @pytest.mark.skip(reason="could not fix @MichaelHoff")
-    def test_job_cleanup_on_shutdown(self):
-        pass
-
-    @pytest.mark.skip(reason="could not fix @MichaelHoff")
-    def test_setup_calls_wait_for_health(self):
-        pass
-
-    @pytest.mark.skip(reason="could not fix @MichaelHoff")
-    def test_health_returns_bool(self):
-        pass

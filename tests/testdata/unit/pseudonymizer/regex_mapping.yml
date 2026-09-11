@@ -1,0 +1,4 @@
+RE_WHOLE_FIELD: (.*)
+RE_DOMAIN_BACKSLASH_USERNAME: \w+\\(.*)
+RE_IP4_COLON_PORT: ([\d.]+):\d+
+RE_ALL_NO_CAP: .*
