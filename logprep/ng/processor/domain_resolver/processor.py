@@ -41,10 +41,11 @@ from dns.resolver import Resolver, NXDOMAIN, LifetimeTimeout, NoAnswer, NoNamese
 
 from logprep.ng.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric
+from logprep.processor.base.rule import Rule
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, FieldValue
 
 logger = logging.getLogger("DomainResolver")
 
@@ -235,7 +236,8 @@ class DomainResolver(Processor):
 
         self._hasher = SHA256Hasher()
 
-    async def _apply_rules(self, event: dict[str, typing.Any], rule: DomainResolverRule):
+    async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
+        rule = typing.cast(DomainResolverRule, rule)
         source_field = rule.source_fields[0]
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
