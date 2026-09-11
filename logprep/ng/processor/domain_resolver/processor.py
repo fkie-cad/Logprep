@@ -42,7 +42,7 @@ from dns.resolver import Resolver, NXDOMAIN, LifetimeTimeout, NoAnswer, NoNamese
 from logprep.ng.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric
 from logprep.processor.domain_resolver.rule import DomainResolverRule
-from logprep.util.cache import Cache, Timer
+from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import get_dotted_field_value
 
@@ -118,9 +118,6 @@ class DomainResolver(Processor):
 
         timeout_block_time: float = field(default=5.0, validator=validators.instance_of(float))
         """Minutes after which a timed out domain can be resolved again."""
-
-        cache_prune_interval: float = field(default=3600.0, validator=validators.instance_of(float))
-        """Seconds after which decayed domains are pruned from caches."""
 
         max_caching_days: int = field(validator=validators.instance_of(int))
         """Number of days a domains is cached after the last time it appeared.
@@ -200,26 +197,18 @@ class DomainResolver(Processor):
         """Number of unknown domains that were trying to be resolved"""
 
     __slots__ = [
-        "_domain_ip_map",
         "_dns_resolver",
         "_timeout_cache",
         "_domain_cache",
-        "_domain_ip_map_prune_timer",
         "_hasher",
     ]
 
-    _domain_ip_map: dict[str, SuccessResult | FailedResult]
     _dns_resolver: Resolver
     _timeout_cache: Cache
     _domain_cache: Cache
-    _domain_ip_map_prune_timer: Timer
     _hasher: SHA256Hasher
 
     rule_class = DomainResolverRule
-
-    def __init__(self, name: str, configuration: Processor.Config) -> None:
-        super().__init__(name, configuration)
-        self._domain_ip_map = {}
 
     @property
     def config(self) -> Config:
@@ -236,23 +225,17 @@ class DomainResolver(Processor):
         self._timeout_cache = Cache(
             max_items=self.config.max_cached_domains,
             max_timedelta=cache_max_timedelta,
-            prune_interval=self.config.cache_prune_interval,
         )
 
         cache_max_timedelta = timedelta(days=self.config.max_caching_days).total_seconds()
         self._domain_cache = Cache(
             max_items=self.config.max_cached_domains,
             max_timedelta=cache_max_timedelta,
-            prune_interval=self.config.cache_prune_interval,
         )
 
-        self._domain_ip_map_prune_timer = Timer(self.config.cache_prune_interval)
         self._hasher = SHA256Hasher()
 
     async def _apply_rules(self, event: dict[str, typing.Any], rule: DomainResolverRule):
-        self._timeout_cache.prune_decayed()
-        self._domain_cache.prune_decayed()
-        self._prune_domain_ip_map()
         source_field = rule.source_fields[0]
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
@@ -285,10 +268,9 @@ class DomainResolver(Processor):
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
 
         if self._domain_cache.is_cached(hash_string):
-            self._domain_cache.update_cache(hash_string)
-            result = self._domain_ip_map[hash_string]
             self.metrics.resolved_cached += 1
-            return result
+            self._domain_cache.refresh_time_to_live(hash_string)
+            return self._domain_cache[hash_string].value
 
         if self._timeout_cache.is_cached(hash_string):
             self.metrics.timeouts_cached += 1
@@ -296,14 +278,10 @@ class DomainResolver(Processor):
 
         result = self._resolve_ip(domain)
         match result:
-            case SuccessResult(_):
-                self._domain_cache.add(hash_string)
-                self._domain_ip_map.update({hash_string: result})
             case FailedResult(FailureType.TIMEOUT | FailureType.NO_NAMESERVERS):
                 self._timeout_cache.add(hash_string)
-            case FailedResult(_):
-                self._domain_cache.add(hash_string)
-                self._domain_ip_map.update({hash_string: result})
+            case _:
+                self._domain_cache.add(hash_string, result)
         self.metrics.resolved_new += 1
         return result
 
@@ -333,10 +311,3 @@ class DomainResolver(Processor):
             return FailedResult(FailureType.NO_ANSWER)
         except NoNameservers as error:
             return FailedResult(FailureType.NO_NAMESERVERS, error)
-
-    def _prune_domain_ip_map(self):
-        if self._domain_ip_map_prune_timer.finished():
-            self._domain_ip_map_prune_timer.reset()
-            removed_keys = set(self._domain_ip_map.keys()).difference(self._domain_cache.keys())
-            for hash_str in removed_keys:
-                self._domain_ip_map.pop(hash_str)

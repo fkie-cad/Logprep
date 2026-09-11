@@ -1,13 +1,12 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import re
-import time
 from copy import deepcopy
 from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
-from dns.resolver import LifetimeTimeout, NoNameservers, NoAnswer
+from dns.resolver import LifetimeTimeout, NoNameservers, NoAnswer, NXDOMAIN
 
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.processor.domain_resolver.processor import (
@@ -101,6 +100,27 @@ class TestDomainResolver(BaseProcessorTestCase):
             mock_resolve.assert_not_called()
         assert document.get("resolved_ip") is None
 
+    def test_unknown_domain_exception(self):
+        self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        self._load_rule(rule)
+        domain = "google.de"
+        document = {"fqdn": domain}
+        hash_str = self.object._hasher.hash_str(domain, salt=self.object.config.hash_salt)
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            mock_resolve.side_effect = NXDOMAIN
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            assert not self.object._domain_cache.is_cached(hash_str)
+            self.object.process(document)
+            mock_resolve.assert_called_once()
+            assert self.object._domain_cache.is_cached(hash_str)
+            assert not self.object._domain_cache.is_cached("some_hash")
+        assert document.get("reoslved_ip") is None
+
     def test_url_to_ip_resolved_and_added(self):
         rule = {
             "filter": "url",
@@ -134,84 +154,6 @@ class TestDomainResolver(BaseProcessorTestCase):
         with mock.patch.object(self.object, "_resolve_with_cache") as mock_resolve:
             self.object.process(document)
             mock_resolve.assert_not_called()
-
-    def test_domain_ip_map_not_in_cache_gets_pruned(self):
-        config = deepcopy(self.CONFIG)
-        config.update({"max_cached_domains": 10, "cache_prune_interval": 0.1})
-        domain_resolver: DomainResolver = cast(DomainResolver, Factory.create({"resolver": config}))
-        domain_resolver.setup()
-        rule = {
-            "filter": "url",
-            "domain_resolver": {"source_fields": ["url"]},
-            "description": "",
-        }
-        self._load_rule(rule)
-        document = {"url": "https://www.google.de"}
-        with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
-            self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            domain_resolver.process(document)
-        document = {"url": "https://www.not-google.de"}
-        expected = {"url": "https://www.not-google.de", "resolved_ip": "5.6.7.8"}
-        with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
-            self._mock_resolve_answer("5.6.7.8", mock_resolve)
-            domain_resolver.process(document)
-        assert document == expected
-        assert len(domain_resolver._domain_ip_map) == len(domain_resolver._domain_cache)
-        domain_resolver._domain_cache.popitem()
-        assert len(domain_resolver._domain_ip_map) > len(domain_resolver._domain_cache)
-        domain_resolver._domain_ip_map_prune_timer.reset()
-        domain_resolver._prune_domain_ip_map()
-        assert len(domain_resolver._domain_ip_map) > len(domain_resolver._domain_cache)
-        time.sleep(0.1)
-        domain_resolver._prune_domain_ip_map()
-        assert len(domain_resolver._domain_ip_map) == len(domain_resolver._domain_cache)
-
-    def test_timeout_cache_gets_pruned(self):
-        def mark_cache_item_as_decayed_and_return_hash(resolver):
-            cached_hash_to_decay = next(iter(resolver._timeout_cache))
-            resolver._timeout_cache[cached_hash_to_decay] = 0
-            return cached_hash_to_decay
-
-        config = deepcopy(self.CONFIG)
-        config.update({"max_cached_domains": 10})
-        domain_resolver: DomainResolver = cast(DomainResolver, Factory.create({"resolver": config}))
-        domain_resolver.setup()
-        rule = {
-            "filter": "url",
-            "domain_resolver": {"source_fields": ["url"]},
-            "description": "",
-        }
-        self._load_rule(rule)
-        document = {"url": "https://www.google.de"}
-        with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
-            mock_resolve.side_effect = LifetimeTimeout
-            self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            domain_resolver.process(document)
-        document = {"url": "https://www.not-google.de"}
-        with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
-            mock_resolve.side_effect = LifetimeTimeout
-            self._mock_resolve_answer("5.6.7.8", mock_resolve)
-            domain_resolver.process(document)
-        assert document.get("resolved_ip") is None
-        assert len(domain_resolver._timeout_cache) == 2
-
-        domain_resolver._timeout_cache.prune_decayed()
-        assert len(domain_resolver._timeout_cache) == 2
-
-        cached_hash = mark_cache_item_as_decayed_and_return_hash(domain_resolver)
-        domain_resolver._timeout_cache.prune_decayed()
-        assert len(domain_resolver._timeout_cache) == 2
-
-        domain_resolver._timeout_cache._prune_timer._finished_sec = 0
-        domain_resolver._timeout_cache.prune_decayed()
-        assert len(domain_resolver._timeout_cache) == 1
-        assert cached_hash not in domain_resolver._timeout_cache
-
-        cached_hash = mark_cache_item_as_decayed_and_return_hash(domain_resolver)
-        domain_resolver._timeout_cache._prune_timer._finished_sec = 0
-        domain_resolver._timeout_cache.prune_decayed()
-        assert len(domain_resolver._timeout_cache) == 0
-        assert cached_hash not in domain_resolver._timeout_cache
 
     def test_domain_timeout_gets_not_resolved(self):
         config = deepcopy(self.CONFIG)

@@ -1,30 +1,17 @@
 """Module for caching items and checking if they need to be stored (again)."""
 
 import time
+from dataclasses import dataclass
 from datetime import timedelta
-from typing import Union
 
 from collections import OrderedDict
+from typing import Any
 
 
-class Timer:
-    """Timer that can be reset."""
-
-    def __init__(self, interval_sec: float):
-        self._interval_sec = interval_sec
-        self._finished_sec = time.time() + interval_sec
-
-    def reset(self):
-        """Reset timer"""
-        self._finished_sec = time.time() + self._interval_sec
-
-    def remaining(self):
-        """Return seconds until timer is finished"""
-        return max(self._finished_sec - time.time(), 0)
-
-    def finished(self):
-        """Return if timer is finished"""
-        return self.remaining() == 0
+@dataclass
+class CacheEntry:
+    value: Any
+    insertion_time: float
 
 
 class Cache(OrderedDict):
@@ -34,68 +21,65 @@ class Cache(OrderedDict):
         self,
         max_items=1000000,
         max_timedelta=timedelta(days=90).total_seconds(),
-        prune_interval=5,
     ):
         self._max_items = max_items
         self._max_timedelta = max_timedelta
-        self._prune_timer = Timer(prune_interval)
         super().__init__()
 
-    def is_cached(self, item: Union[int, str]) -> bool:
-        """Check if the item was stored within the last timedelta.
+    def __getitem__(self, key) -> CacheEntry:
+        return super().__getitem__(key)
+
+    def get(self, *args, **kwargs) -> CacheEntry | None:
+        """Get a cached item with the type CacheEntry."""
+        return super().get(*args, **kwargs)
+
+    def is_cached(self, key: str) -> bool:
+        """Check if the item has exceeded its time to live.
 
         Parameters
         ----------
-        item : str
+        key : str
             Name of item to check for in the cache.
 
         """
-        last_stored = self.get(item)
+        last_stored = self.get(key)
         if last_stored is None:
             return False
 
-        if time.time() - last_stored > self._max_timedelta:
-            self.pop(item)
+        if time.time() - last_stored.insertion_time > self._max_timedelta:
+            self.pop(key)
             return False
         return True
 
-    def add(self, item: int | str):
-        """Add the item into the cache or update its timestamp.
+    def add(self, key: str, value: Any = None):
+        """Add the item into the cache or refresh its time to live.
 
         Parameters
         ----------
-        item : str
-            Item to add into the cache.
+        key : str
+            Key for item to add into the cache.
+        value : Any
+            Value of item to add into the cache.
 
         """
-        if self.update_cache(item):
+        if self.refresh_time_to_live(key):
             return
 
-        self[item] = time.time()
+        self[key] = CacheEntry(value, time.time())
         if len(self) > self._max_items:
             self.popitem(last=False)
 
-    def update_cache(self, item: int | str) -> bool:
+    def refresh_time_to_live(self, key) -> bool:
         """Update the items timestamp inside the cache.
 
         Parameters
         ----------
-        item : str
+        key : str
             Item whose timestamp to update in the cache.
 
         """
-        last_stored = self.get(item)
+        last_stored = self.get(key)
         if last_stored is not None:
-            self[item] = time.time()
+            self[key].insertion_time = time.time()
             return True
         return False
-
-    def prune_decayed(self):
-        """Prune cache if timer is finished."""
-        if self._prune_timer.finished():
-            now = time.time()
-            to_prune = [key for key, added in self.items() if now - added > self._max_timedelta]
-            for item in to_prune:
-                if item in self:
-                    del self[item]
-            self._prune_timer.reset()
