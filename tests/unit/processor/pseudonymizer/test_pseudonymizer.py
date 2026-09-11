@@ -112,7 +112,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "match replace whole field 1",
         {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"mapping": {"pseudo_this": "RE_WHOLE_FIELD"}},
+            "pseudonymizer": {"mapping": {"pseudo_this": "RE_WHOLE_FIELD_CAP"}},
         },
         {
             "filter_this": "does_not_matter",
@@ -692,25 +692,6 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         None,
     ),
-    (
-        "test_pseudonymize_url_fields_not_in_pseudonymize",
-        {
-            "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"mapping": {"pseudo_this": "RE_WHOLE_FIELD"}},
-            "url_fields": ["do_not_pseudo_this"],
-        },
-        {
-            "filter_this": "does_not_matter",
-            "do_not_pseudo_this": "https://www.do-not-pseudo.this.de",
-            "pseudo_this": "test",
-        },
-        {
-            "filter_this": "does_not_matter",
-            "do_not_pseudo_this": "https://www.do-not-pseudo.this.de",
-            "pseudo_this": "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>",
-        },
-        None,
-    ),
 ]
 
 
@@ -718,11 +699,11 @@ class TestPseudonymizer(BaseProcessorTestCase):
     CONFIG = {
         "type": "pseudonymizer",
         "outputs": [{"kafka": "topic"}],
-        "pubkey_analyst": "example_analyst_pub.pem",
-        "pubkey_depseudo": "example_depseudo_pub.pem",
+        "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
+        "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
         "hash_salt": "a_secret_tasty_ingredient",
         "rules": ["tests/testdata/unit/pseudonymizer/rules"],
-        "regex_mapping": "pseudonymizer_regex_mapping.json",
+        "regex_mapping": "tests/testdata/unit/pseudonymizer/regex_mapping.yml",
         "max_cached_pseudonyms": 1000000,
     }
 
@@ -784,8 +765,29 @@ class TestPseudonymizer(BaseProcessorTestCase):
         super()._load_rule(rule)
         self.object.setup()
 
-    def test_replace_regex_keywords_by_regex_expression_is_idempotent(self):
+    def test_pseudonymize_url_fields_not_in_pseudonymize(self):
+        pseudonym = "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
 
+        url = "https://www.do-not-pseudo.this.de"
+        regex_pattern = "RE_WHOLE_FIELD_CAP"
+        event = {
+            "filter_this": "does_not_matter",
+            "do_not_pseudo_this": url,
+            "pseudo_this": "test",
+        }
+        rule = {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {"mapping": {"pseudo_this": regex_pattern}},
+            "url_fields": ["do_not_pseudo_this"],
+        }
+        self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
+        self._load_rule(rule)
+        self.object.process(event)
+
+        assert event["do_not_pseudo_this"] == url
+        assert event["pseudo_this"] == pseudonym
+
+    def test_replace_regex_keywords_by_regex_expression_is_idempotent(self):
         rule_dict = {
             "filter": "event_id: 1234",
             "pseudonymizer": {"mapping": {"something": "RE_WHOLE_FIELD"}},
@@ -1058,7 +1060,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
         self._load_rule(rule_dict)
         self.object.rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
-        error_message = r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping 'pseudonymizer_regex_mapping.json'"
+        error_message = (
+            r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping '.*\/regex_mapping.yml'"
+        )
         with pytest.raises(InvalidConfigurationError, match=error_message):
             self.object.setup()
 
