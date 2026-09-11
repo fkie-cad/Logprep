@@ -1,12 +1,20 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import uuid
+from copy import deepcopy
 from unittest import mock
+
+import pytest
 
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
 from logprep.ng.processor.selective_extractor.processor import SelectiveExtractor
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+from tests.unit.processor.selective_extractor.test_selective_extractor import (
+    test_cases as non_ng_test_cases,
+)
+
+test_cases = deepcopy(non_ng_test_cases)
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
@@ -14,6 +22,14 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         "type": "selective_extractor",
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
+
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
+        await self._load_rule(rule)
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await self.object.process(event)
+        assert event.data["result"] == expected
 
     async def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
@@ -125,42 +141,3 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         event = LogEvent(document, original=document, input_meta=InputMeta())
         _ = await self.object.process(event)
         assert len(self.object._event.extra_data) == 1
-
-    async def test_process_extracts_dotted_fields_complains_on_missing_fields(self):
-        rule = {
-            "filter": "message",
-            "selective_extractor": {
-                "source_fields": ["other.message", "not.exists", "message"],
-                "outputs": [{"opensearch": "index"}],
-                "ignore_missing_fields": False,
-            },
-        }
-        await self._load_rule(rule)
-        document = {"message": "test_message", "other": {"message": "my message value"}}
-        expected = {
-            "message": "test_message",
-            "other": {"message": "my message value"},
-            "tags": ["_selective_extractor_missing_field_warning"],
-        }
-        event = LogEvent(document, original=document, input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
-
-    async def test_process_extracts_dotted_fields_and_ignores_missing_fields(self):
-        rule = {
-            "filter": "message",
-            "selective_extractor": {
-                "source_fields": ["other.message", "message", "not.exists"],
-                "outputs": [{"opensearch": "index"}],
-                "ignore_missing_fields": True,
-            },
-        }
-        await self._load_rule(rule)
-        document = {"message": "test_message", "other": {"message": "my message value"}}
-        expected = {
-            "message": "test_message",
-            "other": {"message": "my message value"},
-        }
-        event = LogEvent(document, original=document, input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
