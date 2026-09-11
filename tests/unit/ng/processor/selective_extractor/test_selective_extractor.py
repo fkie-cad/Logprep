@@ -29,7 +29,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
-        assert event.data["result"] == expected
+        assert event.data == expected
 
     async def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
