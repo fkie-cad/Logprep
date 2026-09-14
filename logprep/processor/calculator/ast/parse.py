@@ -74,13 +74,13 @@ def __build_atomic_expression(parsed: ParseResults) -> ASTNode:
         assert isinstance(parsed[0][0], ASTNode)
         return parsed[0][0]
     assert len(parsed) >= 2
-    node = parsed[-1]
+    *signs, node = parsed
+
     if isinstance(node, ParseResults):
         assert len(node) == 1
         node = node[0]
     assert isinstance(node, ASTNode)
 
-    signs = parsed[:-1]
     assert all(sign in ("+", "-") for sign in signs)
     if len([s for s in signs if s == "-"]) % 2 == 1:
         return NegateASTNode(node)
