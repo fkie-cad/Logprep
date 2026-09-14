@@ -1,7 +1,5 @@
 """Functionality to parse expressions to an abstract syntax tree"""
 
-# pylint: disable=missing-docstring
-
 from re import RegexFlag
 from typing import Callable
 
@@ -42,7 +40,7 @@ from logprep.processor.calculator.ast.util import read_hex_number
 from logprep.util.helper import VARIABLE_PATTERN
 
 
-def _build_constant(parsed: ParseResults) -> ASTNode:
+def __build_constant(parsed: ParseResults) -> ASTNode:
     assert len(parsed) == 1
     assert isinstance(parsed[0], str)
     return ConstantNumberASTNode(parsed[0])
@@ -55,39 +53,42 @@ def _build_constant_from_hex(parsed: ParseResults) -> ASTNode:
     return ConstantNumberASTNode(hex_number)
 
 
-def _build_variable(parsed: ParseResults) -> ASTNode:
+def __build_variable(parsed: ParseResults) -> ASTNode:
     assert len(parsed) == 1
     assert isinstance(parsed[0], str)
     return VariableASTNode(parsed[0])
 
 
-def _build_hex_variable(parsed: ParseResults) -> ASTNode:
+def __build_hex_variable(parsed: ParseResults) -> ASTNode:
     assert len(parsed) == 1
     assert isinstance(parsed[0], str)
     return HexNumberVariableASTNode(parsed[0])
 
 
-def _build_atom(parsed: ParseResults) -> ASTNode:
+def __build_atomic_expression(parsed: ParseResults) -> ASTNode:
     if len(parsed) == 1:
         if isinstance(parsed[0], ASTNode):
             return parsed[0]
         assert isinstance(parsed[0], ParseResults)
-        assert len(parsed[0]) == 1 and isinstance(parsed[0][0], ASTNode)
+        assert len(parsed[0]) == 1
+        assert isinstance(parsed[0][0], ASTNode)
         return parsed[0][0]
     assert len(parsed) >= 2
-    signs = parsed[:-1]
-    assert all(sign in ("+", "-") for sign in signs), signs
     node = parsed[-1]
     if isinstance(node, ParseResults):
         assert len(node) == 1
         node = node[0]
     assert isinstance(node, ASTNode)
+
+    signs = parsed[:-1]
+    assert all(sign in ("+", "-") for sign in signs)
     if len([s for s in signs if s == "-"]) % 2 == 1:
         return NegateASTNode(node)
+
     return node
 
 
-def _build_fn(parsed: ParseResults) -> ASTNode:
+def __build_function_call(parsed: ParseResults) -> ASTNode:
     assert len(parsed) >= 1, parsed
     function_name = parsed[0]
     assert isinstance(function_name, str)
@@ -97,7 +98,7 @@ def _build_fn(parsed: ParseResults) -> ASTNode:
     return try_create_function_node(function_name, *params)
 
 
-def _build_arithmetic_operation(parsed: ParseResults) -> ASTNode:
+def __build_arithmetic_operation(parsed: ParseResults) -> ASTNode:
     assert len(parsed) > 0 and len(parsed) % 2 == 1
 
     lhs = parsed[0]
@@ -113,7 +114,7 @@ def _build_arithmetic_operation(parsed: ParseResults) -> ASTNode:
     return lhs
 
 
-def _build_comparison_operation(parsed: ParseResults) -> ASTNode:
+def __build_comparison_operation(parsed: ParseResults) -> ASTNode:
     assert len(parsed) % 2 == 1
     assert all(isinstance(parsed[i], ASTNode) for i in range(0, len(parsed), 2))
     if len(parsed) == 1:
@@ -158,12 +159,12 @@ def _build_comparison_operation(parsed: ParseResults) -> ASTNode:
 _HEX_PATTERN = r"[a-fA-F0-9]+"
 
 
-def _map_actions(*mappings: tuple[ParserElement, Callable[[ParseResults], ASTNode]]) -> None:
+def __map_actions(*mappings: tuple[ParserElement, Callable[[ParseResults], ASTNode]]) -> None:
     for element, action in mappings:
         element.set_parse_action(action)
 
 
-def _setup_syntax() -> ParserElement:
+def __setup_syntax() -> ParserElement:
     # pylint: disable=too-many-locals
 
     expression = Forward()
@@ -222,24 +223,24 @@ def _setup_syntax() -> ParserElement:
 
     expression <<= comparison_operation
 
-    _map_actions(
-        (constant, _build_constant),
-        (number, _build_constant),
-        (variable, _build_variable),
+    __map_actions(
+        (constant, __build_constant),
+        (number, __build_constant),
+        (variable, __build_variable),
         (hex_number, _build_constant_from_hex),
         (number_from_hex, _build_constant_from_hex),
-        (variable_as_hex, _build_hex_variable),
-        (function_call, _build_fn),
-        (atomic_expression, _build_atom),
-        (power_operation, _build_arithmetic_operation),
-        (multiplicative_operation, _build_arithmetic_operation),
-        (additive_operation, _build_arithmetic_operation),
-        (comparison_operation, _build_comparison_operation),
+        (variable_as_hex, __build_hex_variable),
+        (function_call, __build_function_call),
+        (atomic_expression, __build_atomic_expression),
+        (power_operation, __build_arithmetic_operation),
+        (multiplicative_operation, __build_arithmetic_operation),
+        (additive_operation, __build_arithmetic_operation),
+        (comparison_operation, __build_comparison_operation),
     )
     return expression
 
 
-_SYNTAX = _setup_syntax()
+_SYNTAX = __setup_syntax()
 
 
 def parse_expression(expression: str) -> ASTNode:

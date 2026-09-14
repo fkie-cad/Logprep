@@ -577,6 +577,9 @@ class RangeCheckASTNode(CompositeASTNode):
         self.upper_bound = upper_bound
         self.upper_bound_is_inclusive = upper_bound_is_inclusive
 
+        self._lower_op = operator.le if lower_bound_is_inclusive else operator.lt
+        self._upper_op = operator.le if upper_bound_is_inclusive else operator.lt
+
     def optimize(self):
         if self.is_constant:
             return ConstantBooleanASTNode(_constant_value(self))
@@ -591,12 +594,10 @@ class RangeCheckASTNode(CompositeASTNode):
     def evaluate(self, context):
         value = self.value.evaluate(context)
         lower_bound = self.lower_bound.evaluate(context)
-        op = operator.le if self.lower_bound_is_inclusive else operator.lt
-        if not op(lower_bound, value):
+        if not self._lower_op(lower_bound, value):
             return False
         upper_bound = self.upper_bound.evaluate(context)
-        op = operator.le if self.upper_bound_is_inclusive else operator.lt
-        return op(value, upper_bound)
+        return self._upper_op(value, upper_bound)
 
 
 ARITHMETIC_OPERATORS = {
@@ -686,9 +687,14 @@ class LogicFunctionASTNode(FunctionCallASTNode):
 class NotFunctionASTNode(LogicFunctionASTNode):
     """A node representing the 'not' function."""
 
+    def __init__(self, function_name: str, *children: ASTNode):
+        super().__init__(function_name, *children)
+        assert len(children) == 1
+        self.inner = children[0]
+
     def evaluate(self, context):
         return not parse_value(
-            self.children[0].evaluate(context),
+            self.inner.evaluate(context),
             self.input_type,
         )
 
