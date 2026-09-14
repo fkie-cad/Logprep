@@ -2,7 +2,7 @@
 
 import math
 from enum import Enum, auto
-from typing import Any
+from typing import TypeAlias
 
 from logprep.processor.calculator.ast.exceptions import (
     ParsingError,
@@ -40,7 +40,10 @@ class ValueType(Enum):
         return False
 
 
-def parse_value(value: FieldValue, expected_type: ValueType) -> Any:
+Value: TypeAlias = int | float | bool
+
+
+def parse_value(value: FieldValue, expected_type: ValueType) -> Value:
     """Parse a given value into the specified ValueType.
 
     Parameters
@@ -74,11 +77,11 @@ def parse_value(value: FieldValue, expected_type: ValueType) -> Any:
                 try:
                     return int(value)
                 except ValueError:
-                    ...
+                    pass
                 try:
                     return float(value)
                 except ValueError:
-                    ...
+                    pass
             raise ParsingError(f"Could not parse input {value !r} to number")
 
         case ValueType.BOOLEAN:

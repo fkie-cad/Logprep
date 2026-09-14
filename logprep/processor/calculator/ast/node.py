@@ -10,6 +10,7 @@ from logprep.processor.calculator.ast.exceptions import (
     MissingValueError,
 )
 from logprep.processor.calculator.ast.util import (
+    Value,
     ValueType,
     parse_value,
     read_hex_number,
@@ -133,7 +134,7 @@ class ASTNode(ABC):
         """
 
     @abstractmethod
-    def evaluate(self, context: EvaluationContext) -> Any:
+    def evaluate(self, context: EvaluationContext) -> Value:
         """Evaluate the Syntax Tree for the given context.
 
         Parameters
@@ -143,7 +144,7 @@ class ASTNode(ABC):
 
         Returns
         -------
-        Any
+        Value
             The result of the evaluation, the type must adhere to the nodes
             specified output_type.
         """
@@ -246,7 +247,7 @@ class VariableASTNode(TerminalASTNode):
 
         Returns
         -------
-        Any
+        Value
             The value read from the context at the nodes path.
 
         Raises
@@ -335,7 +336,7 @@ class OperationASTNode(CompositeASTNode):
     operator_symbol: ClassVar[str]
     """The symbol representing the operation"""
 
-    operation_fn: ClassVar[Callable[[Any, Any], Any]]
+    operation_fn: ClassVar[Callable[[Value, Value], Value]]
     """The callback internally used to evaluate the operation"""
 
     def __init__(
@@ -648,7 +649,7 @@ class ProxyFunctionCallASTNode(FunctionCallASTNode):
         self,
         function_name: str,
         *children: ASTNode,
-        function: Callable[..., Any],
+        function: Callable[..., Value],
     ):
         super().__init__(function_name, *children)
         self.function = function

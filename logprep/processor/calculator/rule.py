@@ -149,6 +149,7 @@ Examples for |PROCESSOR_NAME|:
 """
 
 import re
+import typing
 
 from attrs import define, field, validators
 
@@ -185,11 +186,15 @@ class CalculatorRule(FieldManagerRule):
             self.source_fields = re.findall(FIELD_PATTERN, self.calc)
             super().__attrs_post_init__()
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(CalculatorRule.Config, self._config)
+
     def __init__(self, filter_rule, config, processor_name):
         super().__init__(filter_rule, config, processor_name)
-        assert isinstance(self._config, CalculatorRule.Config)
         with timeout(seconds=self.timeout):
-            compiled_expression = parse_expression(self._config.calc)
+            compiled_expression = parse_expression(self.config.calc)
             self.__parsed_expression = compiled_expression.optimize()
 
     @property
@@ -200,4 +205,4 @@ class CalculatorRule(FieldManagerRule):
     @property
     def timeout(self):
         """Returns the timeout"""
-        return self._config.timeout
+        return self.config.timeout
