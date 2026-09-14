@@ -89,13 +89,13 @@ def __build_atomic_expression(parsed: ParseResults) -> ASTNode:
 
 
 def __build_function_call(parsed: ParseResults) -> ASTNode:
-    assert len(parsed) >= 1, parsed
-    function_name = parsed[0]
+    assert len(parsed) >= 1
+
+    function_name, *params = parsed
     assert isinstance(function_name, str)
-    assert all(isinstance(i, ParseResults) and len(i) == 1 for i in parsed[1:])
-    params = [i[0] for i in parsed[1:]]
-    assert all(isinstance(param, ASTNode) for param in params)
-    return try_create_function_node(function_name, *params)
+    assert all(isinstance(i, ParseResults) and len(i) == 1 for i in params)
+    assert all(isinstance(i[0], ASTNode) for i in params)
+    return try_create_function_node(function_name, *(i[0] for i in params))
 
 
 def __build_arithmetic_operation(parsed: ParseResults) -> ASTNode:
@@ -124,11 +124,8 @@ def __build_comparison_operation(parsed: ParseResults) -> ASTNode:
         raise InvalidSyntaxError("Comparisons can not be chained.")
 
     if len(parsed) == 5:
-        lower_bound = parsed[0]
-        lower_op = parsed[1]
-        value = parsed[2]
-        upper_op = parsed[3]
-        upper_bound = parsed[4]
+        lower_bound, lower_op, value, upper_op, upper_bound = parsed
+
         assert isinstance(lower_bound, ASTNode)
         assert isinstance(lower_op, str)
         assert isinstance(value, ASTNode)
