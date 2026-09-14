@@ -208,7 +208,9 @@ def try_create_function_node(function_name: str, *children: ASTNode) -> Function
         Raised if the number of passed children does not match the number of
         expected parameters.
     """
-    if not (function_info := _FUNCTION_NAME_MAP.get(function_name.lower())):
+
+    function_info = _FUNCTION_NAME_MAP.get(function_name.lower())
+    if not function_info:
         raise UnknownFunctionError(f"Unknown function {function_name!r}.")
     if function_info.min_args is not None and len(children) < function_info.min_args:
         raise InvalidSyntaxError(
