@@ -34,7 +34,7 @@ A speaking example:
    :no-undoc-members:
 
 Expression syntax for |PROCESSOR_NAME|:
-------------------------------------------------
+---------------------------------------
 
 The |PROCESSOR_NAME| can handle the following atomic expressions:
 
