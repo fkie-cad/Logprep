@@ -34,9 +34,6 @@ Boolean
      - {{ entry.description -}}
 {% endmacro %}
 
-{# --- actual template --- #}
-{% set registry = data.FUNCTION_REGISTRY %}
-
 .. list-table:: Available Functions
    :header-rows: 1
 
@@ -45,6 +42,6 @@ Boolean
      - Parameter Count
      - Output Type
      - Description
-{% for entry in registry %}
+{% for entry in data.FUNCTION_REGISTRY %}
    {{- render_entry(entry) }}
 {% endfor %}

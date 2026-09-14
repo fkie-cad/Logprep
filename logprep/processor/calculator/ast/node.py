@@ -343,6 +343,7 @@ class OperationASTNode(CompositeASTNode):
         super().__init__(lhs, rhs)
         self.lhs = lhs
         """The left-hand-side operand of the operation"""
+
         self.rhs = rhs
         """The right-hand-side operand of the operation"""
 

@@ -7,6 +7,7 @@
 import re
 
 import pytest
+from luqum.parser import parser
 from pytest import raises
 
 from logprep.filter.expression.filter_expression import (
@@ -24,6 +25,88 @@ from logprep.filter.lucene_filter import (
     LuceneFilterError,
     LuceneTransformer,
 )
+
+compatibility_test_cases = [
+    pytest.param("foo", {"key": "foo"}, True, id="default field"),
+    pytest.param("key:", {"key": "foo"}, False, id="empty key should not return"),
+    pytest.param("_exists_: foo", {"key": "foo"}, True, id="exists check"),
+    pytest.param("key:foo", {"key": "foo"}, True, id="simple term"),
+    pytest.param("key:foo", {"key": "bar foo"}, True, id="simple term matches as token"),
+    pytest.param("key:foo^4", {"key": "foo"}, True, id="boosted term"),
+    pytest.param("key:-foo", {"key": "foo"}, False, id="simple term must not contain"),
+    pytest.param("key:+foo", {"key": "foo"}, True, id="simple term must contain"),
+    pytest.param("NOT key:foo", {"key": "foo"}, False, id="single not should not match (negative)"),
+    pytest.param("NOT key:foo", {"key": "bar"}, False, id="Single not should not match (positive)"),
+    pytest.param("a:bar NOT b:foo", {"a": "bar", "b": "foo"}, False, id="not excludes"),
+    pytest.param("a:bar ! b:foo", {"a": "bar", "b": "foo"}, False, id="not alternative"),
+    pytest.param("a:bar NOT b:foo", {"a": "bar", "b": "yolo"}, False, id="unmatched not matches"),
+    pytest.param(
+        "a:bar AND NOT b:foo",
+        {"a": "bar", "b": "foo"},
+        False,
+        id="not excludes (explicit AND)",
+    ),
+    pytest.param(
+        "a:bar AND b:NOT foo",
+        {"a": "bar", "b": "yolo"},
+        False,
+        id="unmatched not matches (explicit AND)",
+    ),
+    pytest.param("NOT key:foo", {"key": "foo"}, False, id="NOT filters correct"),
+    pytest.param("! key:foo", {"key": "foo"}, False, id="NOT alternative "),
+    pytest.param("key:foo", {"key": "fool"}, False, id="simple term substring"),
+    pytest.param("key:foo?", {"key": "fool"}, False, id="single char wildcard"),
+    pytest.param("key:foo*", {"key": "fools"}, False, id="multi char wildcard"),
+    pytest.param("key:f*r", {"key": "foo bar"}, False, id="multi char wildcard whitespace"),
+    pytest.param("key:foo", {"key": "fool"}, False, id="simple term substring"),
+    pytest.param("key:foo", {"key": "this is foo"}, True, id="simple term subsection"),
+    pytest.param("key:bar", {"key": "foo"}, False, id="simple term mismatch"),
+    pytest.param('key:"is foo"', {"key": "this is foo"}, True, id="simple phrase"),
+    pytest.param('key:"this is foo"', {"key": "this is foo"}, True, id="simple phrase full"),
+    pytest.param(
+        "key:[20020101 TO 20030101]", {"key": "20021111"}, True, id="inclusive range (true)"
+    ),
+    pytest.param(
+        "key:[20020101 TO 20030101]", {"key": "20020101"}, True, id="inclusive range (true lower)"
+    ),
+    pytest.param(
+        "key:[20020101 TO 20030101]", {"key": "20030101"}, True, id="inclusive range (true upper)"
+    ),
+    pytest.param(
+        "key:[20020101 TO 20030101]", {"key": "20020100"}, False, id="inclusive range (false below)"
+    ),
+    pytest.param(
+        "key:[20020101 TO 20030101]", {"key": "20030102"}, False, id="inclusive range (false above)"
+    ),
+    pytest.param("key:{Aida TO Carmen}", {"key": "Bang"}, True, id="inclusive range (true middle)"),
+    pytest.param("key:[5 TO *]", {"key": 8}, True, id="Open range"),
+    pytest.param("key:>=5", {"key": 8}, True, id="Open range alternative formulation."),
+    pytest.param(
+        "key:{Aida TO Carmen}", {"key": "Aida"}, False, id="inclusive range (false lower)"
+    ),
+    pytest.param(
+        "key:{Aida TO Carmen}", {"key": "Carmen"}, False, id="inclusive range (false upper)"
+    ),
+    pytest.param('key:"is bar"', {"key": "this is foo"}, False, id="simple phrase mismatch"),
+    pytest.param("key:bar key:foo", {"key": "foo"}, True, id="implicit OR"),
+    pytest.param("key:bar OR key:foo", {"key": "foo"}, True, id="explicit OR works"),
+    pytest.param("key:bar || key:foo", {"key": "foo"}, True, id="explicit alternative OR works"),
+    pytest.param("a:bar AND b:foo", {"a": "bar", "b": "foo"}, True, id="explicit AND works"),
+    pytest.param('key:"foo bar"~3', {"key": "foo to bar"}, True, id="proximity search"),
+    pytest.param(
+        "a:bar && b:foo",
+        {"a": "bar", "b": "foo"},
+        True,
+        id="explicit alternative AND works",
+    ),
+    pytest.param("a:bar AND b:foo", {"b": "foo"}, False, id="explicit AND fails"),
+    pytest.param("key:(bar foo)", {"key": "foo"}, True, id="field grouping"),
+    pytest.param("(a:bar OR a:yolo) AND b:foo", {"a": "yolo", "b": "foo"}, True, id="grouping"),
+    pytest.param("key:roam~", {"key": "foam"}, True, id="fuzzy search"),
+    pytest.param("\\(1\\+1\\):2", {"(1+1)": "2"}, True, id="Escaping"),
+    pytest.param("*:hello", {"key": "hello"}, True, id="Wildcard in key"),
+    pytest.param("key:/f.*/", {"key": "fool"}, True, id="Regex"),
+]
 
 
 @pytest.fixture(
@@ -1515,3 +1598,15 @@ class TestLueceneFilter:
             match="expression not escaped correctly",
         ):
             LuceneFilter.create(range_query(range_expression))
+
+    @pytest.mark.parametrize("query,value,does_match", compatibility_test_cases)
+    def test_compatibility(self, query, value, does_match):
+        assert LuceneFilter.create(query).does_match(value) == does_match
+
+    @pytest.mark.parametrize(
+        "query,_value,_does_match",
+        compatibility_test_cases,
+    )
+    def test_luqum(self, query, _value, _does_match):
+        result = parser.parse(query)
+        assert result

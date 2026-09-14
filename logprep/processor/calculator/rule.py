@@ -128,14 +128,19 @@ The following functions are available, where the function names a case-insensiti
 Following is a list of example calculation expressions. All factors and operators can be retrieved
 from a field using the schema :code:`${your.dotted.field}`:
 
-.. datatemplate:import-module:: tests.unit.processor.calculator.test_ast
-   :template: calculator/examples-renderer.tmpl
+.. datatemplate:import-module::
+   :source: tests.unit.processor.calculator.test_ast
+
+   {% for item in data.static_expression_example_test_cases %}
+   * :code:`{{item[0]}}` => :code:`{{item[1]}}`
+   {% endfor %}
+
 
 The calc expression is not whitespace or case sensitive.
 
 
 Examples for |PROCESSOR_NAME|:
-------------------------------------------------
+------------------------------
 
 .. datatemplate:import-module:: tests.unit.processor.calculator.test_calculator
    :template: testcase-renderer.tmpl
