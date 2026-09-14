@@ -39,6 +39,11 @@ from logprep.processor.calculator.ast.node import (
 from logprep.processor.calculator.ast.util import read_hex_number
 from logprep.util.helper import VARIABLE_PATTERN
 
+# All __build_* functions below serve as callbacks for the  pyparsing based
+# syntax parser. They take a parsing result and convert it to an ASTNode.
+# Pyparse will wrap those nodes in an PraseResults instance before further
+# handling them.
+
 
 def __build_constant(parsed: ParseResults) -> ASTNode:
     assert len(parsed) == 1
@@ -73,6 +78,7 @@ def __build_atomic_expression(parsed: ParseResults) -> ASTNode:
         assert len(parsed[0]) == 1
         assert isinstance(parsed[0][0], ASTNode)
         return parsed[0][0]
+
     assert len(parsed) >= 2
     *signs, node = parsed
 
@@ -157,6 +163,7 @@ _HEX_PATTERN = r"[a-fA-F0-9]+"
 
 
 def __map_actions(*mappings: tuple[ParserElement, Callable[[ParseResults], ASTNode]]) -> None:
+    """Sorthand for setting `set_parse_action` on ParserElements"""
     for element, action in mappings:
         element.set_parse_action(action)
 
