@@ -14,22 +14,26 @@ from logprep.processor.calculator.ast.util import (
     parse_value,
     read_hex_number,
 )
-from logprep.util.helper import MISSING, FieldValue, get_dotted_field_value_with_missing
+from logprep.util.helper import (
+    MISSING,
+    JsonObject,
+    get_dotted_field_value_with_missing,
+)
 
 
 class ASTWalkContext(Protocol):
     """Protocol for scanning the abstract syntax tree by visitor pattern."""
 
     def visit(self, node: "ASTNode", *children: "ASTNode") -> None:
-        """The callback for visiting a node.
+        """The callback for visiting nodes when the context is passed to
+        the ``ASTNode.walk`` function.
 
         Parameters
         ----------
         node : ASTNode
-            The visited node.
+            The node visited node.
         children : ASTNode
             The children of the visited node.
-
         """
 
 
@@ -97,7 +101,7 @@ def get_ast_diagram(node: "ASTNode") -> str:
     return diagram_render_context.get_graph_viz()
 
 
-EvaluationContext: TypeAlias = dict[str, FieldValue]
+EvaluationContext: TypeAlias = JsonObject
 
 EMPTY_CONTEXT: EvaluationContext = {}
 
@@ -168,7 +172,6 @@ class ASTNode(ABC):
         ------
         DivisionByZeroError
             Some optimizations might result in detecting a zero division.
-
         """
 
 

@@ -60,6 +60,8 @@ FieldValue: TypeAlias = Union[
     dict[str, "FieldValue"], list["FieldValue"], str, int, float, bool, None
 ]
 
+JsonObject: TypeAlias = dict[str, FieldValue]
+
 FieldRef: TypeAlias = str
 
 T = TypeVar("T")
