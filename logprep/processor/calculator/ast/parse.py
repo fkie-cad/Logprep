@@ -244,7 +244,7 @@ def __setup_syntax() -> ParserElement:
     return expression
 
 
-_SYNTAX = __setup_syntax()
+__SYNTAX = __setup_syntax()
 
 
 def parse_expression(expression: str) -> ASTNode:
@@ -269,7 +269,7 @@ def parse_expression(expression: str) -> ASTNode:
         Raised if an unknown function is raised.
     """
     try:
-        root_node = _SYNTAX.parse_string(expression, parse_all=True)[0]
+        root_node = __SYNTAX.parse_string(expression, parse_all=True)[0]
     except (ParseException, ParseSyntaxException) as error:
         raise InvalidSyntaxError("Error raising expression.") from error
     assert isinstance(root_node, ASTNode)
