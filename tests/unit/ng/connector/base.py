@@ -365,18 +365,15 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
             return_value=self._create_log_event({"event:": "test_event"}, original=b"")
         )
 
-        self.object.metrics.number_of_processed_events = 0
-
         await self.object.get_next(0.01)
 
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events.value == 1
 
     async def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
         self.object._get_event = mock.AsyncMock(return_value=None)
 
-        self.object.metrics.number_of_processed_events = 0
         assert await self.object.get_next(0.01) is None
-        assert self.object.metrics.number_of_processed_events == 0
+        assert self.object.metrics.number_of_processed_events.value == 0
 
     async def test_get_next_adds_timestamp_if_configured(self):
         self.object = self._create_test_instance(
@@ -671,16 +668,14 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
                 {"message": "test message"}, b'{"message":"test message"}'
             )
         )
-        self.object.metrics.number_of_processed_events = 0
         await self.object.get_next(0.01)
 
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events.value == 1
 
     async def test_get_next_does_not_count_number_of_processed_events_if_event_is_none(self):
-        self.object.metrics.number_of_processed_events = 0
         self.object._get_event = mock.AsyncMock(return_value=None)
         await self.object.get_next(0.01)
-        assert self.object.metrics.number_of_processed_events == 0
+        assert self.object.metrics.number_of_processed_events.value == 0
 
     async def test_get_next_has_time_measurement(self):
         mock_metric = mock.MagicMock()
@@ -692,8 +687,7 @@ class BaseInputTestCase(BaseConnectorTestCase[InputTypeT], typing.Generic[InputT
         )
         await self.object.get_next(0.01)
         assert isinstance(self.object.metrics.processing_time_per_event, mock.MagicMock)
-        # asserts entering context manager in metrics.metrics.Metric.measure_time
-        mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
+        mock_metric.assert_has_calls([mock.call.observe(mock.ANY)])
 
     async def test_input_iterator(self):
         batch_events = [
@@ -762,41 +756,37 @@ class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[Outp
     @pytest.mark.parametrize(("count"), [pytest.param(n, id=f"{n} events") for n in [0, 1, 2, 5]])
     async def test_store_counts_processed_events(self, count, mock_output_delivery_for_events):
         await self.object.setup()
-        self.object.metrics.number_of_processed_events = 0
 
         events = [self._create_log_event({"message": f"test {i}"}) for i in range(count)]
         mock_output_delivery_for_events([[True for _ in events]])
         await self.object.store(events)
 
-        assert self.object.metrics.number_of_processed_events == count
+        assert self.object.metrics.number_of_processed_events.value == count
 
     @pytest.mark.parametrize(("count"), [pytest.param(n, id=f"{n} events") for n in [0, 1, 2, 5]])
     async def test_store_counts_error_events(self, count, mock_output_delivery_for_events):
         await self.object.setup()
-        self.object.metrics.number_of_errors = 0
 
         events = [self._create_log_event({"message": f"test {i}"}) for i in range(count)]
         mock_output_delivery_for_events([[False for _ in events]])
         await self.object.store(events)
 
-        assert self.object.metrics.number_of_errors == count
+        assert self.object.metrics.number_of_errors.value == count
 
     @pytest.mark.parametrize(("count"), [pytest.param(n, id=f"{n} events") for n in [0, 1, 2, 5]])
     async def test_store_counts_error_events_for_client_failures(
         self, count, mock_output_delivery_for_events
     ):
         await self.object.setup()
-        self.object.metrics.number_of_errors = 0
 
         events = [self._create_log_event({"message": f"test {i}"}) for i in range(count)]
         mock_output_delivery_for_events([Exception("unexpected client failure")])
         await self.object.store(events)
 
-        assert self.object.metrics.number_of_errors == count
+        assert self.object.metrics.number_of_errors.value == count
 
     async def test_store_handles_uncaught_exception(self):
         await self.object.setup()
-        self.object.metrics.number_of_errors = 0
 
         event_with_target = self._create_log_event({"message": "test 1"}, output_target="something")
         event_without_target = self._create_log_event({"message": "test 1"}, output_target=None)
@@ -806,6 +796,6 @@ class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[Outp
             mock_write.side_effect = failure_reason
             await self.object.store([event_with_target, event_without_target])
 
-        assert self.object.metrics.number_of_errors == 2
+        assert self.object.metrics.number_of_errors.value == 2
         assert event_with_target.errors == [failure_reason]
         assert event_without_target.errors == [failure_reason]

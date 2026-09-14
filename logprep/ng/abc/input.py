@@ -29,7 +29,7 @@ class InputError(LogprepException):
     def from_error(
         cls, connector: "Input", error: Exception, message: str | None = None
     ) -> "InputError":
-        connector.metrics.number_of_errors += 1
+        connector.metrics.number_of_errors.inc(1)
         if message is not None:
             return cls(f"{cls.__name__} in {connector.description}: {message}: {str(error)}")
         else:
@@ -37,7 +37,7 @@ class InputError(LogprepException):
 
     @classmethod
     def from_message(cls, connector: "Input", message: str) -> "InputError":
-        connector.metrics.number_of_errors += 1
+        connector.metrics.number_of_errors.inc(1)
         return cls(f"{cls.__name__} in {connector.description}: {message}")
 
 
@@ -61,7 +61,7 @@ class InputWarning(LogprepException):
         cls, connector: "Input", error: Exception, message: str | None = None
     ) -> "InputWarning":
         """Generate an `InputWarning` from a low level error"""
-        connector.metrics.number_of_warnings += 1
+        connector.metrics.number_of_warnings.inc(1)
         if message is not None:
             return cls(f"{cls.__name__} in {connector.description}: {message}: {str(error)}")
         else:
@@ -70,7 +70,7 @@ class InputWarning(LogprepException):
     @classmethod
     def from_message(cls, connector: "Input", message: str) -> "InputWarning":
         """Generate an `InputWarning` from a message"""
-        connector.metrics.number_of_warnings += 1
+        connector.metrics.number_of_warnings.inc(1)
         return cls(f"{cls.__name__} in {connector.description}: {message}")
 
 
@@ -142,7 +142,7 @@ class Input(Connector, AsyncIterator[LogEvent | ErrorEvent | None]):
         LogEvent | ErrorEvent | None
         """
 
-    @Metric.measure_time_async()
+    @Metric.measure_time()
     async def get_next(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Return the next document
 
@@ -172,7 +172,7 @@ class Input(Connector, AsyncIterator[LogEvent | ErrorEvent | None]):
             event.mark_failed(error)
             return ErrorEvent.from_failed_event(event)
 
-        self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events.inc(1)
 
         return event
 
