@@ -55,7 +55,7 @@ class _DiagramRenderContext(ASTWalkContext):
         if id(node) not in self.__id_to_counter:
             self.__id_to_counter[id(node)] = self.__counter
             self.__counter += 1
-        self.nodes[id(node)] = repr(node)
+        self.nodes[id(node)] = str(node)
         self.links.extend((id(node), id(child)) for child in children)
 
     def get_graph_viz(self) -> str:
@@ -197,7 +197,7 @@ class ConstantASTNode(TerminalASTNode):
     def is_constant(self):
         return True
 
-    def __repr__(self):
+    def __str__(self):
         return f"<constant {self.value !r}>"
 
     def evaluate(self, context):
@@ -264,7 +264,7 @@ class VariableASTNode(TerminalASTNode):
         value = self._get_context_value(context)
         return parse_value(value, self.output_type)
 
-    def __repr__(self):
+    def __str__(self):
         return f"<variable {self.path !r}>"
 
     def optimize(self):
@@ -326,7 +326,7 @@ class NegateASTNode(CompositeASTNode):
     def evaluate(self, context):
         return -self.inner.evaluate(context)
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return "<negate>"
 
 
@@ -399,7 +399,7 @@ class OperationASTNode(CompositeASTNode):
             self.rhs.evaluate(context),
         )
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return f"<op {self.operator_symbol !r}>"
 
 
@@ -638,7 +638,7 @@ class FunctionCallASTNode(CompositeASTNode):
         self.function_name = function_name
         """The name of the function"""
 
-    def __repr__(self):
+    def __str__(self):
         return f"<func {self.function_name !r}>"
 
 
