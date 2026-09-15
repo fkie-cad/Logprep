@@ -27,15 +27,7 @@ class ASTWalkContext(Protocol):
 
     def visit(self, node: "ASTNode", *children: "ASTNode") -> None:
         """The callback for visiting nodes when the context is passed to
-        the ``ASTNode.walk`` function.
-
-        Parameters
-        ----------
-        node : ASTNode
-            The node visited node.
-        children : ASTNode
-            The children of the visited node.
-        """
+        the ``ASTNode.walk`` function."""
 
 
 NodeId: TypeAlias = int
@@ -51,7 +43,7 @@ class _DiagramRenderContext(ASTWalkContext):
         self.nodes: dict[NodeId, NodeDesc] = {}
         self.links: list[tuple[NodeId, NodeId]] = []
 
-    def visit(self, node: "ASTNode", *children: "ASTNode"):
+    def visit(self, node: "ASTNode", *children: "ASTNode") -> None:
         if id(node) not in self.__id_to_counter:
             self.__id_to_counter[id(node)] = self.__counter
             self.__counter += 1
@@ -59,13 +51,7 @@ class _DiagramRenderContext(ASTWalkContext):
         self.links.extend((id(node), id(child)) for child in children)
 
     def get_graph_viz(self) -> str:
-        """Render the scanned syntax tree in GraphViz format.
-
-        Returns
-        -------
-        str
-            The code for a diagram in GraphViz.
-        """
+        """Render the scanned syntax tree in GraphViz format."""
 
         def _node_ref(node_id: NodeId) -> str:
             return f"n{self.__id_to_counter[node_id]}"
@@ -85,18 +71,7 @@ class _DiagramRenderContext(ASTWalkContext):
 
 
 def get_ast_diagram(node: "ASTNode") -> str:
-    """Visualize a syntax tree as a GraphViz diagram.
-
-    Parameters
-    ----------
-    node : ASTNode
-        The root node of the abstract syntax tree to visualize.
-
-    Returns
-    -------
-    str
-        The GraphViz code of the diagram visualizing the AST.
-    """
+    """Visualize a syntax tree as a GraphViz diagram."""
     diagram_render_context = _DiagramRenderContext()
     node.walk(diagram_render_context)
     return diagram_render_context.get_graph_viz()
@@ -107,12 +82,12 @@ EvaluationContext: TypeAlias = JsonObject
 EMPTY_CONTEXT: EvaluationContext = {}
 
 
-def _constant_value(node: "ASTNode"):
+def _constant_value(node: "ASTNode") -> Value:
     assert node.is_constant
     return node.evaluate(EMPTY_CONTEXT)
 
 
-def _is_constant_value(node: "ASTNode", value: int) -> bool:
+def _is_constant_value(node: "ASTNode", value: Value) -> bool:
     return node.is_constant and _constant_value(node) == value
 
 
@@ -125,29 +100,11 @@ class ASTNode(ABC):
     @abstractmethod
     def walk(self, context: ASTWalkContext) -> None:
         """Function used to scan the syntax tree by visitor pattern.
-        Will recursively call the walk function on child nodes.
-
-        Parameters
-        ----------
-        context : ASTWalkContext
-            The context object used for scanning the AST.
-        """
+        Will recursively call the walk function on child nodes."""
 
     @abstractmethod
     def evaluate(self, context: EvaluationContext) -> Value:
-        """Evaluate the Syntax Tree for the given context.
-
-        Parameters
-        ----------
-        context : EvaluationContext
-            The context used for the evaluation.
-
-        Returns
-        -------
-        Value
-            The result of the evaluation, the type must adhere to the nodes
-            specified output_type.
-        """
+        """Evaluate the Syntax Tree for the given context."""
 
     @property
     @abstractmethod
@@ -161,12 +118,7 @@ class ASTNode(ABC):
 
     @abstractmethod
     def optimize(self) -> "ASTNode":
-        """Get an optimized version of the node.
-
-        Returns
-        -------
-        ASTNode
-           An optimized version of this node. Will return a deepcopy if no
+        """Get an optimized version of the node. Will return a deepcopy if no
            optimization is possible for consistency.
 
         Raises
@@ -180,30 +132,30 @@ class TerminalASTNode(ASTNode):
     """Base type for leafs in the syntax tree"""
 
     @property
-    def complexity(self):
+    def complexity(self) -> int:
         return 1
 
-    def walk(self, context):
+    def walk(self, context: ASTWalkContext) -> None:
         return context.visit(self)
 
 
 class ConstantASTNode(TerminalASTNode):
     """Base type for nodes representing constant values"""
 
-    def __init__(self, value: Any):
+    def __init__(self, value: Any) -> None:
         self.value = parse_value(value, self.output_type)
 
     @property
-    def is_constant(self):
+    def is_constant(self) -> bool:
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<constant {self.value !r}>"
 
-    def evaluate(self, context):
+    def evaluate(self, context: EvaluationContext) -> Value:
         return self.value
 
-    def optimize(self):
+    def optimize(self) -> ASTNode:
         return type(self)(value=self.value)
 
 
@@ -230,51 +182,35 @@ class VariableASTNode(TerminalASTNode):
 
     output_type = ValueType.NUMBER
 
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self.path = path
 
     @property
-    def is_constant(self):
+    def is_constant(self) -> bool:
         return False
 
     def _get_context_value(self, context: EvaluationContext) -> Any:
-        """Get the raw return value from the context passed during evaluation.
-
-        Parameters
-        ----------
-        context : EvaluationContext
-            The context used for evaluating the syntax tree.
-
-        Returns
-        -------
-        Value
-            The value read from the context at the nodes path.
-
-        Raises
-        ------
-        MissingValueError
-            Raised if the requested path is missing in the passed context.
-        """
+        """Get the raw return value from the context passed during evaluation."""
         value = get_dotted_field_value_with_missing(context, self.path)
         if value is MISSING:
             raise MissingValueError(f"Missing value for field {self.path!r}.")
         return value
 
-    def evaluate(self, context):
+    def evaluate(self, context: EvaluationContext) -> Value:
         value = self._get_context_value(context)
         return parse_value(value, self.output_type)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<variable {self.path !r}>"
 
-    def optimize(self):
+    def optimize(self) -> ASTNode:
         return type(self)(path=self.path)
 
 
 class HexNumberVariableASTNode(VariableASTNode):
     """A node representing a number read from a hex-string in the context"""
 
-    def _get_context_value(self, context):
+    def _get_context_value(self, context) -> Any:
         raw_value = super()._get_context_value(context)
         return read_hex_number(raw_value)
 
@@ -286,7 +222,7 @@ class CompositeASTNode(ASTNode):
     """The input type of the node.
     The output_types of the children need to be parsable to this"""
 
-    def __init__(self, *children: ASTNode):
+    def __init__(self, *children: ASTNode) -> None:
         if not all(child.output_type.can_be_cast_to(self.input_type) for child in children):
             raise InvalidSyntaxError(f"Can not parse all inputs to {self.input_type}.")
 
@@ -294,14 +230,14 @@ class CompositeASTNode(ASTNode):
         """The children enwrapped by this node"""
 
     @property
-    def complexity(self):
+    def complexity(self) -> int:
         return sum(child.complexity for child in self.children) + 1
 
     @property
-    def is_constant(self):
+    def is_constant(self) -> bool:
         return all(child.is_constant for child in self.children)
 
-    def walk(self, context):
+    def walk(self, context: ASTWalkContext) -> None:
         context.visit(self, *self.children)
         for child in self.children:
             child.walk(context)
@@ -313,17 +249,17 @@ class NegateASTNode(CompositeASTNode):
     input_type = ValueType.NUMBER
     output_type = ValueType.NUMBER
 
-    def __init__(self, inner: ASTNode):
+    def __init__(self, inner: ASTNode) -> None:
         super().__init__(inner)
         self.inner = inner
 
-    def optimize(self):
+    def optimize(self) -> ASTNode:
         optimized_inner = self.inner.optimize()
         if optimized_inner.is_constant:
             return ConstantNumberASTNode(-_constant_value(optimized_inner))
         return NegateASTNode(optimized_inner)
 
-    def evaluate(self, context):
+    def evaluate(self, context: EvaluationContext) -> Value:
         return -self.inner.evaluate(context)
 
     def __str__(self) -> str:
@@ -339,11 +275,7 @@ class OperationASTNode(CompositeASTNode):
     operation_fn: ClassVar[Callable[[Value, Value], Value]]
     """The callback internally used to evaluate the operation"""
 
-    def __init__(
-        self,
-        lhs: ASTNode,
-        rhs: ASTNode,
-    ):
+    def __init__(self, lhs: ASTNode, rhs: ASTNode) -> None:
         super().__init__(lhs, rhs)
         self.lhs = lhs
         """The left-hand-side operand of the operation"""
@@ -354,32 +286,17 @@ class OperationASTNode(CompositeASTNode):
     def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         # pylint: disable=unused-argument
         """Override this to implement specific optimizations for the specific
-        operation.
-
-        Parameters
-        ----------
-        lhs : ASTNode
-            The (already optimized) left-hand-side of the operation.
-        rhs : ASTNode
-            The (already optimized) right-hand-side of the operation.
-
-        Returns
-        -------
-        ASTNode | None
-            If ASTNode is returned this will be used as the optimized operation.
-            If None is returned the optimized result will be constructed from
-            the optimized lhs and rhs nodes.
-        """
+        operation."""
         return None
 
-    def optimize(self):
+    def optimize(self) -> ASTNode:
         lhs_optimized = self.lhs.optimize()
         rhs_optimized = self.rhs.optimize()
 
         if lhs_optimized.is_constant and rhs_optimized.is_constant:
             try:
                 return _VALUE_CLASS[self.output_type](
-                    self.operation_fn(
+                    type(self).operation_fn(
                         _constant_value(lhs_optimized),
                         _constant_value(rhs_optimized),
                     )
@@ -393,8 +310,8 @@ class OperationASTNode(CompositeASTNode):
 
         return type(self)(lhs_optimized, rhs_optimized)
 
-    def evaluate(self, context):
-        return self.operation_fn(
+    def evaluate(self, context: EvaluationContext) -> Value:
+        return type(self).operation_fn(
             self.lhs.evaluate(context),
             self.rhs.evaluate(context),
         )
@@ -416,7 +333,7 @@ class AddASTNode(ArithmeticASTNode):
     operator_symbol = "+"
     operation_fn = operator.add
 
-    def _operation_specific_optimizations(self, lhs, rhs):
+    def _operation_specific_optimizations(self, lhs, rhs) -> ASTNode | None:
         if _is_constant_value(rhs, 0):
             return lhs
         if _is_constant_value(lhs, 0):
@@ -430,7 +347,7 @@ class SubASTNode(ArithmeticASTNode):
     operator_symbol = "-"
     operation_fn = operator.sub
 
-    def _operation_specific_optimizations(self, lhs, rhs):
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         if _is_constant_value(rhs, 0):
             return lhs
         if _is_constant_value(lhs, 0):
@@ -444,7 +361,7 @@ class MulASTNode(ArithmeticASTNode):
     operator_symbol = "*"
     operation_fn = operator.mul
 
-    def _operation_specific_optimizations(self, lhs, rhs):
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         if _is_constant_value(rhs, 0) or _is_constant_value(lhs, 0):
             return ConstantNumberASTNode(0)
         if _is_constant_value(rhs, 1):
@@ -458,7 +375,7 @@ class DivArithmeticASTNode(ArithmeticASTNode):
     """Base class for arithmetic operations that might result in a
     DivisionByZero exception"""
 
-    def evaluate(self, context):
+    def evaluate(self, context: EvaluationContext) -> Value:
         try:
             return super().evaluate(context)
         except ZeroDivisionError as error:
@@ -471,7 +388,7 @@ class DivASTNode(DivArithmeticASTNode):
     operator_symbol = "/"
     operation_fn = operator.truediv
 
-    def _operation_specific_optimizations(self, lhs, rhs):
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         if _is_constant_value(rhs, 0):
             raise DivisionByZeroError("Expression resulted to a division by zero on optimization.")
         if _is_constant_value(rhs, 1):
@@ -485,9 +402,10 @@ class ModASTNode(DivArithmeticASTNode):
     operator_symbol = "%"
     operation_fn = operator.mod
 
-    def _operation_specific_optimizations(self, lhs, rhs):
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         if _is_constant_value(rhs, 0):
             raise DivisionByZeroError("Expression resulted to a division by zero on optimization.")
+        return None
 
 
 class PowASTNode(DivArithmeticASTNode):
@@ -496,7 +414,7 @@ class PowASTNode(DivArithmeticASTNode):
     operator_symbol = "^"
     operation_fn = operator.pow
 
-    def _operation_specific_optimizations(self, lhs, rhs):
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         if _is_constant_value(rhs, 0):
             return ConstantNumberASTNode(1)
         if _is_constant_value(rhs, 1):
@@ -569,7 +487,7 @@ class RangeCheckASTNode(CompositeASTNode):
         *,
         lower_bound_is_inclusive: bool = False,
         upper_bound_is_inclusive: bool = False,
-    ):
+    ) -> None:
         # pylint: disable=too-many-arguments
         super().__init__(lower_bound, value, upper_bound)
         self.lower_bound = lower_bound
@@ -581,7 +499,7 @@ class RangeCheckASTNode(CompositeASTNode):
         self._lower_op = operator.le if lower_bound_is_inclusive else operator.lt
         self._upper_op = operator.le if upper_bound_is_inclusive else operator.lt
 
-    def optimize(self):
+    def optimize(self) -> ASTNode:
         if self.is_constant:
             return ConstantBooleanASTNode(_constant_value(self))
         return type(self)(
@@ -592,7 +510,7 @@ class RangeCheckASTNode(CompositeASTNode):
             upper_bound_is_inclusive=self.upper_bound_is_inclusive,
         )
 
-    def evaluate(self, context):
+    def evaluate(self, context: EvaluationContext) -> Value:
         value = self.value.evaluate(context)
         lower_bound = self.lower_bound.evaluate(context)
         if not self._lower_op(lower_bound, value):
@@ -601,7 +519,7 @@ class RangeCheckASTNode(CompositeASTNode):
         return self._upper_op(value, upper_bound)
 
 
-ARITHMETIC_OPERATORS = {
+ARITHMETIC_OPERATORS: dict[str, type[ArithmeticASTNode]] = {
     op.operator_symbol: op
     for op in (
         AddASTNode,
@@ -613,7 +531,7 @@ ARITHMETIC_OPERATORS = {
     )
 }
 
-COMPARISON_OPERATORS = {
+COMPARISON_OPERATORS: dict[str, type[ComparisonASTNode]] = {
     op.operator_symbol: op
     for op in (
         EqualASTNode,
@@ -633,12 +551,12 @@ class FunctionCallASTNode(CompositeASTNode):
         self,
         function_name: str,
         *children: ASTNode,
-    ):
+    ) -> None:
         super().__init__(*children)
         self.function_name = function_name
         """The name of the function"""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<func {self.function_name !r}>"
 
 
@@ -650,12 +568,12 @@ class ProxyFunctionCallASTNode(FunctionCallASTNode):
         function_name: str,
         function: Callable[..., Value],
         *children: ASTNode,
-    ):
+    ) -> None:
         super().__init__(function_name, *children)
         self.function = function
         """The actual function to call"""
 
-    def evaluate(self, context):
+    def evaluate(self, context: EvaluationContext) -> Value:
         return self.function(*(child.evaluate(context) for child in self.children))
 
     def optimize(self) -> ASTNode:
@@ -688,18 +606,18 @@ class LogicFunctionASTNode(FunctionCallASTNode):
 class NotFunctionASTNode(LogicFunctionASTNode):
     """A node representing the 'not' function."""
 
-    def __init__(self, function_name: str, *children: ASTNode):
+    def __init__(self, function_name: str, *children: ASTNode) -> None:
         super().__init__(function_name, *children)
         assert len(children) == 1
         self.inner = children[0]
 
-    def evaluate(self, context):
+    def evaluate(self, context: EvaluationContext) -> Value:
         return not parse_value(
             self.inner.evaluate(context),
             self.input_type,
         )
 
-    def optimize(self):
+    def optimize(self) -> ASTNode:
         optimized_inner = self.children[0].optimize()
         if optimized_inner.is_constant:
             return ConstantBooleanASTNode(
@@ -714,13 +632,13 @@ class NotFunctionASTNode(LogicFunctionASTNode):
 class AllFunctionASTNode(LogicFunctionASTNode):
     """A node representing an 'all' function call."""
 
-    def evaluate(self, context):
+    def evaluate(self, context: EvaluationContext) -> Value:
         for child in self.children:
             if not child.evaluate(context):
                 return False
         return True
 
-    def optimize(self):
+    def optimize(self) -> ASTNode:
         if all(child.is_constant for child in self.children):
             return ConstantBooleanASTNode(all(_constant_value(child) for child in self.children))
         if any(child.is_constant and not _constant_value(child) for child in self.children):
@@ -736,13 +654,13 @@ class AnyFunctionASTNode(LogicFunctionASTNode):
     input_type = ValueType.BOOLEAN
     output_type = ValueType.BOOLEAN
 
-    def evaluate(self, context):
+    def evaluate(self, context: EvaluationContext) -> Value:
         for child in self.children:
             if child.evaluate(context):
                 return True
         return False
 
-    def optimize(self):
+    def optimize(self) -> ASTNode:
         if all(child.is_constant for child in self.children):
             return ConstantBooleanASTNode(any(_constant_value(child) for child in self.children))
         if any(child.is_constant and _constant_value(child) for child in self.children):

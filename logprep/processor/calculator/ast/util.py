@@ -21,18 +21,7 @@ class ValueType(Enum):
     """A numeric type (integer or float)"""
 
     def can_be_cast_to(self, other: "ValueType") -> bool:
-        """Determine if a value can be casted into another type.
-
-        Parameters
-        ----------
-        other : ValueType
-            The type to convert to.
-
-        Returns
-        -------
-        bool
-            True if the type can be cast into the other type, False otherwise.
-        """
+        """Determine if a value can be casted into another type."""
         if self == other:
             return True
         if self == ValueType.NUMBER and other == ValueType.BOOLEAN:
@@ -44,25 +33,7 @@ Value: TypeAlias = int | float | bool
 
 
 def parse_value(value: FieldValue, expected_type: ValueType) -> Value:
-    """Parse a given value into the specified ValueType.
-
-    Parameters
-    ----------
-    value : FieldValue
-        The value that should be converted.
-    expected_type : ValueType
-        The type the given value should be converted to.
-
-    Returns
-    -------
-    Any
-        The value casted to the expected type.
-
-    Raises
-    ------
-    ParsingError
-        Will be raised, if the value can not be cast to the expected type.
-    """
+    """Parse a given value into the specified ValueType."""
     match expected_type:
         case ValueType.NUMBER:
             if isinstance(value, bool):
@@ -92,23 +63,7 @@ def parse_value(value: FieldValue, expected_type: ValueType) -> Value:
 
 
 def read_hex_number(value: FieldValue) -> int:
-    """Read a hex number from a given input.
-
-    Parameters
-    ----------
-    value : FieldValue
-        The hex-string to be parsed to an integer.
-
-    Returns
-    -------
-    int
-        The integer value parsed from the hex-string.
-
-    Raises
-    ------
-    ParsingError
-        Will be raised if the given value can not be parsed as a hex-integer.
-    """
+    """Read a hex number from a given input."""
     if not isinstance(value, str):
         raise ParsingError(f"Failed to parse {value !r} as hex_number. String expected.")
     try:

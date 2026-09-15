@@ -46,27 +46,23 @@ from logprep.util.helper import VARIABLE_PATTERN
 
 
 def __build_constant(parsed: ParseResults) -> ASTNode:
-    assert len(parsed) == 1
-    assert isinstance(parsed[0], str)
+    assert len(parsed) == 1 and isinstance(parsed[0], str), parsed
     return ConstantNumberASTNode(parsed[0])
 
 
-def _build_constant_from_hex(parsed: ParseResults) -> ASTNode:
-    assert len(parsed) == 1
-    assert isinstance(parsed[0], str)
+def __build_constant_from_hex(parsed: ParseResults) -> ASTNode:
+    assert len(parsed) == 1 and isinstance(parsed[0], str), parsed
     hex_number = read_hex_number(parsed[0])
     return ConstantNumberASTNode(hex_number)
 
 
 def __build_variable(parsed: ParseResults) -> ASTNode:
-    assert len(parsed) == 1
-    assert isinstance(parsed[0], str)
+    assert len(parsed) == 1 and isinstance(parsed[0], str), parsed
     return VariableASTNode(parsed[0])
 
 
 def __build_hex_variable(parsed: ParseResults) -> ASTNode:
-    assert len(parsed) == 1
-    assert isinstance(parsed[0], str)
+    assert len(parsed) == 1 and isinstance(parsed[0], str), parsed
     return HexNumberVariableASTNode(parsed[0])
 
 
@@ -74,20 +70,22 @@ def __build_atomic_expression(parsed: ParseResults) -> ASTNode:
     if len(parsed) == 1:
         if isinstance(parsed[0], ASTNode):
             return parsed[0]
-        assert isinstance(parsed[0], ParseResults)
-        assert len(parsed[0]) == 1
-        assert isinstance(parsed[0][0], ASTNode)
+        assert (
+            isinstance(parsed[0], ParseResults)
+            and len(parsed[0]) == 1
+            and isinstance(parsed[0][0], ASTNode)
+        ), parsed
         return parsed[0][0]
 
-    assert len(parsed) >= 2
+    assert len(parsed) >= 2, parsed
     *signs, node = parsed
 
     if isinstance(node, ParseResults):
-        assert len(node) == 1
+        assert len(node) == 1, node
         node = node[0]
-    assert isinstance(node, ASTNode)
+    assert isinstance(node, ASTNode), node
 
-    assert all(sign in ("+", "-") for sign in signs)
+    assert all(sign in ("+", "-") for sign in signs), signs
     if len([s for s in signs if s == "-"]) % 2 == 1:
         return NegateASTNode(node)
 
@@ -98,9 +96,10 @@ def __build_function_call(parsed: ParseResults) -> ASTNode:
     assert len(parsed) >= 1
 
     function_name, *params = parsed
-    assert isinstance(function_name, str)
-    assert all(isinstance(i, ParseResults) and len(i) == 1 for i in params)
-    assert all(isinstance(i[0], ASTNode) for i in params)
+    assert isinstance(function_name, str), function_name
+    assert all(isinstance(i, ParseResults) and len(i) == 1 for i in params) and all(
+        isinstance(i[0], ASTNode) for i in params
+    ), params
     return try_create_function_node(function_name, *(i[0] for i in params))
 
 
@@ -108,12 +107,12 @@ def __build_arithmetic_operation(parsed: ParseResults) -> ASTNode:
     assert len(parsed) > 0 and len(parsed) % 2 == 1
 
     lhs = parsed[0]
-    assert isinstance(lhs, ASTNode)
+    assert isinstance(lhs, ASTNode), lhs
 
     for i in range(1, len(parsed), 2):
         operator_symbol, rhs = parsed[i], parsed[i + 1]
-        assert isinstance(operator_symbol, str)
-        assert isinstance(rhs, ASTNode)
+        assert isinstance(operator_symbol, str), operator_symbol
+        assert isinstance(rhs, ASTNode), rhs
         assert operator_symbol in ARITHMETIC_OPERATORS
         operator_type = ARITHMETIC_OPERATORS[operator_symbol]
         lhs = operator_type(lhs, rhs)
@@ -121,8 +120,9 @@ def __build_arithmetic_operation(parsed: ParseResults) -> ASTNode:
 
 
 def __build_comparison_operation(parsed: ParseResults) -> ASTNode:
-    assert len(parsed) % 2 == 1
-    assert all(isinstance(parsed[i], ASTNode) for i in range(0, len(parsed), 2))
+    assert len(parsed) % 2 == 1 and all(
+        isinstance(parsed[i], ASTNode) for i in range(0, len(parsed), 2)
+    ), parsed
     if len(parsed) == 1:
         return parsed[0]
 
@@ -132,11 +132,11 @@ def __build_comparison_operation(parsed: ParseResults) -> ASTNode:
     if len(parsed) == 5:
         lower_bound, lower_op, value, upper_op, upper_bound = parsed
 
-        assert isinstance(lower_bound, ASTNode)
-        assert isinstance(lower_op, str)
-        assert isinstance(value, ASTNode)
-        assert isinstance(upper_op, str)
-        assert isinstance(upper_bound, ASTNode)
+        assert isinstance(lower_bound, ASTNode), lower_bound
+        assert isinstance(lower_op, str), lower_op
+        assert isinstance(value, ASTNode), value
+        assert isinstance(upper_op, str), upper_op
+        assert isinstance(upper_bound, ASTNode), upper_bound
         if not all(op in ("<", "<=") for op in (lower_op, upper_op)):
             raise InvalidSyntaxError(
                 "Range check required comparison to be '<' or '<='"
@@ -153,8 +153,8 @@ def __build_comparison_operation(parsed: ParseResults) -> ASTNode:
     lhs = parsed[0]
     operator_symbol = parsed[1]
     rhs = parsed[2]
-    assert isinstance(operator_symbol, str)
-    assert operator_symbol in COMPARISON_OPERATORS
+    assert isinstance(operator_symbol, str), operator_symbol
+    assert operator_symbol in COMPARISON_OPERATORS, operator_symbol
     operator_type = COMPARISON_OPERATORS[operator_symbol]
     return operator_type(lhs, rhs)
 
@@ -163,7 +163,7 @@ _HEX_PATTERN = r"[a-fA-F0-9]+"
 
 
 def __map_actions(*mappings: tuple[ParserElement, Callable[[ParseResults], ASTNode]]) -> None:
-    """Sorthand for setting `set_parse_action` on ParserElements"""
+    """Shorthand for setting `set_parse_action` on ParserElements"""
     for element, action in mappings:
         element.set_parse_action(action)
 
@@ -231,8 +231,8 @@ def __setup_syntax() -> ParserElement:
         (constant, __build_constant),
         (number, __build_constant),
         (variable, __build_variable),
-        (hex_number, _build_constant_from_hex),
-        (number_from_hex, _build_constant_from_hex),
+        (hex_number, __build_constant_from_hex),
+        (number_from_hex, __build_constant_from_hex),
         (variable_as_hex, __build_hex_variable),
         (function_call, __build_function_call),
         (atomic_expression, __build_atomic_expression),

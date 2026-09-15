@@ -40,20 +40,8 @@ class Function:
     """The type of resulting node"""
 
     def _check_param_count(self, function_name: str, count: int) -> None:
-        """check the given number of params
-
-        Parameters
-        ----------
-        function_name : str
-            The function name to be displayed in the raised event.
-        count : int
-            The number of parameters given.
-
-        Raises
-        ------
-        InvalidSyntaxError
-            Raised if the number of parameters does not fit the specified
-            `min_args` and `max_args` values.
+        """Check the given number of params and raise an `InvalidSyntaxError`
+        the specified `min_args` and `max_args` values.
         """
         if self.min_args is not None and count < self.min_args:
             raise InvalidSyntaxError(
@@ -66,24 +54,11 @@ class Function:
                 f" {self.max_args} parameters got {count}"
             )
 
-    def create_node(self, function_name: str, *children: ASTNode) -> ASTNode:
+    def create_node(self, function_name: str, *parameters: ASTNode) -> ASTNode:
         """Create an ASTNode instance implementing a function call
-        towards the given function.
-
-        Parameters
-        ----------
-        function_name : str
-            The alias this function was invoked under.
-        *children: ASTNode
-            The ASTNode instances serving as arguments of the function call.
-
-        Returns
-        -------
-        ASTNode
-            An ASTNode implementing the requested function call.
-        """
-        self._check_param_count(function_name, len(children))
-        return self.node_type(function_name, *children)
+        towards the given function."""
+        self._check_param_count(function_name, len(parameters))
+        return self.node_type(function_name, *parameters)
 
 
 @attr.define(frozen=True, kw_only=True)
@@ -230,19 +205,6 @@ _FUNCTION_NAME_MAP: dict[str, Function] = {
 
 def try_create_function_node(function_name: str, *children: ASTNode) -> ASTNode:
     """Factory method for Function calls.
-
-
-    Parameters
-    ----------
-    function_name : str
-        The name of the function that should be called.
-    children : Sequence[ASTNode]
-        The syntax tree nodes that represent the parameters for the call.
-
-    Returns
-    -------
-    FunctionCallASTNode
-        A syntax tree node representing a function call.
 
     Raises
     ------
