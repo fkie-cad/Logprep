@@ -10,6 +10,8 @@ from typing import Any
 
 @dataclass
 class CacheEntry:
+    """Entry for cache that consists of value and insertion time"""
+
     value: Any
     insertion_time: float
 
