@@ -39,10 +39,51 @@ class Function:
     node_type: type[FunctionCallASTNode]
     """The type of resulting node"""
 
-    @property
-    def additional_kwargs(self) -> dict[str, Any]:
-        """The keyword arguments needed for node init"""
-        return {}
+    def _check_param_count(self, function_name: str, count: int) -> None:
+        """check the given number of params
+
+        Parameters
+        ----------
+        function_name : str
+            The function name to be displayed in the raised event.
+        count : int
+            The number of parameters given.
+
+        Raises
+        ------
+        InvalidSyntaxError
+            Raised if the number of parameters does not fit the specified
+            `min_args` and `max_args` values.
+        """
+        if self.min_args is not None and count < self.min_args:
+            raise InvalidSyntaxError(
+                f"Function {function_name!r} required at least"
+                f" {self.min_args} parameters got {count}"
+            )
+        if self.max_args is not None and count > self.max_args:
+            raise InvalidSyntaxError(
+                f"Function {function_name!r} allows at maximum"
+                f" {self.max_args} parameters got {count}"
+            )
+
+    def create_node(self, function_name: str, *children: ASTNode) -> ASTNode:
+        """Create an ASTNode instance implementing a function call
+        towards the given function.
+
+        Parameters
+        ----------
+        function_name : str
+            The alias this function was invoked under.
+        *children: ASTNode
+            The ASTNode instances serving as arguments of the function call.
+
+        Returns
+        -------
+        ASTNode
+            An ASTNode implementing the requested function call.
+        """
+        self._check_param_count(function_name, len(children))
+        return self.node_type(function_name, *children)
 
 
 @attr.define(frozen=True, kw_only=True)
@@ -52,17 +93,20 @@ class ProxyFunction(Function):
     function: Callable[..., Any]
     """The proxy function utilized by the ASTNode"""
 
-    @property
-    def additional_kwargs(self) -> dict[str, Any]:
-        """The keyword arguments needed for node init"""
-        return {"function": self.function}
-
 
 @attr.define(frozen=True, kw_only=True)
 class NumericFunction(ProxyFunction):
     """A registry entry for a numeric proxy function."""
 
-    node_type: type[FunctionCallASTNode] = NumericFunctionCallASTNode
+    node_type: type[NumericFunctionCallASTNode] = NumericFunctionCallASTNode
+
+    def create_node(self, function_name: str, *children: ASTNode) -> ASTNode:
+        self._check_param_count(function_name, len(children))
+        return self.node_type(
+            function_name,
+            self.function,
+            *children,
+        )
 
 
 _EPSILON = 1e-12
@@ -184,7 +228,7 @@ _FUNCTION_NAME_MAP: dict[str, Function] = {
 }
 
 
-def try_create_function_node(function_name: str, *children: ASTNode) -> FunctionCallASTNode:
+def try_create_function_node(function_name: str, *children: ASTNode) -> ASTNode:
     """Factory method for Function calls.
 
 
@@ -212,19 +256,8 @@ def try_create_function_node(function_name: str, *children: ASTNode) -> Function
     function_info = _FUNCTION_NAME_MAP.get(function_name.lower())
     if not function_info:
         raise UnknownFunctionError(f"Unknown function {function_name!r}.")
-    if function_info.min_args is not None and len(children) < function_info.min_args:
-        raise InvalidSyntaxError(
-            f"Function {function_name!r} required at least"
-            f" {function_info.min_args} parameters got {len(children)}"
-        )
-    if function_info.max_args is not None and len(children) > function_info.max_args:
-        raise InvalidSyntaxError(
-            f"Function {function_name!r} allows at maximum"
-            f" {function_info.max_args} parameters got {len(children)}"
-        )
 
-    return function_info.node_type(
+    return function_info.create_node(
         function_name,
         *children,
-        **function_info.additional_kwargs,
     )

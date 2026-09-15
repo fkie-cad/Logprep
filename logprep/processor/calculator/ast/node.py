@@ -648,8 +648,8 @@ class ProxyFunctionCallASTNode(FunctionCallASTNode):
     def __init__(
         self,
         function_name: str,
-        *children: ASTNode,
         function: Callable[..., Value],
+        *children: ASTNode,
     ):
         super().__init__(function_name, *children)
         self.function = function
@@ -661,8 +661,8 @@ class ProxyFunctionCallASTNode(FunctionCallASTNode):
     def optimize(self) -> ASTNode:
         optimized_clone = type(self)(
             self.function_name,
+            self.function,
             *(child.optimize() for child in self.children),
-            function=self.function,
         )
         if not all(child.is_constant for child in optimized_clone.children):
             return optimized_clone
