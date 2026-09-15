@@ -402,6 +402,7 @@ class ModASTNode(DivArithmeticASTNode):
     operator_symbol = "%"
     operation_fn = operator.mod
 
+    # pylint: disable=useless-return
     def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         if _is_constant_value(rhs, 0):
             raise DivisionByZeroError("Expression resulted to a division by zero on optimization.")
