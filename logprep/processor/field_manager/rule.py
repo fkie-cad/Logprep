@@ -76,6 +76,8 @@ Examples for field_manager:
 
 """
 
+import typing
+
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule
@@ -96,7 +98,7 @@ class FieldManagerRule(Rule):
                 validators.instance_of(list),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ],
-            default=[],
+            factory=list,
         )
         """The fields from where to get the values which should be processed, requires
         :code:`target_field`."""
@@ -111,7 +113,7 @@ class FieldManagerRule(Rule):
                     value_validator=validators.instance_of(str),
                 ),
             ],
-            default={},
+            factory=dict,
         )
         """A key-value mapping from source fields to target fields. Can be used to copy/move
         multiple fields at once. If you want to move fields set :code:`delete_source_fields` to
@@ -132,6 +134,8 @@ class FieldManagerRule(Rule):
         ignore_missing_fields: bool = field(validator=validators.instance_of(bool), default=False)
         """If set to :code:`True` missing fields will be ignored, no warning is logged and the event
         is not tagged with the failure tag. Defaults to :code:`False`"""
+        deduplicate: bool = field(validator=validators.instance_of(bool), default=True)
+        """If set to :code:`True` fields that would be duplicated by merging are deduplicated and only written once"""
 
         def __attrs_post_init__(self):
             # ensures no split operations during processing
@@ -139,37 +143,39 @@ class FieldManagerRule(Rule):
                 get_dotted_field_value({}, dotted_field)
             get_dotted_field_value({}, self.target_field)
 
+    @property
+    def config(self) -> Config:
+        return typing.cast(FieldManagerRule.Config, self._config)
+
     # pylint: disable=missing-function-docstring
     @property
     def delete_source_fields(self):
         if hasattr(self, "_config"):
-            return self._config.delete_source_fields
+            return self.config.delete_source_fields
         return False
 
     @property
     def source_fields(self):
-        if hasattr(self, "_config"):
-            return self._config.source_fields
-        return []
+        return self.config.source_fields
 
     @property
     def target_field(self):
-        return self._config.target_field
+        return self.config.target_field
 
     @property
     def mapping(self):
-        return self._config.mapping
+        return self.config.mapping
 
     @property
     def overwrite_target(self):
-        return self._config.overwrite_target
+        return self.config.overwrite_target
 
     @property
     def merge_with_target(self):
-        return self._config.merge_with_target
+        return self.config.merge_with_target
 
     @property
     def ignore_missing_fields(self):
-        return self._config.ignore_missing_fields
+        return self.config.ignore_missing_fields
 
     # pylint: enable=missing-function-docstring

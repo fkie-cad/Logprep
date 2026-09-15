@@ -41,7 +41,9 @@ A speaking example:
    :noindex:
 """
 
-from attrs import define, field, fields, validators
+import typing
+
+from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 
@@ -55,15 +57,19 @@ class ConcatenatorRule(FieldManagerRule):
 
         source_fields: list = field(
             validator=[
-                fields(FieldManagerRule.Config).source_fields.validator,
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
                 validators.min_len(2),
-            ]
+            ],
         )
         """The source fields that should be concatenated, can contain dotted field paths."""
         separator: str = field(validator=validators.instance_of(str))
         """The character(s) that should be used between the combined source field values."""
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
     @property
     def separator(self) -> str:  # pylint: disable=missing-docstring
-        return self._config.separator
+        return typing.cast(ConcatenatorRule.Config, self._config).separator

@@ -187,6 +187,9 @@ class DissectorRule(FieldManagerRule):
         The datatypes could be :code:`float`, :code:`int`, :code:`bool`, :code:`string`
         """
 
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
+
         def __attrs_post_init__(self):
             self.source_fields = list(self.mapping.keys())  # pylint: disable=no-member
             super().__attrs_post_init__()

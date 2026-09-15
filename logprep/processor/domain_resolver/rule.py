@@ -45,5 +45,8 @@ class DomainResolverRule(FieldManagerRule):
             default="resolved_ip",
         )
         """The field where to write the processor output to. Defaults to :code:`resovled_ip`"""
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
