@@ -96,7 +96,7 @@ class DummyOutput(Output):
             if exception is not None:
                 raise Exception(exception)  # pylint: disable=broad-exception-raised
         self.events.append(document)
-        self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events.inc(1)
 
     def store_custom(self, document: dict, target: str):
         """Store additional data in a custom location inside the output destination."""

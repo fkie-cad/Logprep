@@ -244,7 +244,7 @@ class DomainResolver(Processor):
             return
 
         if not isinstance(domain_or_url_str, str):
-            self.metrics.invalid_domains += 1
+            self.metrics.invalid_domains.inc(1)
             return
 
         url = urlsplit(domain_or_url_str)
@@ -252,9 +252,9 @@ class DomainResolver(Processor):
         if url.scheme == "":
             domain = url.path
         if not domain:
-            self.metrics.invalid_domains += 1
+            self.metrics.invalid_domains.inc(1)
             return
-        self.metrics.total_urls += 1
+        self.metrics.total_urls.inc(1)
         if self.config.cache_enabled:
             result = self._resolve_with_cache(domain)
         else:
@@ -270,12 +270,12 @@ class DomainResolver(Processor):
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
 
         if self._domain_cache.is_cached(hash_string):
-            self.metrics.resolved_cached += 1
+            self.metrics.resolved_cached.inc(1)
             self._domain_cache.refresh_time_to_live(hash_string)
             return self._domain_cache[hash_string].value
 
         if self._timeout_cache.is_cached(hash_string):
-            self.metrics.timeouts_cached += 1
+            self.metrics.timeouts_cached.inc(1)
             return FailedResult(FailureType.TIMEOUT)
 
         result = self._resolve_ip(domain)
@@ -284,7 +284,7 @@ class DomainResolver(Processor):
                 self._timeout_cache.add(hash_string)
             case _:
                 self._domain_cache.add(hash_string, result)
-        self.metrics.resolved_new += 1
+        self.metrics.resolved_new.inc(1)
         return result
 
     def _add_resolve_infos_to_event(self, event: dict, rule, resolved_ip: str):
@@ -298,16 +298,16 @@ class DomainResolver(Processor):
         """
         try:
             result = self._dns_resolver.resolve(domain, "A")
-            self.metrics.resolved_domains += 1
+            self.metrics.resolved_domains.inc(1)
             return SuccessResult(result[0].address)
         except (FormError, DNSSyntaxError, TooBig):
-            self.metrics.invalid_domains += 1
+            self.metrics.invalid_domains.inc(1)
             return FailedResult(FailureType.INVALID)
         except (Timeout, LifetimeTimeout):
-            self.metrics.timeouts += 1
+            self.metrics.timeouts.inc(1)
             return FailedResult(FailureType.TIMEOUT)
         except NXDOMAIN:
-            self.metrics.unknown_domains += 1
+            self.metrics.unknown_domains.inc(1)
             return FailedResult(FailureType.UNKNOWN)
         except NoAnswer:
             return FailedResult(FailureType.NO_ANSWER)

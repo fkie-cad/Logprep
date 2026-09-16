@@ -530,20 +530,18 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
         assert instance.target.startswith("http://")
 
     async def test_get_event_sets_message_backlog_size_metric(self, instance):
-        instance.metrics.message_backlog_size = 0
         random_number = random.randint(1, 100)
         for number in range(random_number):
             instance.messages.put_nowait({"message": f"my message{number}"})
         await instance.get_next(0.001)
-        assert instance.metrics.message_backlog_size == random_number
+        assert instance.metrics.message_backlog_size.value == random_number
 
     async def test_endpoints_count_requests(self, instance, client):
-        instance.metrics.number_of_http_requests = 0
         await instance.setup()
         random_number = random.randint(1, 100)
         for number in range(random_number):
             await client.post("/json", json={"message": f"my message{number}"})
-        assert instance.metrics.number_of_http_requests == random_number
+        assert instance.metrics.number_of_http_requests.value == random_number
 
     @pytest.mark.parametrize("endpoint", ["json", "plaintext", "jsonl"])
     async def test_endpoint_handles_gzip_compression(self, endpoint, client):
@@ -643,11 +641,10 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
                 mock_logger.assert_called()
 
     async def test_health_counts_errors(self, instance, health_server):
-        instance.metrics.number_of_errors = 0
         responses = {instance.health_endpoints[0]: 500}
         async with health_server(instance, responses):
             assert not await instance.health()
-        assert instance.metrics.number_of_errors == 1
+        assert instance.metrics.number_of_errors.value == 1
 
     async def test_health_endpoints_are_shortened(self):
         expected_matching_regexes = (

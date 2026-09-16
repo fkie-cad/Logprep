@@ -35,10 +35,6 @@ class TestAmides(BaseProcessorTestCase):
     ]
 
     def test_process_event_malicious_process_command_line(self):
-        self.object.metrics.total_cmdlines = 0
-        self.object.metrics.new_results = 0
-        self.object.metrics.num_cache_entries = 0
-        self.object.metrics.cache_load = 0.0
         self.object.setup()
         document = {
             "winlog": {
@@ -56,16 +52,12 @@ class TestAmides(BaseProcessorTestCase):
             "attributions"
         )
         assert len(result["attributions"]) == 10
-        assert self.object.metrics.total_cmdlines == 1
-        assert self.object.metrics.new_results == 1
-        assert self.object.metrics.num_cache_entries == 1
-        assert self.object.metrics.cache_load == 0.2
+        assert self.object.metrics.total_cmdlines.value == 1
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
+        assert self.object.metrics.cache_load.value == 0.2
 
     def test_process_event_benign_process_command_line(self):
-        self.object.metrics.total_cmdlines = 0
-        self.object.metrics.new_results = 0
-        self.object.metrics.num_cache_entries = 0
-        self.object.metrics.cache_load = 0.0
         self.object.setup()
         document = {
             "winlog": {
@@ -80,10 +72,10 @@ class TestAmides(BaseProcessorTestCase):
         assert result["confidence"] < self.CONFIG.get("decision_threshold") and not result.get(
             "attributions"
         )
-        assert self.object.metrics.total_cmdlines == 1
-        assert self.object.metrics.new_results == 1
-        assert self.object.metrics.num_cache_entries == 1
-        assert self.object.metrics.cache_load == 0.2
+        assert self.object.metrics.total_cmdlines.value == 1
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
+        assert self.object.metrics.cache_load.value == 0.2
 
     no_pc_events = [
         {"winlog": {"event_id": 6005, "provider_name": "Microsoft-Windows-Sysmon"}},
@@ -94,24 +86,16 @@ class TestAmides(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("document", no_pc_events)
     def test_process_event_no_process_creation_events(self, document):
-        self.object.metrics.total_cmdlines = 0
-        self.object.metrics.new_results = 0
-        self.object.metrics.num_cache_entries = 0
-        self.object.metrics.cache_load = 0.0
         self.object.setup()
 
         self.object.process(document)
         assert not document.get("amides")
-        assert self.object.metrics.total_cmdlines == 0
-        assert self.object.metrics.new_results == 0
-        assert self.object.metrics.num_cache_entries == 0
-        assert self.object.metrics.cache_load == 0.0
+        assert self.object.metrics.total_cmdlines.value == 0
+        assert self.object.metrics.new_results.value == 0
+        assert self.object.metrics.num_cache_entries.value == 0
+        assert self.object.metrics.cache_load.value == 0.0
 
     def test_process_event_without_command_line_field(self):
-        self.object.metrics.total_cmdlines = 0
-        self.object.metrics.new_results = 0
-        self.object.metrics.num_cache_entries = 0
-        self.object.metrics.cache_load = 0.0
         self.object.setup()
         document = {
             "winlog": {"event_id": 1, "provider_name": "Microsoft-Windows-Sysmon"},
@@ -120,17 +104,12 @@ class TestAmides(BaseProcessorTestCase):
 
         self.object.process(document)
         assert not document.get("amides")
-        assert self.object.metrics.total_cmdlines == 0
-        assert self.object.metrics.new_results == 0
-        assert self.object.metrics.num_cache_entries == 0
-        assert self.object.metrics.cache_load == 0.0
+        assert self.object.metrics.total_cmdlines.value == 0
+        assert self.object.metrics.new_results.value == 0
+        assert self.object.metrics.num_cache_entries.value == 0
+        assert self.object.metrics.cache_load.value == 0.0
 
     def test_classification_results_from_cache(self):
-        self.object.metrics.total_cmdlines = 0
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
-        self.object.metrics.cache_load = 0.0
         self.object.setup()
         document = {
             "winlog": {
@@ -145,17 +124,11 @@ class TestAmides(BaseProcessorTestCase):
         self.object.process(other_document)
 
         assert other_document.get("amides") == document.get("amides")
-        assert self.object.metrics.total_cmdlines == 2
-        # we mock the metrics with integer operations, so the assertions
-        # are a little bit weird:
-        # we assert for 2 because we add two times the same cache result
-        # the underlying metric implementation sets the values instead of adding
-        # them
-        assert self.object.metrics.new_results == 2
-        assert self.object.metrics.num_cache_entries == 2
-        assert self.object.metrics.cache_load == 0.4
-        # end strange mock
-        assert self.object.metrics.cached_results == 1
+        assert self.object.metrics.total_cmdlines.value == 2
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
+        assert self.object.metrics.cache_load.value == 0.2
+        assert self.object.metrics.cached_results.value == 1
 
     def test_process_event_raise_duplication_error(self):
         self.object.setup()
