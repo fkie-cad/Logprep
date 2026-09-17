@@ -17,6 +17,7 @@ class ValueType(Enum):
 
     BOOLEAN = auto()
     """A boolean type"""
+
     NUMBER = auto()
     """A numeric type (integer or float)"""
 

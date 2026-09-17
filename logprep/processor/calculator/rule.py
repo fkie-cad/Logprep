@@ -100,7 +100,7 @@ Arithmetic expression are evaluated before comparisons and range checks.
 .. warning::
     Comparisons, range checks and some functions return boolean values.
     Because unary minus, operators, range checks and most functions can only
-    accept numbers not booleans the following examples would result in
+    accept numbers not booleans, the following examples would result in
     a syntax error:
 
     * :code:`(1 < 2) < 3`
@@ -111,7 +111,7 @@ Arithmetic expression are evaluated before comparisons and range checks.
     * :code:`all(1, 1) * 2`
 
 
-The following functions are available, where the function names a case-insensitive:
+The following functions are available, where the function names are case-insensitive:
 
 .. datatemplate:import-module:: logprep.processor.calculator.ast.function_registry
    :template: calculator/function-renderer.tmpl
@@ -136,7 +136,7 @@ from a field using the schema :code:`${your.dotted.field}`:
    {% endfor %}
 
 
-The calc expression is not whitespace or case sensitive.
+The calc expression is not whitespace or case-sensitive.
 
 
 Examples for |PROCESSOR_NAME|:

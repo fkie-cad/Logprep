@@ -283,8 +283,7 @@ class OperationASTNode(CompositeASTNode):
         self.rhs = rhs
         """The right-hand-side operand of the operation"""
 
-    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
-        # pylint: disable=unused-argument
+    def _operation_specific_optimizations(self, _lhs: ASTNode, _rhs: ASTNode) -> ASTNode | None:
         """Override this to implement specific optimizations for the specific
         operation."""
         return None

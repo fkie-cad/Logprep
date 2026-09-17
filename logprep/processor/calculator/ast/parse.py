@@ -41,7 +41,7 @@ from logprep.util.helper import VARIABLE_PATTERN
 
 # All __build_* functions below serve as callbacks for the  pyparsing based
 # syntax parser. They take a parsing result and convert it to an ASTNode.
-# Pyparse will wrap those nodes in an PraseResults instance before further
+# Pyparse will wrap those nodes in an ParseResults instance before further
 # handling them.
 
 
