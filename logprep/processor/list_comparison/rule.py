@@ -27,7 +27,9 @@ which is used to inject the sub-paths from :code:`list_paths` or :code:`list_fil
 Also, environment variables are interpolated in the process, for instance if the data source for the
 lists is an API, for which domain/host/port etc. are supplied via the environment.
 Additionally, field values can be injected into the paths using the same notation and
-(potentially dotted) field references.
+(potentially dotted) field references. This is supported in both
+:code:`list_search_base_path` and the values of :code:`list_paths` or
+:code:`list_file_paths`.
 A URI with field references is considered *dynamic* and has considerable performance implications,
 as every new concrete path needs to be fetched ad-hoc during event processing.
 Caching and cache timeouts are used to balance performance and memory demands.
@@ -69,6 +71,18 @@ target field :code:`compare_result`.
             BLOCKLIST: users/blocked
             PRIVILEGED: users/privileged
         list_search_base_path: https://${LOGPREP_LIST_HOST}/api/${LOGPREP_LIST}
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule to load a tenant-specific list from a fixed HTTP(S) origin.
+
+    filter: 'user_agent'
+    list_comparison:
+        source_fields: ['user_agent']
+        target_field: 'user.classification'
+        list_paths:
+            BLOCKLIST: tenants/${tenant.id}/users/blocked
+        list_search_base_path: https://lists.example/api/${LOGPREP_LIST}
 
 .. note::
 
@@ -175,6 +189,14 @@ class ListComparisonRule(FieldManagerRule):
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.
 
+        .. security-best-practice::
+           :title: |PROCESSOR| - Dynamic list URI destinations
+
+           Event fields used in dynamic URIs may be attacker-controlled. Keep the URI
+           scheme, host, and port static and use dynamic values only in path components.
+           Avoid interpolating event fields into the URI authority, especially the host,
+           so an attacker cannot influence where Logprep sends list requests.
+
         """
 
         list_paths: dict[ListName, str] = field(
@@ -212,6 +234,14 @@ class ListComparisonRule(FieldManagerRule):
            Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
            authenticity and integrity of the loaded values.
 
+        .. security-best-practice::
+           :title: |PROCESSOR| - Dynamic list URI destinations
+
+           Event fields used in dynamic URIs may be attacker-controlled. Keep the URI
+           scheme, host, and port static and use dynamic values only in path components.
+           Avoid interpolating event fields into the URI authority, especially the host,
+           so an attacker cannot influence where Logprep sends list requests.
+
         """
 
         list_search_base_path: str | None = field(
@@ -227,6 +257,14 @@ class ListComparisonRule(FieldManagerRule):
         Environment variables and ``${LOGPREP_LIST}`` are resolved during setup. For
         HTTP(S) paths, unresolved placeholders are resolved from event fields during
         processing.
+
+        .. security-best-practice::
+           :title: |PROCESSOR| - Dynamic list URI destinations
+
+           Event fields used in dynamic URIs may be attacker-controlled. Keep the URI
+           scheme, host, and port static and use dynamic values only in path components.
+           Avoid interpolating event fields into the URI authority, especially the host,
+           so an attacker cannot influence where Logprep sends list requests.
         """
         mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
