@@ -26,14 +26,6 @@ Boolean
 {%- endif -%}
 {% endmacro %}
 
-{% macro render_entry(entry) %}
-   * - {% for name in entry.names %}:code:`{{name}}`{%if not loop.last%},{% endif %} {% endfor %}
-     - {{ render_input_type(entry)}}
-     - {{ render_bounds(entry.min_args, entry.max_args) }}
-     - {{ render_output_type(entry) }}
-     - {{ entry.description -}}
-{% endmacro %}
-
 .. list-table:: Available Functions
    :header-rows: 1
 
