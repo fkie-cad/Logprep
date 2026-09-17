@@ -216,7 +216,7 @@ def try_create_function_node(function_name: str, *children: ASTNode) -> ASTNode:
     """
 
     function_info = _FUNCTION_NAME_MAP.get(function_name.lower())
-    if not function_info:
+    if function_info is None:
         raise UnknownFunctionError(f"Unknown function {function_name!r}.")
 
     return function_info.create_node(

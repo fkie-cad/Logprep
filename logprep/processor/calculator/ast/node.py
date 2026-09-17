@@ -210,7 +210,7 @@ class VariableASTNode(TerminalASTNode):
 class HexNumberVariableASTNode(VariableASTNode):
     """A node representing a number read from a hex-string in the context"""
 
-    def _get_context_value(self, context) -> Any:
+    def _get_context_value(self, context: EvaluationContext) -> Any:
         raw_value = super()._get_context_value(context)
         return read_hex_number(raw_value)
 
@@ -283,7 +283,8 @@ class OperationASTNode(CompositeASTNode):
         self.rhs = rhs
         """The right-hand-side operand of the operation"""
 
-    def _operation_specific_optimizations(self, _lhs: ASTNode, _rhs: ASTNode) -> ASTNode | None:
+    @abstractmethod
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         """Override this to implement specific optimizations for the specific
         operation."""
         return None
@@ -302,9 +303,9 @@ class OperationASTNode(CompositeASTNode):
                 )
             except ZeroDivisionError as error:
                 raise DivisionByZeroError("Zero division error on optimization") from error
-        if specific_optimization := self._operation_specific_optimizations(
-            lhs_optimized, rhs_optimized
-        ):
+
+        specific_optimization = self._operation_specific_optimizations(lhs_optimized, rhs_optimized)
+        if specific_optimization is not None:
             return specific_optimization
 
         return type(self)(lhs_optimized, rhs_optimized)
@@ -332,7 +333,7 @@ class AddASTNode(ArithmeticASTNode):
     operator_symbol = "+"
     operation_fn = operator.add
 
-    def _operation_specific_optimizations(self, lhs, rhs) -> ASTNode | None:
+    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         if _is_constant_value(rhs, 0):
             return lhs
         if _is_constant_value(lhs, 0):
@@ -402,7 +403,7 @@ class ModASTNode(DivArithmeticASTNode):
     operation_fn = operator.mod
 
     # pylint: disable=useless-return
-    def _operation_specific_optimizations(self, lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
+    def _operation_specific_optimizations(self, _lhs: ASTNode, rhs: ASTNode) -> ASTNode | None:
         if _is_constant_value(rhs, 0):
             raise DivisionByZeroError("Expression resulted to a division by zero on optimization.")
         return None
@@ -429,6 +430,9 @@ class ComparisonASTNode(OperationASTNode):
 
     input_type = ValueType.NUMBER
     output_type = ValueType.BOOLEAN
+
+    def _operation_specific_optimizations(self, _lhs: ASTNode, _rhs: ASTNode) -> ASTNode | None:
+        return None
 
 
 class EqualASTNode(ComparisonASTNode):
