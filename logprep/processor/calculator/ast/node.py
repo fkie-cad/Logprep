@@ -574,16 +574,15 @@ class ProxyFunctionCallASTNode(FunctionCallASTNode):
         *children: ASTNode,
     ) -> None:
         super().__init__(function_name, *children)
-        self.function = function
-        """The actual function to call"""
+        self._function = function
 
     def evaluate(self, context: EvaluationContext) -> Value:
-        return self.function(*(child.evaluate(context) for child in self.children))
+        return self._function(*(child.evaluate(context) for child in self.children))
 
     def optimize(self) -> ASTNode:
         optimized_clone = type(self)(
             self.function_name,
-            self.function,
+            self._function,
             *(child.optimize() for child in self.children),
         )
         if not all(child.is_constant for child in optimized_clone.children):
