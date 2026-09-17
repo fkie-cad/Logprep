@@ -1,12 +1,12 @@
 .. -*- mode: rst -*-
 
-{%- macro render_bounds(bounds) %}
-{%- if bounds[0] == bounds[1] -%}
-{{bounds[0]}}
-{%- elif bounds[1] is not number -%}
-{{bounds[0]}} or more
+{%- macro render_bounds(min_args, max_args) %}
+{%- if min_args == max_args -%}
+{{min_args}}
+{%- elif max_args is not number -%}
+{{min_args}} or more
 {%- else  -%}
-{{bounds[0]}} to {{bounds[1]}}
+{{min_args}} to {{max_args}}
 {%- endif -%}
 {% endmacro %}
 
@@ -29,7 +29,7 @@ Boolean
 {% macro render_entry(entry) %}
    * - {% for name in entry.names %}:code:`{{name}}`{%if not loop.last%},{% endif %} {% endfor %}
      - {{ render_input_type(entry)}}
-     - {{ render_bounds(entry.arg_bounds) }}
+     - {{ render_bounds(entry.min_args, entry.max_args) }}
      - {{ render_output_type(entry) }}
      - {{ entry.description -}}
 {% endmacro %}
