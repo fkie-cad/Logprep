@@ -33,23 +33,22 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
         "rules": ["tests/testdata/unit/field_manager/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    async def test_testcases(
-        self, testcase, rule, event, expected
-    ):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
         assert event.data == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
-    async def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
+    @pytest.mark.parametrize(["rule", "event", "expected", "error_message"], failure_test_cases)
+    async def test_testcases_failure_handling(self, rule, event, expected, error_message):
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert len(result.warnings) == 1
-        assert re.match(error, str(result.warnings[0]))
-        assert event.data == expected, testcase
+        assert re.match(error_message, str(result.warnings[0]))
+        assert event.data == expected
 
     async def test_process_adds_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
         self,

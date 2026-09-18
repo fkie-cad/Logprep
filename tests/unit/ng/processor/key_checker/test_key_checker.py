@@ -30,14 +30,13 @@ class TestKeyChecker(BaseProcessorTestCase[KeyChecker]):
         "rules": ["tests/testdata/unit/key_checker/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    async def test_testcases_positive(
-        self, testcase, rule, event, expected
-    ):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases_positive(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
-        assert event.data == expected, testcase
+        assert event.data == expected
 
     async def test_field_exists_warning(self):
         rule_dict = {

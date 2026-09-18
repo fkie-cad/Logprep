@@ -3,9 +3,49 @@
 import uuid
 from unittest import mock
 
+import pytest
+
 from logprep.abc.processor import ProcessorResult
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
+
+example_test_cases = [
+    pytest.param(
+        {
+            "filter": "message",
+            "selective_extractor": {
+                "source_fields": ["other.message", "not.exists", "message"],
+                "outputs": [{"opensearch": "index"}],
+                "ignore_missing_fields": False,
+            },
+        },
+        {"message": "test_message", "other": {"message": "my message value"}},
+        {
+            "message": "test_message",
+            "other": {"message": "my message value"},
+            "tags": ["_selective_extractor_missing_field_warning"],
+        },
+        id="test_process_extracts_dotted_fields_complains_on_missing_fields",
+    )
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    pytest.param(
+        {
+            "filter": "message",
+            "selective_extractor": {
+                "source_fields": ["other.message", "message", "not.exists"],
+                "outputs": [{"opensearch": "index"}],
+                "ignore_missing_fields": True,
+            },
+        },
+        {"message": "test_message", "other": {"message": "my message value"}},
+        {"message": "test_message", "other": {"message": "my message value"}},
+        id="test_process_extracts_dotted_fields_and_ignores_missing_fields",
+    ),
+)
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
@@ -13,6 +53,13 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         "type": "selective_extractor",
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
+
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
+        self._load_rule(rule)
+        self.object.process(event)
+        assert event == expected
 
     def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
@@ -139,40 +186,3 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         assert len(self.object.result.data) == 1
         _ = self.object.process(document)
         assert len(self.object.result.data) == 1
-
-    def test_process_extracts_dotted_fields_complains_on_missing_fields(self):
-        rule = {
-            "filter": "message",
-            "selective_extractor": {
-                "source_fields": ["other.message", "not.exists", "message"],
-                "outputs": [{"opensearch": "index"}],
-                "ignore_missing_fields": False,
-            },
-        }
-        self._load_rule(rule)
-        document = {"message": "test_message", "other": {"message": "my message value"}}
-        expected = {
-            "message": "test_message",
-            "other": {"message": "my message value"},
-            "tags": ["_selective_extractor_missing_field_warning"],
-        }
-        self.object.process(document)
-        assert document == expected
-
-    def test_process_extracts_dotted_fields_and_ignores_missing_fields(self):
-        rule = {
-            "filter": "message",
-            "selective_extractor": {
-                "source_fields": ["other.message", "message", "not.exists"],
-                "outputs": [{"opensearch": "index"}],
-                "ignore_missing_fields": True,
-            },
-        }
-        self._load_rule(rule)
-        document = {"message": "test_message", "other": {"message": "my message value"}}
-        expected = {
-            "message": "test_message",
-            "other": {"message": "my message value"},
-        }
-        self.object.process(document)
-        assert document == expected

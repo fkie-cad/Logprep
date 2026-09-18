@@ -1,76 +1,19 @@
 # pylint: disable=missing-docstring
 # pylint: disable=duplicate-code
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+
+from copy import deepcopy
+
 import pytest
 
 from logprep.ng.abc.event import InputMeta, LogEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+from tests.unit.processor.deduplicator.test_deduplicator import (
+    test_cases as non_ng_testcases,
+)
 
-test_cases = [  # rule, event, expected
-    (
-        {
-            "filter": "do_nothing",
-            "deduplicator": {},
-        },
-        {"remove_duplicates": ["foo", "bar", "foo"], "keep": ["foo", "foo"]},
-        {"remove_duplicates": ["foo", "bar", "foo"], "keep": ["foo", "foo"]},
-    ),
-    (
-        {
-            "filter": "remove_duplicate_str",
-            "deduplicator": {"fields": ["remove_duplicate_str"]},
-        },
-        {"remove_duplicate_str": ["foo", "bar", "foo"]},
-        {"remove_duplicate_str": ["foo", "bar"]},
-    ),
-    (
-        {
-            "filter": "remove_duplicate_int",
-            "deduplicator": {"fields": ["remove_duplicate_int"]},
-        },
-        {"remove_duplicate_int": [1, 2, 1, 2, 2, 1]},
-        {"remove_duplicate_int": [1, 2]},
-    ),
-    (
-        {
-            "filter": "remove_duplicate_dict",
-            "deduplicator": {"fields": ["remove_duplicate_dict"]},
-        },
-        {"remove_duplicate_dict": [{"a": {"b": "c"}}, {"a": {"b": "c"}}, {"foo": "bar"}]},
-        {"remove_duplicate_dict": [{"a": {"b": "c"}}, {"foo": "bar"}]},
-    ),
-    (
-        {
-            "filter": "no_fields",
-            "deduplicator": {"fields": []},
-        },
-        {"no_fields": ["foo", "bar", "foo"]},
-        {"no_fields": ["foo", "bar", "foo"]},
-    ),
-    (
-        {
-            "filter": "no_matching_fields",
-            "deduplicator": {"fields": ["no_matching_fields"]},
-        },
-        {"fields": ["foo", "bar", "foo"]},
-        {"fields": ["foo", "bar", "foo"]},
-    ),
-    (
-        {
-            "filter": "fields_1 AND fields_2",
-            "deduplicator": {"fields": ["fields_1", "fields_2"]},
-        },
-        {"fields_1": ["foo", "bar", "foo"], "fields_2": ["baz", "baz"]},
-        {"fields_1": ["foo", "bar"], "fields_2": ["baz"]},
-    ),
-    (
-        {
-            "filter": "no_list",
-            "deduplicator": {"fields": ["no_list"]},
-        },
-        {"no_list": "aa"},
-        {"no_list": "aa"},
-    ),
-]
+test_cases = deepcopy(non_ng_testcases)
 
 
 class TestDeduplicator(BaseProcessorTestCase):
@@ -79,8 +22,9 @@ class TestDeduplicator(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/deduplicator/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    async def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         await self._load_rule(rule)
         log_event = LogEvent(event, original=b"test_message", input_meta=InputMeta())
         await self.object.process(log_event)

@@ -1,15 +1,19 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+
 from unittest import mock
 
 import pytest
 
 from logprep.processor.replacer.rule import Replacement
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [  # testcase, rule, event, expected
-    (
-        "replace the beginning",
+example_test_cases = [  # rule, event, expected
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -18,9 +22,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "123 login attempts."},
         {"field": "X login attempts."},
+        id="replace_the_beginning",
     ),
-    (
-        "replace with a different target field",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -30,9 +34,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "123 login attempts."},
         {"field": "123 login attempts.", "new_target": "X login attempts."},
+        id="replace_with_a_different_target_field",
     ),
-    (
-        "replace with dotted field",
+    pytest.param(
         {
             "filter": "some.field",
             "replacer": {
@@ -41,9 +45,13 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"some": {"field": "123 login attempts."}},
         {"some": {"field": "X login attempts."}},
+        id="replace_with_dotted_field",
     ),
-    (
-        "replace with colon notation",
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -52,9 +60,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "123 login attempts."},
         {"field": "X login attempts."},
+        id="replace_with_colon_notation",
     ),
-    (
-        "replace wildcard with colon notation",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -63,9 +71,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "123 login attempts."},
         {"field": "123 login attempts."},
+        id="replace_wildcard_with_colon_notation",
     ),
-    (
-        "replace specific with colon notation matches",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -74,9 +82,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "123 login attempts."},
         {"field": "X login attempts."},
+        id="replace_specific_with_colon_notation_matches",
     ),
-    (
-        "replace specific with colon notation at beginning does not match",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -85,9 +93,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "456 login attempts by 789."},
         {"field": "456 login attempts by 789."},
+        id="replace_specific_with_colon_notation_at_beginning_does_not_match",
     ),
-    (
-        "replace specific with colon notation at beginning matches",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -96,9 +104,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "123 login attempts by 789."},
         {"field": "X login attempts by USER_ID."},
+        id="replace_specific_with_colon_notation_at_beginning_matches",
     ),
-    (
-        "replace specific with colon notation at middle does not match",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -107,9 +115,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User 123 performed 456 login attempts."},
         {"field": "User 123 performed 456 login attempts."},
+        id="replace_specific_with_colon_notation_at_middle_does_not_match",
     ),
-    (
-        "replace specific with colon notation at middle matches",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -118,9 +126,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User 123 performed 456 login attempts."},
         {"field": "User USER_ID performed X login attempts."},
+        id="replace_specific_with_colon_notation_at_middle_matches",
     ),
-    (
-        "replace specific with colon notation at end does not match",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -129,9 +137,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User 123 login count: 456"},
         {"field": "User 123 login count: 456"},
+        id="replace_specific_with_colon_notation_at_end_does_not_match",
     ),
-    (
-        "replace specific with colon notation at end matches",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -140,9 +148,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User 123 login count: 456"},
         {"field": "User USER_ID login count: X"},
+        id="replace_specific_with_colon_notation_at_end_matches",
     ),
-    (
-        "replace specific with colon notation matches combined without colon notation",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -151,9 +159,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "123 login attempts within 456 minutes."},
         {"field": "X login attempts within Y minutes."},
+        id="replace_specific_with_colon_notation_matches_combined_without_colon_notation",
     ),
-    (
-        "replace specific with colon notation matches combined without colon notation",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -162,9 +170,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "/some/path/foo/_123/bar"},
         {"field": "/some/path/foo/ID/bar"},
+        id="replace_specific_with_colon_notation_matches_combined_without_colon_notation",
     ),
-    (
-        "replace specific with colon notation starting with wildcard",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -173,9 +181,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "/some/path/foo/_123/bar"},
         {"field": "/some/path/foo/ID/bar"},
+        id="replace_specific_with_colon_notation_starting_with_wildcard",
     ),
-    (
-        "replace specific with colon notation without wildcard",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -184,9 +192,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "/some/path/_123"},
         {"field": "/some/path/ID"},
+        id="replace_specific_with_colon_notation_without_wildcard",
     ),
-    (
-        "replace the middle",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -195,9 +203,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "Attempted to login 123 times."},
         {"field": "Attempted to login X times."},
+        id="replace_the_middle",
     ),
-    (
-        "replace the end",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -206,9 +214,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "Delete user 123"},
         {"field": "Delete user USER_ID"},
+        id="replace_the_end",
     ),
-    (
-        "replace beginning and the middle",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -217,9 +225,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User 123 tried to call /users/456/delete"},
         {"field": "A user tried to call /users/USER_ID/delete"},
+        id="replace_beginning_and_the_middle",
     ),
-    (
-        "replace twice in middle",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -228,9 +236,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User 123 tried 456 times to log in."},
         {"field": "User USER_ID tried ATTEMPTS times to log in."},
+        id="replace_twice_in_middle",
     ),
-    (
-        "replace the middle and the end",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -239,9 +247,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "Attempted to login 123 times to 1.2.3.4"},
         {"field": "Attempted to login ATTEMPTS times to IP"},
+        id="replace_the_middle_and_the_end",
     ),
-    (
-        "replace three times",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -250,9 +258,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User 123 tried to login 456 to 1.2.3.4"},
         {"field": "User USER_ID tried to login ATTEMPTS to IP"},
+        id="replace_three_times",
     ),
-    (
-        "replace with empty string",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -261,9 +269,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "123 login attempts by user 456."},
         {"field": "login attempts."},
+        id="replace_with_empty_string",
     ),
-    (
-        "don't replace greedily if part of variable string is contained in unchanging part",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -272,9 +280,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "Connected to 1.2.3.4."},
         {"field": "Connected to IP."},
+        id="don't_replace_greedily_if_part_of_variable_string_is_contained_in_unchanging_part",
     ),
-    (
-        "twice don't replace greedily if part of variable string is contained in unchanging part",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -283,9 +291,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "Disconnected from 1.2.3.4. Connected to 1.2.3.4."},
         {"field": "Disconnected from IP. Connected to IP."},
+        id="twice_don't_replace_greedily_if_part_of_variable_string_is_contained_in_unchanging_part",
     ),
-    (
-        "replace wildcard greedily",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -294,9 +302,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "Disconnected from 1.2.3.4. Connected to 1.2.3.4."},
         {"field": "Disconnected from IP. Connected to 1.2.3.4."},
+        id="replace_wildcard_greedily",
     ),
-    (
-        "replace multiple fields",
+    pytest.param(
         {
             "filter": "field_a AND field_b",
             "replacer": {
@@ -308,9 +316,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field_a": "do something!", "field_b": "do also something!"},
         {"field_a": "do replace this!", "field_b": "do also replace this!"},
+        id="replace_multiple_fields",
     ),
-    (
-        "replace by matching with wildcard",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -319,9 +327,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
+        id="replace_by_matching_with_wildcard",
     ),
-    (
-        "replace by matching only with wildcard does not change anything",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -330,9 +338,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User has logged in."},
         {"field": "User has logged in."},
+        id="replace_by_matching_only_with_wildcard_does_not_change_anything",
     ),
-    (
-        "replace by matching with wildcard at the end",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -341,9 +349,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
+        id="replace_by_matching_with_wildcard_at_the_end",
     ),
-    (
-        "replace by matching with wildcard at the beginning",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -352,9 +360,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
+        id="replace_by_matching_with_wildcard_at_the_beginning",
     ),
-    (
-        "replace by matching with wildcard in the middle before other replacement",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -363,9 +371,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
+        id="replace_by_matching_with_wildcard_in_the_middle_before_other_replacement",
     ),
-    (
-        "replace by matching with multiple wildcards",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -374,9 +382,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
+        id="replace_by_matching_with_multiple_wildcards",
     ),
-    (
-        "replace with star by escaping single wildcard",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -385,9 +393,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged *."},
+        id="replace_with_star_by_escaping_single_wildcard",
     ),
-    (
-        "replace with backslash and star by escaping single wildcard",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -396,9 +404,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has\\*"},
+        id="replace_with_backslash_and_star_by_escaping_single_wildcard",
     ),
-    (
-        "replace with multiple backslashes and star by escaping single wildcard",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -407,9 +415,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged \\\\*."},
+        id="replace_with_multiple_backslashes_and_star_by_escaping_single_wildcard",
     ),
-    (
-        "replacement of multiple stars does not require escaping wildcard",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -418,9 +426,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged **."},
+        id="replacement_of_multiple_stars_does_not_require_escaping_wildcard",
     ),
-    (
-        "replacement without matching end fails",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -429,9 +437,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "Call /some_path/user/123/delete"},
         {"field": "Call /some_path/user/123/delete"},
+        id="replacement_without_matching_end_fails",
     ),
-    (
-        "replacement without matching beginning fails",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -440,9 +448,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "logins: 123"},
         {"field": "logins: 123"},
+        id="replacement_without_matching_beginning_fails",
     ),
-    (
-        "replacement without matching beginning and end fails",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -451,9 +459,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "succeeded to login 123 times during the last minute"},
         {"field": "succeeded to login 123 times during the last minute"},
+        id="replacement_without_matching_beginning_and_end_fails",
     ),
-    (
-        "replacement without matching middle fails",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -462,9 +470,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "123 deleted by 456"},
         {"field": "123 deleted by 456"},
+        id="replacement_without_matching_middle_fails",
     ),
-    (
-        "nested replacement ignores second start token and terminates with first end token",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -473,9 +481,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "something not}!"},
         {"field": "%{replace this not}!"},
+        id="nested_replacement_ignores_second_start_token_and_terminates_with_first_end_token",
     ),
-    (
-        "nested replacement ignores second start token and terminates with first end token",
+    pytest.param(
         {
             "filter": "field",
             "replacer": {
@@ -484,8 +492,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": "do %{something not}!"},
         {"field": "do %{replace this}!"},
+        id="nested_replacement_ignores_second_start_token_and_terminates_with_first_end_token",
     ),
-]
+)
 
 
 class TestReplacer(BaseProcessorTestCase):
@@ -494,11 +503,12 @@ class TestReplacer(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/replacer/rules_1", "tests/testdata/unit/replacer/rules_2"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_testcases(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         self.object.process(event)
-        assert event == expected, testcase
+        assert event == expected
 
     def test_template_is_none_does_nothing(self):
         rule = {

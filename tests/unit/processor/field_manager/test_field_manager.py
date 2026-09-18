@@ -6,11 +6,11 @@ import re
 import pytest
 
 from logprep.processor.base.exceptions import FieldExistsWarning
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [  # testcase, rule, event, expected
-    (
-        "copies single field to non existing target field",
+example_test_cases = [
+    pytest.param(
         {
             "filter": "message",
             "field_manager": {
@@ -20,9 +20,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message"},
         {"message": "This is a message", "new_field": "This is a message"},
+        id="copies_single_field_to_non_existing_target_field",
     ),
-    (
-        "copies single field to existing target field",
+    pytest.param(
         {
             "filter": "message",
             "field_manager": {
@@ -33,102 +33,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message", "new_field": "existing value"},
         {"message": "This is a message", "new_field": "This is a message"},
+        id="copies_single_field_to_existing_target_field",
     ),
-    (
-        "moves single field to non existing target field",
-        {
-            "filter": "message",
-            "field_manager": {
-                "source_fields": ["message"],
-                "target_field": "new_field",
-                "delete_source_fields": True,
-            },
-        },
-        {"message": "This is a message"},
-        {"new_field": "This is a message"},
-    ),
-    (
-        "moves single field to existing target field",
-        {
-            "filter": "message",
-            "field_manager": {
-                "source_fields": ["message"],
-                "target_field": "existing",
-                "delete_source_fields": True,
-                "overwrite_target": True,
-            },
-        },
-        {"message": "This is a message", "existing": "existing"},
-        {"existing": "This is a message"},
-    ),
-    (
-        "moves single field to existing target field",
-        {
-            "filter": "message",
-            "field_manager": {
-                "source_fields": ["message"],
-                "target_field": "new_field",
-                "delete_source_fields": True,
-                "overwrite_target": True,
-            },
-        },
-        {"message": "This is a message", "new_field": "existing content"},
-        {"new_field": "This is a message"},
-    ),
-    (
-        "moves field and writes as list to target field",
-        {
-            "filter": "message",
-            "field_manager": {
-                "source_fields": ["message"],
-                "target_field": "new_field",
-                "merge_with_target": True,
-                "delete_source_fields": True,
-            },
-        },
-        {"message": "This is a message"},
-        {"new_field": ["This is a message"]},
-    ),
-    (
-        "moves multiple fields and writes them as list to non existing target field",
-        {
-            "filter": "field1 OR field2 OR field3",
-            "field_manager": {
-                "source_fields": ["field1", "field2", "field3"],
-                "target_field": "new_field",
-                "merge_with_target": True,
-                "delete_source_fields": True,
-            },
-        },
-        {
-            "field1": "value1",
-            "field2": "value2",
-            "field3": "value3",
-        },
-        {"new_field": ["value1", "value2", "value3"]},
-    ),
-    (
-        "moves multiple fields and writes them as list to existing target field",
-        {
-            "filter": "field1 OR field2 OR field3",
-            "field_manager": {
-                "source_fields": ["field1", "field2", "field3"],
-                "target_field": "new_field",
-                "merge_with_target": True,
-                "delete_source_fields": True,
-                "overwrite_target": True,
-            },
-        },
-        {
-            "field1": "value1",
-            "field2": "value2",
-            "field3": "value3",
-            "new_field": "i exist",
-        },
-        {"new_field": ["value1", "value2", "value3"]},
-    ),
-    (
-        "moves multiple fields and replaces existing target field with list including the existing value",
+    pytest.param(
         {
             "filter": "field1 OR field2 OR field3",
             "field_manager": {
@@ -145,9 +52,126 @@ test_cases = [  # testcase, rule, event, expected
             "new_field": "i exist",
         },
         {"new_field": ["i exist", "value1", "value2", "value3"]},
+        id="moves_multiple_fields_and_writes_them_to_a_existing_target_field_as_list",
     ),
-    (
-        "moves multiple fields and writes them to a existing list",
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    # rule, event, expected
+    pytest.param(
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "This is a message"},
+        {"new_field": "This is a message"},
+        id="moves_single_field_to_non_existing_target_field",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["message"],
+                "target_field": "existing",
+                "delete_source_fields": True,
+                "overwrite_target": True,
+            },
+        },
+        {"message": "This is a message", "existing": "existing"},
+        {"existing": "This is a message"},
+        id="moves_single_field_to_existing_target_field",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "delete_source_fields": True,
+                "overwrite_target": True,
+            },
+        },
+        {"message": "This is a message", "new_field": "existing content"},
+        {"new_field": "This is a message"},
+        id="moves_single_field_to_existing_target_field",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "merge_with_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "This is a message"},
+        {"new_field": ["This is a message"]},
+        id="moves_field_and_writes_as_list_to_target_field",
+    ),
+    pytest.param(
+        {
+            "filter": "field1 OR field2 OR field3",
+            "field_manager": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "merge_with_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": "value1",
+            "field2": "value2",
+            "field3": "value3",
+        },
+        {"new_field": ["value1", "value2", "value3"]},
+        id="moves_multiple_fields_and_writes_them_as_list_to_non_existing_target_field",
+    ),
+    pytest.param(
+        {
+            "filter": "field1 OR field2 OR field3",
+            "field_manager": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "merge_with_target": True,
+                "delete_source_fields": True,
+                "overwrite_target": True,
+            },
+        },
+        {
+            "field1": "value1",
+            "field2": "value2",
+            "field3": "value3",
+            "new_field": "i exist",
+        },
+        {"new_field": ["value1", "value2", "value3"]},
+        id="moves_multiple_fields_and_writes_them_as_list_to_existing_target_field",
+    ),
+    pytest.param(
+        {
+            "filter": "field1 OR field2 OR field3",
+            "field_manager": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "merge_with_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": "value1",
+            "field2": "value2",
+            "field3": "value3",
+            "new_field": "i exist",
+        },
+        {"new_field": ["i exist", "value1", "value2", "value3"]},
+        id="moves_multiple_fields_and_replaces_existing_target_field_with_list_including_the_existing_value",
+    ),
+    pytest.param(
         {
             "filter": "field1 OR field2 OR field3",
             "field_manager": {
@@ -164,28 +188,9 @@ test_cases = [  # testcase, rule, event, expected
             "new_field": ["i exist"],
         },
         {"new_field": ["i exist", "value1", "value2", "value3"]},
+        id="moves_multiple_fields_and_writes_them_to_a_existing_list",
     ),
-    (
-        "moves multiple fields and writes them to a existing target field as list",
-        {
-            "filter": "field1 OR field2 OR field3",
-            "field_manager": {
-                "source_fields": ["field1", "field2", "field3"],
-                "target_field": "new_field",
-                "merge_with_target": True,
-                "delete_source_fields": True,
-            },
-        },
-        {
-            "field1": "value1",
-            "field2": "value2",
-            "field3": "value3",
-            "new_field": "i exist",
-        },
-        {"new_field": ["i exist", "value1", "value2", "value3"]},
-    ),
-    (
-        "moves multiple fields and merges to target list",
+    pytest.param(
         {
             "filter": "field1 OR field2 OR field3",
             "field_manager": {
@@ -202,9 +207,9 @@ test_cases = [  # testcase, rule, event, expected
             "new_field": ["i exist"],
         },
         {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
+        id="moves_multiple_fields_and_merges_to_target_list",
     ),
-    (
-        "moves multiple fields and merges to target list with different source types",
+    pytest.param(
         {
             "filter": "field1 OR field2 OR field3",
             "field_manager": {
@@ -221,12 +226,9 @@ test_cases = [  # testcase, rule, event, expected
             "new_field": ["i exist"],
         },
         {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
+        id="moves_multiple_fields_and_merges_to_target_list_with_different_source_types",
     ),
-    (
-        (
-            "moves multiple fields and merges to target list ",
-            "with different source types and filters duplicates",
-        ),
+    pytest.param(
         {
             "filter": "field1 OR field2 OR field3",
             "field_manager": {
@@ -243,12 +245,9 @@ test_cases = [  # testcase, rule, event, expected
             "new_field": ["i exist"],
         },
         {"new_field": ["i exist", "value1", "value2", "value3", "value5", "value4", "value6"]},
+        id="moves_multiple_fields_and_merges_to_target_list_with_different_source_types_and_filters_duplicates",
     ),
-    (
-        (
-            "moves multiple fields and merges to target list ",
-            "with different source types and filters duplicates and overwrites target",
-        ),
+    pytest.param(
         {
             "filter": "field1 OR field2 OR field3",
             "field_manager": {
@@ -266,9 +265,9 @@ test_cases = [  # testcase, rule, event, expected
             "new_field": ["i exist"],
         },
         {"new_field": ["value1", "value2", "value3", "value5", "value4", "value6"]},
+        id="moves_multiple_fields_and_merges_to_target_list_with_different_source_types_and_filters_duplicates_and_overwrites_target",
     ),
-    (
-        "real world example from documentation",
+    pytest.param(
         {
             "filter": "client.ip",
             "field_manager": {
@@ -314,9 +313,9 @@ test_cases = [  # testcase, rule, event, expected
                 ]
             },
         },
+        id="real_world_example_from_documentation",
     ),
-    (
-        "copies multiple fields to multiple target fields",
+    pytest.param(
         {
             "filter": "field",
             "field_manager": {
@@ -325,9 +324,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": {"one": 1, "two": 2, "three": 3}},
         {"field": {"one": 1, "two": 2, "three": 3}, "one": 1, "two": 2, "three": 3},
+        id="copies_multiple_fields_to_multiple_target_fields",
     ),
-    (
-        "copies multiple fields to multiple target fields, while overwriting existing fields",
+    pytest.param(
         {
             "filter": "field",
             "field_manager": {
@@ -337,9 +336,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": {"one": 1, "two": 2, "three": 3}, "three": "exists already"},
         {"field": {"one": 1, "two": 2, "three": 3}, "one": 1, "two": 2, "three": 3},
+        id="copies_multiple_fields_to_multiple_target_fields,_while_overwriting_existing_fields",
     ),
-    (
-        "copies multiple fields to multiple target fields, while one list will be extended",
+    pytest.param(
         {
             "filter": "field",
             "field_manager": {
@@ -354,9 +353,9 @@ test_cases = [  # testcase, rule, event, expected
             "two": 2,
             "three": ["exists already", 3],
         },
+        id="copies_multiple_fields_to_multiple_target_fields,_while_one_list_will_be_extended",
     ),
-    (
-        "copies multiple fields to multiple target fields, while one list will be extended with existing list",
+    pytest.param(
         {
             "filter": "field",
             "field_manager": {
@@ -375,9 +374,9 @@ test_cases = [  # testcase, rule, event, expected
             "two": 2,
             "three": ["exists already", 3, 3],
         },
+        id="copies_multiple_fields_to_multiple_target_fields,_while_one_list_will_be_extended_with_existing_list",
     ),
-    (
-        "copies multiple fields to multiple target fields, while one target list will be overwritten with existing list",
+    pytest.param(
         {
             "filter": "field",
             "field_manager": {
@@ -387,9 +386,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": {"one": 1, "two": 2, "three": [3, 3]}, "three": ["exists already"]},
         {"field": {"one": 1, "two": 2, "three": [3, 3]}, "one": 1, "two": 2, "three": [3, 3]},
+        id="copies_multiple_fields_to_multiple_target_fields,_while_one_target_list_will_be_overwritten_with_existing_list",
     ),
-    (
-        "copies multiple fields to multiple target fields, while one source field is missing",
+    pytest.param(
         {
             "filter": "field",
             "field_manager": {
@@ -405,9 +404,9 @@ test_cases = [  # testcase, rule, event, expected
             "three": 3,
             "tags": ["_field_manager_missing_field_warning"],
         },
+        id="copies_multiple_fields_to_multiple_target_fields,_while_one_source_field_is_missing",
     ),
-    (
-        "moves multiple fields to multiple target fields",
+    pytest.param(
         {
             "filter": "field",
             "field_manager": {
@@ -417,9 +416,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field": {"one": 1, "two": 2, "three": 3}},
         {"one": 1, "two": 2, "three": 3},
+        id="moves_multiple_fields_to_multiple_target_fields",
     ),
-    (
-        "Combine fields to list and copy fields at the same time",
+    pytest.param(
         {
             "filter": "field",
             "field_manager": {
@@ -438,9 +437,9 @@ test_cases = [  # testcase, rule, event, expected
             "three": 3,
             "merged": ["a", "b"],
         },
+        id="Combine_fields_to_list_and_copy_fields_at_the_same_time",
     ),
-    (
-        "Ignore missing fields: No warning and no failure tag if source field is missing",
+    pytest.param(
         {
             "filter": "field.a",
             "field_manager": {
@@ -456,9 +455,9 @@ test_cases = [  # testcase, rule, event, expected
             "field": {"a": "first", "b": "second"},
             "target_field": "first",
         },
+        id="Ignore_missing_fields:_No_warning_and_no_failure_tag_if_source_field_is_missing",
     ),
-    (
-        "merge_with_target preserves list ordering",
+    pytest.param(
         {
             "filter": "(foo) OR (test)",
             "field_manager": {
@@ -472,9 +471,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"existing_list": ["hello", "world"], "foo": "bar", "test": "value"},
         {"existing_list": ["hello", "world", "bar", "value"], "foo": "bar", "test": "value"},
+        id="merge_with_target_preserves_list_ordering",
     ),
-    (
-        "Convert existing target to list",
+    pytest.param(
         {
             "filter": "message",
             "field_manager": {
@@ -485,9 +484,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "Value B", "new_field": "Value A"},
         {"message": "Value B", "new_field": ["Value A", "Value B"]},
+        id="Convert_existing_target_to_list",
     ),
-    (
-        "Convert existing target to list with multiple source fields",
+    pytest.param(
         {
             "filter": "field1 OR field2 OR field3",
             "field_manager": {
@@ -508,9 +507,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "Value D",
             "new_field": ["Value A", "Value B", "Value C", "Value D"],
         },
+        id="Convert_existing_target_to_list_with_multiple_source_fields",
     ),
-    (
-        "Merge source dict into existing target dict",
+    pytest.param(
         {
             "filter": "source",
             "field_manager": {
@@ -521,9 +520,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"source": {"source1": "value"}, "target": {"target1": "value"}},
         {"source": {"source1": "value"}, "target": {"source1": "value", "target1": "value"}},
+        id="Merge_source_dict_into_existing_target_dict",
     ),
-    (
-        "Merge multiple source dicts into existing target dict",
+    pytest.param(
         {
             "filter": "source1",
             "field_manager": {
@@ -547,9 +546,9 @@ test_cases = [  # testcase, rule, event, expected
                 "target1": "value",
             },
         },
+        id="Merge_multiple_source_dicts_into_existing_target_dict",
     ),
-    (
-        "overlapping source with target single processing",
+    pytest.param(
         {
             "filter": "host",
             "field_manager": {
@@ -560,9 +559,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"host": "example.com"},
         {"host": {"name": "example.com"}},
+        id="overlapping_source_with_target_single_processing",
     ),
-    (
-        "overlapping source with target mapping processing",
+    pytest.param(
         {
             "filter": "host",
             "field_manager": {
@@ -574,9 +573,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"host": "example.com"},
         {"host": {"name": "example.com"}},
+        id="overlapping_source_with_target_mapping_processing",
     ),
-    (
-        "move tree",
+    pytest.param(
         {
             "filter": "kubernetes.labels",
             "field_manager": {
@@ -617,12 +616,12 @@ test_cases = [  # testcase, rule, event, expected
                 }
             },
         },
+        id="move_tree",
     ),
-]
+)
 
-failure_test_cases = [
-    (
-        "single source field not found",
+failure_test_cases = [  # rule, event, expected, error
+    pytest.param(
         {
             "filter": "message",
             "field_manager": {
@@ -633,9 +632,9 @@ failure_test_cases = [
         {"message": "This is a message"},
         {"message": "This is a message", "tags": ["_field_manager_missing_field_warning"]},
         ".*ProcessingWarning.*",
+        id="single_source_field_not_found",
     ),
-    (
-        "single source field not found and preexisting tags",
+    pytest.param(
         {
             "filter": "message",
             "field_manager": {
@@ -649,9 +648,9 @@ failure_test_cases = [
             "tags": ["_field_manager_missing_field_warning", "preexisting"],
         },
         ".*ProcessingWarning.*",
+        id="single_source_field_not_found_and_preexisting_tags",
     ),
-    (
-        "single source field not found and preexisting tags with deduplication",
+    pytest.param(
         {
             "filter": "message",
             "field_manager": {
@@ -668,9 +667,9 @@ failure_test_cases = [
             "tags": ["_field_manager_missing_field_warning", "preexisting"],
         },
         ".*ProcessingWarning.*",
+        id="single_source_field_not_found_and_preexisting_tags_with_deduplication",
     ),
-    (
-        "copies multiple fields to multiple target fields, while one target exists already",
+    pytest.param(
         {
             "filter": "field",
             "field_manager": {
@@ -686,9 +685,9 @@ failure_test_cases = [
             "tags": ["_field_manager_failure"],
         },
         ".*FieldExistsWarning.*",
+        id="copies_multiple_fields_to_multiple_target_fields,_while_one_target_exists_already",
     ),
-    (
-        "tries to move multiple fields to multiple target fields but none exists",
+    pytest.param(
         {
             "filter": "no-mapped-field",
             "field_manager": {
@@ -698,8 +697,9 @@ failure_test_cases = [
         {"no-mapped-field": "exists"},
         {"no-mapped-field": "exists", "tags": ["_field_manager_missing_field_warning"]},
         ".*ProcessingWarning.*",
+        id="tries_to_move_multiple_fields_to_multiple_target_fields_but_none_exists",
     ),
-]  # testcase, rule, event, expected, error
+]
 
 
 class TestFieldManager(BaseProcessorTestCase):
@@ -708,20 +708,21 @@ class TestFieldManager(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/field_manager/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         result = self.object.process(event)
         assert not result.errors
         assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
+    @pytest.mark.parametrize(["rule", "event", "expected", "error_message"], failure_test_cases)
+    def test_testcases_failure_handling(self, rule, event, expected, error_message):
         self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
-        assert re.match(error, str(result.warnings[0]))
-        assert event == expected, testcase
+        assert re.match(error_message, str(result.warnings[0]))
+        assert event == expected
 
     def test_process_raises_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
         self,
