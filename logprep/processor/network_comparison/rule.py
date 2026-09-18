@@ -11,8 +11,12 @@ is used to identify the field which is to be checked against the provided lists.
 And the latter is used to define the parent field where the results should
 be written to. Both fields can be dotted subfields.
 
-Additionally, a list or array of lists can be provided underneath the
-required field :code:`list_file_paths`.
+Comparison lists are configured with :code:`list_file_paths` or named
+:code:`list_paths`, together with :code:`list_search_base_path`. The base path can
+be set on the processor or rule; the rule setting takes precedence. Local lists
+are loaded during setup. HTTP(S) paths must include `${LOGPREP_LIST}`; remaining
+placeholders are resolved from event fields when the rule processes an event, so
+the resulting list is loaded lazily and cached.
 
 In the following example, the field :code:`ip` will be checked against the provided list
 (:code:`networks.txt`).
@@ -30,7 +34,20 @@ target field :code:`network_comparison.example`.
         target_field: 'network_comparison.example'
         list_file_paths:
             - lists/networks.txt
+        list_search_base_path: /path/to/lists
     description: '...'
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule to load a tenant-specific network list from a fixed HTTP(S) origin.
+
+    filter: 'ip'
+    network_comparison:
+        source_fields: ['ip']
+        target_field: 'network.classification'
+        list_paths:
+            BLOCKED_NETWORKS: tenants/${tenant.id}/blocked
+        list_search_base_path: https://lists.example/api/${LOGPREP_LIST}
 
 .. note::
 
