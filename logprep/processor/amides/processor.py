@@ -233,7 +233,7 @@ class Amides(FieldManager):
         if self._handle_missing_fields(event, rule, rule.source_fields, [cmdline]):
             return
 
-        self.metrics.total_cmdlines += 1
+        self.metrics.total_cmdlines.inc(1)
 
         normalized = self._normalizer.normalize(cmdline)
         if not normalized:
@@ -265,7 +265,7 @@ class Amides(FieldManager):
 
     def _update_cache_metrics(self):
         cache_info = self._evaluate_cmdline_cached.cache_info()
-        self.metrics.new_results += cache_info.misses
-        self.metrics.cached_results += cache_info.hits
-        self.metrics.num_cache_entries += cache_info.currsize
-        self.metrics.cache_load += cache_info.currsize / cache_info.maxsize
+        self.metrics.new_results.set(cache_info.misses)
+        self.metrics.cached_results.set(cache_info.hits)
+        self.metrics.num_cache_entries.set(cache_info.currsize)
+        self.metrics.cache_load.set(cache_info.currsize / cache_info.maxsize)

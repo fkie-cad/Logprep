@@ -8,8 +8,10 @@
 ### Improvements
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
 * calculator: optimized runtime expression evaluation
+* docs: improve documentation around dynamic templating for `generic_adder`
 
 ### Bugfix
+* decoder: corrected rfc 5324 in docs to 5424
 
 ## 21.0.0
 ### Breaking
@@ -37,10 +39,15 @@
 * getter: remove noisy debug log
 * vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
 * tests: add context handling framework for `test_cases`
+* tests: add mock_env decorator support for async functions
 * ci: enforce CHANGELOG.md is updated
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
 * grokker: improve performance by stopping on first matching expression
+* metrics: cache labeled child metric collectors
+* metrics: avoid heavy time context manager and hardwire passthrough metric collector methods on wrapper class
+* metrics: remove `__add__` interface from metrics and use the passthrough instead
+* metrics: consolidate `measure_time` and `measure_time_async` in single decorator
 
 ### Bugfix
 * chart: fix command handling

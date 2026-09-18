@@ -253,7 +253,7 @@ class OpensearchOutput(Output):
         """
         document["_index"] = target
         document["_op_type"] = document.get("_op_type", self.config.default_op_type)
-        self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events.inc(1)
         self._message_backlog.append(document)
         self._write_to_search_context()
 
@@ -317,7 +317,7 @@ class OpensearchOutput(Output):
             )
         except (OpenSearchException, ConnectionError) as error:
             logger.error("Health check failed: %s", error)
-            self.metrics.number_of_errors += 1
+            self.metrics.number_of_errors.inc(1)
             return False
         return resp.get("status") in self.config.desired_cluster_status
 

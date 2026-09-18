@@ -222,7 +222,6 @@ class TestPipeline(ConfigurationForTests):
             raise InputWarning(self.pipeline._input, "i warn you")
 
         self.pipeline._input.metrics = mock.MagicMock()
-        self.pipeline._input.metrics.number_of_warnings = 0
         self.pipeline._input.get_next.return_value = {"order": 1}
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.side_effect = raise_warning_error
@@ -238,7 +237,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = {"order": 1}
         self.pipeline._output["dummy"].metrics = mock.MagicMock()
-        self.pipeline._output["dummy"].metrics.number_of_warnings = 0
         self.pipeline.process_pipeline()
         self.pipeline._output["dummy"].store.side_effect = OutputWarning(
             self.pipeline._output["dummy"], ""
@@ -334,7 +332,6 @@ class TestPipeline(ConfigurationForTests):
             raise raised_error
 
         self.pipeline._input.metrics = mock.MagicMock()
-        self.pipeline._input.metrics.number_of_errors = 0
         self.pipeline._input.get_next.return_value = input_event
         self.pipeline._input.get_next.side_effect = raise_critical
         self.pipeline.enqueue_error = mock.MagicMock()
@@ -368,14 +365,13 @@ class TestPipeline(ConfigurationForTests):
 
         input_event = {"test": "message"}
         dummy_output.store = raise_critical
-        dummy_output.metrics.number_of_errors = 0
         self.pipeline._setup()
         self.pipeline._output["dummy"] = dummy_output
         self.pipeline._input.get_next.return_value = input_event
         self.pipeline.enqueue_error = mock.MagicMock()
         self.pipeline.process_pipeline()
         self.pipeline.enqueue_error.assert_called()
-        assert dummy_output.metrics.number_of_errors == 1, "counts error metric"
+        assert dummy_output.metrics.number_of_errors.value == 1, "counts error metric"
         mock_log_error.assert_called_with(
             str(CriticalOutputError(dummy_output, "mock output error", input_event))
         )
@@ -748,26 +744,23 @@ class TestPipeline(ConfigurationForTests):
 
     def test_enqueue_error_counts_failed_event_for_critical_output_with_single_event(self, _):
         self.pipeline._setup()
-        self.pipeline.metrics.number_of_failed_events = 0
         error = CriticalOutputError(self.pipeline._output["dummy"], "error", {"some": "event"})
         self.pipeline.enqueue_error(error)
-        assert self.pipeline.metrics.number_of_failed_events == 1
+        assert self.pipeline.metrics.number_of_failed_events.value == 1
 
     def test_enqueue_error_counts_failed_event_for_multi_event_output_error(self, _):
         self.pipeline._setup()
-        self.pipeline.metrics.number_of_failed_events = 0
         error = CriticalOutputError(
             self.pipeline._output["dummy"], "error", [{"some": "event"}, {"some": "other"}]
         )
         self.pipeline.enqueue_error(error)
-        assert self.pipeline.metrics.number_of_failed_events == 2
+        assert self.pipeline.metrics.number_of_failed_events.value == 2
 
     def test_enqueue_error_counts_failed_event_for_pipeline_result(self, mock_create):
-        self.pipeline.metrics.number_of_failed_events = 0
         mock_result = mock.create_autospec(spec=PipelineResult)
         mock_result.pipeline = self.pipeline._pipeline
         self.pipeline.enqueue_error(mock_result)
-        assert self.pipeline.metrics.number_of_failed_events == 1
+        assert self.pipeline.metrics.number_of_failed_events.value == 1
 
 
 class TestPipelineWithActualInput:

@@ -18,9 +18,6 @@ from tests.unit.processor.timestamper.test_timestamper import (
     FIXED_NOW,
 )
 from tests.unit.processor.timestamper.test_timestamper import (
-    current_time_test_cases as non_ng_current_time_test_cases,
-)
-from tests.unit.processor.timestamper.test_timestamper import (
     failure_test_cases as non_ng_failure_test_cases,
 )
 from tests.unit.processor.timestamper.test_timestamper import (
@@ -28,8 +25,13 @@ from tests.unit.processor.timestamper.test_timestamper import (
 )
 
 test_cases = deepcopy(non_ng_test_cases)
-current_time_test_cases = deepcopy(non_ng_current_time_test_cases)
 failure_test_cases = deepcopy(non_ng_failure_test_cases)
+
+
+@pytest.fixture(autouse=True)
+def mock_now():
+    with patch.object(TimeParser, "now", return_value=FIXED_NOW):
+        yield
 
 
 class TestTimestamper(BaseProcessorTestCase[Timestamper]):
@@ -52,27 +54,17 @@ class TestTimestamper(BaseProcessorTestCase[Timestamper]):
         assert event.data == expected, testcase
 
     @pytest.mark.parametrize(
-        "rule, event, expected, target_timezone",
-        current_time_test_cases,
+        "testcase, rule, event, expected, error_message",
+        failure_test_cases,
     )
-    async def test_uses_current_time_without_source_fields(
+    async def test_testcases_failure_handling(
         self,
+        testcase,
         rule,
         event,
         expected,
-        target_timezone,
+        error_message,
     ):
-        await self._load_rule(rule)
-        event = LogEvent(event, original=b"", input_meta=InputMeta())
-
-        with patch.object(TimeParser, "now", return_value=FIXED_NOW) as mock_now:
-            await self.object.process(event)
-
-        mock_now.assert_called_once_with(target_timezone)
-        assert event.data == expected
-
-    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    async def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
 

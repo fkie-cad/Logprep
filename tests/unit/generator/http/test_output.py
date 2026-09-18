@@ -35,11 +35,10 @@ class TestHttpGeneratorOutput(TestOutput):
 
     @responses.activate
     def test_one_repeat(self):
-        self.object.metrics.number_of_processed_events = 0
         responses.add(responses.POST, f"{TARGET_URL}/123", status=200)
         document = "/123,{'event1_key': 'event1_value'};{'event2_key': 'event2_value'}"
         self.object.store(document)
-        assert self.object.metrics.number_of_processed_events == 2
+        assert self.object.metrics.number_of_processed_events.value == 2
 
     def test_store_calls_store_custom(self):
         self.object.store_custom = MagicMock()
@@ -72,12 +71,9 @@ class TestHttpGeneratorOutput(TestOutput):
 
         target_url = TARGET_URL
         responses.add(responses.POST, f"{target_url}{testcase}", status=200)
-        self.object.metrics.number_of_processed_events = 0
-        self.object.metrics.number_of_http_requests = 0
-        self.object.metrics.number_of_failed_events = 0
         self.object.store(testcase + "," + input_data)
         assert (
-            self.object.metrics.number_of_failed_events == 0
+            self.object.metrics.number_of_failed_events.value == 0
         ), f"no failed events for input {input_data}"
-        assert self.object.metrics.number_of_processed_events == number_of_expected_events
-        assert self.object.metrics.number_of_http_requests == number_of_expected_requests
+        assert self.object.metrics.number_of_processed_events.value == number_of_expected_events
+        assert self.object.metrics.number_of_http_requests.value == number_of_expected_requests
