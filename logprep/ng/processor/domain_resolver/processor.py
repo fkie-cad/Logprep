@@ -55,12 +55,16 @@ class FailureType(IntEnum):
 
     TIMEOUT = auto()
     """Domain resolver timeout while trying to resolve the domain (this is not a socket timeout)"""
+
     INVALID = auto()
     """The resolved domain was invalid and thus not resolved"""
+
     UNKNOWN = auto()
     """Tried to resolve the domain, but the domain is unknown"""
+
     NO_ANSWER = auto()
     """The resolved domain was valid, but returned no data"""
+
     NO_NAMESERVERS = auto()
     """Nameservers do not exist or timed out"""
 
@@ -147,6 +151,7 @@ class DomainResolver(Processor):
             )
         )
         """Number of all resolved urls"""
+
         resolved_new: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Number of urls that had to be resolved newly",
@@ -154,6 +159,7 @@ class DomainResolver(Processor):
             )
         )
         """Number of urls that had to be resolved newly"""
+
         resolved_cached: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Number of urls that were resolved from cache",
@@ -161,6 +167,7 @@ class DomainResolver(Processor):
             )
         )
         """Number of urls that were resolved from cache"""
+
         resolved_domains: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Number of domains that were successfully resolved",
@@ -168,6 +175,7 @@ class DomainResolver(Processor):
             )
         )
         """Number of domains that were successfully resolved"""
+
         timeouts: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Number of timeouts that occurred while resolving a url",
@@ -175,6 +183,7 @@ class DomainResolver(Processor):
             )
         )
         """Number of timeouts that occurred while resolving a url"""
+
         timeouts_cached: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Number of timeouts from the timeout cache for a url",
@@ -182,6 +191,7 @@ class DomainResolver(Processor):
             )
         )
         """Number of timeouts from the timeout cache for a url"""
+
         invalid_domains: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Number of invalid domains",
@@ -189,6 +199,7 @@ class DomainResolver(Processor):
             )
         )
         """Number of invalid domains that were trying to be resolved"""
+
         unknown_domains: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Number of unknown domains",
@@ -213,7 +224,7 @@ class DomainResolver(Processor):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast(DomainResolver.Config, self._config)
 
     async def setup(self):

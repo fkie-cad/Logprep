@@ -36,14 +36,7 @@ class Cache(OrderedDict):
         return super().get(*args, **kwargs)
 
     def is_cached(self, key: str) -> bool:
-        """Check if the item has exceeded its time to live.
-
-        Parameters
-        ----------
-        key : str
-            Name of item to check for in the cache.
-
-        """
+        """Check if the item has exceeded its time to live."""
         last_stored = self.get(key)
         if last_stored is None:
             return False
@@ -54,16 +47,7 @@ class Cache(OrderedDict):
         return True
 
     def add(self, key: str, value: Any = None):
-        """Add the item into the cache or refresh its time to live.
-
-        Parameters
-        ----------
-        key : str
-            Key for item to add into the cache.
-        value : Any
-            Value of item to add into the cache.
-
-        """
+        """Add the item into the cache or refresh its time to live."""
         if self.refresh_time_to_live(key):
             return
 
@@ -72,14 +56,7 @@ class Cache(OrderedDict):
             self.popitem(last=False)
 
     def refresh_time_to_live(self, key) -> bool:
-        """Update the items timestamp inside the cache.
-
-        Parameters
-        ----------
-        key : str
-            Item whose timestamp to update in the cache.
-
-        """
+        """Update the items timestamp inside the cache."""
         last_stored = self.get(key)
         if last_stored is not None:
             self[key].insertion_time = time.time()
