@@ -1,0 +1,43 @@
+.. -*- mode: rst -*-
+
+{%- macro render_bounds(min_args, max_args) %}
+{%- if min_args == max_args -%}
+{{min_args}}
+{%- elif max_args is not number -%}
+{{min_args}} or more
+{%- else  -%}
+{{min_args}} to {{max_args}}
+{%- endif -%}
+{% endmacro %}
+
+{%- macro render_input_type(info) %}
+{%- if info.node_type.input_type | string is equalto 'ValueType.NUMBER' -%}
+Number
+{%- else -%}
+Boolean or Number
+{%- endif -%}
+{% endmacro %}
+
+{%- macro render_output_type(info) %}
+{%- if info.node_type.output_type | string is equalto 'ValueType.NUMBER' -%}
+Number
+{%- else -%}
+Boolean
+{%- endif -%}
+{% endmacro %}
+
+.. list-table:: Available Functions
+   :header-rows: 1
+
+   * - Names
+     - Input Type
+     - Parameter Count
+     - Output Type
+     - Description
+{% for entry in data.FUNCTION_REGISTRY %}
+   * - {% for name in entry.names %}:code:`{{name}}`{%if not loop.last%},{% endif %} {% endfor %}
+     - {{ render_input_type(entry)}}
+     - {{ render_bounds(entry.min_args, entry.max_args) }}
+     - {{ render_output_type(entry) }}
+     - {{ entry.description -}}
+{% endfor %}
