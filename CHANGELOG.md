@@ -3,6 +3,7 @@
 
 ### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
+* field_manager: add flag for deactivating deduplication
 
 ### Improvements
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
@@ -10,6 +11,8 @@
 
 ### Bugfix
 * decoder: corrected rfc 5324 in docs to 5424
+* field_manager: allow for copying fields only containing `false` and `0`
+* key_checker: remove configuration fields that were inherited but didnt do anything
 
 ## 21.0.0
 ### Breaking
