@@ -4,9 +4,12 @@
 ### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
 * field_manager: add flag for deactivating deduplication
+* calculator: extended expression functionality
 
 ### Improvements
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
+* calculator: optimized runtime expression evaluation
+* docs: improve documentation around dynamic templating for `generic_adder`
 
 ### Bugfix
 * decoder: corrected rfc 5324 in docs to 5424

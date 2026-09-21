@@ -78,6 +78,13 @@ In the following example two files are being used, but only the first existing f
    :inherited-members:
    :noindex:
 
+.. _generic-adder-uri-config:
+
+.. autoclass:: logprep.processor.generic_adder.rule.UriConfig
+   :members:
+   :undoc-members:
+   :noindex:
+
 Examples for generic_adder:
 ---------------------------
 
@@ -116,6 +123,14 @@ class UriConfig:
 
     Environment variables and dotted event fields can be inserted with placeholders such as
     :code:`${LOGPREP_DATA_API}` and :code:`${tenant.id}`.
+
+    .. security-best-practice::
+       :title: |PROCESSOR| - Dynamic URI destinations
+
+       Event fields used in dynamic URIs may be attacker-controlled. Keep the URI
+       scheme, host, and port static and use dynamic values only in path components.
+       Avoid interpolating event fields into the URI authority, especially the host,
+       so an attacker cannot influence where Logprep sends requests.
     """
 
     target_field: str | None = field(
@@ -195,6 +210,11 @@ class GenericAdderRule(Rule):
         Instead of a path, a list of paths can be used to add multiple files.
         All of those files must exist. For string format see :ref:`getters`
 
+        .. deprecated:: 21.0.0
+
+           Use :attr:`add_from_uri` instead. It supports the same file paths and
+           additionally provides URI-specific options such as ``target_field``.
+
         .. security-best-practice::
            :title: |PROCESSOR| - Add From File Memory Consumption
 
@@ -218,6 +238,10 @@ class GenericAdderRule(Rule):
             ),
         )
         """Configuration for loading values from URIs and adding them to the event.
+
+        Each item may be a URI string or a :ref:`UriConfig <generic-adder-uri-config>`
+        mapping.
+        A mapping configures the required ``uri`` and optional ``target_field`` keys.
 
         This is mutually exclusive with :attr:`add_from_file`.
         """
