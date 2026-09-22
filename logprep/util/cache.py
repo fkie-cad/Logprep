@@ -5,14 +5,16 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from collections import OrderedDict
-from typing import Any
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
 
 
 @dataclass
-class CacheEntry:
+class CacheEntry(Generic[T]):
     """Entry for cache that consists of value and insertion time"""
 
-    value: Any
+    value: T
     insertion_time: float
 
 
@@ -46,7 +48,7 @@ class Cache(OrderedDict):
             return False
         return True
 
-    def add(self, key: str, value: Any):
+    def add(self, key: str, value: T):
         """Add the item into the cache or refresh its time to live."""
         if self.refresh_time_to_live(key):
             return
