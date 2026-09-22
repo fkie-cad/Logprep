@@ -12,7 +12,7 @@ T = TypeVar("T")
 
 
 @define
-class CacheEntry(Generic[T]):
+class _CacheEntry(Generic[T]):
     """Entry for cache that consists of value and insertion time"""
 
     value: T
@@ -31,10 +31,10 @@ class Cache(OrderedDict):
         self._max_timedelta = max_timedelta
         super().__init__()
 
-    def __getitem__(self, key) -> CacheEntry:
+    def __getitem__(self, key) -> _CacheEntry:
         return super().__getitem__(key)
 
-    def get(self, *args, **kwargs) -> CacheEntry | None:
+    def get(self, *args, **kwargs) -> _CacheEntry | None:
         """Get a cached item with the type CacheEntry."""
         return super().get(*args, **kwargs)
 
@@ -54,7 +54,7 @@ class Cache(OrderedDict):
         if self.refresh_time_to_live(key):
             return
 
-        self[key] = CacheEntry(value, time.time())
+        self[key] = _CacheEntry(value, time.time())
         if len(self) > self._max_items:
             self.popitem(last=False)
 
