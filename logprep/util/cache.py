@@ -1,16 +1,17 @@
 """Module for caching items and checking if they need to be stored (again)."""
 
 import time
-from dataclasses import dataclass
 from datetime import timedelta
 
 from collections import OrderedDict
 from typing import TypeVar, Generic
 
+from attr import define
+
 T = TypeVar("T")
 
 
-@dataclass
+@define
 class CacheEntry(Generic[T]):
     """Entry for cache that consists of value and insertion time"""
 
