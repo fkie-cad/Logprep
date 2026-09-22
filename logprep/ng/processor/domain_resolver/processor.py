@@ -292,7 +292,7 @@ class DomainResolver(Processor):
         result = self._resolve_ip(domain)
         match result:
             case FailedResult(FailureType.TIMEOUT | FailureType.NO_NAMESERVERS):
-                self._timeout_cache.add(hash_string)
+                self._timeout_cache.add(hash_string, None)
             case _:
                 self._domain_cache.add(hash_string, result)
         self.metrics.resolved_new.inc(1)

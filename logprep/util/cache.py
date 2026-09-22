@@ -46,7 +46,7 @@ class Cache(OrderedDict):
             return False
         return True
 
-    def add(self, key: str, value: Any = None):
+    def add(self, key: str, value: Any):
         """Add the item into the cache or refresh its time to live."""
         if self.refresh_time_to_live(key):
             return

@@ -33,7 +33,7 @@ class TestCache:
     def test_is_cached_nonzero_deltatime(self, cache: Cache):
         for _ in range(3):
             assert not cache.is_cached("foo")
-            cache.add("foo")
+            cache.add("foo", None)
             assert cache.is_cached("foo")
             time.sleep(0.1)  # nosemgrep
 
@@ -46,7 +46,7 @@ class TestCache:
         extra_items = 3
         cache_hash = hash(frozenset(cache))
         for i in range(cache._max_items + extra_items):
-            cache.add(i)
+            cache.add(i, None)
             new_cache_hash = hash(frozenset(cache))
             assert cache_hash != new_cache_hash
             cache_hash = new_cache_hash
@@ -55,11 +55,11 @@ class TestCache:
 
     def test_add_refreshes(self, cache: Cache):
         assert not cache.is_cached("foo")
-        cache.add("foo")
+        cache.add("foo", None)
         assert cache.is_cached("foo")
         old_decay_time = cache["foo"].insertion_time
         time.sleep(0.1)
-        cache.add("foo")
+        cache.add("foo", None)
         new_decay = cache["foo"].insertion_time
         assert new_decay is not None
         assert old_decay_time is not None
