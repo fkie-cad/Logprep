@@ -34,9 +34,10 @@ class Cache(OrderedDict):
     def __getitem__(self, key) -> _CacheEntry:
         return super().__getitem__(key)
 
-    def get(self, *args, **kwargs) -> _CacheEntry | None:
-        """Get a cached item with the type CacheEntry."""
-        return super().get(*args, **kwargs)
+    def get_cached_value(self, key: str) -> T | None:
+        """Get a cached value."""
+        cache_entry = self.get(key)
+        return None if cache_entry is None else cache_entry.value
 
     def is_cached(self, key: str) -> bool:
         """Check if the item has exceeded its time to live."""

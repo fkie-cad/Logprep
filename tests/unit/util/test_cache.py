@@ -64,3 +64,12 @@ class TestCache:
         assert new_decay is not None
         assert old_decay_time is not None
         assert new_decay > old_decay_time
+
+    def test_get_cached_value(self, cache: Cache):
+        assert cache.get_cached_value("foo") is None
+        cache.add("foo", None)
+        assert cache.get_cached_value("foo") is None
+
+        assert cache.get_cached_value("bar") is None
+        cache.add("bar", "baz")
+        assert cache.get_cached_value("bar") == "baz"

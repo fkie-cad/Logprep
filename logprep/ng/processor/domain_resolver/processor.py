@@ -280,7 +280,7 @@ class DomainResolver(Processor):
         if self._domain_cache.is_cached(hash_string):
             self.metrics.resolved_cached.inc(1)
             self._domain_cache.refresh_time_to_live(hash_string)
-            return self._domain_cache[hash_string].value
+            return self._domain_cache.get_cached_value(hash_string)
 
         if self._timeout_cache.is_cached(hash_string):
             self.metrics.timeouts_cached.inc(1)
