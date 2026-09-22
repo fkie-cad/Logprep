@@ -3,23 +3,8 @@
 
 ### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
-
-### Improvements
-* timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
-
-### Bugfix
-
-## 21.0.0
-### Breaking
-* restrict UNIX timestamp normalization to seconds, milliseconds, microseconds, and nanoseconds.
-* handle non-string `concatenator` source fields with `ProcessingWarning` instead of `ProcessingCriticalError`
-
-### Features
-* add support for fractional UNIX timestamps in the `timestamper` processor while preserving supported integer timestamp normalization.
-* introduce API-level support for asynchronous rule processing and I/O capability detection in `ng` processors
-* generic_adder: add support for templated http urls & content_field
-* generic_resolver: add content_field support
-* field_name_replacer: add new `field_name_replacer` processor to replace occurences of strings in key names
+* field_manager: add flag for deactivating deduplication
+* calculator: extended expression functionality
 * ng: add asynchronous getter and refresh scheduling support
 * ng: load configuration, rule tree configuration, rule definitions, and processor rules asynchronously
 * ng: make getter-backed setup and processing asynchronous for:
@@ -32,25 +17,14 @@
 * ng: classify processors with asynchronous I/O during event processing correctly
 
 ### Improvements
-* docs: enable pydoc placeholders for facilitating component reuse through inheritance
-* docs: change processor natural naming to capital cased with whitespace (e.g. "Generic Resolver")
-* docs: use processor name placeholders for most usages
-* docs: hide non-init fields in docs
-* docs: add examples for generic_resolver
-* docs: improve example rendering
-* getter: handle "text/yaml" in content type resolution
-* getter: remove noisy debug log
-* vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
+* timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
+* calculator: optimized runtime expression evaluation
+* docs: improve documentation around dynamic templating for `generic_adder`
 * requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
-* tests: add context handling framework for `test_cases`
 * tests: adapt NG processor and HTTP getter coverage to asynchronous setup, shutdown, rule loading, and refresh lifecycles
 * tests: add coverage for asynchronous scheduler execution and pending jobs
 * tests: wait for finite acceptance pipelines to finish before collecting their output
 * tests: ensure NG processor test helpers always shut down instances after errors
-* tests: add mock_env decorator support for async functions
-* ci: enforce CHANGELOG.md is updated
-* ci: enforce PR TODOs are completed
-* ci: introduce umbrella job for enforcing merge status checks with GitHub
 * tests: disable unused WebSocket support in the asynchronous HTTP server
 * ng: offload credentials file validation from the asynchronous event loop
 * ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
@@ -58,24 +32,13 @@
 * ng: share concurrent getter cache updates and initialization across callers
 * ng: make shared getter state cleanup safe during cancellation and concurrent updates
 * ng: clean up and deduplicate GenericResolver refresh callbacks and their orphaned getter targets
-* grokker: improve performance by stopping on first matching expression
-* metrics: cache labeled child metric collectors
-* metrics: avoid heavy time context manager and hardwire passthrough metric collector methods on wrapper class
-* metrics: remove `__add__` interface from metrics and use the passthrough instead
-* metrics: consolidate `measure_time` and `measure_time_async` in single decorator
 
 ### Bugfix
-* chart: fix command handling
-* generic_adder: allow None as valid input via `add`
+* decoder: corrected rfc 5324 in docs to 5424
+* field_manager: allow for copying fields only containing `false` and `0`
+* key_checker: remove configuration fields that were inherited but didnt do anything
 * generic_resolver: avoid sharing mutable additions between rule configurations
-* ng: fix input timeout to also accept int parameters
-* ng: fix `http_input` `collect_meta` leading to shared dicts between events
-* ng: fix error output structure to stay consistent with non-ng
 * ng: fix asynchronous refreshable getter scheduling in the runner
-* generic_adder: allow `None` as valid input via `add`
-* grokker: allow fallback matches without named fields
-* filter: fix lucene range expressions not matching on mixed-type scenarios
-* filter: treat `inf`/`nan` as string values instead of numeric range boundaries
 * ng: prevent refresh callback failures from stopping subsequent refresh processing
 * ng: avoid duplicate getter refreshes while executing refresh callbacks
 * ng: share concurrent getter cache updates to avoid duplicate requests for the same target
@@ -91,14 +54,6 @@
 * ng: close GeoIP database readers during processor shutdown
 * ng: clean up shared getter update tasks after canceled waiters complete
 * ng: prevent running getter updates from recreating removed shared target state
-
-### Bugfix
-* chart: fix command handling
-* generic_adder: allow None as valid input via `add`
-* generic_resolver: avoid sharing mutable additions between rule configurations
-* ng: fix input timeout to also accept int parameters
-* ng: fix `http_input` `collect_meta` leading to shared dicts between events
-* ng: fix error output structure to stay consistent with non-ng
 
 ## 21.0.0
 ### Breaking
@@ -126,10 +81,15 @@
 * getter: remove noisy debug log
 * vuln: bump aiohttp to at least 3.14.3 in order to fix CVE-2026-69244
 * tests: add context handling framework for `test_cases`
+* tests: add mock_env decorator support for async functions
 * ci: enforce CHANGELOG.md is updated
 * ci: enforce PR TODOs are completed
 * ci: introduce umbrella job for enforcing merge status checks with GitHub
 * grokker: improve performance by stopping on first matching expression
+* metrics: cache labeled child metric collectors
+* metrics: avoid heavy time context manager and hardwire passthrough metric collector methods on wrapper class
+* metrics: remove `__add__` interface from metrics and use the passthrough instead
+* metrics: consolidate `measure_time` and `measure_time_async` in single decorator
 
 ### Bugfix
 * chart: fix command handling
