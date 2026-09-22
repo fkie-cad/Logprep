@@ -26,7 +26,7 @@ example_test_cases = [
             "other": {"message": "my message value"},
             "tags": ["_selective_extractor_missing_field_warning"],
         },
-        id="test_process_extracts_dotted_fields_complains_on_missing_fields",
+        id="test process extracts dotted fields and complains on missing fields",
     )
 ]
 
@@ -43,7 +43,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "test_message", "other": {"message": "my message value"}},
         {"message": "test_message", "other": {"message": "my message value"}},
-        id="test_process_extracts_dotted_fields_and_ignores_missing_fields",
+        id="test process extracts dotted fields and ignores missing fields",
     ),
 )
 

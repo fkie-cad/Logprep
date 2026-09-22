@@ -22,7 +22,7 @@ example_test_cases = [  # rule, event, expected
         },
         {"field": "123 login attempts."},
         {"field": "X login attempts."},
-        id="replace_the_beginning",
+        id="replace the beginning",
     ),
     pytest.param(
         {
@@ -34,7 +34,7 @@ example_test_cases = [  # rule, event, expected
         },
         {"field": "123 login attempts."},
         {"field": "123 login attempts.", "new_target": "X login attempts."},
-        id="replace_with_a_different_target_field",
+        id="replace with a different target field",
     ),
     pytest.param(
         {
@@ -45,7 +45,7 @@ example_test_cases = [  # rule, event, expected
         },
         {"some": {"field": "123 login attempts."}},
         {"some": {"field": "X login attempts."}},
-        id="replace_with_dotted_field",
+        id="replace with dotted field",
     ),
 ]
 
@@ -60,7 +60,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "123 login attempts."},
         {"field": "X login attempts."},
-        id="replace_with_colon_notation",
+        id="replace with colon notation",
     ),
     pytest.param(
         {
@@ -71,7 +71,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "123 login attempts."},
         {"field": "123 login attempts."},
-        id="replace_wildcard_with_colon_notation",
+        id="replace wildcard with colon notation",
     ),
     pytest.param(
         {
@@ -82,7 +82,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "123 login attempts."},
         {"field": "X login attempts."},
-        id="replace_specific_with_colon_notation_matches",
+        id="replace specific with colon notation matches",
     ),
     pytest.param(
         {
@@ -93,7 +93,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "456 login attempts by 789."},
         {"field": "456 login attempts by 789."},
-        id="replace_specific_with_colon_notation_at_beginning_does_not_match",
+        id="replace specific with colon notation at beginning does not match",
     ),
     pytest.param(
         {
@@ -104,7 +104,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "123 login attempts by 789."},
         {"field": "X login attempts by USER_ID."},
-        id="replace_specific_with_colon_notation_at_beginning_matches",
+        id="replace specific with colon notation at beginning matches",
     ),
     pytest.param(
         {
@@ -115,7 +115,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User 123 performed 456 login attempts."},
         {"field": "User 123 performed 456 login attempts."},
-        id="replace_specific_with_colon_notation_at_middle_does_not_match",
+        id="replace specific with colon notation at middle does not match",
     ),
     pytest.param(
         {
@@ -126,7 +126,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User 123 performed 456 login attempts."},
         {"field": "User USER_ID performed X login attempts."},
-        id="replace_specific_with_colon_notation_at_middle_matches",
+        id="replace specific with colon notation at middle matches",
     ),
     pytest.param(
         {
@@ -137,7 +137,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User 123 login count: 456"},
         {"field": "User 123 login count: 456"},
-        id="replace_specific_with_colon_notation_at_end_does_not_match",
+        id="replace specific with colon notation at end does not match",
     ),
     pytest.param(
         {
@@ -148,7 +148,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User 123 login count: 456"},
         {"field": "User USER_ID login count: X"},
-        id="replace_specific_with_colon_notation_at_end_matches",
+        id="replace specific with colon notation at end matches",
     ),
     pytest.param(
         {
@@ -159,7 +159,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "123 login attempts within 456 minutes."},
         {"field": "X login attempts within Y minutes."},
-        id="replace_specific_with_colon_notation_matches_combined_without_colon_notation",
+        id="replace specific with colon notation matches combined without colon notation",
     ),
     pytest.param(
         {
@@ -170,7 +170,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "/some/path/foo/_123/bar"},
         {"field": "/some/path/foo/ID/bar"},
-        id="replace_specific_with_colon_notation_matches_combined_without_colon_notation",
+        id="replace specific with colon notation matches combined without colon notation",
     ),
     pytest.param(
         {
@@ -181,7 +181,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "/some/path/foo/_123/bar"},
         {"field": "/some/path/foo/ID/bar"},
-        id="replace_specific_with_colon_notation_starting_with_wildcard",
+        id="replace specific with colon notation starting with wildcard",
     ),
     pytest.param(
         {
@@ -192,7 +192,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "/some/path/_123"},
         {"field": "/some/path/ID"},
-        id="replace_specific_with_colon_notation_without_wildcard",
+        id="replace specific with colon notation without wildcard",
     ),
     pytest.param(
         {
@@ -203,7 +203,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "Attempted to login 123 times."},
         {"field": "Attempted to login X times."},
-        id="replace_the_middle",
+        id="replace the middle",
     ),
     pytest.param(
         {
@@ -214,7 +214,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "Delete user 123"},
         {"field": "Delete user USER_ID"},
-        id="replace_the_end",
+        id="replace the end",
     ),
     pytest.param(
         {
@@ -225,7 +225,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User 123 tried to call /users/456/delete"},
         {"field": "A user tried to call /users/USER_ID/delete"},
-        id="replace_beginning_and_the_middle",
+        id="replace beginning and the middle",
     ),
     pytest.param(
         {
@@ -236,7 +236,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User 123 tried 456 times to log in."},
         {"field": "User USER_ID tried ATTEMPTS times to log in."},
-        id="replace_twice_in_middle",
+        id="replace twice in middle",
     ),
     pytest.param(
         {
@@ -247,7 +247,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "Attempted to login 123 times to 1.2.3.4"},
         {"field": "Attempted to login ATTEMPTS times to IP"},
-        id="replace_the_middle_and_the_end",
+        id="replace the middle and the end",
     ),
     pytest.param(
         {
@@ -258,7 +258,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User 123 tried to login 456 to 1.2.3.4"},
         {"field": "User USER_ID tried to login ATTEMPTS to IP"},
-        id="replace_three_times",
+        id="replace three times",
     ),
     pytest.param(
         {
@@ -269,7 +269,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "123 login attempts by user 456."},
         {"field": "login attempts."},
-        id="replace_with_empty_string",
+        id="replace with empty string",
     ),
     pytest.param(
         {
@@ -280,7 +280,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "Connected to 1.2.3.4."},
         {"field": "Connected to IP."},
-        id="don't_replace_greedily_if_part_of_variable_string_is_contained_in_unchanging_part",
+        id="don't replace greedily if part of variable string is contained in unchanging part",
     ),
     pytest.param(
         {
@@ -291,7 +291,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "Disconnected from 1.2.3.4. Connected to 1.2.3.4."},
         {"field": "Disconnected from IP. Connected to IP."},
-        id="twice_don't_replace_greedily_if_part_of_variable_string_is_contained_in_unchanging_part",
+        id="twice don't replace greedily if part of variable string is contained in unchanging part",
     ),
     pytest.param(
         {
@@ -302,7 +302,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "Disconnected from 1.2.3.4. Connected to 1.2.3.4."},
         {"field": "Disconnected from IP. Connected to 1.2.3.4."},
-        id="replace_wildcard_greedily",
+        id="replace wildcard greedily",
     ),
     pytest.param(
         {
@@ -316,7 +316,7 @@ test_cases = normalize_test_cases(
         },
         {"field_a": "do something!", "field_b": "do also something!"},
         {"field_a": "do replace this!", "field_b": "do also replace this!"},
-        id="replace_multiple_fields",
+        id="replace multiple fields",
     ),
     pytest.param(
         {
@@ -327,7 +327,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
-        id="replace_by_matching_with_wildcard",
+        id="replace by matching with wildcard",
     ),
     pytest.param(
         {
@@ -338,7 +338,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User has logged in."},
         {"field": "User has logged in."},
-        id="replace_by_matching_only_with_wildcard_does_not_change_anything",
+        id="replace by matching only with wildcard does not change anything",
     ),
     pytest.param(
         {
@@ -349,7 +349,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
-        id="replace_by_matching_with_wildcard_at_the_end",
+        id="replace by matching with wildcard at the end",
     ),
     pytest.param(
         {
@@ -360,7 +360,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
-        id="replace_by_matching_with_wildcard_at_the_beginning",
+        id="replace by matching with wildcard at the beginning",
     ),
     pytest.param(
         {
@@ -371,7 +371,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
-        id="replace_by_matching_with_wildcard_in_the_middle_before_other_replacement",
+        id="replace by matching with wildcard in the middle before other replacement",
     ),
     pytest.param(
         {
@@ -382,7 +382,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged in."},
-        id="replace_by_matching_with_multiple_wildcards",
+        id="replace by matching with multiple wildcards",
     ),
     pytest.param(
         {
@@ -393,7 +393,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged *."},
-        id="replace_with_star_by_escaping_single_wildcard",
+        id="replace with star by escaping single wildcard",
     ),
     pytest.param(
         {
@@ -404,7 +404,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has\\*"},
-        id="replace_with_backslash_and_star_by_escaping_single_wildcard",
+        id="replace with backslash and star by escaping single wildcard",
     ),
     pytest.param(
         {
@@ -415,7 +415,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged \\\\*."},
-        id="replace_with_multiple_backslashes_and_star_by_escaping_single_wildcard",
+        id="replace with multiple backslashes and star by escaping single wildcard",
     ),
     pytest.param(
         {
@@ -426,7 +426,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "User with ID 123 has logged in."},
         {"field": "User with ID USER_ID has logged **."},
-        id="replacement_of_multiple_stars_does_not_require_escaping_wildcard",
+        id="replacement of multiple stars does not require escaping wildcard",
     ),
     pytest.param(
         {
@@ -437,7 +437,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "Call /some_path/user/123/delete"},
         {"field": "Call /some_path/user/123/delete"},
-        id="replacement_without_matching_end_fails",
+        id="replacement without matching end fails",
     ),
     pytest.param(
         {
@@ -448,7 +448,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "logins: 123"},
         {"field": "logins: 123"},
-        id="replacement_without_matching_beginning_fails",
+        id="replacement without matching beginning fails",
     ),
     pytest.param(
         {
@@ -459,7 +459,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "succeeded to login 123 times during the last minute"},
         {"field": "succeeded to login 123 times during the last minute"},
-        id="replacement_without_matching_beginning_and_end_fails",
+        id="replacement without matching beginning and end fails",
     ),
     pytest.param(
         {
@@ -470,7 +470,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "123 deleted by 456"},
         {"field": "123 deleted by 456"},
-        id="replacement_without_matching_middle_fails",
+        id="replacement without matching middle fails",
     ),
     pytest.param(
         {
@@ -481,7 +481,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "something not}!"},
         {"field": "%{replace this not}!"},
-        id="nested_replacement_ignores_second_start_token_and_terminates_with_first_end_token",
+        id="nested replacement ignores second start token and terminates with first end token",
     ),
     pytest.param(
         {
@@ -492,7 +492,7 @@ test_cases = normalize_test_cases(
         },
         {"field": "do %{something not}!"},
         {"field": "do %{replace this}!"},
-        id="nested_replacement_ignores_second_start_token_and_terminates_with_first_end_token",
+        id="nested replacement ignores second start token and terminates with first end token",
     ),
 )
 

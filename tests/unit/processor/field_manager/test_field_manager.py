@@ -20,7 +20,7 @@ example_test_cases = [
         },
         {"message": "This is a message"},
         {"message": "This is a message", "new_field": "This is a message"},
-        id="copies_single_field_to_non_existing_target_field",
+        id="copies single field to non existing target field",
     ),
     pytest.param(
         {
@@ -33,7 +33,7 @@ example_test_cases = [
         },
         {"message": "This is a message", "new_field": "existing value"},
         {"message": "This is a message", "new_field": "This is a message"},
-        id="copies_single_field_to_existing_target_field",
+        id="copies single field to existing target field",
     ),
     pytest.param(
         {
@@ -52,7 +52,7 @@ example_test_cases = [
             "new_field": "i exist",
         },
         {"new_field": ["i exist", "value1", "value2", "value3"]},
-        id="moves_multiple_fields_and_writes_them_to_a_existing_target_field_as_list",
+        id="moves multiple fields and writes them to a existing target field as list",
     ),
 ]
 
@@ -70,7 +70,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "This is a message"},
         {"new_field": "This is a message"},
-        id="moves_single_field_to_non_existing_target_field",
+        id="moves single field to non existing target field",
     ),
     pytest.param(
         {
@@ -84,7 +84,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "This is a message", "existing": "existing"},
         {"existing": "This is a message"},
-        id="moves_single_field_to_existing_target_field",
+        id="moves single field to existing target field",
     ),
     pytest.param(
         {
@@ -98,7 +98,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "This is a message", "new_field": "existing content"},
         {"new_field": "This is a message"},
-        id="moves_single_field_to_existing_target_field",
+        id="moves single field to existing target field",
     ),
     pytest.param(
         {
@@ -112,7 +112,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "This is a message"},
         {"new_field": ["This is a message"]},
-        id="moves_field_and_writes_as_list_to_target_field",
+        id="moves field and writes as list to target field",
     ),
     pytest.param(
         {
@@ -130,7 +130,7 @@ test_cases = normalize_test_cases(
             "field3": "value3",
         },
         {"new_field": ["value1", "value2", "value3"]},
-        id="moves_multiple_fields_and_writes_them_as_list_to_non_existing_target_field",
+        id="moves multiple fields and writes them as list to non existing target field",
     ),
     pytest.param(
         {
@@ -150,7 +150,7 @@ test_cases = normalize_test_cases(
             "new_field": "i exist",
         },
         {"new_field": ["value1", "value2", "value3"]},
-        id="moves_multiple_fields_and_writes_them_as_list_to_existing_target_field",
+        id="moves multiple fields and writes them as list to existing target field",
     ),
     pytest.param(
         {
@@ -169,7 +169,7 @@ test_cases = normalize_test_cases(
             "new_field": "i exist",
         },
         {"new_field": ["i exist", "value1", "value2", "value3"]},
-        id="moves_multiple_fields_and_replaces_existing_target_field_with_list_including_the_existing_value",
+        id="moves multiple fields and replaces existing target field with list including the existing value",
     ),
     pytest.param(
         {
@@ -188,7 +188,7 @@ test_cases = normalize_test_cases(
             "new_field": ["i exist"],
         },
         {"new_field": ["i exist", "value1", "value2", "value3"]},
-        id="moves_multiple_fields_and_writes_them_to_a_existing_list",
+        id="moves multiple fields and writes them to a existing list",
     ),
     pytest.param(
         {
@@ -207,7 +207,7 @@ test_cases = normalize_test_cases(
             "new_field": ["i exist"],
         },
         {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
-        id="moves_multiple_fields_and_merges_to_target_list",
+        id="moves multiple fields and merges to target list",
     ),
     pytest.param(
         {
@@ -226,7 +226,7 @@ test_cases = normalize_test_cases(
             "new_field": ["i exist"],
         },
         {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
-        id="moves_multiple_fields_and_merges_to_target_list_with_different_source_types",
+        id="moves multiple fields and merges to target list with different source types",
     ),
     pytest.param(
         {
@@ -245,7 +245,7 @@ test_cases = normalize_test_cases(
             "new_field": ["i exist"],
         },
         {"new_field": ["i exist", "value1", "value2", "value3", "value5", "value4", "value6"]},
-        id="moves_multiple_fields_and_merges_to_target_list_with_different_source_types_and_filters_duplicates",
+        id="moves multiple fields and merges to target list with different source types and filters duplicates",
     ),
     pytest.param(
         {
@@ -265,7 +265,7 @@ test_cases = normalize_test_cases(
             "new_field": ["i exist"],
         },
         {"new_field": ["value1", "value2", "value3", "value5", "value4", "value6"]},
-        id="moves_multiple_fields_and_merges_to_target_list_with_different_source_types_and_filters_duplicates_and_overwrites_target",
+        id="moves multiple fields and merges to target list with different source types and filters duplicates and overwrites target",
     ),
     pytest.param(
         {
@@ -313,7 +313,7 @@ test_cases = normalize_test_cases(
                 ]
             },
         },
-        id="real_world_example_from_documentation",
+        id="real world example from documentation",
     ),
     pytest.param(
         {
@@ -324,7 +324,7 @@ test_cases = normalize_test_cases(
         },
         {"field": {"one": 1, "two": 2, "three": 3}},
         {"field": {"one": 1, "two": 2, "three": 3}, "one": 1, "two": 2, "three": 3},
-        id="copies_multiple_fields_to_multiple_target_fields",
+        id="copies multiple fields to multiple target fields",
     ),
     pytest.param(
         {
@@ -336,7 +336,7 @@ test_cases = normalize_test_cases(
         },
         {"field": {"one": 1, "two": 2, "three": 3}, "three": "exists already"},
         {"field": {"one": 1, "two": 2, "three": 3}, "one": 1, "two": 2, "three": 3},
-        id="copies_multiple_fields_to_multiple_target_fields,_while_overwriting_existing_fields",
+        id="copies multiple fields to multiple target fields, while overwriting existing fields",
     ),
     pytest.param(
         {
@@ -353,7 +353,7 @@ test_cases = normalize_test_cases(
             "two": 2,
             "three": ["exists already", 3],
         },
-        id="copies_multiple_fields_to_multiple_target_fields,_while_one_list_will_be_extended",
+        id="copies multiple fields to multiple target fields, while one list will be extended",
     ),
     pytest.param(
         {
@@ -374,7 +374,7 @@ test_cases = normalize_test_cases(
             "two": 2,
             "three": ["exists already", 3, 3],
         },
-        id="copies_multiple_fields_to_multiple_target_fields,_while_one_list_will_be_extended_with_existing_list",
+        id="copies multiple fields to multiple target fields, while one list will be extended with existing list",
     ),
     pytest.param(
         {
@@ -386,7 +386,7 @@ test_cases = normalize_test_cases(
         },
         {"field": {"one": 1, "two": 2, "three": [3, 3]}, "three": ["exists already"]},
         {"field": {"one": 1, "two": 2, "three": [3, 3]}, "one": 1, "two": 2, "three": [3, 3]},
-        id="copies_multiple_fields_to_multiple_target_fields,_while_one_target_list_will_be_overwritten_with_existing_list",
+        id="copies multiple fields to multiple target fields, while one target list will be overwritten with existing list",
     ),
     pytest.param(
         {
@@ -404,7 +404,7 @@ test_cases = normalize_test_cases(
             "three": 3,
             "tags": ["_field_manager_missing_field_warning"],
         },
-        id="copies_multiple_fields_to_multiple_target_fields,_while_one_source_field_is_missing",
+        id="copies multiple fields to multiple target fields, while one source field is missing",
     ),
     pytest.param(
         {
@@ -416,7 +416,7 @@ test_cases = normalize_test_cases(
         },
         {"field": {"one": 1, "two": 2, "three": 3}},
         {"one": 1, "two": 2, "three": 3},
-        id="moves_multiple_fields_to_multiple_target_fields",
+        id="moves multiple fields to multiple target fields",
     ),
     pytest.param(
         {
@@ -437,7 +437,7 @@ test_cases = normalize_test_cases(
             "three": 3,
             "merged": ["a", "b"],
         },
-        id="Combine_fields_to_list_and_copy_fields_at_the_same_time",
+        id="Combine fields to list and copy fields at the same time",
     ),
     pytest.param(
         {
@@ -455,7 +455,7 @@ test_cases = normalize_test_cases(
             "field": {"a": "first", "b": "second"},
             "target_field": "first",
         },
-        id="Ignore_missing_fields:_No_warning_and_no_failure_tag_if_source_field_is_missing",
+        id="Ignore missing fields: No warning and no failure tag if source field is missing",
     ),
     pytest.param(
         {
@@ -471,7 +471,7 @@ test_cases = normalize_test_cases(
         },
         {"existing_list": ["hello", "world"], "foo": "bar", "test": "value"},
         {"existing_list": ["hello", "world", "bar", "value"], "foo": "bar", "test": "value"},
-        id="merge_with_target_preserves_list_ordering",
+        id="merge with target preserves list ordering",
     ),
     pytest.param(
         {
@@ -484,7 +484,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "Value B", "new_field": "Value A"},
         {"message": "Value B", "new_field": ["Value A", "Value B"]},
-        id="Convert_existing_target_to_list",
+        id="Convert existing target to list",
     ),
     pytest.param(
         {
@@ -507,7 +507,7 @@ test_cases = normalize_test_cases(
             "field3": "Value D",
             "new_field": ["Value A", "Value B", "Value C", "Value D"],
         },
-        id="Convert_existing_target_to_list_with_multiple_source_fields",
+        id="Convert existing target to list with multiple source fields",
     ),
     pytest.param(
         {
@@ -520,7 +520,7 @@ test_cases = normalize_test_cases(
         },
         {"source": {"source1": "value"}, "target": {"target1": "value"}},
         {"source": {"source1": "value"}, "target": {"source1": "value", "target1": "value"}},
-        id="Merge_source_dict_into_existing_target_dict",
+        id="Merge source dict into existing target dict",
     ),
     pytest.param(
         {
@@ -546,7 +546,7 @@ test_cases = normalize_test_cases(
                 "target1": "value",
             },
         },
-        id="Merge_multiple_source_dicts_into_existing_target_dict",
+        id="Merge multiple source dicts into existing target dict",
     ),
     pytest.param(
         {
@@ -559,7 +559,7 @@ test_cases = normalize_test_cases(
         },
         {"host": "example.com"},
         {"host": {"name": "example.com"}},
-        id="overlapping_source_with_target_single_processing",
+        id="overlapping source with target single processing",
     ),
     pytest.param(
         {
@@ -573,7 +573,7 @@ test_cases = normalize_test_cases(
         },
         {"host": "example.com"},
         {"host": {"name": "example.com"}},
-        id="overlapping_source_with_target_mapping_processing",
+        id="overlapping source with target mapping processing",
     ),
     pytest.param(
         {
@@ -616,7 +616,7 @@ test_cases = normalize_test_cases(
                 }
             },
         },
-        id="move_tree",
+        id="move tree",
     ),
 )
 
@@ -632,7 +632,7 @@ failure_test_cases = [  # rule, event, expected, error
         {"message": "This is a message"},
         {"message": "This is a message", "tags": ["_field_manager_missing_field_warning"]},
         ".*ProcessingWarning.*",
-        id="single_source_field_not_found",
+        id="single source field not found",
     ),
     pytest.param(
         {
@@ -648,7 +648,7 @@ failure_test_cases = [  # rule, event, expected, error
             "tags": ["_field_manager_missing_field_warning", "preexisting"],
         },
         ".*ProcessingWarning.*",
-        id="single_source_field_not_found_and_preexisting_tags",
+        id="single source field not found and preexisting tags",
     ),
     pytest.param(
         {
@@ -667,7 +667,7 @@ failure_test_cases = [  # rule, event, expected, error
             "tags": ["_field_manager_missing_field_warning", "preexisting"],
         },
         ".*ProcessingWarning.*",
-        id="single_source_field_not_found_and_preexisting_tags_with_deduplication",
+        id="single source field not found and preexisting tags with deduplication",
     ),
     pytest.param(
         {
@@ -685,7 +685,7 @@ failure_test_cases = [  # rule, event, expected, error
             "tags": ["_field_manager_failure"],
         },
         ".*FieldExistsWarning.*",
-        id="copies_multiple_fields_to_multiple_target_fields,_while_one_target_exists_already",
+        id="copies multiple fields to multiple target fields, while one target exists already",
     ),
     pytest.param(
         {
@@ -697,7 +697,7 @@ failure_test_cases = [  # rule, event, expected, error
         {"no-mapped-field": "exists"},
         {"no-mapped-field": "exists", "tags": ["_field_manager_missing_field_warning"]},
         ".*ProcessingWarning.*",
-        id="tries_to_move_multiple_fields_to_multiple_target_fields_but_none_exists",
+        id="tries to move multiple fields to multiple target fields but none exists",
     ),
 ]
 
