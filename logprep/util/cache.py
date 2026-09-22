@@ -24,8 +24,8 @@ class Cache(OrderedDict):
 
     def __init__(
         self,
-        max_items=1000000,
-        max_timedelta=timedelta(days=90).total_seconds(),
+        max_items: int = 1000000,
+        max_timedelta: float = timedelta(days=90).total_seconds(),
     ):
         self._max_items = max_items
         self._max_timedelta = max_timedelta
