@@ -16,7 +16,7 @@ example_test_cases = [
         },
         {"remove_duplicate_str": ["foo", "bar", "foo"]},
         {"remove_duplicate_str": ["foo", "bar"]},
-        id="remove_duplicate_str",
+        id="remove duplicate str",
     ),
     pytest.param(
         {
@@ -25,7 +25,7 @@ example_test_cases = [
         },
         {"remove_duplicate_int": [1, 2, 1, 2, 2, 1]},
         {"remove_duplicate_int": [1, 2]},
-        id="remove_duplicate_int",
+        id="remove duplicate int",
     ),
     pytest.param(
         {
@@ -34,7 +34,7 @@ example_test_cases = [
         },
         {"remove_duplicate_dict": [{"a": {"b": "c"}}, {"a": {"b": "c"}}, {"foo": "bar"}]},
         {"remove_duplicate_dict": [{"a": {"b": "c"}}, {"foo": "bar"}]},
-        id="remove_duplicate_dict",
+        id="remove duplicate dict",
     ),
     pytest.param(
         {
@@ -43,7 +43,7 @@ example_test_cases = [
         },
         {"fields_1": ["foo", "bar", "foo"], "fields_2": ["baz", "baz"]},
         {"fields_1": ["foo", "bar"], "fields_2": ["baz"]},
-        id="remove_from_multiple_fields",
+        id="remove from multiple fields",
     ),
 ]
 test_cases = normalize_test_cases(
@@ -55,7 +55,7 @@ test_cases = normalize_test_cases(
         },
         {"remove_duplicates": ["foo", "bar", "foo"], "keep": ["foo", "foo"]},
         {"remove_duplicates": ["foo", "bar", "foo"], "keep": ["foo", "foo"]},
-        id="do_nothing",
+        id="do nothing",
     ),
     pytest.param(
         {
@@ -64,7 +64,7 @@ test_cases = normalize_test_cases(
         },
         {"no_fields": ["foo", "bar", "foo"]},
         {"no_fields": ["foo", "bar", "foo"]},
-        id="rule_no_fields",
+        id="rule no fields",
     ),
     pytest.param(
         {
@@ -73,7 +73,7 @@ test_cases = normalize_test_cases(
         },
         {"fields": ["foo", "bar", "foo"]},
         {"fields": ["foo", "bar", "foo"]},
-        id="no_matching_fields",
+        id="no matching fields",
     ),
     pytest.param(
         {
@@ -82,7 +82,7 @@ test_cases = normalize_test_cases(
         },
         {"no_list": "aa"},
         {"no_list": "aa"},
-        id="no_list",
+        id="no list",
     ),
 )
 

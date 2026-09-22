@@ -25,7 +25,7 @@ example_test_cases = [
             "message": '{"to_decode": "decode value"}',
             "new_field": {"to_decode": "decode value"},
         },
-        id="decodes_simple_json_to_target_field",
+        id="decodes simple json to target field",
     ),
     pytest.param(
         {
@@ -40,7 +40,7 @@ example_test_cases = [
             "message": '{"to.decode": "decode value"}',
             "new_field": {"to.decode": "decode value"},
         },
-        id="decodes_simple_json_to_target_field_dotted",
+        id="decodes simple json to target field dotted",
     ),
     pytest.param(
         {
@@ -53,7 +53,7 @@ example_test_cases = [
         },
         {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
         {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "new_field": "this,is,the,message"},
-        id="decodes_simple_base64",
+        id="decodes simple base64",
     ),
 ]
 
@@ -79,7 +79,7 @@ test_cases = normalize_test_cases(
             "json_field": {"json_decode": "json_value"},
             "escaped_field": {"to_decode": "decode value"},
         },
-        id="decodes_json_with_mapping_to_corresponding_target_fields",
+        id="decodes json with mapping to corresponding target fields",
     ),
     pytest.param(
         {
@@ -101,7 +101,7 @@ test_cases = normalize_test_cases(
             "json.field": {"json.decode": "json.value"},
             "escaped.field": {"to.decode": "decode value"},
         },
-        id="decodes_json_with_mapping_to_corresponding_target_fields_dotted",
+        id="decodes json with mapping to corresponding target fields - dotted",
     ),
     pytest.param(
         {
@@ -123,7 +123,7 @@ test_cases = normalize_test_cases(
             "json.field\\": {"json.decode": "json.value"},
             "escaped.field\\": {"to.decode": "decode value"},
         },
-        id="decodes_json_with_mapping_to_corresponding_target_fields_dotted_and_backslashes",
+        id="decodes json with mapping to corresponding target fields - dotted and backslashes",
     ),
     pytest.param(
         {
@@ -137,7 +137,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
         {"new_field": "this,is,the,message"},
-        id="decodes_simple_base64_and_removes_source_field",
+        id="decodes simple base64 and removes source field",
     ),
     pytest.param(
         {
@@ -153,7 +153,7 @@ test_cases = normalize_test_cases(
             "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
         },
         {"new_field1": "this,is,the,message", "new_field2": "this,is,the,message"},
-        id="decodes_simple_base64_and_removes_source_fields_with_mapping",
+        id="decodes simple base64 and removes source fields with mapping",
     ),
     pytest.param(
         {
@@ -169,7 +169,7 @@ test_cases = normalize_test_cases(
             "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
         },
         {"message1": "this,is,the,message", "message2": "this,is,the,message"},
-        id="decodes_simple_base64_and_overwrites_source_fields",
+        id="decodes simple base64 and overwrites source fields",
     ),
     pytest.param(
         {
@@ -630,7 +630,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_failure"]},
-        id="not_base64_source_string",
+        id="not base64 source string",
     ),
     pytest.param(
         {
@@ -642,7 +642,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_failure"]},
-        id="not_base64_source_string_with_mapping",
+        id="not base64 source string with mapping",
     ),
     pytest.param(
         {
@@ -654,7 +654,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
-        id="source_field_not_found_with_mapping",
+        id="source field not found with mapping",
     ),
     pytest.param(
         {
@@ -667,7 +667,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
-        id="source_field_not_found_with_single_source_field",
+        id="source field not found with single source field",
     ),
     pytest.param(
         {
@@ -679,7 +679,7 @@ failure_test_cases = [
         },
         {"message": "not json"},
         {"message": "not json", "tags": ["_decoder_failure"]},
-        id="json_decode_error_with_mapping",
+        id="json decode error with mapping",
     ),
     pytest.param(
         {
@@ -692,7 +692,7 @@ failure_test_cases = [
         },
         {"message": "not json"},
         {"message": "not json", "tags": ["_decoder_failure"]},
-        id="json_decode_error_with_single_field",
+        id="json decode error with single field",
     ),
     pytest.param(
         {
@@ -745,7 +745,7 @@ failure_test_cases = [
             "message": "nocri",
             "tags": ["_decoder_failure"],
         },
-        id="not cri ",
+        id="not cri",
     ),
     pytest.param(
         {
