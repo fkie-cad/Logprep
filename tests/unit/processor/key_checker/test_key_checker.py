@@ -26,7 +26,7 @@ example_test_cases = [
             "_index": "value",
             "missing_fields": ["key2"],
         },
-        id="writes_missing_root-key_in_the_missing_fields_Field",
+        id="writes missing root-key in the missing_fields Field",
     ),
     pytest.param(
         {
@@ -44,7 +44,7 @@ example_test_cases = [
             },
             "missing_fields": ["testkey.key2"],
         },
-        id="writes_missing_sub-key_in_the_missing_fields_Field",
+        id="writes missing sub-key in the missing_fields Field",
     ),
     pytest.param(
         {
@@ -66,7 +66,7 @@ example_test_cases = [
                 "_index": "value",
             }
         },
-        id="detects_multiple_keys",
+        id="detects multiple keys",
     ),
     pytest.param(
         {
@@ -93,7 +93,7 @@ example_test_cases = [
             "randomkey2": "randomvalue2",
             "missing_fields": ["not.existing.key"],
         },
-        id="prevents_duplicates_in_output_field_by_setting_overwrite_target_to_True",
+        id="prevents duplicates in output field by setting overwrite_target to True",
     ),
 ]
 
@@ -120,7 +120,7 @@ test_cases = normalize_test_cases(
             },
             "missing_fields": ["key4"],
         },
-        id="writes_the_missing_key_from_a_list_with_one_missing_and_3_existing_keys_in_the_missing_fields_Field",
+        id="writes the missing key from a list with one missing and 3 existing keys in the missing_fields Field",
     ),
     pytest.param(
         {
@@ -142,7 +142,7 @@ test_cases = normalize_test_cases(
                 "_index": "value",
             }
         },
-        id="detects_root-key1_in_the_event",
+        id="detects root-key1 in the event",
     ),
     pytest.param(
         {
@@ -164,7 +164,7 @@ test_cases = normalize_test_cases(
                 "_index": "value",
             },
         },
-        id="detects_sub-key2_in_the_event",
+        id="detects sub-key2 in the event",
     ),
     pytest.param(
         {
@@ -189,7 +189,7 @@ test_cases = normalize_test_cases(
             "randomkey2": "randomvalue2",
             "missing_fields": ["key1"],
         },
-        id="detect_key_duplication_1",
+        id="detect key duplication 1",
     ),
     pytest.param(
         {
@@ -213,7 +213,7 @@ test_cases = normalize_test_cases(
             },
             "randomkey2": "randomvalue2",
         },
-        id="detect_key_duplication_2",
+        id="detect key duplication 2",
     ),
     pytest.param(
         {
@@ -240,7 +240,7 @@ test_cases = normalize_test_cases(
             "randomkey2": "randomvalue2",
             "missing_fields": ["i.exists.already", "not.existing.key"],
         },
-        id="extends_existing_output_field_list_by_setting_overwrite_target",
+        id="extends existing output field list by setting overwrite_target",
     ),
 )
 
