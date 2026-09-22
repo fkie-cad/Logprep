@@ -20,7 +20,7 @@ example_test_cases = [
         },
         {"message": "this is the message"},
         ["this", "is", "the", "message"],
-        id="splits_without_delimiter_on_whitespace",
+        id="splits without delimiter on whitespace",
     ),
     pytest.param(
         {
@@ -34,7 +34,7 @@ example_test_cases = [
         },
         {"message": ",,this,,"},
         ["", "", "this", "", ""],
-        id="splits_one_item_with_multiple_delimiter_and_no_drop_empty",
+        id="splits one item with multiple delimiter and no drop empty",
     ),
     pytest.param(
         {
@@ -48,7 +48,7 @@ example_test_cases = [
         },
         {"message": " , ,this, ,"},
         ["this"],
-        id="splits_one_item_with_multiple_delimiter_and_empty_fields",
+        id="splits one item with multiple delimiter and empty fields",
     ),
 ]
 
@@ -66,7 +66,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "this, is, the, message"},
         ["this", "is", "the", "message"],
-        id="splits_with_delimiter",
+        id="splits with delimiter",
     ),
     pytest.param(
         {
@@ -80,7 +80,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "this,"},
         ["this"],
-        id="splits_one_item_with_delimiter",
+        id="splits one item with delimiter",
     ),
     pytest.param(
         {
@@ -94,7 +94,7 @@ test_cases = normalize_test_cases(
         },
         {"message": ",,this,,"},
         ["this"],
-        id="splits_one_item_with_multiple_delimiter_and_drop_empty",
+        id="splits one item with multiple delimiter and drop empty",
     ),
     pytest.param(
         {
@@ -108,7 +108,7 @@ test_cases = normalize_test_cases(
         },
         {"message": ",, this , , "},
         [" this "],
-        id="splits_one_item_with_multiple_delimiter_and_whitespace",
+        id="splits one item with multiple delimiter and whitespace",
     ),
     pytest.param(
         {
@@ -122,7 +122,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "\n,,this,\t, "},
         ["this"],
-        id="splits_one_item_with_multiple_delimiter_and_newline",
+        id="splits one item with multiple delimiter and newline",
     ),
     pytest.param(
         {
@@ -136,7 +136,7 @@ test_cases = normalize_test_cases(
         },
         {"message": ",, this, , "},
         [" this"],
-        id="splits_one_item_with_multiple_delimiter_and_whitespaces_only_in_front",
+        id="splits one item with multiple delimiter and whitespaces only in front",
     ),
     pytest.param(
         {
@@ -150,7 +150,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "hello , world,this, is a very complex,\n , and even multiline, text,,, "},
         ["hello ", " world", "this", " is a very complex", " and even multiline", " text"],
-        id="splits_with_multiple_delimiters_and_whitespace_only_in_front",
+        id="splits with multiple delimiters and whitespace only in front",
     ),
 )
 
@@ -163,7 +163,7 @@ failure_test_cases = normalize_test_cases(
         {"message": ["this", "is", "the", "message"]},
         {"message": ["this", "is", "the", "message"], "tags": ["_string_splitter_failure"]},
         ".*ProcessingWarning.*",
-        id="splits_without_delimiter_on_whitespace_with_no_string",
+        id="splits without delimiter on whitespace with no string",
     ),
     pytest.param(
         {
@@ -173,7 +173,7 @@ failure_test_cases = normalize_test_cases(
         {"message": "this is the message"},
         {"message": "this is the message", "tags": ["_string_splitter_failure"]},
         ".*FieldExistsWarning.*",
-        id="splits_without_delimiter_on_whitespace_with_existing_field",
+        id="splits without delimiter on whitespace with existing field",
     ),
 )
 
