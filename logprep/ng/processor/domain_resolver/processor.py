@@ -115,10 +115,6 @@ class DomainResolver(Processor):
 
         .. security-best-practice::
            :title: |PROCESSOR| - Max Cached Domains
-
-           Ensure to set this to a reasonable value to avoid excessive memory usage
-           and OOM situations by the domain resolver cache.
-
         """
 
         timeout_block_time: float = field(default=5.0, validator=validators.instance_of(float))
@@ -230,6 +226,7 @@ class DomainResolver(Processor):
     async def setup(self):
         await super().setup()
         self._dns_resolver = Resolver()
+        # attributes are meant to be overwritten after init
         self._dns_resolver.timeout = self.config.timeout
         self._dns_resolver.lifetime = self.config.lifetime
 
