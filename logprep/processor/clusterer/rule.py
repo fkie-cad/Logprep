@@ -101,6 +101,7 @@ In the following rule example the word `baz` is surrounded by extraction tags.
 """
 
 import re
+import typing
 from typing import Pattern
 
 from attrs import define, field, validators
@@ -141,13 +142,13 @@ class ClustererRule(FieldManagerRule):
         * Setting :code:`clusterer.repl: '<+>\1</+>'` would surround anything within a capture group with `<+></+>`.
         """
 
-    # pylint: disable=C0111
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
+
     @property
     def pattern(self) -> Pattern:
-        return self._config.pattern
+        return typing.cast(ClustererRule.Config, self._config).pattern
 
     @property
     def repl(self) -> str:
-        return self._config.repl
-
-    # pylint: enable=C0111
+        return typing.cast(ClustererRule.Config, self._config).repl

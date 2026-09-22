@@ -25,8 +25,17 @@ is replaced for all log messages that have :code:`winlog.provider_name` and
    :noindex:
 """
 
+from attrs import define, field
+
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
 class TemplateReplacerRule(FieldManagerRule):
     """Check if documents match a filter."""
+
+    @define(kw_only=True)
+    class Config(FieldManagerRule.Config):
+        """Config for TemplateReplacerRule"""
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""

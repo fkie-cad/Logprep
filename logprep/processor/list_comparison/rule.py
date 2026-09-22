@@ -269,6 +269,9 @@ class ListComparisonRule(FieldManagerRule):
                     Reads the list from the ``"content"`` key of the JSON object.
         """
 
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
+
         def __attrs_post_init__(self) -> None:
             super().__attrs_post_init__()
             if self.list_file_paths and self.list_paths:
