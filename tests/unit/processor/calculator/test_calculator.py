@@ -92,6 +92,19 @@ test_cases = normalize_test_cases(
     ),
     pytest.param(
         {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${duration} * 10e5",
+                "target_field": "duration",
+                "overwrite_target": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": 10000.0},
+        id="Time conversion ms -> ns",
+    ),
+    pytest.param(
+        {
             "filter": "message",
             "calculator": {
                 "calc": "AND(${a} > 6, ${a} % 2)",
