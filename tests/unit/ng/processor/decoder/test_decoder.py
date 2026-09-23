@@ -1,6 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+
 import json
 from copy import deepcopy
 
@@ -27,20 +30,15 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
         "rules": ["tests/testdata/unit/decoder/rules"],
     }
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        test_cases,
-    )
-    async def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         result = await self.object.process(event)
         assert event.data == expected, f"{result.errors}"
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        failure_test_cases,
-    )
+    @pytest.mark.parametrize(["rule", "event", "expected"], failure_test_cases)
     async def test_testcases_failure_handling(self, rule, event, expected):
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
