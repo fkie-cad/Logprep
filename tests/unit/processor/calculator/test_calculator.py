@@ -7,9 +7,10 @@ from logprep.processor.calculator.ast.exceptions import (
     DivisionByZeroError,
     InvalidSyntaxError,
 )
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [
+example_test_cases = [
     pytest.param(
         {
             "filter": "message",
@@ -21,19 +22,6 @@ test_cases = [
         {"message": "This is a message", "field1": "1"},
         {"message": "This is a message", "field1": "1", "new_field": 2},
         id="Sums integers from single field",
-    ),
-    pytest.param(
-        {
-            "filter": "duration",
-            "calculator": {
-                "calc": "${duration} * 10e5",
-                "target_field": "duration",
-                "overwrite_target": True,
-            },
-        },
-        {"duration": "0.01"},
-        {"duration": 10000.0},
-        id="Time conversion ms -> ns",
     ),
     pytest.param(
         {
@@ -58,6 +46,23 @@ test_cases = [
         {"message": "This is a message", "a": 6, "b": 5, "c": 3},
         {"message": "This is a message", "a": 6, "b": 5, "c": 3, "b_is_in_range": True},
         id="Range check",
+    ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    pytest.param(
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${duration} * 10e5",
+                "target_field": "duration",
+                "overwrite_target": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": 10000.0},
+        id="Time conversion ms -> ns",
     ),
     pytest.param(
         {
@@ -400,7 +405,7 @@ test_cases = [
         {"message": "This is a message", "field1": "FF", "new_field": 255},
         id="convert hex to int with prefix",
     ),
-]
+)
 
 setup_failure_test_cases = [
     pytest.param(
@@ -449,7 +454,7 @@ setup_failure_test_cases = [
     ),
 ]
 
-runtime_failure_test_cases = [
+runtime_failure_test_cases = normalize_test_cases(
     pytest.param(
         {
             "filter": "field1 AND field2 AND field3",
@@ -551,7 +556,7 @@ runtime_failure_test_cases = [
         },  # "STREAM ioctl timeout" for MacOS/darwin
         id="raises timeout on runtime",
     ),
-]
+)
 
 
 class TestCalculator(BaseProcessorTestCase):
@@ -560,22 +565,26 @@ class TestCalculator(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/calculator/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         self.object.setup()
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("rule, event, expected", runtime_failure_test_cases)
-    def test_testcases_failure_handling_at_runtime(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], runtime_failure_test_cases)
+    def test_testcases_failure_handling_at_runtime(
+        self, rule, event, expected, context, provision_context
+    ):
+        provision_context(context)
         self._load_rule(rule)
         self.object.setup()
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert event == expected
 
-    @pytest.mark.parametrize("rule, error_type", setup_failure_test_cases)
+    @pytest.mark.parametrize(["rule", "error_type"], setup_failure_test_cases)
     def test_testcases_failure_handling_at_setup(self, rule, error_type):
         with pytest.raises(error_type):
             self._load_rule(rule)
