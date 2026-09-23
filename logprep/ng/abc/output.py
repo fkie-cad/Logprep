@@ -21,7 +21,7 @@ class OutputError(LogprepException):
         cls, connector: "Output", error: Exception, message: str | None = None
     ) -> "OutputError":
         """Generate an `OutputException` from a low level error"""
-        connector.metrics.number_of_errors += 1
+        connector.metrics.number_of_errors.inc(1)
         if message is not None:
             return cls(f"{cls.__name__} in {connector.description}: {message}: {str(error)}")
         return cls(f"{cls.__name__} in {connector.description}: {str(error)}")
@@ -29,7 +29,7 @@ class OutputError(LogprepException):
     @classmethod
     def from_message(cls, connector: "Output", message: str) -> "OutputError":
         """Generate an `OutputException` from a message"""
-        connector.metrics.number_of_errors += 1
+        connector.metrics.number_of_errors.inc(1)
         return cls(f"{cls.__name__} in {connector.description}: {message}")
 
 
@@ -106,8 +106,8 @@ class Output(Connector):
                 )
 
         # modify metrics in batches
-        self.metrics.number_of_processed_events += sum(1 for e in events if e.stored)
-        self.metrics.number_of_errors += sum(1 for e in events if e.is_failed())
+        self.metrics.number_of_processed_events.inc(sum(1 for e in events if e.stored))
+        self.metrics.number_of_errors.inc(sum(1 for e in events if e.is_failed()))
 
     @staticmethod
     def _handle_error(event: OutputEvent, error: Exception) -> None:

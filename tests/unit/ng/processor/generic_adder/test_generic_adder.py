@@ -48,8 +48,9 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         "rules": ["tests/testdata/unit/generic_adder/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    async def test_generic_adder_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize("rule, event, expected, context", test_cases)
+    async def test_generic_adder_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         await self._load_rule(rule)
         await self.object.setup()
         log_event = LogEvent(event, original=b"", input_meta=InputMeta())

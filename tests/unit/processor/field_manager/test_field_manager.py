@@ -269,6 +269,42 @@ test_cases = normalize_test_cases(
     ),
     pytest.param(
         {
+            "filter": "field1 OR field2",
+            "field_manager": {
+                "source_fields": ["field1", "field2"],
+                "target_field": "new_field",
+                "merge_with_target": True,
+                "deduplicate": True,
+            },
+        },
+        {"field1": ["value1", "value2", "value1"], "field2": ["value2", "value3"]},
+        {
+            "field1": ["value1", "value2", "value1"],
+            "field2": ["value2", "value3"],
+            "new_field": ["value1", "value2", "value3"],
+        },
+        id="merge_with_target deduplicates source values when configured",
+    ),
+    pytest.param(
+        {
+            "filter": "field1 OR field2",
+            "field_manager": {
+                "source_fields": ["field1", "field2"],
+                "target_field": "new_field",
+                "merge_with_target": True,
+                "deduplicate": False,
+            },
+        },
+        {"field1": ["value1", "value2", "value1"], "field2": ["value2", "value3"]},
+        {
+            "field1": ["value1", "value2", "value1"],
+            "field2": ["value2", "value3"],
+            "new_field": ["value1", "value2", "value1", "value2", "value3"],
+        },
+        id="merge_with_target preserves duplicate source values when configured",
+    ),
+    pytest.param(
+        {
             "filter": "client.ip",
             "field_manager": {
                 "source_fields": [

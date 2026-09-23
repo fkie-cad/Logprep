@@ -235,7 +235,9 @@ class Pseudonymizer(FieldManager):
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(PseudonymizerRule, rule)
         source_dict = get_dotted_field_values(event, rule.pseudonyms)
-        self._handle_missing_fields(event, rule, source_dict.keys(), source_dict.values())
+        self._handle_missing_fields(
+            event, rule, list(source_dict.keys()), list(source_dict.values())
+        )
 
         for dotted_field, field_value in source_dict.items():
             regex = rule.pseudonyms[dotted_field]
@@ -326,7 +328,7 @@ class Pseudonymizer(FieldManager):
                 pseudonymized_query_parts, safe="<pseudonym:>", doseq=True
             )
             url_string = url_string.replace(parsed_url.query, pseudonymized_query)
-        self.metrics.pseudonymized_urls += 1
+        self.metrics.pseudonymized_urls.inc(1)
         return url_string
 
     def _wrap_hash(self, hash_string: str) -> str:
@@ -339,9 +341,9 @@ class Pseudonymizer(FieldManager):
             if is_lru_cached(f)
         ]
 
-        self.metrics.new_results += sum(c.misses for c in caches)
-        self.metrics.cached_results += sum(c.hits for c in caches)
-        self.metrics.num_cache_entries += sum(c.currsize for c in caches)
-        self.metrics.cache_load += (sum(c.currsize for c in caches)) / (
-            sum(typing.cast(int, c.maxsize) for c in caches)
+        self.metrics.new_results.set(sum(c.misses for c in caches))
+        self.metrics.cached_results.set(sum(c.hits for c in caches))
+        self.metrics.num_cache_entries.set(sum(c.currsize for c in caches))
+        self.metrics.cache_load.set(
+            (sum(c.currsize for c in caches)) / (sum(typing.cast(int, c.maxsize) for c in caches))
         )

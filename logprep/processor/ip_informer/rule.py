@@ -58,6 +58,7 @@ Examples for ip_informer:
 
 """
 
+import typing
 from ipaddress import IPv4Address, IPv6Address
 
 from attrs import define, field, validators
@@ -117,9 +118,12 @@ class IpInformerRule(FieldManagerRule):
         (e.g. toredo which is only given for IPv4Addresses),
         the property will be extracted with the value :code:`False`.
         """
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
     @property
     def properties(self):
         """return the configured properties"""
-        return self._config.properties
+        return typing.cast(IpInformerRule.Config, self._config).properties

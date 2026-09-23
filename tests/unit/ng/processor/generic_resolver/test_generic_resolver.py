@@ -251,8 +251,6 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         assert document.data == expected
 
     async def test_resolve_from_cache_with_large_enough_cache(self):
-        """The metrics are mocked and their values are the sum of previously added cache values,
-        instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 10
         self.object = Factory.create({"generic_resolver": config})
@@ -271,31 +269,25 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         )
         await self.object.setup()
 
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
+        await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
+
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.cached_results.value == 0
+        assert self.object.metrics.num_cache_entries.value == 1
 
         await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results == 1
-        assert self.object.metrics.cached_results == 0
-        assert self.object.metrics.num_cache_entries == 1
-
-        await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
-
-        assert self.object.metrics.new_results == 2
-        assert self.object.metrics.cached_results == 1
-        assert self.object.metrics.num_cache_entries == 2
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.cached_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
 
         await self.object.process(LogEvent(event_2, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results == 4
-        assert self.object.metrics.cached_results == 2
-        assert self.object.metrics.num_cache_entries == 4
+        assert self.object.metrics.new_results.value == 2
+        assert self.object.metrics.cached_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 2
 
     async def test_resolve_from_cache_with_cache_smaller_than_results(self):
-        """The metrics are mocked and their values are the sum of previously added cache values,
-        instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 1
         self.object = Factory.create({"generic_resolver": config})
@@ -314,27 +306,23 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         )
         await self.object.setup()
 
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
+        await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
+
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.cached_results.value == 0
+        assert self.object.metrics.num_cache_entries.value == 1
 
         await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results == 1
-        assert self.object.metrics.cached_results == 0
-        assert self.object.metrics.num_cache_entries == 1
-
-        await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
-
-        assert self.object.metrics.new_results == 2
-        assert self.object.metrics.cached_results == 1
-        assert self.object.metrics.num_cache_entries == 2
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.cached_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
 
         await self.object.process(LogEvent(event_2, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results == 4
-        assert self.object.metrics.cached_results == 2
-        assert self.object.metrics.num_cache_entries == 3
+        assert self.object.metrics.new_results.value == 2
+        assert self.object.metrics.cached_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
 
     async def test_resolve_without_cache(self):
         config = deepcopy(self.CONFIG)
@@ -355,31 +343,25 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         )
         await self.object.setup()
 
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
+        await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
+
+        assert self.object.metrics.new_results.value == 0
+        assert self.object.metrics.cached_results.value == 0
+        assert self.object.metrics.num_cache_entries.value == 0
 
         await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results == 0
-        assert self.object.metrics.cached_results == 0
-        assert self.object.metrics.num_cache_entries == 0
-
-        await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
-
-        assert self.object.metrics.new_results == 0
-        assert self.object.metrics.cached_results == 0
-        assert self.object.metrics.num_cache_entries == 0
+        assert self.object.metrics.new_results.value == 0
+        assert self.object.metrics.cached_results.value == 0
+        assert self.object.metrics.num_cache_entries.value == 0
 
         await self.object.process(LogEvent(event_2, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results == 0
-        assert self.object.metrics.cached_results == 0
-        assert self.object.metrics.num_cache_entries == 0
+        assert self.object.metrics.new_results.value == 0
+        assert self.object.metrics.cached_results.value == 0
+        assert self.object.metrics.num_cache_entries.value == 0
 
     async def test_resolve_from_cache_with_update_interval(self):
-        """The metrics are mocked and their values are the sum of previously added cache values,
-        instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
         config["cache_metrics_interval"] = 2
         config["max_cache_entries"] = 10
@@ -399,30 +381,26 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         )
         await self.object.setup()
 
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
+        await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
+
+        assert self.object.metrics.new_results.value == 0
+        assert self.object.metrics.cached_results.value == 0
+        assert self.object.metrics.num_cache_entries.value == 0
 
         await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results == 0
-        assert self.object.metrics.cached_results == 0
-        assert self.object.metrics.num_cache_entries == 0
-
-        await self.object.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
-
-        assert self.object.metrics.new_results == 1
-        assert self.object.metrics.cached_results == 1
-        assert self.object.metrics.num_cache_entries == 1
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.cached_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
 
         await self.object.process(LogEvent(event_2, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results == 1
-        assert self.object.metrics.cached_results == 1
-        assert self.object.metrics.num_cache_entries == 1
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.cached_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
 
         await self.object.process(LogEvent(event_2, original=b"", input_meta=InputMeta()))
 
-        assert self.object.metrics.new_results == 3
-        assert self.object.metrics.cached_results == 3
-        assert self.object.metrics.num_cache_entries == 3
+        assert self.object.metrics.new_results.value == 2
+        assert self.object.metrics.cached_results.value == 2
+        assert self.object.metrics.num_cache_entries.value == 2

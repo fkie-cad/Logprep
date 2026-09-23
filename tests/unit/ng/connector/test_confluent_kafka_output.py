@@ -75,13 +75,12 @@ class TestConfluentKafkaOutput(BaseOutputTestCase[ConfluentKafkaOutput]):
             _ = Factory.create({"test connector": kafka_config})
 
     async def test_error_callback_logs_error(self):
-        self.object.metrics.number_of_errors = 0
         with mock.patch("logging.Logger.error") as mock_error:
             test_error = Exception("test error")
             self.object._error_callback(test_error)
             mock_error.assert_called()
             mock_error.assert_called_with("%s: %s", self.object.description, test_error)
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
 
     async def test_stats_callback_sets_metric_object_attributes(self):
         librdkafka_metrics = tuple(
@@ -99,10 +98,9 @@ class TestConfluentKafkaOutput(BaseOutputTestCase[ConfluentKafkaOutput]):
             assert getattr(self.object.metrics, metric) == metric_value, metric
 
     async def test_stats_set_age_metric_explicitly(self):
-        self.object.metrics.librdkafka_age = 0
         json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
         self.object._stats_callback(json_string)
-        assert self.object.metrics.librdkafka_age == 1337
+        assert self.object.metrics.librdkafka_age.value == 1337
 
     async def test_kafka_config_is_immutable(self):
         self.object.setup()
@@ -198,20 +196,17 @@ class TestConfluentKafkaOutput(BaseOutputTestCase[ConfluentKafkaOutput]):
         mock_error.assert_called()
 
     async def test_health_counts_metrics_on_kafka_exception(self):
-        self.object.metrics.number_of_errors = 0
         self.object._admin = mock.MagicMock()
         self.object._admin.list_topics.side_effect = KafkaException("test error")
         assert not await self.object.health()
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
 
     async def test_shutdown_logs_and_counts_error_if_queue_not_fully_flushed(self):
-        self.object.metrics.number_of_errors = 0
         self.object._producer = mock.MagicMock()
         self.object._producer.flush.return_value = 1
         with mock.patch("logging.Logger.error") as mock_error:
             self.object.shut_down()
         mock_error.assert_called()
-        self.object.metrics.number_of_errors = 1
 
     async def test_health_returns_bool(self):
         with mock.patch.object(self.object, "_admin"):
@@ -247,39 +242,35 @@ class TestConfluentKafkaOutput(BaseOutputTestCase[ConfluentKafkaOutput]):
         admin_client.assert_called_with(expected_admin_client_config)
 
     async def test_store_handles_errors(self):
-        self.object.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
             self.object.store(event)
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
 
     async def test_store_custom_handles_errors(self):
-        self.object.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
             self.object._store_custom(event, "target_topic")
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
 
     async def test_store_handles_errors_failed_event(self):
-        self.object.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
             self.object.store(event)
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
 
     async def test_store_custom_handles_errors_failed_event(self):
-        self.object.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
             self.object._store_custom(event, "target_topic")
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
         assert len(event.errors) == 1
 
     async def test_shutdown_flushes_output(self):
@@ -309,10 +300,9 @@ class TestConfluentKafkaOutput(BaseOutputTestCase[ConfluentKafkaOutput]):
         kafka_error = mock.MagicMock()
         kafka_error.__str__ = mock.MagicMock(return_value="Kafka delivery error")
         event = LogEvent({"message": "test message"}, original=b"", input_meta=InputMeta())
-        self.object.metrics.number_of_errors = 0
         self.object.on_delivery(event, kafka_error, kafka_message)
         assert len(event.errors) == 1
-        assert self.object.metrics.number_of_errors == 1
+        assert self.object.metrics.number_of_errors.value == 1
         assert re.search(
             r"Message delivery failed: Kafka delivery error",
             caplog.text,

@@ -11,7 +11,7 @@ The `decoder` processor decodes or parses field values from the configured
 * nginx parser for kubernetes ingress
 * syslog_rfc3164
 * syslog_rfc3164_local
-* syslog_rfc5324
+* syslog_rfc5424
 * logfmt
 * cri
 * docker
@@ -65,6 +65,10 @@ class Decoder(FieldManager):
         decoder_rule = typing.cast(DecoderRule, rule)
         decoder = DECODERS[decoder_rule.source_format]
         return self._decode(event, decoder_rule, decoder, source_field_values)
+
+    @override
+    def is_processable_value(self, value: FieldValue) -> bool:
+        return super().is_processable_value(value) and value != "" and value != [] and value != {}
 
     def _decode(
         self,

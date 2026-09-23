@@ -228,7 +228,7 @@ class S3Output(Output):
         document : dict
            Document to store.
         """
-        self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events.inc(1)
         prefix_value = get_dotted_field_value(document, self.config.prefix_field)
         if prefix_value is None:
             document = self._build_no_prefix_document(
@@ -258,7 +258,7 @@ class S3Output(Output):
             Prefix for the document.
 
         """
-        self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events.inc(1)
         self._add_to_backlog(document, target)
 
     def _add_dates(self, prefix: str) -> str:
@@ -306,7 +306,7 @@ class S3Output(Output):
         logger.debug('Writing "%s" to s3 bucket "%s"', identifier, self.config.bucket)
         s3_obj = self._s3_resource.Object(self.config.bucket, identifier)  # type: ignore
         s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
-        self.metrics.number_of_successful_writes += len(document_batch)
+        self.metrics.number_of_successful_writes.inc(len(document_batch))
 
     def _build_no_prefix_document(self, message_document: dict, reason: str) -> dict:
         document = {

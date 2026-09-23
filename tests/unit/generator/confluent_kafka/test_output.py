@@ -6,7 +6,6 @@
 from unittest import mock
 
 import pytest
-from prometheus_client import Counter, Gauge, Histogram
 
 from logprep.abc.output import CriticalOutputError
 from logprep.metrics.metrics import Metric
@@ -65,9 +64,8 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
-        self.object.metrics.number_of_processed_events = 0
         self.object.store("default,test_payload")
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events.value == 1
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_raises_critical_output_on_any_exception(self, _):
@@ -95,9 +93,7 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
             metric_name = expected_metric.replace("logprep_confluent_kafka_output_", "")
             metric_name = metric_name.replace("logprep_", "")
             metric_attribute = getattr(self.object.metrics, metric_name)
-            assert metric_attribute.tracker is not None
-            possible_tracker_types = (Counter, Gauge, Histogram)
-            assert isinstance(metric_attribute.tracker, possible_tracker_types)
+            assert metric_attribute.initialized
 
     def test_store_updates_topic(self):
         assert self.object._config.topic == "default"
@@ -106,9 +102,9 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
 
     def test_store_counting_batches(self):
         self.object.store("test_topic,test_payload")
-        assert self.object.metrics.processed_batches.tracker.collect()[0].samples[0].value == 1
+        assert self.object.metrics.processed_batches.collect_samples()[0].value == 1
         self.object.store("test_topic,test_payload")
-        assert self.object.metrics.processed_batches.tracker.collect()[0].samples[0].value == 2
+        assert self.object.metrics.processed_batches.collect_samples()[0].value == 2
 
     def test_store_handles_empty_payload(self):
         with mock.patch(
