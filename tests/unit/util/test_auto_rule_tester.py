@@ -3,6 +3,7 @@
 # pylint: disable=missing-function-docstring)
 import re
 from unittest import mock
+
 import pytest
 
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
@@ -269,6 +270,7 @@ class TestAutoRuleTester:
             processor
         )  # Called every time by auto tester before adding rules instead
         auto_rule_tester._load_rules(processor)
+
         mock_setup.assert_called_once()
 
     def test_full_auto_rule_test_run(self, auto_rule_tester, capsys):

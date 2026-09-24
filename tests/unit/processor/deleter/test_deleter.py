@@ -1,5 +1,9 @@
 # pylint: disable=missing-docstring
+from copy import deepcopy
+
 import pytest
+
+from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -21,6 +25,9 @@ class TestDeleter(BaseProcessorTestCase):
         ],
     )
     def test_process_deletes_event(self, event, testcase):
-        self.object.process(event)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+
+        processor.process(event)
         assert not event, testcase
         assert isinstance(event, dict), testcase

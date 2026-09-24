@@ -3,12 +3,23 @@ from typing import Optional
 from unittest import mock
 
 import pytest
+from aiohttp import web
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.configuration import Configuration
 from logprep.factory_error import NoTypeSpecifiedError, UnknownComponentTypeError
+from logprep.ng.util.configuration import (
+    ConfigGetterException,
+)
+from logprep.ng.util.configuration import Configuration as NgConfiguration
+from logprep.ng.util.configuration import (
+    InvalidConfigurationErrors,
+)
+from logprep.ng.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from logprep.registry import Registry
+from logprep.util.credentials import CredentialsFactory
+from tests.conftest import mock_env
 
 
 class MockProcessor(Processor):
@@ -134,3 +145,126 @@ class TestConfiguration:
         }
         config = Configuration.create("dummy name", test_config)
         assert config.tree_config == "tests/testdata/unit/tree_config.json"
+
+
+class TestNgConfiguration:
+    async def test_from_sources_wraps_http_getter_error(self, aiohttp_server):
+        async def handler(_: web.Request) -> web.Response:
+            return web.Response(status=404)
+
+        app = web.Application()
+        app.router.add_get("/config.yml", handler)
+        server = await aiohttp_server(app)
+
+        config_url = str(server.make_url("/config.yml"))
+
+        with pytest.raises(ConfigGetterException, match="404"):
+            await NgConfiguration.from_sources([config_url])
+
+    async def test_verify_shuts_down_temporary_processor(self):
+        configuration = NgConfiguration()
+        configuration.input = {"input": {"type": "input"}}
+        configuration.output = {"output": {"type": "output"}}
+        configuration.pipeline = [{"processor": {"type": "processor"}}]
+
+        processor = mock.Mock()
+        processor.setup = mock.AsyncMock()
+        processor.shut_down = mock.AsyncMock()
+
+        with (
+            mock.patch(
+                "logprep.ng.util.configuration.Factory.create",
+                side_effect=[
+                    mock.Mock(),
+                    mock.Mock(),
+                    processor,
+                ],
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_environment",
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_rules",
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_processor_outputs",
+            ),
+        ):
+            await configuration._verify()
+
+        processor.setup.assert_awaited_once()
+        processor.shut_down.assert_awaited_once()
+
+    async def test_verify_shuts_down_temporary_processor_if_setup_fails(self):
+        configuration = NgConfiguration()
+        configuration.input = {"input": {"type": "input"}}
+        configuration.output = {"output": {"type": "output"}}
+        configuration.pipeline = [{"processor": {"type": "processor"}}]
+
+        processor = mock.Mock()
+        processor.setup = mock.AsyncMock(side_effect=ValueError("setup failed"))
+        processor.shut_down = mock.AsyncMock()
+
+        with (
+            mock.patch(
+                "logprep.ng.util.configuration.Factory.create",
+                side_effect=[
+                    mock.Mock(),
+                    mock.Mock(),
+                    processor,
+                ],
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_environment",
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_processor_outputs",
+            ),
+        ):
+            with pytest.raises(
+                InvalidConfigurationErrors,
+                match="setup failed",
+            ):
+                await configuration._verify()
+
+        processor.shut_down.assert_awaited_once()
+
+    async def test_verify_loads_credentials_file_in_thread(self, tmp_path):
+        credentials_file = tmp_path / "credentials.yml"
+        credentials_file.write_text("{}")
+
+        configuration = NgConfiguration()
+        configuration.input = {"input": {"type": "input"}}
+        configuration.output = {"output": {"type": "output"}}
+        configuration.pipeline = []
+        configuration.error_output = {}
+
+        with (
+            mock_env(
+                {
+                    ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file),
+                }
+            ),
+            mock.patch(
+                "logprep.ng.util.configuration.Factory.create",
+            ),
+            mock.patch.object(
+                NgConfiguration,
+                "_verify_environment",
+            ),
+            mock.patch(
+                "logprep.ng.util.configuration.asyncio.to_thread",
+                new=mock.AsyncMock(return_value={}),
+            ) as to_thread,
+        ):
+            await configuration._verify()
+
+        to_thread.assert_awaited_once_with(
+            CredentialsFactory.get_content,
+            credentials_file,
+        )
