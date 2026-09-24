@@ -6,6 +6,7 @@ from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
+import pytest
 from dns.resolver import LifetimeTimeout, NoNameservers, NoAnswer, NXDOMAIN
 
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
@@ -18,6 +19,36 @@ from logprep.processor.domain_resolver.processor import (
 
 from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
+
+EXAMPLE_URL = "http://localhost"
+
+example_rule = {
+    "filter": "to_resolve",
+    "domain_resolver": {
+        "source_fields": ["to_resolve"],
+    },
+}
+
+example_test_cases = [
+    pytest.param(
+        example_rule,
+        {"to_resolve": EXAMPLE_URL},
+        {"to_resolve": EXAMPLE_URL, "resolved_ip": "127.0.0.1"},
+        id="resolve valid domain",
+    ),
+    pytest.param(
+        example_rule,
+        {"to_resolve": "http://test.invalid"},
+        {"to_resolve": "http://test.invalid"},
+        id="do not resolve invalid domain",
+    ),
+    pytest.param(
+        example_rule,
+        {"no_resolve": EXAMPLE_URL},
+        {"no_resolve": EXAMPLE_URL},
+        id="do not resolve if source is not in event",
+    ),
+]
 
 
 class TestDomainResolver(BaseProcessorTestCase):
@@ -45,6 +76,14 @@ class TestDomainResolver(BaseProcessorTestCase):
         "logprep_domain_resolver_unknown_domains",
         "logprep_domain_resolver_timeouts_cached",
     ]
+
+    @pytest.mark.parametrize("rule, event, expected,", example_test_cases)
+    def test_testcases(self, rule, event, expected):
+        self._load_rule(rule)
+        self.object.setup()
+        self.object.process(event)
+
+        assert event == expected
 
     def test_domain_to_ip_resolved_and_added(self):
         rule = {

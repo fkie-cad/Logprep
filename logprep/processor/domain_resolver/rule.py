@@ -26,6 +26,12 @@ In the following example the URL from the field :code:`url` will be extracted an
    :undoc-members:
    :inherited-members:
    :noindex:
+
+Examples for domain_resolver:
+-----------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.domain_resolver.test_domain_resolver
+   :template: testcase-renderer.tmpl
 """
 
 from attrs import define, field, fields
