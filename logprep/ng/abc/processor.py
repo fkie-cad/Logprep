@@ -285,11 +285,14 @@ class Processor(Component):
 
         await super().setup()
 
+        rule_tree_config = (
+            RuleTree.Config()
+        )  # <--- TODO: load rule config from self.config.tree_config
+
+        await self._setup(rule_tree_config)
+
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup
-
-        rule_tree_config = RuleTree.Config()
-        await self._setup(rule_tree_config)
 
     async def _setup(self, rule_tree_config: RuleTree.Config) -> None:
         """Set up the rule tree of the processor."""
