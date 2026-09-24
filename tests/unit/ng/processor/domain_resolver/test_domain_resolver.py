@@ -1,21 +1,27 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import re
 from copy import deepcopy
-from multiprocessing import context
-from pathlib import Path
+from typing import cast
 from unittest import mock
+from unittest.mock import MagicMock
+
+from dns.resolver import LifetimeTimeout, NoNameservers, NoAnswer, NXDOMAIN
+
+from logprep.ng.abc.event import LogEvent, InputMeta
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
+from logprep.ng.processor.domain_resolver.processor import (
+    DomainResolver,
+    FailureType,
+    FailedResult,
+    SuccessResult,
+)
 
 from logprep.factory import Factory
-from logprep.ng.abc.event import InputMeta, LogEvent
-from logprep.ng.processor.domain_resolver.processor import DomainResolver, ResolveStatus
-from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
-REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
-TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 
-
-class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
+class TestDomainResolver(BaseProcessorTestCase):
     CONFIG = {
         "type": "domain_resolver",
         "rules": ["tests/testdata/unit/domain_resolver/rules"],
@@ -30,13 +36,34 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         "logprep_domain_resolver_total_urls",
         "logprep_domain_resolver_resolved_new",
         "logprep_domain_resolver_resolved_cached",
+        "logprep_domain_resolver_resolved_domains",
         "logprep_domain_resolver_timeouts",
         "logprep_domain_resolver_invalid_domains",
         "logprep_domain_resolver_unknown_domains",
+        "logprep_domain_resolver_timeouts_cached",
     ]
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_domain_to_ip_resolved_and_added(self, mock_gethostbyname):
+    async def test_domain_to_ip_resolved_and_added(self):
+        await self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        fqdn = "google.de"
+        await self._load_rule(rule)
+        document = {"fqdn": fqdn}
+        expected = {"fqdn": fqdn, "resolved_ip": "1.2.3.4"}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
+            mock_resolve.assert_called_once()
+            mock_resolve.assert_called_with(fqdn, "A")
+        assert document == expected
+
+    async def test_domain_to_ip_timeout_cached(self):
+        await self.object.setup()
         rule = {
             "filter": "fqdn",
             "domain_resolver": {"source_fields": ["fqdn"]},
@@ -44,32 +71,61 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         }
         await self._load_rule(rule)
         document = {"fqdn": "google.de"}
-        expected = {"fqdn": "google.de", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        mock_gethostbyname.assert_called_once()
-        assert log_event.data == expected
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            mock_resolve.side_effect = LifetimeTimeout
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            assert len(self.object._timeout_cache) == 0
+            await self.object.process(event)
+            mock_resolve.assert_called_once()
+            mock_resolve.side_effect = None
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            assert len(self.object._timeout_cache) == 1
+            await self.object.process(event)
+            assert len(self.object._timeout_cache) == 1
+            mock_resolve.assert_called_once()
+        assert event.data.get("reoslved_ip") is None
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_domain_to_ip_resolved_and_added_from_cache(self, mock_gethostbyname):
+    async def test_domain_is_no_string(self):
+        await self.object.setup()
         rule = {
             "filter": "fqdn",
             "domain_resolver": {"source_fields": ["fqdn"]},
             "description": "",
         }
         await self._load_rule(rule)
-        document = {"fqdn": "google.de"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        document = {"fqdn": "google.de"}
-        expected = {"fqdn": "google.de", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        mock_gethostbyname.assert_called_once()
-        assert log_event.data == expected
+        document = {"fqdn": 123}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
+            mock_resolve.assert_not_called()
+        assert document.get("resolved_ip") is None
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_url_to_ip_resolved_and_added(self, _):
+    async def test_unknown_domain_exception(self):
+        await self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        await self._load_rule(rule)
+        domain = "google.de"
+        document = {"fqdn": domain}
+        hash_str = self.object._hasher.hash_str(domain, salt=self.object.config.hash_salt)
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            mock_resolve.side_effect = NXDOMAIN
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            assert not self.object._domain_cache.is_cached(hash_str)
+            await self.object.process(event)
+            mock_resolve.assert_called_once()
+            assert self.object._domain_cache.is_cached(hash_str)
+            assert not self.object._domain_cache.is_cached("some_hash")
+        assert document.get("reoslved_ip") is None
+
+    async def test_url_to_ip_resolved_and_added(self):
+        await self.object.setup()
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -78,32 +134,81 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         await self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {"url": "https://www.google.de/something", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data == expected
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
+        assert document == expected
 
-    async def test_domain_ip_map_greater_cache(self):
+    async def test_domain_invalid(self):
+        await self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        await self._load_rule(rule)
+        document = {"fqdn": "https://www.google.de"}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+
+        assert self.object.config.cache_enabled is True
+
+        with mock.patch.object(self.object, "_resolve_with_cache") as mock_resolve:
+            await self.object.process(event)
+            mock_resolve.assert_called_with("www.google.de")
+
+        document = {"fqdn": "http://"}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object, "_resolve_with_cache") as mock_resolve:
+            await self.object.process(event)
+            mock_resolve.assert_not_called()
+
+    async def test_domain_timeout_gets_not_resolved(self):
         config = deepcopy(self.CONFIG)
-        config.update({"max_cached_domains": 1})
-        self.object = Factory.create({"resolver": config})
+        config.update({"max_cached_domains": 10})
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
+
+        domain_resolver: DomainResolver = cast(DomainResolver, Factory.create({"resolver": config}))
+        await domain_resolver.setup()
         await self._load_rule(rule)
-        document = {"url": "https://www.google.de/something"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        with mock.patch("socket.gethostbyname", return_value="1.2.3.4"):
-            await self.object.process(log_event)
-        document = {"url": "https://www.google.de/something_else"}
-        expected = {"url": "https://www.google.de/something_else", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        with mock.patch("socket.gethostbyname", return_value="1.2.3.4"):
-            await self.object.process(log_event)
-        assert log_event.data == expected
+        with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            result = domain_resolver._resolve_with_cache("domain")
+            assert isinstance(result, SuccessResult)
+            assert result.resolved_ip == "1.2.3.4"
+            assert len(domain_resolver._timeout_cache) == 0
+
+        domain_resolver: DomainResolver = cast(DomainResolver, Factory.create({"resolver": config}))
+        await domain_resolver.setup()
+        await self._load_rule(rule)
+        with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
+            mock_resolve.side_effect = LifetimeTimeout
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            result = domain_resolver._resolve_with_cache("domain")
+            assert isinstance(result, FailedResult)
+            assert result.failure_type == FailureType.TIMEOUT
+            assert len(domain_resolver._timeout_cache) == 1
+
+        with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            result = domain_resolver._resolve_with_cache("domain")
+            assert isinstance(result, FailedResult)
+            assert result.failure_type == FailureType.TIMEOUT
+            assert len(domain_resolver._timeout_cache) == 1
+
+            domain_resolver._timeout_cache.clear()
+
+            result = domain_resolver._resolve_with_cache("domain")
+            assert isinstance(result, SuccessResult)
+            assert result.resolved_ip == "1.2.3.4"
+            assert len(domain_resolver._timeout_cache) == 0
 
     async def test_do_nothing_if_source_not_in_event(self):
+        await self.object.setup()
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["not_available"]},
@@ -112,60 +217,15 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         await self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {"url": "https://www.google.de/something"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data == expected
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.process(event)
+        assert document == expected
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_url_to_ip_resolved_and_added_with_debug_cache(self, _):
-        config = deepcopy(self.CONFIG)
-        config.update({"debug_cache": True})
-        self.object = Factory.create({"resolver": config})
-        rule = {
-            "filter": "url",
-            "domain_resolver": {"source_fields": ["url"]},
-            "description": "",
-        }
-        await self._load_rule(rule)
-        document = {"url": "https://www.google.de/something"}
-        expected = {
-            "url": "https://www.google.de/something",
-            "resolved_ip_debug": {"obtained_from_cache": False, "cache_size": 1},
-            "resolved_ip": "1.2.3.4",
-        }
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data == expected
-
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_url_to_ip_resolved_from_cache_and_added_with_debug_cache(self, _):
-        config = deepcopy(self.CONFIG)
-        config.update({"debug_cache": True})
-        self.object = Factory.create({"resolver": config})
-        rule = {
-            "filter": "url",
-            "domain_resolver": {"source_fields": ["url"]},
-            "description": "",
-        }
-        await self._load_rule(rule)
-        document = {"url": "https://www.google.de/something"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        document = {"url": "https://www.google.de/something_else"}
-        expected = {
-            "url": "https://www.google.de/something_else",
-            "resolved_ip_debug": {"obtained_from_cache": True, "cache_size": 1},
-            "resolved_ip": "1.2.3.4",
-        }
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data == expected
-
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_url_to_ip_resolved_and_added_with_cache_disabled(self, _):
+    async def test_url_to_ip_resolved_and_added_with_cache_disabled(self):
         config = deepcopy(self.CONFIG)
         config.update({"cache_enabled": False})
-        self.object = Factory.create({"resolver": config})
+        domain_resolver = cast(DomainResolver, Factory.create({"resolver": config}))
+        await domain_resolver.setup()
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -174,84 +234,70 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
         await self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {"url": "https://www.google.de/something", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data == expected
-
-    @mock.patch("socket.gethostbyname", side_effect=UnicodeError("invalid"), return_value="1.2.3.4")
-    async def test_invalid_domain_with_unicode_error_is_resolved_to_none_and_returns_status(
-        self, _
-    ):
-        resolved_ip, status = self.object._resolve_ip("google..invalid.de")
-        assert resolved_ip is None
-        assert status is ResolveStatus.INVALID
-
-    @mock.patch("socket.gethostbyname", side_effect=context.TimeoutError, return_value="1.2.3.4")
-    async def test_valid_domain_with_timeout_error_is_resolved_to_none_and_returns_status(self, _):
-        resolved_ip, status = self.object._resolve_ip("google.de")
-        assert resolved_ip is None
-        assert status is ResolveStatus.TIMEOUT
-
-    @mock.patch("socket.gethostbyname", side_effect=OSError, return_value="1.2.3.4")
-    async def test_unknown_domain_with_os_error_is_resolved_to_none_and_returns_status(self, _):
-        resolved_ip, status = self.object._resolve_ip("google.de")
-        assert resolved_ip is None
-        assert status is ResolveStatus.UNKNOWN
-
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_existing_domain_is_resolved_to_and_returns_status(self, _):
-        resolved_ip, status = self.object._resolve_ip("google.de")
-        assert resolved_ip == "1.2.3.4"
-        assert status is ResolveStatus.SUCCESS
-
-    async def test_empty_domain_is_snot_resolved(self):
-        document = {"url": " "}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data.get("resolved_ip") is None
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await domain_resolver.process(event)
+        assert document == expected
 
     async def test_domain_to_ip_not_resolved(self):
-        document = {"url": "google.thisisnotavalidtld"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data.get("resolved_ip") is None
+        domain = "google.thisisnotavalidtld"
+        document = {"url": domain}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.process(event)
+        assert document.get("resolved_ip") is None
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4", side_effect=TimeoutError)
-    async def test_domain_to_ip_timed_out(self, _):
+    async def test_domain_to_ip_timed_out(self):
+        await self.object.setup()
         document = {"url": "google.de"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data.get("resolved_ip") is None
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            mock_resolve.side_effect = LifetimeTimeout
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
+        assert document.get("resolved_ip") is None
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_configured_dotted_subfield(self, _):
+    async def test_configured_dotted_subfield(self):
+        await self.object.setup()
         document = {"source": "google.de"}
         expected = {"source": "google.de", "resolved": {"ip": "1.2.3.4"}}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data == expected
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
+        assert document == expected
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_field_exits_warning(self, _):
+    @staticmethod
+    def _mock_resolve_answer(expected_ip, mock_resolve):
+        mock_answer = MagicMock()
+        mock_answer.address = expected_ip
+        mock_resolve.return_value = [mock_answer]
+
+    async def test_duplication_error(self):
+        await self.object.setup()
         document = {"client": "google.de"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        result = await self.object.process(log_event)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            result = await self.object.process(event)
+            assert len(result.warnings) == 1
+            assert isinstance(result.warnings[0], FieldExistsWarning)
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_no_duplication_error(self, _):
+    async def test_no_duplication_error(self):
+        await self.object.setup()
         document = {"client_2": "google.de"}
         expected = {"client_2": "google.de", "resolved_ip": "1.2.3.4"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         # Rules have same effect, but are equal and thus one is ignored
-        await self.object.process(log_event)
-        assert log_event.data == expected
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
+        assert document == expected
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_overwrite_target_field(self, _):
+    async def test_overwrite_target_field(self):
+        await self.object.setup()
         document = {"client": "google.de", "resolved": "this will be overwritten"}
         expected = {"client": "google.de", "resolved": "1.2.3.4"}
         rule_dict = {
@@ -264,12 +310,14 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
             "description": "",
         }
         await self._load_rule(rule_dict)
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data == expected
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
+        assert document == expected
 
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    async def test_delete_source_field(self, _):
+    async def test_delete_source_field(self):
+        await self.object.setup()
         document = {"client": "google.de", "resolved": "this will be overwritten"}
         expected = {"resolved": "1.2.3.4"}
         rule_dict = {
@@ -283,6 +331,48 @@ class TestDomainResolver(BaseProcessorTestCase[DomainResolver]):
             "description": "",
         }
         await self._load_rule(rule_dict)
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
-        assert log_event.data == expected
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
+        assert document == expected
+
+    async def test_resolve_domain_syntax_error(self):
+        await self.object.setup()
+        domain = ".."
+        result = self.object._resolve_ip(domain)
+        assert result.failure_type == FailureType.INVALID
+
+    async def test_resolve_domain_too_big(self):
+        await self.object.setup()
+        domain = "0" * 64
+        result = self.object._resolve_ip(domain)
+        assert result.failure_type == FailureType.INVALID
+
+    async def test_resolve_domain_no_answer(self):
+        await self.object.setup()
+        domain = "https://google.de"
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            mock_resolve.side_effect = NoAnswer
+            result = self.object._resolve_ip(domain)
+        assert result.failure_type == FailureType.NO_ANSWER
+
+    async def test_resole_domain_no_nameservers(self):
+        await self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        await self._load_rule(rule)
+        document = {"fqdn": "https://www.google.de"}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            mock_resolve.side_effect = NoNameservers
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            result = await self.object.process(event)
+            assert len(result.warnings) == 1
+            assert isinstance(result.warnings[0], ProcessingWarning)
+            assert re.match(
+                ".*All nameservers failed to answer the query*", str(result.warnings[0])
+            )

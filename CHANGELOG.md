@@ -1,5 +1,9 @@
 ## Upcoming Changes
 ### Breaking
+* domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
+* domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
+* domain_resolver: remove `debug_cache`
+* domain_resolver: `source_fields` must be a list with exactly one element
 
 ### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
@@ -10,6 +14,9 @@
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
 * calculator: optimized runtime expression evaluation
 * docs: improve documentation around dynamic templating for `generic_adder`
+* domain_resolver: add metrics for cached timed-out domains and successfully resolved domains
+* cache: hold a payload in addition to timestamps
+* domain_resolver: adapt `domain_resolver` to changes of `cache`
 
 ### Bugfix
 * decoder: corrected rfc 5324 in docs to 5424

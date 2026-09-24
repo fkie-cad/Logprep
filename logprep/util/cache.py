@@ -1,35 +1,68 @@
 """Module for caching items and checking if they need to be stored (again)."""
 
-import datetime
+import time
+from datetime import timedelta
+
 from collections import OrderedDict
+from typing import TypeVar, Generic
+
+from attr import define
+
+T = TypeVar("T")
 
 
-class Cache(OrderedDict):
+@define
+class _CacheEntry(Generic[T]):
+    """Entry for cache that consists of value and insertion time"""
+
+    value: T
+    insertion_time: float
+
+
+class Cache(OrderedDict, Generic[T]):
     """Caches items along with a timestamp of when they were last stored."""
 
-    EPOCH = datetime.datetime(1970, 1, 1)
-
-    def __init__(self, max_items=1000000, max_timedelta=datetime.timedelta(days=90.0)):
+    def __init__(
+        self,
+        max_items: int = 1000000,
+        max_timedelta: float = timedelta(days=90).total_seconds(),
+    ):
         self._max_items = max_items
         self._max_timedelta = max_timedelta
         super().__init__()
 
-    def requires_storing(self, item: int | str) -> bool:
-        """Check if the item was stored within the last timedelta.
+    def __getitem__(self, key) -> _CacheEntry:
+        return super().__getitem__(key)
 
-        Parameters
-        ----------
-        item : str
-            Name of item to check for in the cache.
+    def get_cached_value(self, key: str) -> T | None:
+        """Get a cached value."""
+        cache_entry = self.get(key)
+        return None if cache_entry is None else cache_entry.value
 
-        """
-        now = datetime.datetime.now()
-        last_stored = self.get(item, self.__class__.EPOCH)
-        self[item] = last_stored
-        self.move_to_end(item)
-        if self._max_timedelta.total_seconds() == 0.0 or now - last_stored > self._max_timedelta:
-            self[item] = now
-            if len(self) > self._max_items:
-                self.popitem(last=False)
+    def is_cached(self, key: str) -> bool:
+        """Check if the item has exceeded its time to live."""
+        last_stored = self.get(key)
+        if last_stored is None:
+            return False
+
+        if time.time() - last_stored.insertion_time > self._max_timedelta:
+            self.pop(key)
+            return False
+        return True
+
+    def add(self, key: str, value: T):
+        """Add the item into the cache or refresh its time to live."""
+        if self.refresh_time_to_live(key):
+            return
+
+        self[key] = _CacheEntry(value, time.time())
+        if len(self) > self._max_items:
+            self.popitem(last=False)
+
+    def refresh_time_to_live(self, key) -> bool:
+        """Update the items timestamp inside the cache."""
+        last_stored = self.get(key)
+        if last_stored is not None:
+            self[key].insertion_time = time.time()
             return True
         return False
