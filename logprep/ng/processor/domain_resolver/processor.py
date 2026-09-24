@@ -212,8 +212,8 @@ class DomainResolver(Processor):
     ]
 
     _dns_resolver: Resolver
-    _timeout_cache: Cache
-    _domain_cache: Cache
+    _timeout_cache: Cache[SuccessResult | FailedResult]
+    _domain_cache: Cache[SuccessResult | FailedResult]
     _hasher: SHA256Hasher
 
     rule_class = DomainResolverRule
@@ -274,7 +274,7 @@ class DomainResolver(Processor):
             case FailedResult(_, error) if error:
                 self._handle_warning_error(event, rule, error)
 
-    def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
+    def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult | None:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
 
         if self._domain_cache.is_cached(hash_string):
@@ -289,7 +289,7 @@ class DomainResolver(Processor):
         result = self._resolve_ip(domain)
         match result:
             case FailedResult(FailureType.TIMEOUT | FailureType.NO_NAMESERVERS):
-                self._timeout_cache.add(hash_string, None)
+                self._timeout_cache.add(hash_string, result)
             case _:
                 self._domain_cache.add(hash_string, result)
         self.metrics.resolved_new.inc(1)

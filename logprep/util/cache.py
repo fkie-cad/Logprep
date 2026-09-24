@@ -19,7 +19,7 @@ class _CacheEntry(Generic[T]):
     insertion_time: float
 
 
-class Cache(OrderedDict):
+class Cache(OrderedDict, Generic[T]):
     """Caches items along with a timestamp of when they were last stored."""
 
     def __init__(
