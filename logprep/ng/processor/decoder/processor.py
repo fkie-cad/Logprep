@@ -66,6 +66,10 @@ class Decoder(FieldManager):
         decoder = DECODERS[decoder_rule.source_format]
         return self._decode(event, decoder_rule, decoder, source_field_values)
 
+    @override
+    def is_processable_value(self, value: FieldValue) -> bool:
+        return super().is_processable_value(value) and value != "" and value != [] and value != {}
+
     def _decode(
         self,
         event: dict[str, FieldValue],

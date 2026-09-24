@@ -16,14 +16,14 @@ from logprep.processor.base.exceptions import (
 )
 from logprep.processor.generic_adder.processor import GenericAdder
 from logprep.util.getter import HttpGetter
-from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env
+from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env, normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
 RULES_DIR_INVALID = "tests/testdata/unit/generic_adder/rules_invalid"
 RULES_DIR_FIRST_EXISTING = "tests/testdata/unit/generic_adder/rules_first_existing"
 
-test_cases = [  # testcase, rule, event, expected
+example_test_cases = [
     pytest.param(
         {
             "filter": "*",
@@ -43,7 +43,57 @@ test_cases = [  # testcase, rule, event, expected
                 "dotted.added.field": "yet_another_value",
             },
         },
+        {
+            "tests/testdata/unit/generic_adder/additions_file.yml": {
+                "body": {
+                    "some_added_field": "some value",
+                    "another_added_field": "another_value",
+                    "dotted.added.field": "yet_another_value",
+                }
+            }
+        },
         id="Add from URI to target field",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "generic_adder": {
+                "add_from_uri": {
+                    "uri": "https://values.example/api/tenants/${tenant.id}/enrichment",
+                    "target_field": "enrichment",
+                }
+            },
+        },
+        {"tenant": {"id": "acme"}},
+        {"tenant": {"id": "acme"}, "enrichment": {"risk": {"score": 7}}},
+        {
+            "https://values.example/api/tenants/acme/enrichment": {
+                "body": {"risk": {"score": 7}},
+            }
+        },
+        id="load event-specific HTTPS content from a fixed origin",
+    ),
+    pytest.param(
+        {
+            "filter": "add_generic_test",
+            "generic_adder": {
+                "add": {
+                    "some_added_field": "some value",
+                    "another_added_field": "another_value",
+                    "dotted.added.field": "yet_another_value",
+                }
+            },
+            "description": "",
+        },
+        {"add_generic_test": "Test", "event_id": 123},
+        {
+            "add_generic_test": "Test",
+            "event_id": 123,
+            "some_added_field": "some value",
+            "another_added_field": "another_value",
+            "dotted": {"added": {"field": "yet_another_value"}},
+        },
+        id="Add from rule definition",
     ),
     pytest.param(
         {
@@ -57,8 +107,18 @@ test_cases = [  # testcase, rule, event, expected
         },
         {},
         {"enrichment": {"values": ["first_uri_value"]}},
+        {
+            "tests/testdata/unit/generic_adder/additions_list_1.yml": {
+                "body": ["first_uri_value"],
+            }
+        },
         id="Add non-mapping URI response to dotted target field",
     ),
+]
+
+
+test_cases = normalize_test_cases(  # testcase, rule, event, expected
+    *example_test_cases,
     pytest.param(
         {
             "filter": "*",
@@ -269,28 +329,6 @@ test_cases = [  # testcase, rule, event, expected
             },
             "description": "",
         },
-        {"add_generic_test": "Test", "event_id": 123},
-        {
-            "add_generic_test": "Test",
-            "event_id": 123,
-            "some_added_field": "some value",
-            "another_added_field": "another_value",
-            "dotted": {"added": {"field": "yet_another_value"}},
-        },
-        id="Add from rule definition",
-    ),
-    pytest.param(
-        {
-            "filter": "add_generic_test",
-            "generic_adder": {
-                "add": {
-                    "some_added_field": "some value",
-                    "another_added_field": "another_value",
-                    "dotted.added.field": "yet_another_value",
-                }
-            },
-            "description": "",
-        },
         {
             "add_generic_test": "Test",
             "event_id": 123,
@@ -456,7 +494,7 @@ test_cases = [  # testcase, rule, event, expected
         },
         id="Add from rule definition with escaping",
     ),
-]
+)
 
 failure_test_cases = [
     pytest.param(
@@ -576,8 +614,9 @@ class TestGenericAdder(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/generic_adder/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    def test_generic_adder_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize("rule, event, expected, context", test_cases)
+    def test_generic_adder_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         self.object.setup()
         self.object.process(event)

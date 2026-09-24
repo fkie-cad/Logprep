@@ -50,5 +50,8 @@ class DatetimeExtractorRule(FieldManagerRule):
         """The fields from where to get the values which should be processed."""
         target_field: str = field(validator=validators.instance_of(str))
         """The field where to write the processed values to. """
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""

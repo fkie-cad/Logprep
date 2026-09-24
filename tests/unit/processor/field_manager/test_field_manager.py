@@ -268,6 +268,42 @@ test_cases = [  # testcase, rule, event, expected
         {"new_field": ["value1", "value2", "value3", "value5", "value4", "value6"]},
     ),
     (
+        "merge_with_target deduplicates source values when configured",
+        {
+            "filter": "field1 OR field2",
+            "field_manager": {
+                "source_fields": ["field1", "field2"],
+                "target_field": "new_field",
+                "merge_with_target": True,
+                "deduplicate": True,
+            },
+        },
+        {"field1": ["value1", "value2", "value1"], "field2": ["value2", "value3"]},
+        {
+            "field1": ["value1", "value2", "value1"],
+            "field2": ["value2", "value3"],
+            "new_field": ["value1", "value2", "value3"],
+        },
+    ),
+    (
+        "merge_with_target preserves duplicate source values when configured",
+        {
+            "filter": "field1 OR field2",
+            "field_manager": {
+                "source_fields": ["field1", "field2"],
+                "target_field": "new_field",
+                "merge_with_target": True,
+                "deduplicate": False,
+            },
+        },
+        {"field1": ["value1", "value2", "value1"], "field2": ["value2", "value3"]},
+        {
+            "field1": ["value1", "value2", "value1"],
+            "field2": ["value2", "value3"],
+            "new_field": ["value1", "value2", "value1", "value2", "value3"],
+        },
+    ),
+    (
         "real world example from documentation",
         {
             "filter": "client.ip",
