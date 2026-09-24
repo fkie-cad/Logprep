@@ -81,13 +81,8 @@ class Processor(Component):
     _strategy = None
     _bypass_rule_tree: bool
 
-    def __init__(self, name: str, configuration: "Processor.Config") -> None:
+    def __init__(self, name: str, configuration: Config) -> None:
         super().__init__(name, configuration)
-        self._rule_tree = RuleTree()
-        self._bypass_rule_tree = False
-        if ENV_VARS.get("LOGPREP_BYPASS_RULE_TREE"):
-            self._bypass_rule_tree = True
-            logger.debug("Bypassing rule tree for processor %s", self.name)
 
     @property
     def config(self) -> Config:
@@ -95,7 +90,7 @@ class Processor(Component):
         return typing.cast("Processor.Config", self._config)
 
     @property
-    def rules(self) -> Sequence["Rule"]:
+    def rules(self) -> Sequence[Rule]:
         """Returns all rules
 
         Returns
@@ -286,22 +281,23 @@ class Processor(Component):
             )
 
     async def setup(self) -> None:
-        """Set up the processor"""
+        """Set up the processor."""
 
         await super().setup()
 
-        rule_tree = RuleTree()
-
-        await rule_tree.init_async(
-            self.config.tree_config,
-            GetterFactory,
-        )
-        await self.load_rules(
-            rules_targets=self.config.rules,
-            rule_tree=rule_tree,
-        )
-
-        self._rule_tree = rule_tree
-
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup
+
+        rule_tree_config = RuleTree.Config()
+        await self._setup(rule_tree_config)
+
+    async def _setup(self, rule_tree_config: RuleTree.Config) -> None:
+        """Set up the rule tree of the processor."""
+
+        self._bypass_rule_tree = False
+        if ENV_VARS.get("LOGPREP_BYPASS_RULE_TREE"):
+            self._bypass_rule_tree = True
+            logger.debug("Bypassing rule tree for processor %s", self.name)
+
+        self._rule_tree = RuleTree(config=rule_tree_config)
+        await self.load_rules(rules_targets=self.config.rules)
