@@ -34,7 +34,7 @@ Examples for domain_resolver:
    :template: testcase-renderer.tmpl
 """
 
-from attrs import define, field, fields
+from attrs import define, field, fields, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 
@@ -46,10 +46,21 @@ class DomainResolverRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for DomainResolver"""
 
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.min_len(1),
+                validators.max_len(1),
+            ]
+        )
+        """The field containing the domain to be resolved. Requires :code:`target_field`."""
+
         target_field: str = field(
             validator=fields(FieldManagerRule.Config).target_field.validator,
             default="resolved_ip",
         )
         """The field where to write the processor output to. Defaults to :code:`resovled_ip`"""
+
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
