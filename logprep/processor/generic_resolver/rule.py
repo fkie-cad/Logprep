@@ -271,6 +271,9 @@ class GenericResolverRule(FieldManagerRule):
         additions: dict[str, FieldValue] = field(default={}, eq=False, init=False)
         """Contains a dictionary of field names and values that should be added."""
 
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
+
         @property
         def _file_path(self) -> None | str:
             """Returns the file path"""

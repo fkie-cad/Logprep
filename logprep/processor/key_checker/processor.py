@@ -24,36 +24,30 @@ Processor Configuration
 .. automodule:: logprep.processor.key_checker.rule
 """
 
-from typing import Iterable
-
 from logprep.abc.processor import Processor
-from logprep.processor.base.rule import Rule
 from logprep.processor.key_checker.rule import KeyCheckerRule
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import FieldValue, get_dotted_field_value
+from logprep.util.typing import is_list_of
 
 
 class KeyChecker(Processor):
     """Checks if all keys of a given List are in the event"""
 
-    rule_class: Rule = KeyCheckerRule
+    rule_class = KeyCheckerRule
 
-    def _apply_rules(self, event, rule):
-        not_existing_fields = list(
-            {
-                dotted_field
-                for dotted_field in rule.source_fields
-                if not self._field_exists(event, dotted_field)
-            }
-        )
+    def _apply_rules(self, event: dict[str, FieldValue], rule: KeyCheckerRule):
+        missing_fields = {
+            dotted_field
+            for dotted_field in rule.source_fields
+            if not self._field_exists(event, dotted_field)
+        }
 
-        if not not_existing_fields:
+        if not missing_fields:
             return
 
-        output_value = get_dotted_field_value(event, rule.target_field)
+        existing_value: FieldValue = get_dotted_field_value(event, rule.target_field)
 
-        if isinstance(output_value, Iterable):
-            output_value = list({*not_existing_fields, *output_value})
-        else:
-            output_value = not_existing_fields
+        if isinstance(existing_value, list) and is_list_of(existing_value, str):
+            missing_fields.update(existing_value)
 
-        self._write_target_field(event, rule, sorted(output_value))
+        self._write_target_field(event, rule, sorted(missing_fields))

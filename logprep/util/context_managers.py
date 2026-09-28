@@ -1,6 +1,9 @@
 """Context managers to use with logprep"""
 
+import errno
 import logging
+import os
+import signal
 from contextlib import contextmanager
 
 from logprep.util.logging import LogprepMPQueueListener, logqueue
@@ -35,3 +38,17 @@ def disable_loggers():
     finally:
         for logger in enabled_loggers:
             logger.disabled = False
+
+
+@contextmanager
+def timeout(seconds=100, error_message=os.strerror(errno.ETIME)):
+    def _handle_timeout(signum, frame):  # nosemgrep
+        raise TimeoutError(error_message)
+
+    # TODO not well suited for ng
+    signal.signal(signal.SIGALRM, _handle_timeout)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)

@@ -27,9 +27,12 @@ Processor Configuration
 .. automodule:: logprep.processor.selective_extractor.rule
 """
 
+import typing
+
+from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
-from logprep.util.helper import add_fields_to, get_source_fields_dict
+from logprep.util.helper import FieldValue, add_fields_to, get_source_fields_dict
 
 
 class SelectiveExtractor(FieldManager):
@@ -37,7 +40,7 @@ class SelectiveExtractor(FieldManager):
 
     rule_class = SelectiveExtractorRule
 
-    def _apply_rules(self, event: dict, rule: SelectiveExtractorRule):
+    def _apply_rules(self, event: dict, rule: Rule):
         """
         Generates a filtered event based on the incoming event and the configured
         extraction_fields list in processor configuration or from rule.
@@ -52,8 +55,12 @@ class SelectiveExtractor(FieldManager):
             The rule to apply
 
         """
-        flattened_fields = get_source_fields_dict(event, rule)
-        if self._handle_missing_fields(event, rule, rule.source_fields, flattened_fields.values()):
+        rule = typing.cast(SelectiveExtractorRule, rule)
+
+        flattened_fields: dict[str, FieldValue] = get_source_fields_dict(event, rule)
+        if self._handle_missing_fields(
+            event, rule, rule.source_fields, list(flattened_fields.values())
+        ):
             return
         flattened_fields = {
             dotted_field: content
@@ -61,6 +68,6 @@ class SelectiveExtractor(FieldManager):
             if content is not None
         }
         if flattened_fields:
-            filtered_event = {}
+            filtered_event: dict[str, FieldValue] = {}
             add_fields_to(filtered_event, flattened_fields, rule)
             self.result.data.append((filtered_event, rule.outputs))

@@ -142,11 +142,14 @@ class ReplacerRule(FieldManagerRule):
                     key_validator=validators.instance_of(str),
                     value_validator=validators.matches_re(REPLACEMENT_PATTERN),
                 ),
-            ]
+            ],
         )
         """A mapping of fieldnames to patterns to replace"""
         overwrite_target: bool = field(validator=validators.instance_of(bool), default=True)
         """Overwrite the target field value if exists. Defaults to :code:`True`"""
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
     @property
     def config(self) -> Config:

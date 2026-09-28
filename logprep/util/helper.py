@@ -54,9 +54,13 @@ SKIP = Skip.SKIP  # pylint: disable=invalid-name
 """Sentinel value for method instrumentation to skip fields."""
 
 
+VARIABLE_PATTERN = r"(?a:(?:\\.|[^.$\\{}])+(?:\.(?:\\.|[^.$\\{}])+)*)"
+
 FieldValue: TypeAlias = Union[
     dict[str, "FieldValue"], list["FieldValue"], str, int, float, bool, None
 ]
+
+JsonObject: TypeAlias = dict[str, FieldValue]
 
 FieldRef: TypeAlias = str
 
@@ -64,7 +68,7 @@ T = TypeVar("T")
 
 
 class DottedTemplate(Template):
-    braceidpattern = r"(?a:(?:\\.|[^.$\\{}])+(?:\.(?:\\.|[^.$\\{}])+)*)"
+    braceidpattern = VARIABLE_PATTERN
 
 
 def _add_and_overwrite_key(event: dict[str, FieldValue], key: str) -> dict[str, FieldValue]:

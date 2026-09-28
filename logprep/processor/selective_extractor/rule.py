@@ -99,6 +99,7 @@ It is possible to mix both extraction sources. They will be merged to one list w
    :noindex:
 """
 
+import typing
 from typing import List
 
 from attrs import define, field, validators
@@ -133,15 +134,17 @@ class SelectiveExtractorRule(FieldManagerRule):
             converter=sorted,
         )
         """List of fields in dotted field notation"""
-        outputs: tuple[dict[str, str]] = field(
+        outputs: tuple[dict[str, str], ...] = field(
             validator=[
                 validators.deep_iterable(
                     member_validator=[
-                        validators.instance_of(dict),
-                        validators.deep_mapping(
-                            key_validator=validators.instance_of(str),
-                            value_validator=validators.instance_of(str),
-                            mapping_validator=validators.max_len(1),
+                        validators.and_(
+                            validators.instance_of(dict),
+                            validators.deep_mapping(
+                                key_validator=validators.instance_of(str),
+                                value_validator=validators.instance_of(str),
+                                mapping_validator=validators.max_len(1),
+                            ),
                         ),
                     ],
                     iterable_validator=validators.instance_of(tuple),
@@ -161,7 +164,10 @@ class SelectiveExtractorRule(FieldManagerRule):
         target_field: str = field(default="", init=False, repr=False, eq=False)
         overwrite_target: bool = field(default=False, init=False, repr=False, eq=False)
         merge_with_target: bool = field(default=False, init=False, repr=False, eq=False)
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(factory=dict, init=False, repr=False, eq=False)
+
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
 
         def __attrs_post_init__(self):
             super().__attrs_post_init__()
@@ -178,13 +184,13 @@ class SelectiveExtractorRule(FieldManagerRule):
                 raise InvalidRuleDefinitionError("no field to extract")
 
     @property
-    def outputs(self) -> str:
+    def outputs(self) -> tuple[dict[str, str], ...]:
         """
         returns:
         --------
         outputs: list of output mappings
         """
-        return self._config.outputs
+        return typing.cast(SelectiveExtractorRule.Config, self._config).outputs
 
     @property
     def extracted_field_list(self) -> List[str]:
@@ -193,7 +199,9 @@ class SelectiveExtractorRule(FieldManagerRule):
         --------
         extracted_field_list: a list with extraction field names
         """
-        return self._config.source_fields
+        return typing.cast(SelectiveExtractorRule.Config, self._config).source_fields
 
-    def __eq__(self, other: "SelectiveExtractorRule") -> bool:
-        return all([other.filter == self._filter, other._config == self._config])
+    def __eq__(self, other) -> bool:
+        return isinstance(other, SelectiveExtractorRule) and all(
+            [other.filter == self._filter, other._config == self._config]
+        )

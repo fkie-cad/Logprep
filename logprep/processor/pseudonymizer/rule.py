@@ -45,7 +45,7 @@ in a capture group and therefore pseudonymizes it completely.
 """
 
 import re
-from typing import List
+import typing
 
 from attrs import define, field, validators
 
@@ -66,7 +66,7 @@ class PseudonymizerRule(FieldManagerRule):
                     value_validator=validators.instance_of((str, re.Pattern)),
                 ),
                 validators.min_len(1),
-            ]
+            ],
         )
         """mapping of field to regex string"""
         url_fields: list = field(
@@ -79,13 +79,13 @@ class PseudonymizerRule(FieldManagerRule):
         )
         """url fields to pseudonymize"""
 
-    # pylint: disable=C0111
+        deduplicate: bool = field(init=False, default=False)
+        """Not active for this processor"""
+
     @property
     def pseudonyms(self) -> dict[str, re.Pattern]:
-        return self._config.mapping
+        return typing.cast(PseudonymizerRule.Config, self._config).mapping
 
     @property
-    def url_fields(self) -> List[str]:
-        return self._config.url_fields
-
-    # pylint: enable=C0111
+    def url_fields(self) -> list[str]:
+        return typing.cast(PseudonymizerRule.Config, self._config).url_fields

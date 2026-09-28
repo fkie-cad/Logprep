@@ -235,7 +235,9 @@ class Pseudonymizer(FieldManager):
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(PseudonymizerRule, rule)
         source_dict = get_dotted_field_values(event, rule.pseudonyms)
-        self._handle_missing_fields(event, rule, source_dict.keys(), source_dict.values())
+        self._handle_missing_fields(
+            event, rule, list(source_dict.keys()), list(source_dict.values())
+        )
 
         for dotted_field, field_value in source_dict.items():
             regex = rule.pseudonyms[dotted_field]
