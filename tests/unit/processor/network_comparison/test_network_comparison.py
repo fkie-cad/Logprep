@@ -348,8 +348,8 @@ test_cases = [  # rule, event, expected
             "network_comparison": {
                 "source_fields": ["ip"],
                 "target_field": "ip_results",
-                "list_paths": {"BLOCKED_NETWORKS": "${tenant.id}/blocked"},
-                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+                "list_paths": {"BLOCKED_NETWORKS": "tenants/${tenant.id}/blocked"},
+                "list_search_base_path": "https://lists.example/api/${LOGPREP_LIST}",
             },
         },
         {"tenant": {"id": "acme"}, "ip": "8.8.8.8"},
@@ -358,7 +358,7 @@ test_cases = [  # rule, event, expected
             "ip": "8.8.8.8",
             "ip_results": {"not_in_list": ["BLOCKED_NETWORKS"]},
         },
-        id="dotted event field in list_paths",
+        id="dynamic list path keeps the HTTP origin fixed",
     ),
 ]
 

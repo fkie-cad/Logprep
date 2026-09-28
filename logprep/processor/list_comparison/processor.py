@@ -66,6 +66,14 @@ class ListComparison(Processor):
         Environment variables and ``${LOGPREP_LIST}`` are resolved during setup. For
         HTTP(S) paths, placeholders that are not environment variables are resolved from
         the event during processing, enabling dynamic list paths.
+
+        .. security-best-practice::
+           :title: |PROCESSOR| - Dynamic list URI destinations
+
+           Event fields used in dynamic URIs may be attacker-controlled. Keep the URI
+           scheme, host, and port static and use dynamic values only in path components.
+           Avoid interpolating event fields into the URI authority, especially the host,
+           so an attacker cannot influence where Logprep sends list requests.
         """
 
     rule_class = ListComparisonRule

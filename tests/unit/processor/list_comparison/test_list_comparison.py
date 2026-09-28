@@ -433,8 +433,8 @@ test_cases = [  # rule, event, expected
             "list_comparison": {
                 "source_fields": ["user"],
                 "target_field": "user_results",
-                "list_paths": {"BLOCKED_USERS": "${tenant.id}/blocked"},
-                "list_search_base_path": "https://api.example/lists/${LOGPREP_LIST}",
+                "list_paths": {"BLOCKED_USERS": "tenants/${tenant.id}/users/blocked"},
+                "list_search_base_path": "https://lists.example/api/${LOGPREP_LIST}",
             },
         },
         {"tenant": {"id": "acme"}, "user": "Charlotte"},
@@ -443,7 +443,7 @@ test_cases = [  # rule, event, expected
             "user": "Charlotte",
             "user_results": {"not_in_list": ["BLOCKED_USERS"]},
         },
-        id="dotted event field in list_paths",
+        id="dynamic list path keeps the HTTP origin fixed",
     ),
 ]
 
