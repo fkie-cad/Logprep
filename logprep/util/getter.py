@@ -5,13 +5,24 @@ They are returned by the GetterFactory.
 import logging
 import re
 import time
+import uuid
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from collections.abc import Sequence
 from functools import cached_property
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
-from typing import Any, Callable, ClassVar, Iterable
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Generic,
+    Iterable,
+    Mapping,
+    Optional,
+    TypeVar,
+)
 from urllib.parse import urlparse
 
 import requests
@@ -31,6 +42,7 @@ from logprep.util.defaults import (
     ENV_NAME_LOGPREP_GETTER_CONFIG,
 )
 from logprep.util.environ import ENV_VARS
+from logprep.util.helper import DottedTemplate, JsonObject, get_dotted_field_value
 
 logger = logging.getLogger("Getter")
 
@@ -708,3 +720,154 @@ class HttpGetter(RefreshableGetter):
 def refresh_getters():
     """Refreshes all refreshable getters"""
     RefreshableGetter.refresh()
+
+
+class RetrievalContextError(LogprepException): ...
+
+
+@define(kw_only=True, frozen=True)
+class PreloadResult:
+    loaded: Sequence[str]
+    dynamic: Sequence[str]
+    error: Mapping[str, Exception]
+
+
+T = TypeVar("T")
+
+
+class ResourceCache(Generic[T]):
+    def __init__(
+        self,
+        on_create_or_update: Callable[[Getter, Optional[T]], T],
+        on_cleanup: Optional[Callable[[str, T], None]] = None,
+    ) -> None:
+        self._on_create_or_update = on_create_or_update
+        self._on_cleanup = on_cleanup
+        self._cache: dict[str, T] = {}
+        self._error: dict[str, Exception] = {}
+        self._tag: str = str(uuid.uuid4())
+
+    def has_error(self, uri: str) -> bool:
+        return uri in self._error
+
+    @property
+    def has_any_error(self) -> bool:
+        return bool(self._error)
+
+    @property
+    def current_errors(self) -> Sequence[Exception]:
+        return list(self._error.values())
+
+    def clear_errors(self) -> None:
+        self._error.clear()
+
+    def is_cached(self, uri: str) -> bool:
+        return uri in self._cache
+
+    def _handle_cached(self, uri: str) -> T:
+        RefreshableGetter.keep_alive_for_target(uri)
+        return self._cache[uri]
+
+    def _getter_fetch_callback(self, getter: Getter, uri: str) -> None:
+        try:
+            self._cache[uri] = self._on_create_or_update(getter, self._cache.get(uri))
+        except Exception as exc:
+            self._error[uri] = exc
+            return
+        if uri in self._error:
+            del self._error[uri]
+
+    def _getter_cleanup_callback(self, uri: str) -> None:
+        if uri in self._error:
+            del self._error[uri]
+        if uri not in self._cache:
+            return
+        if self._on_cleanup:
+            self._on_cleanup(uri, self._cache[uri])
+        del self._cache[uri]
+
+    def _initialize_cache_item(self, uri: str) -> Optional[T]:
+        # TODO: Prevent from_string from attempting to resolve envs again
+        try:
+            getter = GetterFactory.from_string(uri)
+            self._cache[uri] = self._on_create_or_update(getter, None)
+
+        except Exception as error:
+            self._error[uri] = error
+            return None
+        if isinstance(getter, RefreshableGetter):
+            getter.keep_alive()
+            key = (self._tag, uri)
+            getter.add_callback(
+                self._tag,
+                self._getter_fetch_callback,
+                deduplication_key=key,
+                fnc_args=[getter, uri],
+            )
+
+            getter.add_cleanup_callback(
+                self._tag,
+                self._getter_cleanup_callback,
+                deduplication_key=key,
+                fnc_args=[uri],
+            )
+
+        return self._cache[uri]
+
+    def _handle_resolved_uri(self, uri: str) -> Optional[T]:
+        if self.has_error(uri):
+            return None
+        if self.is_cached(uri):
+            return self._handle_cached(uri)
+        return self._initialize_cache_item(uri)
+
+    def get_value(self, uri: str, event: Optional[JsonObject] = None) -> Optional[T]:
+        if self.has_error(uri):
+            return None
+        if self.is_cached(uri):
+            return self._handle_cached(uri)
+
+        # TODO: check if we can use the raw uri as a key to avoid subtitution
+        # before we can check the cache
+        uri_with_resolved_envs = DottedTemplate(uri).safe_substitute(ENV_VARS)
+        event_uri_template = DottedTemplate(uri_with_resolved_envs)
+        event_identifiers = event_uri_template.get_identifiers()
+
+        if len(event_identifiers) == 0:
+            return self._handle_resolved_uri(uri_with_resolved_envs)
+
+        if event is None:
+            raise RetrievalContextError("Trying to access event-dynamic resource outside of event")
+
+        values = {
+            identifier: get_dotted_field_value(event, identifier)
+            for identifier in event_identifiers
+        }
+        for identifier, val in values.items():
+            if val is None:
+                raise ValueError(
+                    f"missing event field {identifier!r} for dynamic generic adder URI"
+                )
+            if not isinstance(val, (str, int)):
+                raise ValueError(
+                    f"value for generic adder field {identifier!r} is not a scalar value"
+                )
+
+        resolved_uri = event_uri_template.substitute(values)
+
+        return self._handle_resolved_uri(resolved_uri)
+
+    def preload_static_uris(self, *uris: str) -> PreloadResult:
+        loaded: list[str] = []
+        dynamic: list[str] = []
+        for uri in uris:
+            try:
+                self.get_value(uri)
+                loaded.append(uri)
+            except RetrievalContextError:
+                dynamic.append(uri)
+        return PreloadResult(
+            loaded=loaded,
+            dynamic=dynamic,
+            error={uri: self._error[uri] for uri in uris if uri in self._error},
+        )
