@@ -35,7 +35,6 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.ip_informer.rule import IpInformerRule, get_ip_property_names
 from logprep.util.helper import (
     FieldValue,
-    get_dotted_field_value,
     get_dotted_field_values,
 )
 

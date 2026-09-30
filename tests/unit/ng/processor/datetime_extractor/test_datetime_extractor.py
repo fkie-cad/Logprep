@@ -27,6 +27,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
             input_meta=InputMeta(),
         )
 
+        await self.object.setup()
         await self.object.process(document)
 
         expected = LogEvent(
@@ -69,6 +70,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
             input_meta=InputMeta(),
         )
 
+        await self.object.setup()
         await self.object.process(document)
 
         expected = LogEvent(
@@ -105,6 +107,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
             input_meta=InputMeta(),
         )
 
+        await self.object.setup()
         await self.object.process(document)
 
         tz_local_name = "+0000"

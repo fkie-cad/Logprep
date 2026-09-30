@@ -38,9 +38,9 @@ from typing import Any
 from attrs import define, field, validators
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.base.rule import Rule
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 
@@ -179,13 +179,13 @@ class TemplateReplacer(FieldManager):
         await super().setup()
         self._target_field = self.config.pattern["target_field"]
         self._fields = self.config.pattern["fields"]
-        self._initialize_replacement_mapping()
+        await self._initialize_replacement_mapping()
 
-    def _initialize_replacement_mapping(self) -> None:
+    async def _initialize_replacement_mapping(self) -> None:
         allow_delimiter_field = self.config.pattern["allowed_delimiter_field"]
         allow_delimiter_index = self._fields.index(allow_delimiter_field)
         self._mapping = {}
-        template = GetterFactory.from_string(self.config.template).get_dict()
+        template = await GetterFactory.from_string(self.config.template).get_dict()
         for keys_string, value in template.items():
             recombined_keys = self._recombine_keys(allow_delimiter_index, keys_string)
             try:

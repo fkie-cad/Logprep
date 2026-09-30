@@ -23,6 +23,7 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {}
         document = {"drop_me": "something"}
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
 
         assert log_event.data == expected

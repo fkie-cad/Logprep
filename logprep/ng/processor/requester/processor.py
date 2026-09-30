@@ -35,9 +35,12 @@ Processor Configuration
 """
 
 import json
+import ssl
 import typing
+from dataclasses import dataclass
+from urllib.parse import urlparse
 
-import requests
+import aiohttp
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -54,11 +57,41 @@ from logprep.util.helper import (
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
 
+@dataclass(frozen=True, slots=True)
+class RequesterResponse:
+    """Response data required for requester result handling"""
+
+    content: bytes
+
+
 class Requester(FieldManager):
     """A processor to invoke http requests with field data
     and parses response data to field values"""
 
     rule_class = RequesterRule
+
+    _session: aiohttp.ClientSession | None = None
+
+    async def setup(self) -> None:
+        """Set up the requester HTTP client session"""
+        await super().setup()
+
+        previous_session = self._session
+
+        self._session = aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=None),
+            trust_env=True,
+        )
+
+        if previous_session is not None and not previous_session.closed:
+            await previous_session.close()
+
+    async def shut_down(self) -> None:
+        """Close the requester HTTP client session"""
+        if self._session is not None:
+            await self._session.close()
+            self._session = None
+        await super().shut_down()
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(RequesterRule, rule)
@@ -68,12 +101,12 @@ class Requester(FieldManager):
         if self._has_missing_values(event, rule, source_field_dict):
             return
         kwargs = self._template_kwargs(rule.kwargs, source_field_dict)
-        response = self._request(event, rule, kwargs)
+        response = await self._request(event, rule, kwargs)
         if response is not None:
             self._handle_response(event, rule, response)
 
     def _handle_response(
-        self, event: dict, rule: RequesterRule, response: requests.Response
+        self, event: dict, rule: RequesterRule, response: RequesterResponse
     ) -> None:
         conflicting_fields = []
         if rule.target_field:
@@ -104,19 +137,142 @@ class Requester(FieldManager):
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
-    def _request(self, event: dict, rule: RequesterRule, kwargs: dict) -> requests.Response | None:
+    async def _request(
+        self, event: dict, rule: RequesterRule, kwargs: dict
+    ) -> RequesterResponse | None:
+        """Perform an asynchronous HTTP request"""
+        if self._session is None:
+            raise RuntimeError("Requester HTTP client session is not initialized")
+
+        kwargs = self._prepare_request_kwargs(kwargs)
+
         try:
-            response = requests.request(**kwargs)
-            response.raise_for_status()
-            return response
-        except requests.exceptions.HTTPError as error:
+            async with self._session.request(**kwargs) as response:
+                response.raise_for_status()
+                return RequesterResponse(content=await response.read())
+        except aiohttp.ClientResponseError as error:
             self._handle_warning_error(event, rule, error)
-        except requests.exceptions.ConnectTimeout as error:
+        except aiohttp.ConnectionTimeoutError as error:
             self._handle_warning_error(event, rule, error)
         return None
 
+    @classmethod
+    def _prepare_request_kwargs(cls, kwargs: dict) -> dict:
+        """Convert requests-compatible kwargs to aiohttp kwargs."""
+        kwargs = kwargs.copy()
+
+        cls._convert_auth(kwargs)
+        cls._convert_timeout(kwargs)
+        cls._convert_proxies(kwargs)
+        cls._convert_ssl(kwargs)
+
+        return kwargs
+
     @staticmethod
-    def _get_result(response: requests.Response) -> dict | str:
+    def _convert_auth(kwargs: dict) -> None:
+        """Convert basic authentication to aiohttp format."""
+        auth: tuple[str, str] | None = kwargs.pop("auth", None)
+        if auth:
+            username, password = auth
+            kwargs.setdefault("headers", {})
+            kwargs["headers"]["Authorization"] = aiohttp.encode_basic_auth(
+                username,
+                password,
+            )
+
+    @staticmethod
+    def _convert_timeout(kwargs: dict) -> None:
+        """Convert the request timeout to aiohttp timeout settings."""
+        timeout = kwargs.get("timeout")
+        if timeout is None:
+            return
+
+        if isinstance(timeout, (tuple, list)):
+            connect_timeout, read_timeout = timeout
+        else:
+            connect_timeout = timeout
+            read_timeout = timeout
+
+        kwargs["timeout"] = aiohttp.ClientTimeout(
+            total=None,
+            sock_connect=connect_timeout,
+            sock_read=read_timeout,
+        )
+
+    @classmethod
+    def _convert_proxies(cls, kwargs: dict) -> None:
+        """Convert the requests proxy mapping to an aiohttp proxy."""
+        proxies: dict[str, str] | None = kwargs.pop("proxies", None)
+        if not proxies:
+            return
+
+        proxy = cls._select_proxy(kwargs["url"], proxies)
+        if proxy:
+            kwargs["proxy"] = cls._normalize_proxy_url(proxy)
+
+    @staticmethod
+    def _select_proxy(url: str, proxies: dict[str, str]) -> str | None:
+        """Select the proxy matching the request URL."""
+        parsed_url = urlparse(url)
+        scheme = parsed_url.scheme
+        hostname = parsed_url.hostname
+
+        proxy_keys = (
+            f"{scheme}://{hostname}",
+            scheme,
+            f"all://{hostname}",
+            "all",
+        )
+
+        for key in proxy_keys:
+            if key in proxies:
+                return proxies[key]
+
+        return None
+
+    @staticmethod
+    def _normalize_proxy_url(proxy: str) -> str:
+        """Ensure that a proxy URL contains a scheme."""
+        if "://" not in proxy:
+            return f"http://{proxy}"
+        return proxy
+
+    @staticmethod
+    def _convert_ssl(kwargs: dict) -> None:
+        """Convert requests SSL options to aiohttp SSL configuration."""
+        verify: bool | str = kwargs.pop("verify", True)
+        cert: str | tuple[str, str] | None = kwargs.pop("cert", None)
+
+        if verify is True and cert is None:
+            return
+
+        if verify is False and cert is None:
+            kwargs["ssl"] = False
+            return
+
+        if isinstance(verify, str):
+            ssl_context = ssl.create_default_context(cafile=verify)
+        else:
+            ssl_context = ssl.create_default_context()
+
+        if verify is False:
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+        if cert:
+            if isinstance(cert, tuple):
+                cert_file, key_file = cert
+                ssl_context.load_cert_chain(
+                    certfile=cert_file,
+                    keyfile=key_file,
+                )
+            else:
+                ssl_context.load_cert_chain(certfile=cert)
+
+        kwargs["ssl"] = ssl_context
+
+    @staticmethod
+    def _get_result(response: RequesterResponse) -> dict | str:
         try:
             result = json.loads(response.content)
         except json.JSONDecodeError:
@@ -133,3 +289,7 @@ class Requester(FieldManager):
                     transform_value=lambda d: template_resolver(d) if isinstance(d, str) else d,
                 )
         return kwargs
+
+    async def has_asyncio(self) -> bool:
+        """Return whether the processor performs asynchronous I/O operations."""
+        return True

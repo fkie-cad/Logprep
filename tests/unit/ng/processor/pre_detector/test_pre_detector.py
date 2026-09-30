@@ -56,6 +56,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         assert event.extra_data
         assert len(event.extra_data) == 1, "one extra data item expected"
@@ -77,6 +78,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 "title": "RULE_FOUR",
             },
         ]
+        await self.object.setup()
         event = await self.object.process(event)
         _ = event.extra_data[0]
         self._assert_equality_of_results(event, expected, expected_detection_results)
@@ -105,6 +107,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -146,6 +149,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -167,6 +171,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -194,6 +199,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -201,7 +207,10 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+
+        await self.object.setup()
         await self.object.process(event)
+
         assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyzA"}
@@ -256,6 +265,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(event)
         assert event.data != expected
 
@@ -286,6 +296,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -304,6 +315,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 

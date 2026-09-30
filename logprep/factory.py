@@ -8,6 +8,7 @@ from logprep.factory_error import (
     InvalidConfigSpecificationError,
     InvalidConfigurationError,
 )
+from logprep.ng.abc.processor import Processor
 
 
 class TrackedCreator:

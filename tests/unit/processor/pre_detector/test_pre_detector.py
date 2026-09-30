@@ -6,6 +6,7 @@ from copy import deepcopy
 import pytest
 from deepdiff import DeepDiff
 
+from logprep.abc.processor import Processor
 from logprep.util.helper import get_dotted_field_value
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -53,6 +54,7 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
@@ -75,6 +77,7 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
@@ -105,6 +108,7 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
@@ -131,6 +135,7 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
@@ -155,6 +160,7 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
 
         document["pre_detection_id"] = "11fdfc1f-8e00-476e-b88f-753d92af989c"
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
@@ -178,6 +184,7 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
@@ -201,6 +208,7 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
@@ -235,15 +243,19 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             ),
         ]
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
         )
 
     def test_correct_star_wildcard_behavior(self):
+        instance = self._create_test_instance()
+        instance.setup()
+
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
-        self.object.process(document)
+        instance.process(document)
         assert document == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyzA"}
@@ -253,33 +265,36 @@ class TestPreDetector(BaseProcessorTestCase):
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2*xyzA"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2*xyzA"}
-        self.object.process(document)
+        instance.process(document)
         assert document == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2xyz"}
-        self.object.process(document)
+        instance.process(document)
         assert document != expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2Axyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2Axyz"}
-        self.object.process(document)
+        instance.process(document)
         assert document != expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2AAxyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2AAxyz"}
-        self.object.process(document)
+        instance.process(document)
         assert document != expected
 
     def test_correct_questionmark_wildcard_behavior(self):
+        instance = self._create_test_instance()
+        instance.setup()
+
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
-        self.object.process(document)
+        instance.process(document)
         assert document == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
-        self.object.process(document)
+        instance.process(document)
         assert document == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
@@ -289,17 +304,17 @@ class TestPreDetector(BaseProcessorTestCase):
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
-        self.object.process(document)
+        instance.process(document)
         assert document != expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
-        self.object.process(document)
+        instance.process(document)
         assert document != expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
-        self.object.process(document)
+        instance.process(document)
         assert document == expected
 
     def test_ignores_case(self):
@@ -319,6 +334,7 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
@@ -341,6 +357,7 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
+        self.object.setup()
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results
@@ -665,6 +682,7 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
+
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
             document, expected, detection_results.data, expected_detection_results

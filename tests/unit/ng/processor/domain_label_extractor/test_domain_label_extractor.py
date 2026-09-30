@@ -27,6 +27,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             }
         }
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -42,6 +43,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             }
         }
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -61,6 +63,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             },
         }
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -76,6 +79,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             }
         }
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -88,6 +92,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         }
 
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
         assert log_event.data == expected_output
 
@@ -99,6 +104,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         }
 
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
         assert log_event.data == expected_output
 
@@ -119,6 +125,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         ]
 
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
         tags = log_event.data.pop("tags")
 
@@ -143,6 +150,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         }
 
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
         assert log_event.data == expected_output
 
@@ -158,6 +166,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         }
         expected_tags = ["source", "invalid_domain_in_url_domain", "ip_in_source_domain"]
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
         tags = log_event.data.pop("tags")
 
@@ -174,7 +183,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             }
         }
 
-        domain_label_extractor = Factory.create(configuration=config)
+        processor = Factory.create(configuration=config)
         document = {"url": {"domain": "domain.fubarbo"}}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
@@ -182,7 +191,8 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         }
 
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await domain_label_extractor.process(log_event)
+        await processor.setup()
+        await processor.process(log_event)
         assert log_event.data == expected_output
 
     async def test_append_to_non_default_tagging_field(self):
@@ -195,7 +205,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             }
         }
 
-        domain_label_extractor = Factory.create(config)
+        processor = Factory.create(config)
         document = {"url": {"domain": "domain.fubarbo"}, "special_tags": ["source"]}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
@@ -203,7 +213,8 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         }
 
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await domain_label_extractor.process(log_event)
+        await processor.setup()
+        await processor.process(log_event)
         assert log_event.data == expected_output
 
     async def test_domain_extraction_with_separated_tld(self):
@@ -217,6 +228,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             }
         }
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
 
         assert log_event.data == expected_output
@@ -226,6 +238,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         expected_output = {"url": {"domain": "123.123.123.123"}, "tags": ["ip_in_url_domain"]}
 
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
         assert log_event.data == expected_output
 
@@ -236,12 +249,14 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "tags": ["ip_in_url_domain"],
         }
         event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(event)
         assert document == expected_output
 
     async def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
         event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        await self.object.setup()
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
