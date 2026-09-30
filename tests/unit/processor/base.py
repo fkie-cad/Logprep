@@ -91,11 +91,13 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         return rules
 
     def _load_rule(self, rule: dict | Rule):
-        self.object._rule_tree = RuleTree()
-        self.object._rule_tree.init(
-            self.object.config.tree_config,
-            GetterFactory,
-        )
+        rule_tree_config = RuleTree.Config()
+        if self.object.config.tree_config:
+            rule_tree_config_data = GetterFactory.from_string(
+                self.object.config.tree_config
+            ).get_dict()
+            rule_tree_config = RuleTree.Config(**rule_tree_config_data)
+        self.object._rule_tree = RuleTree(config=rule_tree_config)
         assert self.object.rule_class, "a rule_class should never be none for concrete processors"
         rule = self.object.rule_class.create_from_dict(rule) if isinstance(rule, dict) else rule
         self.object._rule_tree.add_rule(rule)

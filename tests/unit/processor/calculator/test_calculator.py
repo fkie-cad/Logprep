@@ -562,8 +562,8 @@ class TestCalculator(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
-        self._load_rule(rule)
         self.object.setup()
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
