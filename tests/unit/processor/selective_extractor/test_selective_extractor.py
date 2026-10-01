@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=line-too-long
+
 import json
 import shutil
 import uuid
@@ -120,13 +122,13 @@ test_cases = [
         rule={
             "filter": "message",
             "selective_extractor": {
-                "source_fields": ["message"],
+                "source_fields": ["message", "message2"],
                 "outputs": [{"opensearch": "index"}],
             },
         },
-        event={"message": "test_message", "other": "field"},
-        expected={"message": "test_message", "other": "field"},
-        expected_extras=[{"message": "test_message"}],
+        event={"message": "test_message", "message2": "test_message2", "other": "field"},
+        expected={"message": "test_message", "message2": "test_message2", "other": "field"},
+        expected_extras=[{"message": "test_message", "message2": "test_message2"}],
         context=[
             MockedUrl(url="http://example.com", body='{"whatever":"json"}'),
             # MockedPath(refpath="blabla"),
@@ -145,13 +147,13 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
     }
 
     @pytest.mark.parametrize(["case"], parametrized_test_cases)
-    def test_cases(self, case: Case, provision_context):
+    def test_testcases(self, case: Case, provision_context):
         provision_context(case.context)
         self._load_rule(case.rule)
         assert isinstance(self.object, Processor)
         result = self.object.process(case.event)
         assert case.expected == result.event
-        assert case.expected_extras == result.data
+        assert case.expected_extras == [result.data[0][0]]
 
     def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
