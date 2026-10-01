@@ -314,27 +314,34 @@ class GenericAdderRule(Rule):
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
         self._used_uris: list[UriConfig] = []
-        self._resource_cache = ResourceCache[FieldValue](
-            on_create_or_update=self._fetch_and_cache_uri
-        )
+        self._resource_cache: typing.Optional[ResourceCache[FieldValue]] = None
 
-    def _fetch_and_cache_uri(self, getter: Getter, _: typing.Optional[FieldValue]) -> FieldValue:
+    def _fetch_and_cache_uri(self, getter: Getter) -> FieldValue:
         return getter.get_collection(content_field=self.config.content_field)
 
     def init_generic_adder(self, job_tag: str) -> None:
         """Initializes the generic adder and assignes the job_tag for callback cleanup"""
-
+        assert self._resource_cache is None
+        self._resource_cache = ResourceCache[FieldValue](
+            tag=job_tag,
+            on_create=self._fetch_and_cache_uri,
+            on_error=self._recompute_failure_state,
+        )
         if self.config.only_first_existing_file:
             self._init_first_existing_file()
             return
 
-        self._used_uris = [
-            *(UriConfig(uri=file_path) for file_path in self.config.add_from_file),
-            *list(self.config.add_from_uri),
-        ]
-        self._resource_cache.preload_static_uris(*(config.uri for config in self._used_uris))
+        self._used_uris = list(self.config.add_from_uri)
+        result = self._resource_cache.preload_static_uris(
+            *(config.uri for config in self._used_uris)
+        )
+        if len(result.error) > 0:
+            raise InvalidRuleDefinitionError(
+                "Could not load generic_adder URIs: " + ", ".join(result.error.keys())
+            )
 
     def _init_first_existing_file(self) -> None:
+        assert self._resource_cache is not None
         missing_files: list[str] = []
 
         for config in self.config.add_from_uri:
@@ -344,11 +351,12 @@ class GenericAdderRule(Rule):
             else:
                 self._used_uris = [config]
                 break
-        self._resource_cache.clear_errors()
         if len(self._used_uris) == 0:
             raise InvalidRuleDefinitionError(
                 f"None of the configured files exist: {missing_files!r}"
             )
+        assert len(self._used_uris) == 1
+        self._resource_cache.clear_errors()
 
     def _content_to_items_to_add(
         self, config: UriConfig, content: FieldValue
@@ -362,8 +370,8 @@ class GenericAdderRule(Rule):
         raise ValueError(f"""URI source {config.uri!r} without target_field must contain a mapping,
             got {type(content).__name__}""")
 
-    def _recompute_failure_state(self) -> None:
-
+    def _recompute_failure_state(self, _uri: str, _error: typing.Optional[Exception]) -> None:
+        assert self._resource_cache is not None
         if not self._resource_cache.has_any_error:
             self.clear_failed()
             return
@@ -378,9 +386,12 @@ class GenericAdderRule(Rule):
             yield self.config.add
 
         for config in self._used_uris:
+            assert self._resource_cache is not None
+            if self._resource_cache.has_error(config.uri):
+                raise Exception("Mising data.")
             content = self._resource_cache.get_value(config.uri, event)
             if content is None:
-                continue
+                raise Exception("Missing data.")
             yield self._content_to_items_to_add(config, content)
 
     def add(self, event: dict[str, FieldValue]) -> dict[str, FieldValue]:

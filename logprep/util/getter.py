@@ -5,7 +5,6 @@ They are returned by the GetterFactory.
 import logging
 import re
 import time
-import uuid
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Sequence
@@ -738,14 +737,20 @@ T = TypeVar("T")
 class ResourceCache(Generic[T]):
     def __init__(
         self,
-        on_create_or_update: Callable[[Getter, Optional[T]], T],
+        tag: str,
+        *,
+        on_create: Callable[[Getter], T],
+        on_error: Optional[Callable[[str, Optional[Exception]], T]] = None,
+        on_update: Optional[Callable[[Getter, T], T]] = None,
         on_cleanup: Optional[Callable[[str, T], None]] = None,
     ) -> None:
-        self._on_create_or_update = on_create_or_update
+        self._tag = tag
+        self._on_create = on_create
+        self._on_update = on_update
+        self._on_error = on_error
         self._on_cleanup = on_cleanup
         self._cache: dict[str, T] = {}
         self._error: dict[str, Exception] = {}
-        self._tag: str = str(uuid.uuid4())
 
     def has_error(self, uri: str) -> bool:
         return uri in self._error
@@ -768,14 +773,24 @@ class ResourceCache(Generic[T]):
         RefreshableGetter.keep_alive_for_target(uri)
         return self._cache[uri]
 
+    def _handle_exception(self, uri: str, error: Exception) -> None:
+        self._error[uri] = error
+        if self._on_error is not None:
+            self._on_error(uri, error)
+
     def _getter_fetch_callback(self, getter: Getter, uri: str) -> None:
         try:
-            self._cache[uri] = self._on_create_or_update(getter, self._cache.get(uri))
-        except Exception as exc:
-            self._error[uri] = exc
+            if uri in self._cache and self._on_update is not None:
+                self._cache[uri] = self._on_update(getter, self._cache[uri])
+            else:
+                self._cache[uri] = self._on_create(getter)
+        except Exception as error:
+            self._handle_exception(uri, error)
             return
         if uri in self._error:
             del self._error[uri]
+            if self._on_error is not None:
+                self._on_error(uri, None)
 
     def _getter_cleanup_callback(self, uri: str) -> None:
         if uri in self._error:
@@ -790,10 +805,9 @@ class ResourceCache(Generic[T]):
         # TODO: Prevent from_string from attempting to resolve envs again
         try:
             getter = GetterFactory.from_string(uri)
-            self._cache[uri] = self._on_create_or_update(getter, None)
-
+            self._cache[uri] = self._on_create(getter)
         except Exception as error:
-            self._error[uri] = error
+            self._handle_exception(uri, error)
             return None
         if isinstance(getter, RefreshableGetter):
             getter.keep_alive()
