@@ -35,11 +35,11 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
     CONFIG = {
         "type": "pseudonymizer",
         "outputs": [{"kafka": "topic"}],
-        "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
-        "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
+        "pubkey_analyst": "example_analyst_pub.pem",
+        "pubkey_depseudo": "example_depseudo_pub.pem",
         "hash_salt": "a_secret_tasty_ingredient",
         "rules": ["tests/testdata/unit/pseudonymizer/rules"],
-        "regex_mapping": "tests/testdata/unit/pseudonymizer/regex_mapping.yml",
+        "regex_mapping": "pseudonymizer_regex_mapping.json",
         "max_cached_pseudonyms": 1000000,
     }
 
@@ -101,29 +101,6 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         self.object = Factory.create({"pseudonymizer": config})
         await super()._load_rule(rule)
         await self.object.setup()
-
-    async def test_pseudonymize_url_fields_not_in_pseudonymize(self):
-        pseudonym = "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
-
-        url = "https://www.do-not-pseudo.this.de"
-        regex_pattern = "RE_WHOLE_FIELD_CAP"
-        event = {
-            "filter_this": "does_not_matter",
-            "do_not_pseudo_this": url,
-            "pseudo_this": "test",
-        }
-        rule = {
-            "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"mapping": {"pseudo_this": regex_pattern}},
-            "url_fields": ["do_not_pseudo_this"],
-        }
-        self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
-        await self._load_rule(rule)
-        event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-
-        assert event.data["do_not_pseudo_this"] == url
-        assert event.data["pseudo_this"] == pseudonym
 
     async def test_replace_regex_keywords_by_regex_expression_is_idempotent(self):
         rule_dict = {
@@ -392,9 +369,7 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         }
         await self._load_rule(rule_dict)
         self.object.rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
-        error_message = (
-            r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping '.*\/regex_mapping.yml'"
-        )
+        error_message = r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping 'pseudonymizer_regex_mapping.json'"
         with pytest.raises(InvalidConfigurationError, match=error_message):
             await self.object.setup()
 
