@@ -7,6 +7,7 @@
 * calculator: extended expression functionality
 
 ### Improvements
+* docs: rework examples for calculator, decoder, deduplicator, dissector, field_manager, ip_informer, key_checker, replacer, selective_extractor, string_splitter
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
 * calculator: optimized runtime expression evaluation
 * docs: improve documentation around dynamic templating for `generic_adder`
@@ -32,7 +33,6 @@
 * filter: allow mixed numeric range boundaries and type coercion for range matching
 
 ### Improvements
-* docs: rework examples for calculator, decoder, deduplicator, dissector, field_manager, ip_informer, key_checker, replacer, selective_extractor, string_splitter
 * docs: enable pydoc placeholders for facilitating component reuse through inheritance
 * docs: change processor natural naming to capital cased with whitespace (e.g. "Generic Resolver")
 * docs: use processor name placeholders for most usages
