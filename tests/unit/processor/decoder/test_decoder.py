@@ -8,9 +8,10 @@ import pytest
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.processor.decoder.decoders import parse_logfmt
 from logprep.util.typing import is_list_of
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [
+example_test_cases = [
     pytest.param(
         {
             "filter": "message",
@@ -24,7 +25,7 @@ test_cases = [
             "message": '{"to_decode": "decode value"}',
             "new_field": {"to_decode": "decode value"},
         },
-        id="decodes_simple_json_to_target_field",
+        id="decodes simple json to target field",
     ),
     pytest.param(
         {
@@ -39,8 +40,25 @@ test_cases = [
             "message": '{"to.decode": "decode value"}',
             "new_field": {"to.decode": "decode value"},
         },
-        id="decodes_simple_json_to_target_field_dotted",
+        id="decodes simple json to target field dotted",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "source_format": "base64",
+            },
+        },
+        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
+        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "new_field": "this,is,the,message"},
+        id="decodes simple base64",
+    ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
     pytest.param(
         {
             "filter": "json_message OR escaped_message",
@@ -61,7 +79,7 @@ test_cases = [
             "json_field": {"json_decode": "json_value"},
             "escaped_field": {"to_decode": "decode value"},
         },
-        id="decodes_json_with_mapping_to_corresponding_target_fields",
+        id="decodes json with mapping to corresponding target fields",
     ),
     pytest.param(
         {
@@ -83,7 +101,7 @@ test_cases = [
             "json.field": {"json.decode": "json.value"},
             "escaped.field": {"to.decode": "decode value"},
         },
-        id="decodes_json_with_mapping_to_corresponding_target_fields_dotted",
+        id="decodes json with mapping to corresponding target fields - dotted",
     ),
     pytest.param(
         {
@@ -105,20 +123,7 @@ test_cases = [
             "json.field\\": {"json.decode": "json.value"},
             "escaped.field\\": {"to.decode": "decode value"},
         },
-        id="decodes_json_with_mapping_to_corresponding_target_fields_dotted_and_backslashes",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "source_fields": ["message"],
-                "target_field": "new_field",
-                "source_format": "base64",
-            },
-        },
-        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
-        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "new_field": "this,is,the,message"},
-        id="decodes_simple_base64",
+        id="decodes json with mapping to corresponding target fields - dotted and backslashes",
     ),
     pytest.param(
         {
@@ -132,7 +137,7 @@ test_cases = [
         },
         {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
         {"new_field": "this,is,the,message"},
-        id="decodes_simple_base64_and_removes_source_field",
+        id="decodes simple base64 and removes source field",
     ),
     pytest.param(
         {
@@ -148,7 +153,7 @@ test_cases = [
             "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
         },
         {"new_field1": "this,is,the,message", "new_field2": "this,is,the,message"},
-        id="decodes_simple_base64_and_removes_source_fields_with_mapping",
+        id="decodes simple base64 and removes source fields with mapping",
     ),
     pytest.param(
         {
@@ -164,7 +169,7 @@ test_cases = [
             "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
         },
         {"message1": "this,is,the,message", "message2": "this,is,the,message"},
-        id="decodes_simple_base64_and_overwrites_source_fields",
+        id="decodes simple base64 and overwrites source fields",
     ),
     pytest.param(
         {
@@ -611,7 +616,7 @@ test_cases = [
         },
         id="base64 double quote escape",
     ),
-]
+)
 
 failure_test_cases = [
     pytest.param(
@@ -625,7 +630,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_failure"]},
-        id="not_base64_source_string",
+        id="not base64 source string",
     ),
     pytest.param(
         {
@@ -637,7 +642,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_failure"]},
-        id="not_base64_source_string_with_mapping",
+        id="not base64 source string with mapping",
     ),
     pytest.param(
         {
@@ -649,7 +654,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
-        id="source_field_not_found_with_mapping",
+        id="source field not found with mapping",
     ),
     pytest.param(
         {
@@ -662,7 +667,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
-        id="source_field_not_found_with_single_source_field",
+        id="source field not found with single source field",
     ),
     pytest.param(
         {
@@ -674,7 +679,7 @@ failure_test_cases = [
         },
         {"message": "not json"},
         {"message": "not json", "tags": ["_decoder_failure"]},
-        id="json_decode_error_with_mapping",
+        id="json decode error with mapping",
     ),
     pytest.param(
         {
@@ -687,7 +692,7 @@ failure_test_cases = [
         },
         {"message": "not json"},
         {"message": "not json", "tags": ["_decoder_failure"]},
-        id="json_decode_error_with_single_field",
+        id="json decode error with single field",
     ),
     pytest.param(
         {
@@ -740,7 +745,7 @@ failure_test_cases = [
             "message": "nocri",
             "tags": ["_decoder_failure"],
         },
-        id="not cri ",
+        id="not cri",
     ),
     pytest.param(
         {
@@ -803,19 +808,14 @@ class TestDecoder(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/decoder/rules"],
     }
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        test_cases,
-    )
-    def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         result = self.object.process(event)
         assert event == expected, f"{result.errors}"
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        failure_test_cases,
-    )
+    @pytest.mark.parametrize(["rule", "event", "expected"], failure_test_cases)
     def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
         result = self.object.process(event)

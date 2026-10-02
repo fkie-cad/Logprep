@@ -3,9 +3,10 @@
 import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [
+example_test_cases = [
     pytest.param(
         {
             "filter": "message",
@@ -21,6 +22,80 @@ test_cases = [
         },
         id="writes new fields with same separator",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
+        },
+        {"message": "This is a message", "field4": ["preexisting"]},
+        {
+            "message": "This is a message",
+            "field1": "This",
+            "field3": "a",
+            "field4": ["preexisting", "message"],
+        },
+        id="writes new fields and appends to existing list",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "source1": "%{extracted.source1.key1} %{extracted.source1.key2} %{extracted.source1.key3}",  # pylint: disable=line-too-long
+                    "source2": "%{extracted.source2.key1} %{extracted.source2.key2} %{extracted.source2.key3}",  # pylint: disable=line-too-long
+                }
+            },
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+            "extracted": {
+                "source1": {"key1": "This", "key2": "is", "key3": "source1"},
+                "source2": {"key1": "This", "key2": "is", "key3": "source2"},
+            },
+        },
+        id="processes multiple mappings to different target fields",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"mapping": {"message": "%{?key} %{&key}"}}},
+        {"message": "This is the message"},
+        {"message": "This is the message", "This": "is the message"},
+        id="indirect field notation: uses captured field as key",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "%{field1} %{field2} %{field3} %{field4}",
+                    "message2": "%{field21} %{field22} %{field23} %{field24}",
+                },
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "This is a message", "message2": "This is a message"},
+        {
+            "field1": "This",
+            "field2": "is",
+            "field3": "a",
+            "field4": "message",
+            "field21": "This",
+            "field22": "is",
+            "field23": "a",
+            "field24": "message",
+        },
+        id="deletes source fields",
+    ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
     pytest.param(
         {
             "filter": "message",
@@ -49,20 +124,6 @@ test_cases = [
             "field4": "message",
         },
         id="writes new fields with long separator",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
-        },
-        {"message": "This is a message", "field4": ["preexisting"]},
-        {
-            "message": "This is a message",
-            "field1": "This",
-            "field3": "a",
-            "field4": ["preexisting", "message"],
-        },
-        id="writes new fields and appends to existing list",
     ),
     pytest.param(
         {
@@ -188,32 +249,6 @@ test_cases = [
             "field4": "message",
         },
         id="processes dotted source field",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "dissector": {
-                "mapping": {
-                    "source1": "%{extracted.source1.key1} %{extracted.source1.key2} %{extracted.source1.key3}",  # pylint: disable=line-too-long
-                    "source2": "%{extracted.source2.key1} %{extracted.source2.key2} %{extracted.source2.key3}",  # pylint: disable=line-too-long
-                }
-            },
-        },
-        {
-            "message": "This message does not matter",
-            "source1": "This is source1",
-            "source2": "This is source2",
-        },
-        {
-            "message": "This message does not matter",
-            "source1": "This is source1",
-            "source2": "This is source2",
-            "extracted": {
-                "source1": {"key1": "This", "key2": "is", "key3": "source1"},
-                "source2": {"key1": "This", "key2": "is", "key3": "source2"},
-            },
-        },
-        id="processes multiple mappings to different target fields",
     ),
     pytest.param(
         {
@@ -361,12 +396,6 @@ test_cases = [
         id="converts datatype with mapping in dotted field notation",
     ),
     pytest.param(
-        {"filter": "message", "dissector": {"mapping": {"message": "%{?key} %{&key}"}}},
-        {"message": "This is the message"},
-        {"message": "This is the message", "This": "is the message"},
-        id="indirect field notation: uses captured field as key",
-    ),
-    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{?key} %{&key} %{} %{+( )&key}"}},
@@ -409,30 +438,6 @@ test_cases = [
             "field\\5": "/5",
         },
         id="handles escaping of dotted notation in captured content and target field names",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "dissector": {
-                "mapping": {
-                    "message": "%{field1} %{field2} %{field3} %{field4}",
-                    "message2": "%{field21} %{field22} %{field23} %{field24}",
-                },
-                "delete_source_fields": True,
-            },
-        },
-        {"message": "This is a message", "message2": "This is a message"},
-        {
-            "field1": "This",
-            "field2": "is",
-            "field3": "a",
-            "field4": "message",
-            "field21": "This",
-            "field22": "is",
-            "field23": "a",
-            "field24": "message",
-        },
-        id="deletes source fields",
     ),
     pytest.param(
         {
@@ -704,7 +709,8 @@ test_cases = [
         },
         id="dissects fields seperated by newline delimiter",
     ),
-]
+)
+
 failure_test_cases = [
     pytest.param(
         {
@@ -835,13 +841,14 @@ class TestDissector(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/dissector/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("rule, event, expected", failure_test_cases)
+    @pytest.mark.parametrize(["rule", "event", "expected"], failure_test_cases)
     def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
         result = self.object.process(event)
