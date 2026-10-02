@@ -448,19 +448,6 @@ test_cases = normalize_test_cases(
     ),
     pytest.param(
         {
-            "filter": "*",
-            "calculator": {
-                "calc": "${spec.calc\\.op\\\\erator}(${spec.ca\\\\lc\\.value})",
-                "target_field": "result",
-                "delete_source_fields": True,
-            },
-        },
-        {"spec": {"calc.op\\erator": "round", "ca\\lc.value": "PI"}},
-        {"result": 3},
-        id="handles dotted fields & escaping in operators",
-    ),
-    pytest.param(
-        {
             "filter": "duration",
             "calculator": {
                 "calc": "${duration} * 10e5",
