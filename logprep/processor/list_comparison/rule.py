@@ -101,6 +101,8 @@ from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import (
+    CacheItem,
+    ErrorContext,
     ResourceCache,
 )
 from logprep.util.helper import DottedTemplate
@@ -322,8 +324,9 @@ class ListComparisonRule(FieldManagerRule):
         base_path = self._get_list_search_base_path(base_path)
         self._resource_cache = ResourceCache[ListContent](
             tag=callback_tag,
-            on_create=self._get_list_contents_from_getter,
-            on_error=self._recompute_failure_state,
+            on_data=self._get_list_contents_from_getter,
+            on_update=self._recompute_failure_state,
+            on_cleanup=self._recompute_failure_state,
         )
         list_paths = list(self._config.list_paths.values()) or self._config.list_file_paths
         list_names = list(self._config.list_paths.keys()) or None
@@ -337,16 +340,25 @@ class ListComparisonRule(FieldManagerRule):
                 base_path, list_paths, list_names
             )
 
-        result = self._resource_cache.preload_static_uris(*self._used_uris.values())
+        for used_uri in self._used_uris.values():
+            result = self._resource_cache.get_value(used_uri)
+            if result.error is not None and result.error.context is ErrorContext.HANDLE_CONTENT:
+                raise result.error.exception
 
-    def _recompute_failure_state(self, _uri: str, _error: Optional[Exception]) -> None:
+    def _recompute_failure_state(self, _item: CacheItem[ListContent]) -> None:
         assert self._resource_cache is not None
-        errors = self._resource_cache.current_errors
-        if len(errors) == 0:
+        error_items = [
+            item for item in self._resource_cache.get_error_items() if not item.is_dynamic
+        ]
+        if len(error_items) == 0:
             self.clear_failed()
-        elif len(errors) == 1:
-            self.mark_failed(errors[0])
+        elif len(error_items) == 1:
+            item = error_items[0]
+            assert item.error is not None
+            self.mark_failed(item.error.exception)
         else:
+            # TODO: consider differntiation by tpye to avoid additional checks.
+            errors = [item.error.exception for item in error_items if item.error is not None]
             self.mark_failed(ExceptionGroup("rule failed due to list data retrieval", errors))
 
     def _init_list_comparison_from_local_file(
@@ -377,13 +389,12 @@ class ListComparisonRule(FieldManagerRule):
                 "LOGPREP_LIST needs to be configured in list_search_base_path,"
                 f"it is not: {base_path}"
             )
-
         if list_names is None:
             list_names = list_paths
-
         list_paths = [
             base_template.safe_substitute(LOGPREP_LIST=list_path) for list_path in list_paths
         ]
+
         return dict(zip(list_names, list_paths))
 
     def _transform_and_filter_list_element(self, elem: str) -> str | None:
@@ -414,10 +425,7 @@ class ListComparisonRule(FieldManagerRule):
         """
         assert self._resource_cache is not None
         for key, uri in self._used_uris.items():
-            data = self._resource_cache.get_value(uri, event)
-            if data is None:
-                raise Exception("Data not available")
-            yield key, data
+            yield key, self._resource_cache.get_value(uri, event).value
 
     @property
     def failure_tags(self) -> list[str]:

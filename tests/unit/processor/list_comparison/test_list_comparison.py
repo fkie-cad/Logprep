@@ -8,7 +8,9 @@ from unittest import mock
 import pytest
 import responses
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError, ProcessingWarning
+from logprep.processor.base.exceptions import (
+    ProcessingWarning,
+)
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
@@ -749,7 +751,7 @@ class TestListComparison(BaseProcessorTestCase):
                 }
             }
         )
-        with pytest.raises(InvalidRuleDefinitionError, match="Content is not a list"):
+        with pytest.raises(ValueError, match="Content is not a list"):
             processor.setup()
 
     @responses.activate

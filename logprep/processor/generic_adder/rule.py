@@ -102,7 +102,7 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 from logprep.util import helper
 from logprep.util.converters import convert_from_dict
-from logprep.util.getter import ResourceCache
+from logprep.util.getter import CacheItem, ResourceCache
 from logprep.util.helper import (
     FieldValue,
 )
@@ -324,29 +324,28 @@ class GenericAdderRule(Rule):
         assert self._resource_cache is None
         self._resource_cache = ResourceCache[FieldValue](
             tag=job_tag,
-            on_create=self._fetch_and_cache_uri,
-            on_error=self._recompute_failure_state,
+            on_data=self._fetch_and_cache_uri,
+            on_update=self._recompute_failure_state,
         )
         if self.config.only_first_existing_file:
             self._init_first_existing_file()
             return
 
         self._used_uris = list(self.config.add_from_uri)
-        result = self._resource_cache.preload_static_uris(
-            *(config.uri for config in self._used_uris)
-        )
-        if len(result.error) > 0:
-            raise InvalidRuleDefinitionError(
-                "Could not load URIs: " + ", ".join(result.error.keys())
-            )
+        for used_uri in self._used_uris:
+            result = self._resource_cache.get_value(used_uri.uri)
+            if result.error is not None and not result.is_dynamic:
+                raise InvalidRuleDefinitionError(
+                    f"Could not load generic_adder URI: {result.resolved_uri}"
+                )
 
     def _init_first_existing_file(self) -> None:
         assert self._resource_cache is not None
         missing_files: list[str] = []
 
         for config in self.config.add_from_uri:
-            preload_result = self._resource_cache.preload_static_uris(config.uri)
-            if len(preload_result.loaded) == 0:
+            result = self._resource_cache.get_value(config.uri)
+            if result.error is not None:
                 missing_files.append(config.uri)
             else:
                 self._used_uris = [config]
@@ -357,6 +356,7 @@ class GenericAdderRule(Rule):
             )
         assert len(self._used_uris) == 1
         self._resource_cache.clear_errors()
+        self.clear_failed()  # TODO: clear_errors should be fine...
 
     def _content_to_items_to_add(
         self, config: UriConfig, content: FieldValue
@@ -370,15 +370,17 @@ class GenericAdderRule(Rule):
         raise ValueError(f"""URI source {config.uri!r} without target_field must contain a mapping,
             got {type(content).__name__}""")
 
-    def _recompute_failure_state(self, _uri: str, _error: typing.Optional[Exception]) -> None:
+    def _recompute_failure_state(self, _item: CacheItem[FieldValue]) -> None:
         assert self._resource_cache is not None
-        if not self._resource_cache.has_any_error:
+        error_items = self._resource_cache.get_error_items()
+        if len(error_items) == 0:
             self.clear_failed()
-            return
-        errors = self._resource_cache.current_errors
-        if len(errors) == 1:
-            self.mark_failed(errors[0])
+        elif len(error_items) == 1:
+            error_item = error_items[0]
+            assert error_item.error
+            self.mark_failed(error_item.error.exception)
         else:
+            errors = [item.error.exception for item in error_items if item.error is not None]
             self.mark_failed(ExceptionGroup("generic_adder URI loading failed", errors))
 
     def additions(self, event: dict[str, FieldValue]) -> Iterator[dict[str, FieldValue]]:
@@ -387,12 +389,9 @@ class GenericAdderRule(Rule):
 
         for config in self._used_uris:
             assert self._resource_cache is not None
-            if self._resource_cache.has_error(config.uri):
-                raise Exception("Mising data.")
-            content = self._resource_cache.get_value(config.uri, event)
-            if content is None:
-                raise Exception("Missing data.")
-            yield self._content_to_items_to_add(config, content)
+
+            cache_entry = self._resource_cache.get_value(config.uri, event)
+            yield self._content_to_items_to_add(config, cache_entry.value)
 
     def add(self, event: dict[str, FieldValue]) -> dict[str, FieldValue]:
         """Returns the fields to add"""

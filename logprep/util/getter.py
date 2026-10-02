@@ -21,6 +21,7 @@ from typing import (
     Iterable,
     Mapping,
     Optional,
+    TypeAlias,
     TypeVar,
 )
 from urllib.parse import urlparse
@@ -725,6 +726,13 @@ def refresh_getters():
 class RetrievalContextError(LogprepException): ...
 
 
+Uri: TypeAlias = str
+
+RawUri: TypeAlias = Uri
+ResolvedUri: TypeAlias = Uri
+DynamicUriTemplate: TypeAlias = DottedTemplate
+
+
 @define(kw_only=True, frozen=True)
 class PreloadResult:
     loaded: Sequence[str]
@@ -732,63 +740,10 @@ class PreloadResult:
     error: Mapping[str, Exception]
 
 
-class CanBeRequested:
-    @abstractmethod
-    @property
-    def request_uri(self) -> str: ...
-
-
-@define(kw_only=True, frozen=True)
-class UriInfo:
-    raw_uri: str
-    static_resolved_uri: str
-
-
-@define(kw_only=True, frozen=True)
-class StaticUriInfo(UriInfo, CanBeRequested):
-    @property
-    def request_uri(self):
-        return self.static_resolved_uri
-
-
-@define(kw_only=True, frozen=True)
-class ResolvedDynamicUri(UriInfo, CanBeRequested):
-    from_template: "DynamicUriTemplate"
-    dynamically_resolved_uri: str
-
-    @property
-    def request_uri(self):
-        return self.dynamically_resolved_uri
-
-
-@define(kw_only=True, frozen=True)
-class DynamicUriTemplate(UriInfo):
-    template: DottedTemplate
-
-    def resolve(self, event: JsonObject) -> ResolvedDynamicUri:
-        values = {
-            identifier: get_dotted_field_value(event, identifier)
-            for identifier in self.template.get_identifiers()
-        }
-        for identifier, val in values.items():
-            if val is None:
-                raise ValueError(f"missing event field {identifier!r} for dynamic URI")
-            if not isinstance(val, (str, int)):
-                raise ValueError(
-                    f"value for dynamic URI field {identifier!r} is not a scalar value"
-                )
-        return ResolvedDynamicUri(
-            raw_uri=self.raw_uri,
-            static_resolved_uri=self.static_resolved_uri,
-            from_template=self,
-            dynamically_resolved_uri=self.raw_uri,
-        )
-
-
 class ErrorContext(StrEnum):
     RESOLVE_URI = auto()
     RETRIEVE_URI = auto()
-    READ_CONTENT = auto()
+    HANDLE_CONTENT = auto()
 
 
 @define(frozen=True, kw_only=True)
@@ -801,10 +756,20 @@ T = TypeVar("T")
 
 
 @define(frozen=True, kw_only=True)
-class CacheEntry(Generic[T]):
-    item: Optional[T]
-    error: Optional[T]
-    is_sticky_cache: bool
+class CacheItem(Generic[T]):
+    raw_uri: RawUri
+    resolved_uri: Optional[ResolvedUri] = None
+    content: Optional[T] = None
+    error: Optional[CacheError] = None
+    is_cached: bool = True
+    is_dynamic: bool = False
+
+    @property
+    def value(self) -> T:
+        if self.error:
+            raise self.error.exception
+        assert self.content is not None
+        return self.content
 
 
 class ResourceCache(Generic[T]):
@@ -812,150 +777,194 @@ class ResourceCache(Generic[T]):
         self,
         tag: str,
         *,
-        on_create: Callable[[Getter], T],
-        on_error: Optional[Callable[[str, Optional[Exception]], None]] = None,
-        on_update: Optional[Callable[[Getter, T], T]] = None,
-        on_cleanup: Optional[Callable[[str, T], None]] = None,
+        on_data: Callable[[Getter], T],
+        on_update: Optional[Callable[[CacheItem[T]], None]] = None,
+        on_cleanup: Optional[Callable[[CacheItem[T]], None]] = None,
+        cache_entries_are_sticky: bool = True,
     ) -> None:
         self._tag = tag
-        self._on_create = on_create
+        self._on_data = on_data
         self._on_update = on_update
-        self._on_error = on_error
         self._on_cleanup = on_cleanup
-        self._cache: dict[str, T] = {}
-        self._error: dict[str, Exception] = {}
+        self._resolve_cache: dict[RawUri, ResolvedUri | DynamicUriTemplate] = {}
+        self._content_cache: dict[ResolvedUri, CacheItem[T]] = {}
+        self.cache_entries_are_sticky = cache_entries_are_sticky
 
-    def has_error(self, uri: str) -> bool:
-        return uri in self._error
-
-    @property
-    def has_any_error(self) -> bool:
-        return bool(self._error)
-
-    @property
-    def current_errors(self) -> Sequence[Exception]:
-        return list(self._error.values())
+    def clear(self) -> None:
+        RefreshableGetter.remove_callbacks_for_tag(self._tag)
+        self._resolve_cache.clear()
+        self._content_cache.clear()
 
     def clear_errors(self) -> None:
-        self._error.clear()
-        if self._on_error is not None:
-            # TODO: signature of cb is suboptimal in most scenarios
-            self._on_error("", None)
+        to_delete = [uri for uri, item in self._content_cache.items() if item.error is not None]
+        for uri in to_delete:
+            self._cleanup_callback(uri)
 
-    def is_cached(self, uri: str) -> bool:
-        return uri in self._cache
+    def get_error_items(self) -> Sequence[CacheItem[T]]:
+        return [item for item in self._content_cache.values() if item.error is not None]
 
-    def _handle_cached(self, uri: str) -> T:
-        RefreshableGetter.keep_alive_for_target(uri)
-        return self._cache[uri]
+    def _getter_fetch_callback(self, getter: Getter, uri: ResolvedUri) -> None:
+        new_item = self._get_updated_cache_item(getter, uri)
+        self._content_cache[uri] = new_item
 
-    def _handle_exception(self, uri: str, error: Exception) -> None:
-        self._error[uri] = error
-        if self._on_error is not None:
-            self._on_error(uri, error)
+        if self._on_update is not None:
+            self._on_update(new_item)
 
-    def _getter_fetch_callback(self, getter: Getter, uri: str) -> None:
+    def _get_updated_cache_item(self, getter: Getter, uri: ResolvedUri) -> CacheItem[T]:
+        old_item = self._content_cache[uri]
         try:
-            if uri in self._cache and self._on_update is not None:
-                self._cache[uri] = self._on_update(getter, self._cache[uri])
-            else:
-                self._cache[uri] = self._on_create(getter)
+            content = self._on_data(getter)
         except Exception as error:
-            self._handle_exception(uri, error)
-            return
-        if uri in self._error:
-            del self._error[uri]
-            if self._on_error is not None:
-                self._on_error(uri, None)
+            return CacheItem[T](
+                raw_uri=old_item.raw_uri,
+                resolved_uri=old_item.resolved_uri,
+                error=CacheError(
+                    context=ErrorContext.HANDLE_CONTENT,
+                    exception=error,
+                ),
+                is_dynamic=old_item.is_dynamic,
+            )
 
-    def _getter_cleanup_callback(self, uri: str) -> None:
-        if uri in self._error:
-            del self._error[uri]
-        if uri not in self._cache:
+        return CacheItem[T](
+            raw_uri=old_item.raw_uri,
+            resolved_uri=old_item.resolved_uri,
+            content=content,
+            is_dynamic=old_item.is_dynamic,
+        )
+
+    def _cleanup_callback(self, uri: ResolvedUri) -> None:
+        assert uri in self._content_cache
+        old_item = self._content_cache[uri]
+        if old_item is None:
             return
+        del self._content_cache[uri]
         if self._on_cleanup:
-            self._on_cleanup(uri, self._cache[uri])
-        del self._cache[uri]
+            self._on_cleanup(old_item)
 
-    def _initialize_cache_item(self, uri: str) -> Optional[T]:
-        # TODO: Prevent from_string from attempting to resolve envs again
+    def _create_cache_item(
+        self, raw_uri: RawUri, resolved_uri: ResolvedUri, is_dynamic: bool, is_cached: bool
+    ) -> CacheItem[T]:
         try:
-            getter = GetterFactory.from_string(uri)
-            self._cache[uri] = self._on_create(getter)
+            getter = GetterFactory.from_string(resolved_uri)
         except Exception as error:
-            self._handle_exception(uri, error)
-            return None
+            return CacheItem[T](
+                raw_uri=raw_uri,
+                resolved_uri=resolved_uri,
+                error=CacheError(
+                    context=ErrorContext.RETRIEVE_URI,
+                    exception=error,
+                ),
+                is_dynamic=is_dynamic,
+                is_cached=is_cached,
+            )
         if isinstance(getter, RefreshableGetter):
             getter.keep_alive()
-            key = (self._tag, uri)
+            key = (self._tag, resolved_uri)
             getter.add_callback(
                 self._tag,
                 self._getter_fetch_callback,
                 deduplication_key=key,
-                fnc_args=[getter, uri],
+                fnc_args=[getter, resolved_uri],
             )
 
             getter.add_cleanup_callback(
                 self._tag,
-                self._getter_cleanup_callback,
+                self._cleanup_callback,
                 deduplication_key=key,
-                fnc_args=[uri],
+                fnc_args=[resolved_uri],
             )
 
-        return self._cache[uri]
+        error: Optional[CacheError] = None
+        content: Optional[T] = None
+        try:
+            content = self._on_data(getter)
+        except (RefreshableGetterError, FileNotFoundError) as exc:
+            error = CacheError(
+                context=ErrorContext.RETRIEVE_URI,
+                exception=exc,
+            )
+        except Exception as exc:
+            error = CacheError(
+                context=ErrorContext.HANDLE_CONTENT,
+                exception=exc,
+            )
+        return CacheItem[T](
+            raw_uri=raw_uri,
+            resolved_uri=resolved_uri,
+            content=content,
+            error=error,
+            is_dynamic=is_dynamic,
+            is_cached=is_cached,
+        )
 
-    def _handle_resolved_uri(self, uri: str) -> Optional[T]:
-        if self.has_error(uri):
-            return None
-        if self.is_cached(uri):
-            return self._handle_cached(uri)
-        return self._initialize_cache_item(uri)
+    def _handle_resolved_uri(
+        self, raw_uri: RawUri, resolved_uri: ResolvedUri, is_dynamic: bool
+    ) -> CacheItem:
+        if resolved_uri not in self._content_cache:
+            new_item = self._create_cache_item(
+                raw_uri, resolved_uri, is_dynamic=is_dynamic, is_cached=True
+            )
+            self._content_cache[resolved_uri] = new_item
+            if self._on_update is not None:
+                self._on_update(new_item)
+        RefreshableGetter.keep_alive_for_target(resolved_uri)
+        return self._content_cache[resolved_uri]
 
-    def get_value(self, uri: str, event: Optional[JsonObject] = None) -> Optional[T]:
-        if self.has_error(uri):
-            return None
-        if self.is_cached(uri):
-            return self._handle_cached(uri)
+    def _handle_dynamic_uri(
+        self, raw_uri: RawUri, uri_template: DynamicUriTemplate, event: Optional[JsonObject]
+    ) -> CacheItem[T]:
+        event_identifiers = uri_template.get_identifiers()
 
-        # TODO: check if we can use the raw uri as a key to avoid subtitution
-        # before we can check the cache
-        uri_with_resolved_envs = DottedTemplate(uri).safe_substitute(ENV_VARS)
-        event_uri_template = DottedTemplate(uri_with_resolved_envs)
-        event_identifiers = event_uri_template.get_identifiers()
-
-        if len(event_identifiers) == 0:
-            return self._handle_resolved_uri(uri_with_resolved_envs)
+        def _resolve_error(exception: Exception) -> CacheItem[T]:
+            return CacheItem[T](
+                raw_uri=raw_uri,
+                error=CacheError(context=ErrorContext.RESOLVE_URI, exception=exception),
+                is_cached=False,
+                is_dynamic=True,
+            )
 
         if event is None:
-            raise RetrievalContextError("Trying to access event-dynamic resource outside of event")
+            return _resolve_error(
+                RetrievalContextError("Trying to access event-dynamic resource outside of event")
+            )
 
         values = {
             identifier: get_dotted_field_value(event, identifier)
             for identifier in event_identifiers
         }
+
         for identifier, val in values.items():
             if val is None:
-                raise ValueError(f"missing event field {identifier!r} for dynamic URI")
-            if not isinstance(val, (str, int)):
-                raise ValueError(
-                    f"value for dynamic URI field {identifier!r} is not a scalar value"
+                return _resolve_error(
+                    ValueError(f"missing event field {identifier!r} for dynamic URI")
                 )
 
-        resolved_uri = event_uri_template.substitute(values)
+            if not isinstance(val, (str, int)):
+                return _resolve_error(
+                    ValueError(f"value for dynamic URI field {identifier!r} is not a scalar value")
+                )
 
-        return self._handle_resolved_uri(resolved_uri)
+        resolved_uri = uri_template.substitute(values)
 
-    def preload_static_uris(self, *uris: str) -> PreloadResult:
-        loaded: list[str] = []
-        dynamic: list[str] = []
-        for uri in uris:
-            try:
-                self.get_value(uri)
-                loaded.append(uri)
-            except RetrievalContextError:
-                dynamic.append(uri)
-        return PreloadResult(
-            loaded=loaded,
-            dynamic=dynamic,
-            error={uri: self._error[uri] for uri in uris if uri in self._error},
-        )
+        return self._handle_resolved_uri(raw_uri, resolved_uri, is_dynamic=True)
+
+    def _handle_unknown_uri(self, raw_uri: RawUri, event: Optional[JsonObject]) -> CacheItem[T]:
+
+        resolved_uri = DottedTemplate(raw_uri).safe_substitute(ENV_VARS)
+        uri_template = DottedTemplate(resolved_uri)
+
+        if len(uri_template.get_identifiers()) == 0:
+            self._resolve_cache[raw_uri] = resolved_uri
+            return self._handle_resolved_uri(raw_uri, resolved_uri, is_dynamic=False)
+
+        self._resolve_cache[raw_uri] = uri_template
+        return self._handle_dynamic_uri(raw_uri, uri_template, event)
+
+    def get_value(self, uri: Uri, event: Optional[JsonObject] = None) -> CacheItem[T]:
+        cached_resolved = self._resolve_cache.get(uri)
+        if cached_resolved is None:
+            return self._handle_unknown_uri(uri, event)
+        elif isinstance(cached_resolved, ResolvedUri):
+            return self._handle_resolved_uri(uri, cached_resolved, is_dynamic=False)
+        assert isinstance(cached_resolved, DynamicUriTemplate)
+        return self._handle_dynamic_uri(uri, cached_resolved, event)

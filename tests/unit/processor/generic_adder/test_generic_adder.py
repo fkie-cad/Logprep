@@ -587,7 +587,7 @@ dynamic_uri_failure_test_cases = [
             },
         },
         {"tenant": ["not", "scalar"]},
-        "value for generic adder field 'tenant' is not a scalar value",
+        "value for dynamic URI field 'tenant' is not a scalar value",
         id="Reject non-scalar dynamic URI field",
     ),
     pytest.param(
