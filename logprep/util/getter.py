@@ -8,6 +8,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Sequence
+from enum import StrEnum, auto
 from functools import cached_property
 from importlib.metadata import version
 from pathlib import Path
@@ -731,7 +732,79 @@ class PreloadResult:
     error: Mapping[str, Exception]
 
 
+class CanBeRequested:
+    @abstractmethod
+    @property
+    def request_uri(self) -> str: ...
+
+
+@define(kw_only=True, frozen=True)
+class UriInfo:
+    raw_uri: str
+    static_resolved_uri: str
+
+
+@define(kw_only=True, frozen=True)
+class StaticUriInfo(UriInfo, CanBeRequested):
+    @property
+    def request_uri(self):
+        return self.static_resolved_uri
+
+
+@define(kw_only=True, frozen=True)
+class ResolvedDynamicUri(UriInfo, CanBeRequested):
+    from_template: "DynamicUriTemplate"
+    dynamically_resolved_uri: str
+
+    @property
+    def request_uri(self):
+        return self.dynamically_resolved_uri
+
+
+@define(kw_only=True, frozen=True)
+class DynamicUriTemplate(UriInfo):
+    template: DottedTemplate
+
+    def resolve(self, event: JsonObject) -> ResolvedDynamicUri:
+        values = {
+            identifier: get_dotted_field_value(event, identifier)
+            for identifier in self.template.get_identifiers()
+        }
+        for identifier, val in values.items():
+            if val is None:
+                raise ValueError(f"missing event field {identifier!r} for dynamic URI")
+            if not isinstance(val, (str, int)):
+                raise ValueError(
+                    f"value for dynamic URI field {identifier!r} is not a scalar value"
+                )
+        return ResolvedDynamicUri(
+            raw_uri=self.raw_uri,
+            static_resolved_uri=self.static_resolved_uri,
+            from_template=self,
+            dynamically_resolved_uri=self.raw_uri,
+        )
+
+
+class ErrorContext(StrEnum):
+    RESOLVE_URI = auto()
+    RETRIEVE_URI = auto()
+    READ_CONTENT = auto()
+
+
+@define(frozen=True, kw_only=True)
+class CacheError:
+    context: ErrorContext
+    exception: Exception
+
+
 T = TypeVar("T")
+
+
+@define(frozen=True, kw_only=True)
+class CacheEntry(Generic[T]):
+    item: Optional[T]
+    error: Optional[T]
+    is_sticky_cache: bool
 
 
 class ResourceCache(Generic[T]):
@@ -740,7 +813,7 @@ class ResourceCache(Generic[T]):
         tag: str,
         *,
         on_create: Callable[[Getter], T],
-        on_error: Optional[Callable[[str, Optional[Exception]], T]] = None,
+        on_error: Optional[Callable[[str, Optional[Exception]], None]] = None,
         on_update: Optional[Callable[[Getter, T], T]] = None,
         on_cleanup: Optional[Callable[[str, T], None]] = None,
     ) -> None:
@@ -765,6 +838,9 @@ class ResourceCache(Generic[T]):
 
     def clear_errors(self) -> None:
         self._error.clear()
+        if self._on_error is not None:
+            # TODO: signature of cb is suboptimal in most scenarios
+            self._on_error("", None)
 
     def is_cached(self, uri: str) -> bool:
         return uri in self._cache
@@ -859,12 +935,10 @@ class ResourceCache(Generic[T]):
         }
         for identifier, val in values.items():
             if val is None:
-                raise ValueError(
-                    f"missing event field {identifier!r} for dynamic generic adder URI"
-                )
+                raise ValueError(f"missing event field {identifier!r} for dynamic URI")
             if not isinstance(val, (str, int)):
                 raise ValueError(
-                    f"value for generic adder field {identifier!r} is not a scalar value"
+                    f"value for dynamic URI field {identifier!r} is not a scalar value"
                 )
 
         resolved_uri = event_uri_template.substitute(values)

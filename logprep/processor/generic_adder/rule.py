@@ -337,7 +337,7 @@ class GenericAdderRule(Rule):
         )
         if len(result.error) > 0:
             raise InvalidRuleDefinitionError(
-                "Could not load generic_adder URIs: " + ", ".join(result.error.keys())
+                "Could not load URIs: " + ", ".join(result.error.keys())
             )
 
     def _init_first_existing_file(self) -> None:
