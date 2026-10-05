@@ -2,6 +2,10 @@
 # pylint: disable=missing-docstring
 
 
+from copy import deepcopy
+
+import pytest
+
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -14,144 +18,151 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    def test_domain_extraction_from_full_url(self):
-        document = {"url": {"domain": "https://url.full.domain.de/path/file?param=1"}}
-        expected_output = {
-            "url": {
-                "domain": "https://url.full.domain.de/path/file?param=1",
-                "registered_domain": "domain.de",
-                "top_level_domain": "de",
-                "subdomain": "url.full",
-            }
-        }
-        self.object.process(document)
-
-        assert document == expected_output
-
-    def test_domain_extraction_to_existing_field(self):
-        document = {"url": {"domain": "www.test.domain.de"}}
-        expected_output = {
-            "url": {
-                "domain": "www.test.domain.de",
-                "registered_domain": "domain.de",
-                "top_level_domain": "de",
-                "subdomain": "www.test",
-            }
-        }
-        self.object.process(document)
-
-        assert document == expected_output
-
-    def test_domain_extraction_to_new_dotted_subfield(self):
-        document = {"url2": {"domain": "www.test.domain.de"}}
-        expected_output = {
-            "url2": {"domain": "www.test.domain.de"},
-            "extracted": {
-                "domain": {
-                    "info": {
-                        "registered_domain": "domain.de",
-                        "top_level_domain": "de",
-                        "subdomain": "www.test",
-                    }
+    test_cases = [
+        pytest.param(
+            {"url": {"domain": "https://url.full.domain.de/path/file?param=1"}},
+            {
+                "url": {
+                    "domain": "https://url.full.domain.de/path/file?param=1",
+                    "registered_domain": "domain.de",
+                    "top_level_domain": "de",
+                    "subdomain": "url.full",
                 }
             },
-        }
-        self.object.process(document)
-
-        assert document == expected_output
-
-    def test_domain_extraction_without_subdomain(self):
-        document = {"url": {"domain": "domain.de"}}
-        expected_output = {
-            "url": {
-                "domain": "domain.de",
-                "registered_domain": "domain.de",
-                "top_level_domain": "de",
-                "subdomain": "",
-            }
-        }
-        self.object.process(document)
-
-        assert document == expected_output
-
-    def test_domain_extraction_without_recognized_tld(self):
-        document = {"url": {"domain": "domain.fubarbo"}}
-        expected_output = {
-            "url": {"domain": "domain.fubarbo"},
-            "tags": ["invalid_domain_in_url_domain"],
-        }
-
-        self.object.process(document)
-        assert document == expected_output
-
-    def test_domain_extraction_without_recognized_tld_with_existing_tag_field(self):
-        document = {"url": {"domain": "domain.fubarbo"}, "tags": ["source"]}
-        expected_output = {
-            "url": {"domain": "domain.fubarbo"},
-            "tags": ["source", "invalid_domain_in_url_domain"],
-        }
-
-        self.object.process(document)
-        assert document == expected_output
-
-    def test_two_invalid_domains(self):
-        document = {
-            "url": {"domain": "domain.fubarbo"},
-            "source": {"domain": "domain.invalid"},
-            "tags": ["source"],
-        }
-        expected_output = {
-            "url": {"domain": "domain.fubarbo"},
-            "source": {"domain": "domain.invalid"},
-        }
-        expected_tags = [
-            "source",
-            "invalid_domain_in_url_domain",
-            "invalid_domain_in_source_domain",
-        ]
-
-        self.object.process(document)
-        tags = document.pop("tags")
-
-        assert document == expected_output
-        assert set(tags) == set(expected_tags)
-
-    def test_two_domains_one_is_invalid(self):
-        document = {
-            "url": {"domain": "domain.de"},
-            "source": {"domain": "domain.invalid"},
-            "tags": ["source"],
-        }
-        expected_output = {
-            "url": {
-                "domain": "domain.de",
-                "registered_domain": "domain.de",
-                "subdomain": "",
-                "top_level_domain": "de",
+            id="extraction_from_full_url",
+        ),
+        pytest.param(
+            {"url": {"domain": "www.test.domain.de"}},
+            {
+                "url": {
+                    "domain": "www.test.domain.de",
+                    "registered_domain": "domain.de",
+                    "top_level_domain": "de",
+                    "subdomain": "www.test",
+                }
             },
-            "source": {"domain": "domain.invalid"},
-            "tags": ["source", "invalid_domain_in_source_domain"],
-        }
+            id="extraction_to_existing_field",
+        ),
+        pytest.param(
+            {"url": {"domain": "www.test.domain.de"}},
+            {
+                "url": {
+                    "domain": "www.test.domain.de",
+                    "registered_domain": "domain.de",
+                    "top_level_domain": "de",
+                    "subdomain": "www.test",
+                }
+            },
+            id="extraction_to_existing_field",
+        ),
+        pytest.param(
+            {"url": {"domain": "domain.de"}},
+            {
+                "url": {
+                    "domain": "domain.de",
+                    "registered_domain": "domain.de",
+                    "top_level_domain": "de",
+                    "subdomain": "",
+                }
+            },
+            id="extraction_without_subdomain",
+        ),
+        pytest.param(
+            {"url": {"domain": "domain.fubarbo"}},
+            {
+                "url": {"domain": "domain.fubarbo"},
+                "tags": ["invalid_domain_in_url_domain"],
+            },
+            id="extraction_without_recognized_tld",
+        ),
+        pytest.param(
+            {"url": {"domain": "domain.fubarbo"}, "tags": ["source"]},
+            {
+                "url": {"domain": "domain.fubarbo"},
+                "tags": ["source", "invalid_domain_in_url_domain"],
+            },
+            id="without_recognized_tld_with_existing_tag_field",
+        ),
+        pytest.param(
+            {
+                "url": {"domain": "domain.fubarbo"},
+                "source": {"domain": "domain.invalid"},
+                "tags": ["source"],
+            },
+            {
+                "url": {"domain": "domain.fubarbo"},
+                "source": {"domain": "domain.invalid"},
+                "tags": [
+                    "source",
+                    "invalid_domain_in_url_domain",
+                    "invalid_domain_in_source_domain",
+                ],
+            },
+            id="two_invalid_domains",
+        ),
+        pytest.param(
+            {
+                "url": {"domain": "domain.de"},
+                "source": {"domain": "domain.invalid"},
+                "tags": ["source"],
+            },
+            {
+                "url": {
+                    "domain": "domain.de",
+                    "registered_domain": "domain.de",
+                    "subdomain": "",
+                    "top_level_domain": "de",
+                },
+                "source": {"domain": "domain.invalid"},
+                "tags": ["source", "invalid_domain_in_source_domain"],
+            },
+            id="two_domains_one_is_invalid",
+        ),
+        pytest.param(
+            {
+                "url": {"domain": "domain.fubarbo"},
+                "source": {"domain": "123.123.123.123"},
+                "tags": ["source"],
+            },
+            {
+                "url": {"domain": "domain.fubarbo"},
+                "source": {"domain": "123.123.123.123"},
+                "tags": ["source", "invalid_domain_in_url_domain", "ip_in_source_domain"],
+            },
+            id="two_domains_one_is_invalid_one_has_ip",
+        ),
+        pytest.param(
+            {"url": {"domain": "domain.co.uk"}},
+            {
+                "url": {
+                    "domain": "domain.co.uk",
+                    "registered_domain": "domain.co.uk",
+                    "top_level_domain": "co.uk",
+                    "subdomain": "",
+                }
+            },
+            id="with_separated_tld",
+        ),
+        pytest.param(
+            {"url": {"domain": "123.123.123.123"}},
+            {"url": {"domain": "123.123.123.123"}, "tags": ["ip_in_url_domain"]},
+            id="with_ipv4_target",
+        ),
+        pytest.param(
+            {"url": {"domain": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}},
+            {
+                "url": {"domain": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+                "tags": ["ip_in_url_domain"],
+            },
+            id="with_ipv6_target",
+        ),
+    ]
 
-        self.object.process(document)
-        assert document == expected_output
-
-    def test_two_domains_one_is_invalid_one_has_ip(self):
-        document = {
-            "url": {"domain": "domain.fubarbo"},
-            "source": {"domain": "123.123.123.123"},
-            "tags": ["source"],
-        }
-        expected_output = {
-            "url": {"domain": "domain.fubarbo"},
-            "source": {"domain": "123.123.123.123"},
-        }
-        expected_tags = ["source", "invalid_domain_in_url_domain", "ip_in_source_domain"]
-        self.object.process(document)
-        tags = document.pop("tags")
-
-        assert document == expected_output
-        assert set(tags) == set(expected_tags)
+    @pytest.mark.parametrize(["document", "expected_output"], test_cases)
+    def test_domain_extractor(self, document, expected_output):
+        used_document = deepcopy(document)
+        self.object.process(used_document)
+        assert used_document == expected_output
 
     def test_new_non_default_tagging_field(self):
         config = {
@@ -191,37 +202,6 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         }
 
         domain_label_extractor.process(document)
-        assert document == expected_output
-
-    def test_domain_extraction_with_separated_tld(self):
-        document = {"url": {"domain": "domain.co.uk"}}
-        expected_output = {
-            "url": {
-                "domain": "domain.co.uk",
-                "registered_domain": "domain.co.uk",
-                "top_level_domain": "co.uk",
-                "subdomain": "",
-            }
-        }
-        self.object.process(document)
-
-        assert document == expected_output
-
-    def test_domain_extraction_with_ipv4_target(self):
-        document = {"url": {"domain": "123.123.123.123"}}
-        expected_output = {"url": {"domain": "123.123.123.123"}, "tags": ["ip_in_url_domain"]}
-
-        self.object.process(document)
-        assert document == expected_output
-
-    def test_domain_extraction_with_ipv6_target(self):
-        document = {"url": {"domain": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}}
-        expected_output = {
-            "url": {"domain": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
-            "tags": ["ip_in_url_domain"],
-        }
-
-        self.object.process(document)
         assert document == expected_output
 
     def test_domain_extraction_with_existing_output_field(self):
