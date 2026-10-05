@@ -785,7 +785,7 @@ class ResourceCache(Generic[T]):
         on_data: Callable[[Getter], T],
         on_update: Optional[Callable[[CacheItem[T]], None]] = None,
         on_cleanup: Optional[Callable[[CacheItem[T]], None]] = None,
-        cache_entries_are_sticky: bool = True,
+        allow_dynamic_files: bool = False,
     ) -> None:
         self._tag = tag
         self._on_data = on_data
@@ -793,7 +793,7 @@ class ResourceCache(Generic[T]):
         self._on_cleanup = on_cleanup
         self._resolve_cache: dict[RawUri, ResolvedUri | DynamicUriTemplate] = {}
         self._content_cache: dict[ResolvedUri, CacheItem[T]] = {}
-        self.cache_entries_are_sticky = cache_entries_are_sticky
+        self._allow_dynamic_files = allow_dynamic_files
 
     def clear(self) -> None:
         RefreshableGetter.remove_callbacks_for_tag(self._tag)
@@ -851,13 +851,13 @@ class ResourceCache(Generic[T]):
     ) -> CacheItem[T]:
         try:
             getter = GetterFactory.from_string(resolved_uri, expand_env=False)
-        except Exception as error:
+        except Exception as exc:
             return CacheItem[T](
                 raw_uri=raw_uri,
                 resolved_uri=resolved_uri,
                 error=CacheError(
                     context=ErrorContext.RETRIEVE_URI,
-                    exception=error,
+                    exception=exc,
                 ),
                 is_dynamic=is_dynamic,
                 is_cached=is_cached,
@@ -961,6 +961,19 @@ class ResourceCache(Generic[T]):
         if len(uri_template.get_identifiers()) == 0:
             self._resolve_cache[raw_uri] = resolved_uri
             return self._handle_resolved_uri(raw_uri, resolved_uri, is_dynamic=False)
+
+        if not self._allow_dynamic_files and not resolved_uri.startswith("http"):
+            return CacheItem[T](
+                raw_uri=raw_uri,
+                error=CacheError(
+                    context=ErrorContext.RESOLVE_URI,
+                    exception=RetrievalContextError(
+                        "Dynamic file URIs are not supported",
+                    ),
+                ),
+                is_cached=False,
+                is_dynamic=True,
+            )
 
         self._resolve_cache[raw_uri] = uri_template
         return self._handle_dynamic_uri(raw_uri, uri_template, event)
