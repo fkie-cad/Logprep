@@ -102,12 +102,9 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 from logprep.util import helper
 from logprep.util.converters import convert_from_dict
-from logprep.util.environ import ENV_VARS
-from logprep.util.getter import GetterFactory, RefreshableGetter
+from logprep.util.getter import CacheItem, ResourceCache
 from logprep.util.helper import (
-    DottedTemplate,
     FieldValue,
-    get_dotted_field_value,
 )
 
 
@@ -156,16 +153,6 @@ def _convert_uri_config(
         UriConfig(uri=item) if isinstance(item, str) else convert_from_dict(UriConfig, item)
         for item in values
     ]
-
-
-@define(kw_only=True)
-class _UriSource:
-    config: UriConfig
-    template: DottedTemplate
-    static_uri: str | None
-    identifiers: Sequence[str]
-    content_by_uri: dict[str, FieldValue] = field(factory=dict)
-    error: Exception | None = None
 
 
 class GenericAdderRule(Rule):
@@ -326,135 +313,50 @@ class GenericAdderRule(Rule):
 
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
-        self._callback_tag: str | None = None
-        self._uri_sources: list[_UriSource] = []
+        self._used_uris: list[UriConfig] = []
+        self._resource_cache: typing.Optional[ResourceCache[FieldValue]] = None
+
+    def _fetch_and_cache_uri(self, getter: Getter) -> FieldValue:
+        return getter.get_collection(content_field=self.config.content_field)
 
     def init_generic_adder(self, job_tag: str) -> None:
         """Initializes the generic adder and assignes the job_tag for callback cleanup"""
-        self._callback_tag = job_tag
-
+        assert self._resource_cache is None
+        self._resource_cache = ResourceCache[FieldValue](
+            tag=job_tag,
+            on_data=self._fetch_and_cache_uri,
+            on_update=self._recompute_failure_state,
+        )
         if self.config.only_first_existing_file:
             self._init_first_existing_file()
             return
 
-        for spec in self.config.add_from_uri:
-            source = self._create_uri_source(spec)
-            self._uri_sources.append(source)
-
-            if not source.identifiers:
-                self._init_static_source(source, raise_on_error=True)
+        self._used_uris = list(self.config.add_from_uri)
+        for used_uri in self._used_uris:
+            result = self._resource_cache.get_value(used_uri.uri)
+            if result.error is not None and not result.is_dynamic:
+                raise InvalidRuleDefinitionError(
+                    f"Could not load generic_adder URI: {result.resolved_uri}"
+                )
 
     def _init_first_existing_file(self) -> None:
+        assert self._resource_cache is not None
         missing_files: list[str] = []
 
         for config in self.config.add_from_uri:
-            source = self._create_uri_source(config)
-            if source.identifiers:
-                raise InvalidRuleDefinitionError(
-                    f"only_first_existing_file does not support event-dependent paths: {config!r}"
-                )
-
-            try:
-                self._init_static_source(source, raise_on_error=True)
-            except InvalidRuleDefinitionError as error:
-                if isinstance(error.__cause__, FileNotFoundError):
-                    missing_files.append(config.uri)
-                    continue
-                raise
-            self._uri_sources.append(source)
-            return
-        raise InvalidRuleDefinitionError(f"None of the configured files exist: {missing_files!r}")
-
-    def _create_uri_source(self, config: UriConfig) -> _UriSource:
-        template = DottedTemplate(DottedTemplate(config.uri).safe_substitute(ENV_VARS))
-
-        identifiers = template.get_identifiers()
-
-        return _UriSource(
-            config=config,
-            template=template,
-            identifiers=tuple(identifiers),
-            static_uri=None if identifiers else template.substitute(),
-        )
-
-    def _init_static_source(self, source: _UriSource, raise_on_error: bool):
-        assert source.static_uri is not None
-        getter = GetterFactory.from_string(source.static_uri)
-
-        assert self._callback_tag
-
-        self._update_static_content(source, getter, source.static_uri)
-        if source.error and raise_on_error:
+            result = self._resource_cache.get_value(config.uri)
+            if result.error is not None:
+                missing_files.append(config.uri)
+            else:
+                self._used_uris = [config]
+                break
+        if len(self._used_uris) == 0:
             raise InvalidRuleDefinitionError(
-                f"Could not load generic_adder URI {source.static_uri!r}: {source.error}"
-            ) from source.error
-
-        if isinstance(getter, RefreshableGetter):
-            getter.add_callback(
-                self._callback_tag,
-                self._update_static_content,
-                deduplication_key=(self._callback_tag, source.static_uri, id(source)),
-                fnc_args=[source, getter, source.static_uri],
+                f"None of the configured files exist: {missing_files!r}"
             )
-
-    def _get_cached_or_dynamic_content(
-        self, source: _UriSource, event: dict[str, FieldValue]
-    ) -> FieldValue:
-        values = {
-            identifier: get_dotted_field_value(event, identifier)
-            for identifier in source.identifiers
-        }
-        for identifier, val in values.items():
-            if val is None:
-                raise ValueError(
-                    f"missing event field {identifier!r} for dynamic generic adder URI"
-                )
-            if not isinstance(val, (str, int)):
-                raise ValueError(
-                    f"value for generic adder field {identifier!r} is not a scalar value"
-                )
-
-        resolved_uri = source.template.substitute(values)
-
-        if resolved_uri in source.content_by_uri:
-            RefreshableGetter.keep_alive_for_target(resolved_uri)
-            return source.content_by_uri[resolved_uri]
-
-        getter = GetterFactory.from_string(resolved_uri)
-        if not isinstance(getter, RefreshableGetter):
-            raise InvalidRuleDefinitionError(
-                f"Dynamic file URIs are not supported, uri {resolved_uri!r}"
-            )
-
-        getter.keep_alive()
-        content = self._fetch_and_cache_uri(source, getter, resolved_uri)
-
-        assert self._callback_tag
-
-        key = (self._callback_tag, resolved_uri, id(source))
-
-        getter.add_callback(
-            self._callback_tag,
-            self._fetch_and_cache_uri,
-            deduplication_key=key,
-            fnc_args=[source, getter, resolved_uri],
-        )
-
-        getter.add_cleanup_callback(
-            self._callback_tag,
-            self._cleanup,
-            deduplication_key=key,
-            fnc_args=[source, resolved_uri],
-        )
-
-        return content
-
-    def _content_for_source(self, source: _UriSource, event: dict[str, FieldValue]) -> FieldValue:
-        if source.identifiers:
-            return self._get_cached_or_dynamic_content(source, event)
-
-        assert source.static_uri
-        return source.content_by_uri[source.static_uri]
+        assert len(self._used_uris) == 1
+        self._resource_cache.clear_errors()
+        self.clear_failed()  # TODO: clear_errors should be fine...
 
     def _content_to_items_to_add(
         self, config: UriConfig, content: FieldValue
@@ -468,41 +370,28 @@ class GenericAdderRule(Rule):
         raise ValueError(f"""URI source {config.uri!r} without target_field must contain a mapping,
             got {type(content).__name__}""")
 
-    def _fetch_and_cache_uri(self, source: _UriSource, getter: Getter, resolved_uri: str):
-        content = getter.get_collection(content_field=self.config.content_field)
-        source.content_by_uri[resolved_uri] = content
-        return content
-
-    def _update_static_content(self, source: _UriSource, getter: Getter, uri: str) -> None:
-        try:
-            self._fetch_and_cache_uri(source, getter, uri)
-        except Exception as error:  # pylint: disable=broad-except
-            source.error = error
-        else:
-            source.error = None
-
-        self._recompute_failure_state()
-
-    def _recompute_failure_state(self) -> None:
-        errors = [source.error for source in self._uri_sources if source.error is not None]
-
-        if not errors:
+    def _recompute_failure_state(self, _item: CacheItem[FieldValue]) -> None:
+        assert self._resource_cache is not None
+        error_items = self._resource_cache.get_error_items()
+        if len(error_items) == 0:
             self.clear_failed()
-        elif len(errors) == 1:
-            self.mark_failed(errors[0])
+        elif len(error_items) == 1:
+            error_item = error_items[0]
+            assert error_item.error
+            self.mark_failed(error_item.error.exception)
         else:
+            errors = [item.error.exception for item in error_items if item.error is not None]
             self.mark_failed(ExceptionGroup("generic_adder URI loading failed", errors))
-
-    def _cleanup(self, source: _UriSource, resolved_uri: str) -> None:
-        source.content_by_uri.pop(resolved_uri, None)
 
     def additions(self, event: dict[str, FieldValue]) -> Iterator[dict[str, FieldValue]]:
         if self.config.add:
             yield self.config.add
 
-        for source in self._uri_sources:
-            content = self._content_for_source(source, event)
-            yield self._content_to_items_to_add(source.config, content)
+        for config in self._used_uris:
+            assert self._resource_cache is not None
+
+            cache_entry = self._resource_cache.get_value(config.uri, event)
+            yield self._content_to_items_to_add(config, cache_entry.value)
 
     def add(self, event: dict[str, FieldValue]) -> dict[str, FieldValue]:
         """Returns the fields to add"""

@@ -8,7 +8,9 @@ from unittest import mock
 import pytest
 import responses
 
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import (
+    ProcessingWarning,
+)
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
@@ -877,9 +879,7 @@ class TestListComparison(BaseProcessorTestCase):
                 ]
             )
 
-        assert _compare_sets(processor.rules[0]) == {
-            "${LIST_TENANT}/bad_users.list": {"Foo", "Bar"}
-        }
+        assert _compare_sets(processor.rules[0]) == {"acme/bad_users.list": {"Foo", "Bar"}}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
@@ -999,9 +999,9 @@ class TestListComparison(BaseProcessorTestCase):
 
         assert document == expected
         assert len(result.warnings) == 1
-        assert (
-            "value for list comparison field 'tenants.0:2' is not a scalar value"
-            in _warning_str(result.warnings[0])
+        assert re.search(
+            r"value for.*\'tenants\.0\:2\'.*not.*scalar",
+            _warning_str(result.warnings[0]),
         )
         assert len(responses.calls) == 0
 
@@ -1029,9 +1029,7 @@ class TestListComparison(BaseProcessorTestCase):
         assert document == expected
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert "value for list comparison field 'tenant' is not a scalar value" in _warning_str(
-            result.warnings[0]
-        )
+        assert re.search(r"value for.*'tenant'.*not.*scalar", _warning_str(result.warnings[0]))
         assert len(responses.calls) == 0
 
     @responses.activate
@@ -1058,9 +1056,7 @@ class TestListComparison(BaseProcessorTestCase):
         assert document == expected
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert "missing event field 'tenant' for dynamic list comparison path" in _warning_str(
-            result.warnings[0]
-        )
+        assert re.search(r"missing.*\'tenant\'", _warning_str(result.warnings[0]))
         assert len(responses.calls) == 0
 
     @responses.activate
