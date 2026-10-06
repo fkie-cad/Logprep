@@ -32,6 +32,90 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             id="extraction_from_full_url",
         ),
         pytest.param(
+            {"url": {"domain": "https://url.full.domain.de/path/file?param=1"}},
+            {
+                "url": {
+                    "domain": "https://url.full.domain.de/path/file?param=1",
+                    "registered_domain": "domain.de",
+                    "top_level_domain": "de",
+                    "subdomain": "url.full",
+                }
+            },
+            id="extraction_from_full_url",
+        ),
+        pytest.param(
+            {"url": {"domain": "/path/file?param=1"}},
+            {
+                "url": {
+                    "domain": "/path/file?param=1",
+                },
+                "tags": ["invalid_domain_in_url_domain"],
+            },
+            id="extraction_only_path",
+        ),
+        pytest.param(
+            {"url": {"domain": "http:"}},
+            {
+                "url": {
+                    "domain": "http:",
+                },
+                "tags": ["invalid_url_domain_in_url_domain"],
+            },
+            id="extraction_only_schema",
+        ),
+        pytest.param(
+            {"url": {"domain": "NOT AN URL"}},
+            {
+                "url": {"domain": "NOT AN URL"},
+                "tags": ["invalid_type_in_url_domain"],
+            },
+            id="Invalid content (str not url)",
+        ),
+        pytest.param(
+            {"url": {"domain": ["NOT", "AN", "URL"]}},
+            {
+                "url": {"domain": ["NOT", "AN", "URL"]},
+                "tags": ["invalid_type_in_url_domain"],
+            },
+            id="Invalid content (list)",
+        ),
+        pytest.param(
+            {"url": {"domain": {"NOT": "AN URL"}}},
+            {
+                "url": {"domain": {"NOT": "AN URL"}},
+                "tags": ["invalid_type_in_url_domain"],
+            },
+            id="Invalid content (object)",
+        ),
+        pytest.param(
+            {"url": {"domain": 42}},
+            {
+                "url": {"domain": 42},
+                "tags": ["invalid_type_in_url_domain"],
+            },
+            id="Invalid content (number)",
+        ),
+        pytest.param(
+            {"url": {"domain": False}},
+            {
+                "url": {
+                    "domain": False,
+                },
+                "tags": ["invalid_type_in_url_domain"],
+            },
+            id="Invalid content (boolean)",
+        ),
+        pytest.param(
+            {"url": {"domain": None}},
+            {
+                "url": {
+                    "domain": None,
+                },
+                "tags": ["invalid_type_in_url_domain"],
+            },
+            id="Invalid content (null)",
+        ),
+        pytest.param(
             {"url": {"domain": "www.test.domain.de"}},
             {
                 "url": {

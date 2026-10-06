@@ -89,16 +89,27 @@ class DomainLabelExtractor(FieldManager):
             Currently applied domain label extractor rule.
         """
         source_field_values = self._get_field_values(event, rule.source_fields)
+
         self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
-        domain = source_field_values[0]
-        if domain is None:
-            return
+
         tagging_field = get_dotted_field_value(event, self.config.tagging_field_name)
 
         if tagging_field is None:
             tagging_field = []
         if not isinstance(tagging_field, list):
             raise ValueError("tagging_field already has a conflicting value")
+
+        assert len(source_field_values) == 1
+        domain = source_field_values[0]
+
+        if not isinstance(domain, str):
+            tagging_field.append(
+                f"invalid_type_in_{'_'.join(get_dotted_field_list(rule.config.source_fields[0]))}"
+            )
+            add_and_overwrite(
+                event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
+            )
+            return
 
         if self._is_valid_ip(domain):
             tagging_field.append(
