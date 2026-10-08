@@ -168,7 +168,7 @@ def provision_context(
         }
         "some/path/contents.txt": { } # same as file://
         "file://some/path/contents.txt": {
-            "refpath": "/path/to/file/to/be/copied"
+            "source": "/path/to/file/to/be/copied"
         }
     }
 
@@ -197,8 +197,8 @@ def provision_context(
                 else:
                     file_path = tmp_path / path.removeprefix("file://")
                     file_path.parent.mkdir(parents=True, exist_ok=True)
-                    if "refpath" in spec:
-                        ref_path = Path(spec["refpath"])
+                    if "source" in spec:
+                        ref_path = Path(spec["source"])
                         src_path = ref_path if ref_path.is_absolute() else project_root / ref_path
                         shutil.copy(src_path, file_path)
                     else:
