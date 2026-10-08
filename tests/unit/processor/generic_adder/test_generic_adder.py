@@ -137,7 +137,7 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "additions_merge_1.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
             }
         },
         id="Merge same field from add and add_from_file",
@@ -160,7 +160,7 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "additions_merge_1.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
             }
         },
         id="Merge same field from add and add_from_uri",
@@ -185,10 +185,10 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "additions_merge_1.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
             },
             "additions_merge_2.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_merge_2.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_merge_2.yml"
             },
         },
         id="Merge same field from two add_from_file sources",
@@ -213,10 +213,10 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "./test_uri_path/additions_merge_1.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
             },
             "./test_uri_path/additions_merge_2.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_merge_2.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_merge_2.yml"
             },
         },
         id="Merge same field from two add_from_uri sources",
@@ -243,10 +243,10 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         {"shared_list": ["inline_value", "first_uri_value", "second_uri_value"]},
         {
             "./test_uri_path/additions_list_1.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_list_1.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_list_1.yml"
             },
             "./test_uri_path/additions_list_2.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_list_2.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_list_2.yml"
             },
         },
         id="Merge lists from inline add and ordered URI sources",
@@ -266,7 +266,7 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "additions_file.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_file.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
             },
         },
         id="Add from file",
@@ -286,7 +286,7 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "additions_file.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_file.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
             },
         },
         id="Add from file in list",
@@ -312,10 +312,10 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "additions_file.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_file.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
             },
             "additions_file_2.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_file_2.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_file_2.yml"
             },
         },
         id="Add from two files",
@@ -341,10 +341,10 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "additions_file.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_file.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
             },
             "additions_file_2.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_file_2.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_file_2.yml"
             },
         },
         id="Add from two files using only first existing file",
@@ -373,7 +373,7 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "additions_file.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_file.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
             },
         },
         id="Add from two files using only first existing file, but first file doesn't exist",
@@ -524,7 +524,7 @@ test_cases = normalize_test_cases(  # rule, event, expected, context
         },
         {
             "additions_file_escaping.yml": {
-                "refpath": "tests/testdata/unit/generic_adder/additions_file_escaping.yml"
+                "source": "tests/testdata/unit/generic_adder/additions_file_escaping.yml"
             },
         },
         id="Add from file with escaping",
