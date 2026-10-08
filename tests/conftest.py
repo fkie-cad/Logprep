@@ -168,8 +168,8 @@ def provision_context(
         }
         "some/path/contents.txt": { } # same as file://
         "file://some/path/contents.txt": {
-                    "refpath": "/path/to/file/to/be/copied"
-                }
+            "refpath": "/path/to/file/to/be/copied"
+        }
     }
 
     The helper covers the most relevant aspects of mocking and provisioning:
