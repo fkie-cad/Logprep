@@ -38,13 +38,16 @@ from urllib.parse import urlsplit
 
 from attrs import define, field, validators
 
+from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import (
+    MISSING,
     add_and_overwrite,
     add_fields_to,
     get_dotted_field_list,
     get_dotted_field_value,
+    get_dotted_field_value_with_missing,
     join_dotted_fields,
 )
 from logprep.util.url.url import Domain
@@ -88,59 +91,73 @@ class DomainLabelExtractor(FieldManager):
         rule :
             Currently applied domain label extractor rule.
         """
-        source_field_values = self._get_field_values(event, rule.source_fields)
-
-        self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
-
         tagging_field = get_dotted_field_value(event, self.config.tagging_field_name)
-
         if tagging_field is None:
             tagging_field = []
         if not isinstance(tagging_field, list):
-            raise ValueError("tagging_field already has a conflicting value")
-
-        assert len(source_field_values) == 1
-        domain = source_field_values[0]
-
-        if not isinstance(domain, str):
-            tagging_field.append(
-                f"invalid_type_in_{'_'.join(get_dotted_field_list(rule.config.source_fields[0]))}"
+            raise ProcessingCriticalError(
+                f"Field {self.config.tagging_field_name!r} specified for "
+                f" tagging already has a conflicting value of type {type(tagging_field).__name__}"
+                " expected list."
             )
+
+        # TODO: How to handle this properly
+        assert len(rule.source_fields) == 1
+        source_field = rule.source_fields[0]
+
+        def _fail(fail_tag: str) -> None:
+            tagging_field.append(fail_tag)
             add_and_overwrite(
                 event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
             )
+
+        def _fail_on_source(reason: str) -> str:
+            _fail(f"{reason}_in_{'_'.join(get_dotted_field_list(source_field))}")
+            return
+
+        domain = get_dotted_field_value_with_missing(event, source_field)
+
+        if domain is MISSING:
+            _fail(f"_{rule.rule_type}_missing_field_warning")
+            return
+
+        def _set_result(registered: str, tld: str, sub: str) -> None:
+            fields = {
+                join_dotted_fields((rule.target_field, "registered_domain")): registered,
+                join_dotted_fields((rule.target_field, "top_level_domain")): tld,
+                join_dotted_fields((rule.target_field, "subdomain")): sub,
+            }
+            add_fields_to(event, fields, rule, overwrite_target=rule.overwrite_target)
+
+        if not isinstance(domain, str):
+            _fail_on_source("invalid_type")
             return
 
         if self._is_valid_ip(domain):
-            tagging_field.append(
-                f"ip_in_{'_'.join(get_dotted_field_list(rule.config.source_fields[0]))}"
-            )
-            add_and_overwrite(
-                event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
-            )
+            _fail_on_source("ip")
             return
 
-        url = urlsplit(domain)
-        domain = url.hostname
-        if url.scheme == "":
-            domain = url.path
-        labels = Domain(domain)
-        if labels.suffix != "":
-            fields = {
-                join_dotted_fields(
-                    (rule.target_field, "registered_domain")
-                ): f"{labels.domain}.{labels.suffix}",
-                join_dotted_fields((rule.target_field, "top_level_domain")): labels.suffix,
-                join_dotted_fields((rule.target_field, "subdomain")): labels.subdomain,
-            }
-            add_fields_to(event, fields, rule, overwrite_target=rule.overwrite_target)
-        else:
-            tagging_field.append(
-                f"invalid_domain_in_{'_'.join(get_dotted_field_list(rule.config.source_fields[0]))}"
-            )
-            add_and_overwrite(
-                event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
-            )
+        try:
+            url = urlsplit(domain)
+        except:
+            _fail_on_source("invalid_domain")
+            return
+
+        hostname = url.hostname if url.scheme != "" else url.path
+        if hostname is None or len(hostname.strip()) == 0:
+            _set_result(registered="", tld="", sub="")
+            return
+
+        labels = Domain(hostname)
+        if labels.suffix == "":
+            _set_result(registered="", tld="", sub="")
+            return
+
+        _set_result(
+            registered=f"{labels.domain}.{labels.suffix}",
+            tld=labels.suffix,
+            sub=labels.subdomain,
+        )
 
     @staticmethod
     def _is_valid_ip(domain):
