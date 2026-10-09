@@ -35,6 +35,12 @@ A speaking example:
    :inherited-members:
    :noindex:
 
+Examples for deduplicator:
+------------------------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.deduplicator.test_deduplicator
+   :template: testcase-renderer.tmpl
+
 """
 
 from typing import cast
