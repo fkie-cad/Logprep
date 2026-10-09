@@ -46,7 +46,6 @@ from logprep.util.helper import (
     add_and_overwrite,
     add_fields_to,
     get_dotted_field_list,
-    get_dotted_field_value,
     get_dotted_field_value_with_missing,
     join_dotted_fields,
 )
@@ -74,7 +73,7 @@ class DomainLabelExtractor(FieldManager):
         """Provides the properly typed rule configuration object"""
         return typing.cast(DomainLabelExtractor.Config, self._config)
 
-    def _apply_rules(self, event, rule: DomainLabelExtractorRule):
+    def _apply_rules(self, event, rule):
         """
         Apply matching rule to given log event. Such that a given domain,
         configured via rule, is split into it's labels and parts. The resulting
@@ -91,29 +90,34 @@ class DomainLabelExtractor(FieldManager):
         rule :
             Currently applied domain label extractor rule.
         """
-        tagging_field = get_dotted_field_value(event, self.config.tagging_field_name)
-        if tagging_field is None:
-            tagging_field = []
-        if not isinstance(tagging_field, list):
-            raise ProcessingCriticalError(
-                f"Field {self.config.tagging_field_name!r} specified for "
-                f" tagging already has a conflicting value of type {type(tagging_field).__name__}"
-                " expected list."
-            )
-
-        # TODO: How to handle this properly
         assert len(rule.source_fields) == 1
         source_field = rule.source_fields[0]
 
         def _fail(fail_tag: str) -> None:
+            tagging_field = get_dotted_field_value_with_missing(
+                event, self.config.tagging_field_name
+            )
+            print(self.config.tagging_field_name)
+            print(tagging_field)
+            if tagging_field is MISSING:
+                tagging_field = []
+
+            if isinstance(tagging_field, str):
+                tagging_field = [tagging_field]
+            if not isinstance(tagging_field, list):
+                raise ProcessingCriticalError(
+                    f"Field {self.config.tagging_field_name!r} specified for "
+                    f" tagging already has a conflicting value of type {type(tagging_field).__name__}"
+                    " expected list.",
+                    rule=rule,
+                )
             tagging_field.append(fail_tag)
             add_and_overwrite(
                 event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
             )
 
-        def _fail_on_source(reason: str) -> str:
+        def _fail_on_source(reason: str) -> None:
             _fail(f"{reason}_in_{'_'.join(get_dotted_field_list(source_field))}")
-            return
 
         domain = get_dotted_field_value_with_missing(event, source_field)
 

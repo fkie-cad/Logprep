@@ -7,7 +7,10 @@ from copy import deepcopy
 import pytest
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+)
 from tests.unit.processor.base import BaseProcessorTestCase
 
 TEST_RULE = {
@@ -441,9 +444,11 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         }
 
         domain_label_extractor = Factory.create(config)
-        document = {"url": {"domain": "zombo.com"}, "special_tags": False}
-        assert False, "CHECK for error"
-        domain_label_extractor.process(document)
+        domain_label_extractor.setup()
+        document = {"url": {"domain": "http://["}, "special_tags": False}
+        result = domain_label_extractor.process(document)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], ProcessingCriticalError)
 
     def test_raises_field_exists_warning_if_target_field_exits(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
