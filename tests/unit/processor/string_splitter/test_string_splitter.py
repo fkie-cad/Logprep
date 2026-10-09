@@ -20,7 +20,7 @@ example_test_cases = [
         },
         {"message": "this is the message"},
         ["this", "is", "the", "message"],
-        id="splits without delimiter on whitespace",
+        id="split on whitespaces if delimiter not explicitly defined",
     ),
     pytest.param(
         {
@@ -34,7 +34,7 @@ example_test_cases = [
         },
         {"message": ",,this,,"},
         ["", "", "this", "", ""],
-        id="splits one item with multiple delimiter and no drop empty",
+        id="split one item containing the delimiter multiple times then keep any resulting empty sections",
     ),
     pytest.param(
         {
@@ -48,7 +48,7 @@ example_test_cases = [
         },
         {"message": " , ,this, ,"},
         ["this"],
-        id="splits one item with multiple delimiter and empty fields",
+        id="split one item containing the delimiter multiple times then drop any resulting empty sections",
     ),
 ]
 
@@ -66,7 +66,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "this, is, the, message"},
         ["this", "is", "the", "message"],
-        id="splits with delimiter",
+        id="split on explicitly defined delimiter",
     ),
     pytest.param(
         {
@@ -80,7 +80,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "this,"},
         ["this"],
-        id="splits one item with delimiter",
+        id="split one item on explicitly defined delimiter",
     ),
     pytest.param(
         {
@@ -94,7 +94,7 @@ test_cases = normalize_test_cases(
         },
         {"message": ",,this,,"},
         ["this"],
-        id="splits one item with multiple delimiter and drop empty",
+        id="split one item containing the delimiter multiple times then drop any resulting empty sections 2",
     ),
     pytest.param(
         {
@@ -108,7 +108,7 @@ test_cases = normalize_test_cases(
         },
         {"message": ",, this , , "},
         [" this "],
-        id="splits one item with multiple delimiter and whitespace",
+        id="split one item containing the delimiter multiple times then drop any resulting empty sections 3",
     ),
     pytest.param(
         {
@@ -122,7 +122,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "\n,,this,\t, "},
         ["this"],
-        id="splits one item with multiple delimiter and newline",
+        id="split one item containing the delimiter multiple times and containing newlines",
     ),
     pytest.param(
         {
@@ -136,7 +136,7 @@ test_cases = normalize_test_cases(
         },
         {"message": ",, this, , "},
         [" this"],
-        id="splits one item with multiple delimiter and whitespaces only in front",
+        id="split one item containing the delimiter multiple times and containing whitespaces only in front",
     ),
     pytest.param(
         {
@@ -150,7 +150,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "hello , world,this, is a very complex,\n , and even multiline, text,,, "},
         ["hello ", " world", "this", " is a very complex", " and even multiline", " text"],
-        id="splits with multiple delimiters and whitespace only in front",
+        id="split containing the delimiter multiple times and whitespaces only in front",
     ),
 )
 
@@ -163,7 +163,7 @@ failure_test_cases = normalize_test_cases(
         {"message": ["this", "is", "the", "message"]},
         {"message": ["this", "is", "the", "message"], "tags": ["_string_splitter_failure"]},
         ".*ProcessingWarning.*",
-        id="splits without delimiter on whitespace with no string",
+        id="split something that isn't a string on not explicitly defined delimiter (whitespace)",
     ),
     pytest.param(
         {
@@ -173,7 +173,7 @@ failure_test_cases = normalize_test_cases(
         {"message": "this is the message"},
         {"message": "this is the message", "tags": ["_string_splitter_failure"]},
         ".*FieldExistsWarning.*",
-        id="splits without delimiter on whitespace with existing field",
+        id="split on not explicitly defined delimiter (whitespace) and try to write to existing field",
     ),
 )
 

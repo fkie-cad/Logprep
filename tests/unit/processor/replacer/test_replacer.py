@@ -47,10 +47,6 @@ example_test_cases = [  # rule, event, expected
         {"some": {"field": "X login attempts."}},
         id="replace with dotted field",
     ),
-]
-
-test_cases = normalize_test_cases(
-    *example_test_cases,
     pytest.param(
         {
             "filter": "field",
@@ -62,6 +58,10 @@ test_cases = normalize_test_cases(
         {"field": "X login attempts."},
         id="replace with colon notation",
     ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
     pytest.param(
         {
             "filter": "field",

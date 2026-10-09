@@ -55,6 +55,215 @@ example_test_cases = [
         {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "new_field": "this,is,the,message"},
         id="decodes simple base64",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "clf",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200 9481',
+        },
+        {
+            "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200 9481',
+            "parsed": {
+                "host": "127.0.0.1",
+                "ident": "ident",
+                "authuser": "alice",
+                "timestamp": "01/May/2025:07:20:10 +0000",
+                "request_line": "GET /index.html HTTP/1.1",
+                "status": "200",
+                "bytes": "9481",
+            },
+        },
+        id="parse clf",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "nginx",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": '192.168.32.9 - - [19/Dec/2023:14:04:42 +0000]  200 "POST /otlp/v1/metrics HTTP/1.1" 0 "-" "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)" "-"'
+        },
+        {
+            "message": '192.168.32.9 - - [19/Dec/2023:14:04:42 +0000]  200 "POST /otlp/v1/metrics HTTP/1.1" 0 "-" "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)" "-"',
+            "parsed": {
+                "agent": "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)",
+                "code": "200",
+                "gzip_ratio": "-",
+                "host": "192.168.32.9",
+                "method": "POST",
+                "path": "/otlp/v1/metrics",
+                "referer": "-",
+                "size": "0",
+                "time": "19/Dec/2023:14:04:42 +0000",
+                "user": "-",
+            },
+        },
+        id="parse nginx",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0"
+        },
+        {
+            "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0",
+            "parsed": {
+                "host": "mymachine",
+                "ident": "su",
+                "message": "'su root' failed for user on /dev/pts/0",
+                "pid": "12345",
+                "pri": "34",
+                "time": "Oct 3 10:15:32",
+            },
+        },
+        id="parse syslog rfc 3164",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164_local",
+                "overwrite_target": True,
+            },
+        },
+        {"message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0"},
+        {
+            "message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0",
+            "parsed": {
+                "ident": "su",
+                "message": "'su root' failed for user on /dev/pts/0",
+                "pid": "12345",
+                "pri": "34",
+                "time": "Oct 3 10:15:32",
+            },
+        },
+        id="parse syslog rfc 3164 local",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc5424",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0"
+        },
+        {
+            "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0",
+            "parsed": {
+                "host": "mymachine.example.com",
+                "ident": "su",
+                "pid": "12345",
+                "message": "'su root' failed for user on /dev/pts/0",
+                "pri": "34",
+                "time": "2025-01-03T14:07:15.003Z",
+                "msgid": "ID47",
+                "extradata": "-",
+            },
+        },
+        id="parse syslog rfc 5424",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "logfmt",
+                "overwrite_target": True,
+            },
+        },
+        {"message": 'level=INFO host=Ubuntu msg="Connected to PostgreSQL database"'},
+        {
+            "message": 'level=INFO host=Ubuntu msg="Connected to PostgreSQL database"',
+            "parsed": {
+                "host": "Ubuntu",
+                "level": "INFO",
+                "msg": "Connected to PostgreSQL database",
+            },
+        },
+        id="parse logfmt",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "cri",
+                "overwrite_target": True,
+            },
+        },
+        {"message": "2019-04-30T02:12:41.8443515Z stdout F message"},
+        {
+            "message": "2019-04-30T02:12:41.8443515Z stdout F message",
+            "parsed": {
+                "stream": "stdout",
+                "flags": "F",
+                "message": "message",
+                "timestamp": "2019-04-30T02:12:41.8443515Z",
+            },
+        },
+        id="parse cri",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "docker",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}'
+        },
+        {
+            "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}',
+            "parsed": {
+                "stream": "stderr",
+                "output": "log message",
+                "timestamp": "2019-04-30T02:12:41.8443515Z",
+            },
+        },
+        id="parse docker",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "message"},
+                "source_format": "decolorize",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": "ls\r\n\x1b[00m\x1b[01;31mexamplefile.zip\x1b[00m\r\n\x1b[01;31m",
+        },
+        {
+            "message": "ls\r\nexamplefile.zip\r\n",
+        },
+        id="decolorize simple",
+    ),
 ]
 
 test_cases = normalize_test_cases(
@@ -176,61 +385,6 @@ test_cases = normalize_test_cases(
             "filter": "message",
             "decoder": {
                 "mapping": {"message": "parsed"},
-                "source_format": "clf",
-                "overwrite_target": True,
-            },
-        },
-        {
-            "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200 9481',
-        },
-        {
-            "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200 9481',
-            "parsed": {
-                "host": "127.0.0.1",
-                "ident": "ident",
-                "authuser": "alice",
-                "timestamp": "01/May/2025:07:20:10 +0000",
-                "request_line": "GET /index.html HTTP/1.1",
-                "status": "200",
-                "bytes": "9481",
-            },
-        },
-        id="parse clf",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
-                "source_format": "nginx",
-                "overwrite_target": True,
-            },
-        },
-        {
-            "message": '192.168.32.9 - - [19/Dec/2023:14:04:42 +0000]  200 "POST /otlp/v1/metrics HTTP/1.1" 0 "-" "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)" "-"'
-        },
-        {
-            "message": '192.168.32.9 - - [19/Dec/2023:14:04:42 +0000]  200 "POST /otlp/v1/metrics HTTP/1.1" 0 "-" "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)" "-"',
-            "parsed": {
-                "agent": "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)",
-                "code": "200",
-                "gzip_ratio": "-",
-                "host": "192.168.32.9",
-                "method": "POST",
-                "path": "/otlp/v1/metrics",
-                "referer": "-",
-                "size": "0",
-                "time": "19/Dec/2023:14:04:42 +0000",
-                "user": "-",
-            },
-        },
-        id="parse nginx",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
                 "source_format": "nginx",
                 "overwrite_target": True,
             },
@@ -321,31 +475,6 @@ test_cases = normalize_test_cases(
                 "overwrite_target": True,
             },
         },
-        {
-            "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0"
-        },
-        {
-            "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0",
-            "parsed": {
-                "host": "mymachine",
-                "ident": "su",
-                "message": "'su root' failed for user on /dev/pts/0",
-                "pid": "12345",
-                "pri": "34",
-                "time": "Oct 3 10:15:32",
-            },
-        },
-        id="parse syslog rfc 3164",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
-                "source_format": "syslog_rfc3164",
-                "overwrite_target": True,
-            },
-        },
         {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
         {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
         id="parse empty message for syslog rfc 3164 without error",
@@ -359,58 +488,9 @@ test_cases = normalize_test_cases(
                 "overwrite_target": True,
             },
         },
-        {"message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0"},
-        {
-            "message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0",
-            "parsed": {
-                "ident": "su",
-                "message": "'su root' failed for user on /dev/pts/0",
-                "pid": "12345",
-                "pri": "34",
-                "time": "Oct 3 10:15:32",
-            },
-        },
-        id="parse syslog rfc 3164 local",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
-                "source_format": "syslog_rfc3164_local",
-                "overwrite_target": True,
-            },
-        },
         {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
         {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
         id="parse empty message for syslog rfc 3164 local without error",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
-                "source_format": "syslog_rfc5424",
-                "overwrite_target": True,
-            },
-        },
-        {
-            "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0"
-        },
-        {
-            "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0",
-            "parsed": {
-                "host": "mymachine.example.com",
-                "ident": "su",
-                "pid": "12345",
-                "message": "'su root' failed for user on /dev/pts/0",
-                "pri": "34",
-                "time": "2025-01-03T14:07:15.003Z",
-                "msgid": "ID47",
-                "extradata": "-",
-            },
-        },
-        id="parse syslog rfc 5424",
     ),
     pytest.param(
         {
@@ -505,49 +585,6 @@ test_cases = normalize_test_cases(
             "filter": "message",
             "decoder": {
                 "mapping": {"message": "parsed"},
-                "source_format": "cri",
-                "overwrite_target": True,
-            },
-        },
-        {"message": "2019-04-30T02:12:41.8443515Z stdout F message"},
-        {
-            "message": "2019-04-30T02:12:41.8443515Z stdout F message",
-            "parsed": {
-                "stream": "stdout",
-                "flags": "F",
-                "message": "message",
-                "timestamp": "2019-04-30T02:12:41.8443515Z",
-            },
-        },
-        id="parse cri",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
-                "source_format": "docker",
-                "overwrite_target": True,
-            },
-        },
-        {
-            "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}'
-        },
-        {
-            "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}',
-            "parsed": {
-                "stream": "stderr",
-                "output": "log message",
-                "timestamp": "2019-04-30T02:12:41.8443515Z",
-            },
-        },
-        id="parse docker",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
                 "source_format": "docker",
                 "overwrite_target": True,
             },
@@ -564,23 +601,6 @@ test_cases = normalize_test_cases(
             },
         },
         id="parse docker with additional fields",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "message"},
-                "source_format": "decolorize",
-                "overwrite_target": True,
-            },
-        },
-        {
-            "message": "ls\r\n\x1b[00m\x1b[01;31mexamplefile.zip\x1b[00m\r\n\x1b[01;31m",
-        },
-        {
-            "message": "ls\r\nexamplefile.zip\r\n",
-        },
-        id="decolorize simple",
     ),
     pytest.param(
         {

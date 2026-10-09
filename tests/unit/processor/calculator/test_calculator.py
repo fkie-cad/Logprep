@@ -21,7 +21,20 @@ example_test_cases = [
         },
         {"message": "This is a message", "field1": "1"},
         {"message": "This is a message", "field1": "1", "new_field": 2},
-        id="Sums integers from single field",
+        id="sums integers from single field",
+    ),
+    pytest.param(
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${duration} * 10e5",
+                "target_field": "duration",
+                "overwrite_target": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": 10000.0},
+        id="time conversion ms -> ns",
     ),
     pytest.param(
         {
@@ -37,16 +50,40 @@ example_test_cases = [
     ),
     pytest.param(
         {
-            "filter": "field2 AND field3",
+            "filter": "message",
             "calculator": {
-                "calc": "${field1} + ${field2} +${field3}",
-                "target_field": "result",
-                "delete_source_fields": True,
+                "calc": "MIN(${a},${c}) < ${b} < MAX(${a}, ${c})",
+                "target_field": "b_is_in_range",
             },
         },
-        {"field1": "6", "field2": "4", "field3": 2},
-        {"result": 12},
-        id="delete source fields",
+        {"message": "This is a message", "a": 6, "b": 5, "c": 3},
+        {"message": "This is a message", "a": 6, "b": 5, "c": 3, "b_is_in_range": True},
+        id="range check",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "AND(${a} > 6, ${a} % 2)",
+                "target_field": "a_is_gt_6_and_odd",
+            },
+        },
+        {"message": "This is a message", "a": 9},
+        {"message": "This is a message", "a": 9, "a_is_gt_6_and_odd": True},
+        id="logic example",
+    ),
+    pytest.param(
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${missing_field} * 10e5",
+                "target_field": "duration",
+                "ignore_missing_fields": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": "0.01"},
+        id="ignore missing source fields",
     ),
     pytest.param(
         {
@@ -79,66 +116,16 @@ test_cases = normalize_test_cases(
     *example_test_cases,
     pytest.param(
         {
-            "filter": "duration",
+            "filter": "field2 AND field3",
             "calculator": {
-                "calc": "${duration} * 10e5",
-                "target_field": "duration",
-                "overwrite_target": True,
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "result",
+                "delete_source_fields": True,
             },
         },
-        {"duration": "0.01"},
-        {"duration": 10000.0},
-        id="Time conversion ms -> ns",
-    ),
-    pytest.param(
-        {
-            "filter": "duration",
-            "calculator": {
-                "calc": "${duration} * 10e5",
-                "target_field": "duration",
-                "overwrite_target": True,
-            },
-        },
-        {"duration": "0.01"},
-        {"duration": 10000.0},
-        id="Time conversion ms -> ns",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "calculator": {
-                "calc": "AND(${a} > 6, ${a} % 2)",
-                "target_field": "a_is_gt_6_and_odd",
-            },
-        },
-        {"message": "This is a message", "a": 9},
-        {"message": "This is a message", "a": 9, "a_is_gt_6_and_odd": True},
-        id="Logic example",
-    ),
-    pytest.param(
-        {
-            "filter": "duration",
-            "calculator": {
-                "calc": "${missing_field} * 10e5",
-                "target_field": "duration",
-                "ignore_missing_fields": True,
-            },
-        },
-        {"duration": "0.01"},
-        {"duration": "0.01"},
-        id="Ignore missing source fields",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "calculator": {
-                "calc": "MIN(${a},${c}) < ${b} < MAX(${a}, ${c})",
-                "target_field": "b_is_in_range",
-            },
-        },
-        {"message": "This is a message", "a": 6, "b": 5, "c": 3},
-        {"message": "This is a message", "a": 6, "b": 5, "c": 3, "b_is_in_range": True},
-        id="Range check",
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"result": 12},
+        id="delete source fields",
     ),
     pytest.param(
         {
@@ -177,7 +164,7 @@ test_cases = normalize_test_cases(
         },
         {"field1": "6", "field2": "4", "field3": 2},
         {"result": 12},
-        id="Delete source fields",
+        id="delete source fields",
     ),
     pytest.param(
         {
@@ -190,7 +177,7 @@ test_cases = normalize_test_cases(
         },
         {"key": {"source": {"source": {"field3": 2}, "field2": 6}, "field1": 4}},
         {"result": 12},
-        id="Handles dotted fields",
+        id="handles dotted fields",
     ),
     pytest.param(
         {
@@ -202,7 +189,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "This is a message", "field1": "ff"},
         {"message": "This is a message", "field1": "ff", "new_field": 255},
-        id="Convert hex to int",
+        id="convert hex to int",
     ),
     pytest.param(
         {
@@ -457,7 +444,7 @@ test_cases = normalize_test_cases(
         },
         {"duration": "0.01"},
         {"duration": 10000.0},
-        id="Time conversion ms -> ns",
+        id="time conversion ms -> ns",
     ),
     pytest.param(
         {
@@ -470,7 +457,7 @@ test_cases = normalize_test_cases(
         },
         {"duration": "0.01"},
         {"duration": "0.01"},
-        id="Ignore missing source fields",
+        id="ignore missing source fields",
     ),
     pytest.param(
         {
@@ -508,7 +495,7 @@ setup_failure_test_cases = [
             },
         },
         InvalidSyntaxError,
-        id="Tags failure incorrect syntax",
+        id="tags failure incorrect syntax",
     ),
     pytest.param(
         {
@@ -561,7 +548,7 @@ runtime_failure_test_cases = normalize_test_cases(
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        id="Tags failure if parse is not possible",
+        id="tags failure if parse is not possible",
     ),
     pytest.param(
         {
@@ -579,7 +566,7 @@ runtime_failure_test_cases = normalize_test_cases(
             "result": "exists",
             "tags": ["_calculator_failure"],
         },
-        id="Tags failure if target_field exist",
+        id="tags failure if target_field exist",
     ),
     pytest.param(
         {
@@ -595,7 +582,7 @@ runtime_failure_test_cases = normalize_test_cases(
             "field3": 2,
             "tags": ["_calculator_missing_field_warning"],
         },
-        id="Tags failure if source_field missing",
+        id="tags failure if source_field missing",
     ),
     pytest.param(
         {
@@ -612,7 +599,7 @@ runtime_failure_test_cases = normalize_test_cases(
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        id="Tags failure if source_field is empty",
+        id="tags failure if source_field is empty",
     ),
     pytest.param(
         {
@@ -629,7 +616,7 @@ runtime_failure_test_cases = normalize_test_cases(
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        id="Tags failure try to escape",
+        id="tags failure try to escape",
     ),
     pytest.param(
         {

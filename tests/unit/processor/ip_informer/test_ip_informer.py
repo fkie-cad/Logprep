@@ -40,10 +40,6 @@ example_test_cases: list = [
         },
         id="single field with ipv4 address",
     ),
-]
-
-test_cases = normalize_test_cases(
-    *example_test_cases,
     pytest.param(
         {
             "filter": "ip",
@@ -85,48 +81,19 @@ test_cases = normalize_test_cases(
             "ip_informer": {
                 "source_fields": ["ip"],
                 "target_field": "result",
+                "properties": ["is_loopback"],
             },
         },
-        {"ip": ["192.168.5.1", "fe80::2c71:58ff:fe6a:5a08"]},
+        {"ip": "192.168.5.1"},
         {
-            "ip": ["192.168.5.1", "fe80::2c71:58ff:fe6a:5a08"],
+            "ip": "192.168.5.1",
             "result": {
                 "192.168.5.1": {
-                    "compressed": "192.168.5.1",
-                    "exploded": "192.168.5.1",
-                    "is_global": False,
-                    "is_link_local": False,
                     "is_loopback": False,
-                    "is_multicast": False,
-                    "is_private": True,
-                    "is_reserved": False,
-                    "is_unspecified": False,
-                    "max_prefixlen": 32,
-                    "reverse_pointer": "1.5.168.192.in-addr.arpa",
-                    "version": 4,
-                },
-                "fe80::2c71:58ff:fe6a:5a08": {
-                    "compressed": "fe80::2c71:58ff:fe6a:5a08",
-                    "exploded": "fe80:0000:0000:0000:2c71:58ff:fe6a:5a08",
-                    "ipv4_mapped": None,
-                    "is_global": False,
-                    "is_link_local": True,
-                    "is_loopback": False,
-                    "is_multicast": False,
-                    "is_private": True,
-                    "is_reserved": False,
-                    "is_site_local": False,
-                    "is_unspecified": False,
-                    "max_prefixlen": 128,
-                    "reverse_pointer": "8.0.a.5.a.6.e.f.f.f.8.5.1.7.c.2.0.0.0.0.0.0.0.0.0.0.0.0.0.8.e.f.ip6.arpa",
-                    "scope_id": None,
-                    "sixtofour": None,
-                    "teredo": None,
-                    "version": 6,
-                },
+                }
             },
         },
-        id="list field with ipv4 and ipv6 addresses",
+        id="single field with ipv4 address and filtered properties",
     ),
     pytest.param(
         {
@@ -192,25 +159,58 @@ test_cases = normalize_test_cases(
         },
         id="list and single field with ipv4 and ipv6 addresses",
     ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
     pytest.param(
         {
             "filter": "ip",
             "ip_informer": {
                 "source_fields": ["ip"],
                 "target_field": "result",
-                "properties": ["is_loopback"],
             },
         },
-        {"ip": "192.168.5.1"},
+        {"ip": ["192.168.5.1", "fe80::2c71:58ff:fe6a:5a08"]},
         {
-            "ip": "192.168.5.1",
+            "ip": ["192.168.5.1", "fe80::2c71:58ff:fe6a:5a08"],
             "result": {
                 "192.168.5.1": {
+                    "compressed": "192.168.5.1",
+                    "exploded": "192.168.5.1",
+                    "is_global": False,
+                    "is_link_local": False,
                     "is_loopback": False,
-                }
+                    "is_multicast": False,
+                    "is_private": True,
+                    "is_reserved": False,
+                    "is_unspecified": False,
+                    "max_prefixlen": 32,
+                    "reverse_pointer": "1.5.168.192.in-addr.arpa",
+                    "version": 4,
+                },
+                "fe80::2c71:58ff:fe6a:5a08": {
+                    "compressed": "fe80::2c71:58ff:fe6a:5a08",
+                    "exploded": "fe80:0000:0000:0000:2c71:58ff:fe6a:5a08",
+                    "ipv4_mapped": None,
+                    "is_global": False,
+                    "is_link_local": True,
+                    "is_loopback": False,
+                    "is_multicast": False,
+                    "is_private": True,
+                    "is_reserved": False,
+                    "is_site_local": False,
+                    "is_unspecified": False,
+                    "max_prefixlen": 128,
+                    "reverse_pointer": "8.0.a.5.a.6.e.f.f.f.8.5.1.7.c.2.0.0.0.0.0.0.0.0.0.0.0.0.0.8.e.f.ip6.arpa",
+                    "scope_id": None,
+                    "sixtofour": None,
+                    "teredo": None,
+                    "version": 6,
+                },
             },
         },
-        id="single field with ipv4 address and filtered properties",
+        id="list field with ipv4 and ipv6 addresses",
     ),
     pytest.param(
         {

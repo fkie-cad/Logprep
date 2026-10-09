@@ -92,6 +92,23 @@ example_test_cases = [
         },
         id="deletes source fields",
     ),
+    pytest.param(
+        {"filter": "message", "dissector": {"convert_datatype": {"message": "int"}}},
+        {"message": "42"},
+        {"message": 42},
+        id="convert datatype without mapping",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {"message": "this is %{field1|int} message and this is %{field2|bool}"}
+            },
+        },
+        {"message": "this is 42 message and this is 0"},
+        {"message": "this is 42 message and this is 0", "field1": 42, "field2": False},
+        id="convert datatype via dissect pattern",
+    ),
 ]
 
 test_cases = normalize_test_cases(
@@ -370,12 +387,6 @@ test_cases = normalize_test_cases(
         id="append to new field in specified order as string with multiple fields",
     ),
     pytest.param(
-        {"filter": "message", "dissector": {"convert_datatype": {"message": "int"}}},
-        {"message": "42"},
-        {"message": 42},
-        id="converts datatype without mapping",
-    ),
-    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -470,7 +481,7 @@ test_cases = normalize_test_cases(
             "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
             "date": "2022 12 06 15:12:30:534+0100",
         },
-        id="Appending without separator",
+        id="appending without separator",
     ),
     pytest.param(
         {
@@ -484,24 +495,13 @@ test_cases = normalize_test_cases(
             "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
             "date": "(2022 12 06 15:12:30:534)+0100",
         },
-        id="Appending with special field separator",
+        id="appending with special field separator",
     ),
     pytest.param(
         {"filter": "message", "dissector": {"mapping": {"message": "this is %{target}."}}},
         {"message": "this is the message."},
         {"message": "this is the message.", "target": "the message"},
-        id="Dissection with delimiter ending",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "dissector": {
-                "mapping": {"message": "this is %{field1|int} message and this is %{field2|bool}"}
-            },
-        },
-        {"message": "this is 42 message and this is 0"},
-        {"message": "this is 42 message and this is 0", "field1": 42, "field2": False},
-        id="Convert datatype via dissect pattern",
+        id="dissection with delimiter ending",
     ),
     pytest.param(
         {
@@ -514,7 +514,7 @@ test_cases = normalize_test_cases(
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip char after dissecting",
+        id="strip char after dissecting",
     ),
     pytest.param(
         {
@@ -527,7 +527,7 @@ test_cases = normalize_test_cases(
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip special char after dissecting",
+        id="strip special char after dissecting",
     ),
     pytest.param(
         {
@@ -540,7 +540,7 @@ test_cases = normalize_test_cases(
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip another special char after dissecting",
+        id="strip another special char after dissecting",
     ),
     pytest.param(
         {
@@ -553,7 +553,7 @@ test_cases = normalize_test_cases(
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip char on both sides",
+        id="strip char on both sides",
     ),
     pytest.param(
         {
@@ -566,7 +566,7 @@ test_cases = normalize_test_cases(
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip char while appending",
+        id="strip char while appending",
     ),
     pytest.param(
         {
@@ -581,7 +581,7 @@ test_cases = normalize_test_cases(
             "time": "2022-11-04 AM 10:00:00",
             "ip": "127.0.0.1",
         },
-        id="Strip char while changing position",
+        id="strip char while changing position",
     ),
     pytest.param(
         {
@@ -590,7 +590,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "This is## the message####"},
         {"message": "This is## the message####", "This": "is message"},
-        id="Strip char in indirect field notation",
+        id="strip char in indirect field notation",
     ),
     pytest.param(
         {
@@ -603,7 +603,7 @@ test_cases = normalize_test_cases(
         },
         {"message": "this is 42#### message and this is 0##"},
         {"message": "this is 42#### message and this is 0##", "field1": 42, "field2": False},
-        id="Strip char while inferring datatype",
+        id="strip char while inferring datatype",
     ),
     pytest.param(
         {
@@ -726,7 +726,7 @@ failure_test_cases = [
             "message": "I can't be converted into int",
             "tags": ["_dissector_failure"],
         },
-        id="Tags failure if convert is not possible",
+        id="tags failure if convert is not possible",
     ),
     pytest.param(
         {
@@ -742,7 +742,7 @@ failure_test_cases = [
             "message": "I can't be converted into int",
             "tags": ["_dissector_failure", "preexisting"],
         },
-        id="Tags failure if convert is not possible and extends tags list",
+        id="tags failure if convert is not possible and extends tags list",
     ),
     pytest.param(
         {
@@ -759,7 +759,7 @@ failure_test_cases = [
             "message": "I can't be converted into int",
             "tags": ["custom_tag_1", "custom_tag_2"],
         },
-        id="Tags custom failure if convert is not possible",
+        id="tags custom failure if convert is not possible",
     ),
     pytest.param(
         {
@@ -776,13 +776,13 @@ failure_test_cases = [
             "message": "I can't be converted into int",
             "tags": ["custom_tag_1", "custom_tag_2", "preexisting1", "preexisting2"],
         },
-        id="Tags custom failure if convert is not possible and extends tag list",
+        id="tags custom failure if convert is not possible and extends tag list",
     ),
     pytest.param(
         {"filter": "message", "dissector": {"mapping": {"doesnotexist": "%{} %{}"}}},
         {"message": "This is the message which does not matter"},
         {"message": "This is the message which does not matter", "tags": ["_dissector_failure"]},
-        id="Tags failure if mapping field does not exist",
+        id="tags failure if mapping field does not exist",
     ),
     pytest.param(
         {"filter": "message", "dissector": {"mapping": {"message": "%{&key} %{?key}"}}},
