@@ -7,9 +7,10 @@ from logprep.processor.calculator.ast.exceptions import (
     DivisionByZeroError,
     InvalidSyntaxError,
 )
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [
+example_test_cases = [
     pytest.param(
         {
             "filter": "message",
@@ -20,7 +21,7 @@ test_cases = [
         },
         {"message": "This is a message", "field1": "1"},
         {"message": "This is a message", "field1": "1", "new_field": 2},
-        id="Sums integers from single field",
+        id="sums integers from single field",
     ),
     pytest.param(
         {
@@ -33,7 +34,7 @@ test_cases = [
         },
         {"duration": "0.01"},
         {"duration": 10000.0},
-        id="Time conversion ms -> ns",
+        id="time conversion ms -> ns",
     ),
     pytest.param(
         {
@@ -57,7 +58,7 @@ test_cases = [
         },
         {"message": "This is a message", "a": 6, "b": 5, "c": 3},
         {"message": "This is a message", "a": 6, "b": 5, "c": 3, "b_is_in_range": True},
-        id="Range check",
+        id="range check",
     ),
     pytest.param(
         {
@@ -69,7 +70,7 @@ test_cases = [
         },
         {"message": "This is a message", "a": 9},
         {"message": "This is a message", "a": 9, "a_is_gt_6_and_odd": True},
-        id="Logic example",
+        id="logic example",
     ),
     pytest.param(
         {
@@ -82,7 +83,49 @@ test_cases = [
         },
         {"duration": "0.01"},
         {"duration": "0.01"},
-        id="Ignore missing source fields",
+        id="ignore missing source fields",
+    ),
+    pytest.param(
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "field1",
+                "overwrite_target": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"field1": 12, "field2": "4", "field3": 2},
+        id="overwrites target",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "from_hex(${field1})",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "0xff"},
+        {"message": "This is a message", "field1": "0xff", "new_field": 255},
+        id="convert hex to int with prefix",
+    ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    pytest.param(
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"result": 12},
+        id="delete source fields",
     ),
     pytest.param(
         {
@@ -95,7 +138,7 @@ test_cases = [
         },
         {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3]},
         {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3, 12]},
-        id="Extend list",
+        id="extend list",
     ),
     pytest.param(
         {
@@ -121,7 +164,7 @@ test_cases = [
         },
         {"field1": "6", "field2": "4", "field3": 2},
         {"result": 12},
-        id="Delete source fields",
+        id="delete source fields",
     ),
     pytest.param(
         {
@@ -134,7 +177,7 @@ test_cases = [
         },
         {"key": {"source": {"source": {"field3": 2}, "field2": 6}, "field1": 4}},
         {"result": 12},
-        id="Handles dotted fields",
+        id="handles dotted fields",
     ),
     pytest.param(
         {
@@ -146,7 +189,7 @@ test_cases = [
         },
         {"message": "This is a message", "field1": "ff"},
         {"message": "This is a message", "field1": "ff", "new_field": 255},
-        id="Convert hex to int",
+        id="convert hex to int",
     ),
     pytest.param(
         {
@@ -378,6 +421,46 @@ test_cases = [
     ),
     pytest.param(
         {
+            "filter": "*",
+            "calculator": {
+                "calc": "${field\\\\1} + ${key.field\\\\2}"
+                "+${key.sou\\\\rce.sou\\\\rce\\.\\\\field3}",
+                "target_field": "wrapper.calc\\.res\\\\ult",
+                "delete_source_fields": True,
+            },
+        },
+        {"key": {"sou\\rce": {"sou\\rce.\\field3": 2}, "field\\2": 6}, "field\\1": 4},
+        {"wrapper": {"calc.res\\ult": 12}},
+        id="handles dotted fields & escaping in basic operands",
+    ),
+    pytest.param(
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${duration} * 10e5",
+                "target_field": "duration",
+                "overwrite_target": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": 10000.0},
+        id="time conversion ms -> ns",
+    ),
+    pytest.param(
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${missing_field} * 10e5",
+                "target_field": "duration",
+                "ignore_missing_fields": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": "0.01"},
+        id="ignore missing source fields",
+    ),
+    pytest.param(
+        {
             "filter": "message",
             "calculator": {
                 "calc": "from_hex(0x${field1})",
@@ -400,7 +483,7 @@ test_cases = [
         {"message": "This is a message", "field1": "FF", "new_field": 255},
         id="convert hex to int with prefix",
     ),
-]
+)
 
 setup_failure_test_cases = [
     pytest.param(
@@ -412,7 +495,7 @@ setup_failure_test_cases = [
             },
         },
         InvalidSyntaxError,
-        id="Tags failure incorrect syntax",
+        id="tags failure incorrect syntax",
     ),
     pytest.param(
         {
@@ -449,7 +532,7 @@ setup_failure_test_cases = [
     ),
 ]
 
-runtime_failure_test_cases = [
+runtime_failure_test_cases = normalize_test_cases(
     pytest.param(
         {
             "filter": "field1 AND field2 AND field3",
@@ -465,7 +548,7 @@ runtime_failure_test_cases = [
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        id="Tags failure if parse is not possible",
+        id="tags failure if parse is not possible",
     ),
     pytest.param(
         {
@@ -483,7 +566,7 @@ runtime_failure_test_cases = [
             "result": "exists",
             "tags": ["_calculator_failure"],
         },
-        id="Tags failure if target_field exist",
+        id="tags failure if target_field exist",
     ),
     pytest.param(
         {
@@ -499,7 +582,7 @@ runtime_failure_test_cases = [
             "field3": 2,
             "tags": ["_calculator_missing_field_warning"],
         },
-        id="Tags failure if source_field missing",
+        id="tags failure if source_field missing",
     ),
     pytest.param(
         {
@@ -516,7 +599,7 @@ runtime_failure_test_cases = [
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        id="Tags failure if source_field is empty",
+        id="tags failure if source_field is empty",
     ),
     pytest.param(
         {
@@ -533,7 +616,7 @@ runtime_failure_test_cases = [
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        id="Tags failure try to escape",
+        id="tags failure try to escape",
     ),
     pytest.param(
         {
@@ -551,7 +634,7 @@ runtime_failure_test_cases = [
         },  # "STREAM ioctl timeout" for MacOS/darwin
         id="raises timeout on runtime",
     ),
-]
+)
 
 
 class TestCalculator(BaseProcessorTestCase):
@@ -560,22 +643,26 @@ class TestCalculator(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/calculator/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         self.object.setup()
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("rule, event, expected", runtime_failure_test_cases)
-    def test_testcases_failure_handling_at_runtime(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], runtime_failure_test_cases)
+    def test_testcases_failure_handling_at_runtime(
+        self, rule, event, expected, context, provision_context
+    ):
+        provision_context(context)
         self._load_rule(rule)
         self.object.setup()
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert event == expected
 
-    @pytest.mark.parametrize("rule, error_type", setup_failure_test_cases)
+    @pytest.mark.parametrize(["rule", "error_type"], setup_failure_test_cases)
     def test_testcases_failure_handling_at_setup(self, rule, error_type):
         with pytest.raises(error_type):
             self._load_rule(rule)

@@ -3,9 +3,10 @@
 import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [
+example_test_cases = [
     pytest.param(
         {
             "filter": "message",
@@ -21,6 +22,97 @@ test_cases = [
         },
         id="writes new fields with same separator",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
+        },
+        {"message": "This is a message", "field4": ["preexisting"]},
+        {
+            "message": "This is a message",
+            "field1": "This",
+            "field3": "a",
+            "field4": ["preexisting", "message"],
+        },
+        id="writes new fields and appends to existing list",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "source1": "%{extracted.source1.key1} %{extracted.source1.key2} %{extracted.source1.key3}",  # pylint: disable=line-too-long
+                    "source2": "%{extracted.source2.key1} %{extracted.source2.key2} %{extracted.source2.key3}",  # pylint: disable=line-too-long
+                }
+            },
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+            "extracted": {
+                "source1": {"key1": "This", "key2": "is", "key3": "source1"},
+                "source2": {"key1": "This", "key2": "is", "key3": "source2"},
+            },
+        },
+        id="processes multiple mappings to different target fields",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"mapping": {"message": "%{?key} %{&key}"}}},
+        {"message": "This is the message"},
+        {"message": "This is the message", "This": "is the message"},
+        id="indirect field notation: uses captured field as key",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "%{field1} %{field2} %{field3} %{field4}",
+                    "message2": "%{field21} %{field22} %{field23} %{field24}",
+                },
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "This is a message", "message2": "This is a message"},
+        {
+            "field1": "This",
+            "field2": "is",
+            "field3": "a",
+            "field4": "message",
+            "field21": "This",
+            "field22": "is",
+            "field23": "a",
+            "field24": "message",
+        },
+        id="deletes source fields",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"convert_datatype": {"message": "int"}}},
+        {"message": "42"},
+        {"message": 42},
+        id="convert datatype without mapping",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {"message": "this is %{field1|int} message and this is %{field2|bool}"}
+            },
+        },
+        {"message": "this is 42 message and this is 0"},
+        {"message": "this is 42 message and this is 0", "field1": 42, "field2": False},
+        id="convert datatype via dissect pattern",
+    ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
     pytest.param(
         {
             "filter": "message",
@@ -49,20 +141,6 @@ test_cases = [
             "field4": "message",
         },
         id="writes new fields with long separator",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
-        },
-        {"message": "This is a message", "field4": ["preexisting"]},
-        {
-            "message": "This is a message",
-            "field1": "This",
-            "field3": "a",
-            "field4": ["preexisting", "message"],
-        },
-        id="writes new fields and appends to existing list",
     ),
     pytest.param(
         {
@@ -194,32 +272,6 @@ test_cases = [
             "filter": "message",
             "dissector": {
                 "mapping": {
-                    "source1": "%{extracted.source1.key1} %{extracted.source1.key2} %{extracted.source1.key3}",  # pylint: disable=line-too-long
-                    "source2": "%{extracted.source2.key1} %{extracted.source2.key2} %{extracted.source2.key3}",  # pylint: disable=line-too-long
-                }
-            },
-        },
-        {
-            "message": "This message does not matter",
-            "source1": "This is source1",
-            "source2": "This is source2",
-        },
-        {
-            "message": "This message does not matter",
-            "source1": "This is source1",
-            "source2": "This is source2",
-            "extracted": {
-                "source1": {"key1": "This", "key2": "is", "key3": "source1"},
-                "source2": {"key1": "This", "key2": "is", "key3": "source2"},
-            },
-        },
-        id="processes multiple mappings to different target fields",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "dissector": {
-                "mapping": {
                     "source1": "%{extracted.key1} %{extracted.key2} %{extracted.key3}",
                     "source2": "%{extracted.key1} %{extracted.key2} %{extracted.key3}",
                 }
@@ -335,12 +387,6 @@ test_cases = [
         id="append to new field in specified order as string with multiple fields",
     ),
     pytest.param(
-        {"filter": "message", "dissector": {"convert_datatype": {"message": "int"}}},
-        {"message": "42"},
-        {"message": 42},
-        id="converts datatype without mapping",
-    ),
-    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -359,12 +405,6 @@ test_cases = [
             "extracted": {"message_float": 1.23, "message_int": 1337},
         },
         id="converts datatype with mapping in dotted field notation",
-    ),
-    pytest.param(
-        {"filter": "message", "dissector": {"mapping": {"message": "%{?key} %{&key}"}}},
-        {"message": "This is the message"},
-        {"message": "This is the message", "This": "is the message"},
-        id="indirect field notation: uses captured field as key",
     ),
     pytest.param(
         {
@@ -412,30 +452,6 @@ test_cases = [
     ),
     pytest.param(
         {
-            "filter": "message",
-            "dissector": {
-                "mapping": {
-                    "message": "%{field1} %{field2} %{field3} %{field4}",
-                    "message2": "%{field21} %{field22} %{field23} %{field24}",
-                },
-                "delete_source_fields": True,
-            },
-        },
-        {"message": "This is a message", "message2": "This is a message"},
-        {
-            "field1": "This",
-            "field2": "is",
-            "field3": "a",
-            "field4": "message",
-            "field21": "This",
-            "field22": "is",
-            "field23": "a",
-            "field24": "message",
-        },
-        id="deletes source fields",
-    ),
-    pytest.param(
-        {
             "filter": "path",
             "dissector": {
                 "mapping": {
@@ -465,7 +481,7 @@ test_cases = [
             "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
             "date": "2022 12 06 15:12:30:534+0100",
         },
-        id="Appending without separator",
+        id="appending without separator",
     ),
     pytest.param(
         {
@@ -479,24 +495,13 @@ test_cases = [
             "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
             "date": "(2022 12 06 15:12:30:534)+0100",
         },
-        id="Appending with special field separator",
+        id="appending with special field separator",
     ),
     pytest.param(
         {"filter": "message", "dissector": {"mapping": {"message": "this is %{target}."}}},
         {"message": "this is the message."},
         {"message": "this is the message.", "target": "the message"},
-        id="Dissection with delimiter ending",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "dissector": {
-                "mapping": {"message": "this is %{field1|int} message and this is %{field2|bool}"}
-            },
-        },
-        {"message": "this is 42 message and this is 0"},
-        {"message": "this is 42 message and this is 0", "field1": 42, "field2": False},
-        id="Convert datatype via dissect pattern",
+        id="dissection with delimiter ending",
     ),
     pytest.param(
         {
@@ -509,7 +514,7 @@ test_cases = [
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip char after dissecting",
+        id="strip char after dissecting",
     ),
     pytest.param(
         {
@@ -522,7 +527,7 @@ test_cases = [
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip special char after dissecting",
+        id="strip special char after dissecting",
     ),
     pytest.param(
         {
@@ -535,7 +540,7 @@ test_cases = [
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip another special char after dissecting",
+        id="strip another special char after dissecting",
     ),
     pytest.param(
         {
@@ -548,7 +553,7 @@ test_cases = [
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip char on both sides",
+        id="strip char on both sides",
     ),
     pytest.param(
         {
@@ -561,7 +566,7 @@ test_cases = [
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
-        id="Strip char while appending",
+        id="strip char while appending",
     ),
     pytest.param(
         {
@@ -576,7 +581,7 @@ test_cases = [
             "time": "2022-11-04 AM 10:00:00",
             "ip": "127.0.0.1",
         },
-        id="Strip char while changing position",
+        id="strip char while changing position",
     ),
     pytest.param(
         {
@@ -585,7 +590,7 @@ test_cases = [
         },
         {"message": "This is## the message####"},
         {"message": "This is## the message####", "This": "is message"},
-        id="Strip char in indirect field notation",
+        id="strip char in indirect field notation",
     ),
     pytest.param(
         {
@@ -598,7 +603,7 @@ test_cases = [
         },
         {"message": "this is 42#### message and this is 0##"},
         {"message": "this is 42#### message and this is 0##", "field1": 42, "field2": False},
-        id="Strip char while inferring datatype",
+        id="strip char while inferring datatype",
     ),
     pytest.param(
         {
@@ -704,7 +709,8 @@ test_cases = [
         },
         id="dissects fields seperated by newline delimiter",
     ),
-]
+)
+
 failure_test_cases = [
     pytest.param(
         {
@@ -720,7 +726,7 @@ failure_test_cases = [
             "message": "I can't be converted into int",
             "tags": ["_dissector_failure"],
         },
-        id="Tags failure if convert is not possible",
+        id="tags failure if convert is not possible",
     ),
     pytest.param(
         {
@@ -736,7 +742,7 @@ failure_test_cases = [
             "message": "I can't be converted into int",
             "tags": ["_dissector_failure", "preexisting"],
         },
-        id="Tags failure if convert is not possible and extends tags list",
+        id="tags failure if convert is not possible and extends tags list",
     ),
     pytest.param(
         {
@@ -753,7 +759,7 @@ failure_test_cases = [
             "message": "I can't be converted into int",
             "tags": ["custom_tag_1", "custom_tag_2"],
         },
-        id="Tags custom failure if convert is not possible",
+        id="tags custom failure if convert is not possible",
     ),
     pytest.param(
         {
@@ -770,13 +776,13 @@ failure_test_cases = [
             "message": "I can't be converted into int",
             "tags": ["custom_tag_1", "custom_tag_2", "preexisting1", "preexisting2"],
         },
-        id="Tags custom failure if convert is not possible and extends tag list",
+        id="tags custom failure if convert is not possible and extends tag list",
     ),
     pytest.param(
         {"filter": "message", "dissector": {"mapping": {"doesnotexist": "%{} %{}"}}},
         {"message": "This is the message which does not matter"},
         {"message": "This is the message which does not matter", "tags": ["_dissector_failure"]},
-        id="Tags failure if mapping field does not exist",
+        id="tags failure if mapping field does not exist",
     ),
     pytest.param(
         {"filter": "message", "dissector": {"mapping": {"message": "%{&key} %{?key}"}}},
@@ -835,13 +841,14 @@ class TestDissector(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/dissector/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("rule, event, expected", failure_test_cases)
+    @pytest.mark.parametrize(["rule", "event", "expected"], failure_test_cases)
     def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
         result = self.object.process(event)

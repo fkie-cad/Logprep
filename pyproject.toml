@@ -61,7 +61,7 @@ dependencies = [
   "requests>=2.33.0,<3", # [>=2.33.0]: CVE-2026-25645
   "ruamel.yaml<1",
   "schedule<2",
-  "urllib3>=2.7.0,<3", # [>=2.7.0]: CVE-2026-44431, CVE-2026-44432
+  "urllib3>=2.8.0,<3", # [>=2.8.0]: CVE-2026-97687, CVE-2026-97689
   "uvicorn<1",
   "msgspec<1",
   "boto3<2",

@@ -1,5 +1,8 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
 from copy import deepcopy
 from unittest import mock
 
@@ -20,12 +23,13 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
         "rules": ["tests/testdata/unit/replacer/rules_1", "tests/testdata/unit/replacer/rules_2"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    async def test_testcases(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
-        assert event.data == expected, testcase
+        assert event.data == expected
 
     async def test_template_is_none_does_nothing(self):
         rule = {

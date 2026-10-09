@@ -117,14 +117,14 @@ example_test_cases = [
 ]
 
 
-test_cases = normalize_test_cases(  # testcase, rule, event, expected
+test_cases = normalize_test_cases(  # rule, event, expected, context
     *example_test_cases,
     pytest.param(
         {
             "filter": "*",
             "generic_adder": {
                 "add": {"shared_field": {"from_inline_add": True}},
-                "add_from_file": "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                "add_from_file": "additions_merge_1.yml",
                 "merge_with_target": True,
             },
         },
@@ -133,6 +133,11 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "shared_field": {
                 "from_inline_add": True,
                 "from_first_source": True,
+            }
+        },
+        {
+            "additions_merge_1.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
             }
         },
         id="Merge same field from add and add_from_file",
@@ -142,7 +147,7 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "filter": "*",
             "generic_adder": {
                 "add": {"shared_field": {"from_inline_add": True}},
-                "add_from_uri": "tests/testdata/unit/generic_adder/additions_merge_1.yml",
+                "add_from_uri": "additions_merge_1.yml",
                 "merge_with_target": True,
             },
         },
@@ -153,6 +158,11 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
                 "from_first_source": True,
             }
         },
+        {
+            "additions_merge_1.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
+            }
+        },
         id="Merge same field from add and add_from_uri",
     ),
     pytest.param(
@@ -160,8 +170,8 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "filter": "*",
             "generic_adder": {
                 "add_from_file": [
-                    "tests/testdata/unit/generic_adder/additions_merge_1.yml",
-                    "tests/testdata/unit/generic_adder/additions_merge_2.yml",
+                    "additions_merge_1.yml",
+                    "additions_merge_2.yml",
                 ],
                 "merge_with_target": True,
             },
@@ -172,6 +182,14 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
                 "from_first_source": True,
                 "from_second_source": True,
             }
+        },
+        {
+            "additions_merge_1.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
+            },
+            "additions_merge_2.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_merge_2.yml"
+            },
         },
         id="Merge same field from two add_from_file sources",
     ),
@@ -180,8 +198,8 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "filter": "*",
             "generic_adder": {
                 "add_from_uri": [
-                    "tests/testdata/unit/generic_adder/additions_merge_1.yml",
-                    "tests/testdata/unit/generic_adder/additions_merge_2.yml",
+                    "./test_uri_path/additions_merge_1.yml",
+                    "./test_uri_path/additions_merge_2.yml",
                 ],
                 "merge_with_target": True,
             },
@@ -192,6 +210,14 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
                 "from_first_source": True,
                 "from_second_source": True,
             }
+        },
+        {
+            "./test_uri_path/additions_merge_1.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_merge_1.yml"
+            },
+            "./test_uri_path/additions_merge_2.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_merge_2.yml"
+            },
         },
         id="Merge same field from two add_from_uri sources",
     ),
@@ -202,11 +228,11 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
                 "add": {"shared_list": ["inline_value"]},
                 "add_from_uri": [
                     {
-                        "uri": "tests/testdata/unit/generic_adder/additions_list_1.yml",
+                        "uri": "./test_uri_path/additions_list_1.yml",
                         "target_field": "shared_list",
                     },
                     {
-                        "uri": "tests/testdata/unit/generic_adder/additions_list_2.yml",
+                        "uri": "./test_uri_path/additions_list_2.yml",
                         "target_field": "shared_list",
                     },
                 ],
@@ -215,14 +241,20 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
         },
         {},
         {"shared_list": ["inline_value", "first_uri_value", "second_uri_value"]},
+        {
+            "./test_uri_path/additions_list_1.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_list_1.yml"
+            },
+            "./test_uri_path/additions_list_2.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_list_2.yml"
+            },
+        },
         id="Merge lists from inline add and ordered URI sources",
     ),
     pytest.param(
         {
             "filter": "add_list_generic_test",
-            "generic_adder": {
-                "add_from_file": "tests/testdata/unit/generic_adder/additions_file.yml"
-            },
+            "generic_adder": {"add_from_file": "additions_file.yml"},
         },
         {"add_list_generic_test": "Test", "event_id": 123},
         {
@@ -232,14 +264,17 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        {
+            "additions_file.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
+            },
+        },
         id="Add from file",
     ),
     pytest.param(
         {
             "filter": "add_lists_one_generic_test",
-            "generic_adder": {
-                "add_from_file": ["tests/testdata/unit/generic_adder/additions_file.yml"]
-            },
+            "generic_adder": {"add_from_file": ["additions_file.yml"]},
         },
         {"add_lists_one_generic_test": "Test", "event_id": 123},
         {
@@ -249,6 +284,11 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        {
+            "additions_file.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
+            },
+        },
         id="Add from file in list",
     ),
     pytest.param(
@@ -256,8 +296,8 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "filter": "add_lists_two_generic_test",
             "generic_adder": {
                 "add_from_file": [
-                    "tests/testdata/unit/generic_adder/additions_file.yml",
-                    "tests/testdata/unit/generic_adder/additions_file_2.yml",
+                    "additions_file.yml",
+                    "additions_file_2.yml",
                 ]
             },
         },
@@ -270,6 +310,14 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        {
+            "additions_file.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
+            },
+            "additions_file_2.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_file_2.yml"
+            },
+        },
         id="Add from two files",
     ),
     pytest.param(
@@ -277,8 +325,8 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "filter": "add_first_existing_generic_test",
             "generic_adder": {
                 "add_from_file": [
-                    "tests/testdata/unit/generic_adder/additions_file.yml",
-                    "tests/testdata/unit/generic_adder/additions_file_2.yml",
+                    "additions_file.yml",
+                    "additions_file_2.yml",
                 ],
                 "only_first_existing_file": True,
             },
@@ -291,6 +339,14 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        {
+            "additions_file.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
+            },
+            "additions_file_2.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_file_2.yml"
+            },
+        },
         id="Add from two files using only first existing file",
     ),
     pytest.param(
@@ -299,7 +355,7 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "generic_adder": {
                 "add_from_file": [
                     "I_DO_NOT_EXIST",
-                    "tests/testdata/unit/generic_adder/additions_file.yml",
+                    "additions_file.yml",
                 ],
                 "only_first_existing_file": True,
             },
@@ -314,6 +370,11 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "some_added_field": "some value",
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
+        },
+        {
+            "additions_file.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_file.yml"
+            },
         },
         id="Add from two files using only first existing file, but first file doesn't exist",
     ),
@@ -449,9 +510,7 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
     pytest.param(
         {
             "filter": "add_list_generic_test",
-            "generic_adder": {
-                "add_from_file": "tests/testdata/unit/generic_adder/additions_file_escaping.yml"
-            },
+            "generic_adder": {"add_from_file": "additions_file_escaping.yml"},
         },
         {"add_list_generic_test": "Test", "event_id": 123},
         {
@@ -462,6 +521,11 @@ test_cases = normalize_test_cases(  # testcase, rule, event, expected
             "comp\\lex.nested": {"field": 42},
             "nested": {"comp\\lex.field": 1337},
             "\\u\\0\\1\\x\\y": 1338,
+        },
+        {
+            "additions_file_escaping.yml": {
+                "source": "tests/testdata/unit/generic_adder/additions_file_escaping.yml"
+            },
         },
         id="Add from file with escaping",
     ),

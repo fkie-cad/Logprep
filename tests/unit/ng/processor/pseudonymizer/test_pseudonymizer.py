@@ -24,6 +24,7 @@ from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridGCMEncrypter,
 )
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+
 from tests.unit.processor.pseudonymizer.test_pseudonymizer import (
     test_cases as non_ng_test_cases,
 )

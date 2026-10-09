@@ -42,8 +42,16 @@ can store all missing keys.
    :undoc-members:
    :inherited-members:
    :noindex:
+
+Examples for key_checker:
+------------------------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.key_checker.test_key_checker
+   :template: testcase-renderer.tmpl
+
 """
 
+# pylint: disable=missing-docstring
 import typing
 
 from attrs import define, field, validators
