@@ -27,16 +27,26 @@ class TestDissector(BaseProcessorTestCase[Dissector]):
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     async def test_testcases(self, rule, event, expected):
-        await self._load_rule(rule)
         log_event = LogEvent(event, original=b"test_message", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
+
         assert log_event.data == expected
 
     @pytest.mark.parametrize("rule, event, expected", failure_test_cases)
     async def test_testcases_failure_handling(self, rule, event, expected):
-        await self._load_rule(rule)
         log_event = LogEvent(event, original=b"test_message", input_meta=InputMeta())
-        result = await self.object.process(log_event)
+
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(log_event)
+
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert log_event.data == expected

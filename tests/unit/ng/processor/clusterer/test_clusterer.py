@@ -168,8 +168,10 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
 
         document = {"message": "test signature test"}
         rule = ClustererRule.create_from_dict(rule_definition)
-        self.object._rule_tree.add_rule(rule)
-        self.object._cluster(document, rule)
+
+        async with self.create_and_setup_processor() as instance:
+            instance._rule_tree.add_rule(rule)
+            instance._cluster(document, rule)
 
         assert document == expected
 
@@ -178,144 +180,144 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
         empty_rules_path = tmp_path / "empty"
         empty_rules_path.mkdir()
         config.update({"rules": [empty_rules_path.as_posix()]})
-        clusterer = Factory.create({"test instance": config})
 
-        rule_0 = {
-            "filter": "no_match",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": r"sig(\w*)",
-                "repl": r"<+>sig\1</+>",
-            },
-            "description": "",
-        }
-        rule_1 = {
-            "filter": "message",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": r"sig(\w*)",
-                "repl": r"<+>sig\1</+>",
-            },
-            "description": "",
-        }
-        rule_2 = {
-            "filter": "message",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": "foo",
-                "repl": "bar",
-            },
-            "description": "",
-        }
-        rule_3 = {
-            "filter": "message",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": "bar",
-                "repl": "baz",
-            },
-            "description": "",
-        }
-        rule_4 = {
-            "filter": "message",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": r"(baz)",
-                "repl": r"<+>\1</+>",
-            },
-            "description": "",
-        }
-        rules_to_add = [rule_0, rule_1, rule_2, rule_3, rule_4]
-        rules = []
-        for idx, rule in enumerate(rules_to_add):
-            new_rule = ClustererRule.create_from_dict(rule)
-            new_rule.file_name = str(idx)
-            rules.append(new_rule)
-            clusterer._rule_tree.add_rule(new_rule)
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            rule_0 = {
+                "filter": "no_match",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": r"sig(\w*)",
+                    "repl": r"<+>sig\1</+>",
+                },
+                "description": "",
+            }
+            rule_1 = {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": r"sig(\w*)",
+                    "repl": r"<+>sig\1</+>",
+                },
+                "description": "",
+            }
+            rule_2 = {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": "foo",
+                    "repl": "bar",
+                },
+                "description": "",
+            }
+            rule_3 = {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": "bar",
+                    "repl": "baz",
+                },
+                "description": "",
+            }
+            rule_4 = {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": r"(baz)",
+                    "repl": r"<+>\1</+>",
+                },
+                "description": "",
+            }
+            rules_to_add = [rule_0, rule_1, rule_2, rule_3, rule_4]
+            rules = []
+            for idx, rule in enumerate(rules_to_add):
+                new_rule = ClustererRule.create_from_dict(rule)
+                new_rule.file_name = str(idx)
+                rules.append(new_rule)
+                instance._rule_tree.add_rule(new_rule)
 
-        expected = {
-            "message": "test some signature xyz-foo",
-            "cluster_signature": "signature baz",
-        }
+            expected = {
+                "message": "test some signature xyz-foo",
+                "cluster_signature": "signature baz",
+            }
 
-        document = {"message": "test some signature xyz-foo"}
-        for rule in rules:
-            clusterer._cluster(document, rule)
-        assert document == expected
+            document = {"message": "test some signature xyz-foo"}
+            for rule in rules:
+                instance._cluster(document, rule)
+            assert document == expected
 
-        document = {"message": "test some signature xyz-foo"}
-        for rule in rules:
-            clusterer._cluster(document, rule)
-        assert document == expected
+            document = {"message": "test some signature xyz-foo"}
+            for rule in rules:
+                instance._cluster(document, rule)
+            assert document == expected
 
-        document = {"message": "test some signature xyz-foo"}
-        for rule in rules[1:]:
-            clusterer._cluster(document, rule)
-        assert document == expected
+            document = {"message": "test some signature xyz-foo"}
+            for rule in rules[1:]:
+                instance._cluster(document, rule)
+            assert document == expected
 
     async def test_rule_dependency_two(self, tmp_path):
         config = deepcopy(self.CONFIG)
         empty_rules_path = tmp_path / "empty"
         empty_rules_path.mkdir()
         config.update({"rules": [empty_rules_path.as_posix()]})
-        clusterer = Factory.create({"test instance": config})
 
-        expected = {
-            "message": "test some signature xyz-foo",
-            "cluster_signature": "test SIGN",
-        }
-        document = {
-            "message": "test some signature xyz-foo",
-            "cluster_signature": "signature baz",
-        }
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            expected = {
+                "message": "test some signature xyz-foo",
+                "cluster_signature": "test SIGN",
+            }
+            document = {
+                "message": "test some signature xyz-foo",
+                "cluster_signature": "signature baz",
+            }
 
-        rule_0 = {
-            "filter": "no_match",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": r"signature",
-                "repl": r"SIGN",
-            },
-            "description": "",
-        }
-        rule_1 = {
-            "filter": "message",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": r"signature",
-                "repl": r"SIGN",
-            },
-            "description": "",
-        }
-        rule_2 = {
-            "filter": "message",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": r"(SIGN)",
-                "repl": r"<+>\1</+>",
-            },
-            "description": "",
-        }
-        rule_3 = {
-            "filter": "message",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": r"(test)",
-                "repl": r"<+>\1</+>",
-            },
-            "description": "",
-        }
-        rules_to_add = [rule_0, rule_1, rule_2, rule_3]
-        rules = []
-        for idx, rule in enumerate(rules_to_add):
-            new_rule = ClustererRule.create_from_dict(rule)
-            new_rule.file_name = str(idx)
-            rules.append(new_rule)
-            clusterer._rule_tree.add_rule(new_rule)
+            rule_0 = {
+                "filter": "no_match",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": r"signature",
+                    "repl": r"SIGN",
+                },
+                "description": "",
+            }
+            rule_1 = {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": r"signature",
+                    "repl": r"SIGN",
+                },
+                "description": "",
+            }
+            rule_2 = {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": r"(SIGN)",
+                    "repl": r"<+>\1</+>",
+                },
+                "description": "",
+            }
+            rule_3 = {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": r"(test)",
+                    "repl": r"<+>\1</+>",
+                },
+                "description": "",
+            }
+            rules_to_add = [rule_0, rule_1, rule_2, rule_3]
+            rules = []
+            for idx, rule in enumerate(rules_to_add):
+                new_rule = ClustererRule.create_from_dict(rule)
+                new_rule.file_name = str(idx)
+                rules.append(new_rule)
+                instance._rule_tree.add_rule(new_rule)
 
-        for rule in rules:
-            clusterer._cluster(document, rule)
-        assert document == expected
+            for rule in rules:
+                instance._cluster(document, rule)
+            assert document == expected
 
     async def test_is_new_tree_iteration(self):
         rule_1 = {
@@ -338,14 +340,15 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
         }
         clusterer_rule_1 = ClustererRule.create_from_dict(rule_1)
         clusterer_rule_2 = ClustererRule.create_from_dict(rule_2)
-        clusterer = Factory.create({"test instance": self.CONFIG})
-        assert clusterer._is_new_tree_iteration(clusterer_rule_1) is True
-        clusterer._rule_tree.add_rule(clusterer_rule_1)
-        assert clusterer._is_new_tree_iteration(clusterer_rule_2) is True
-        clusterer._rule_tree.add_rule(clusterer_rule_2)
-        assert clusterer._is_new_tree_iteration(clusterer_rule_1) is True
-        assert clusterer._is_new_tree_iteration(clusterer_rule_2) is False
-        assert clusterer._is_new_tree_iteration(clusterer_rule_1) is True
+
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            assert instance._is_new_tree_iteration(clusterer_rule_1) is True
+            instance._rule_tree.add_rule(clusterer_rule_1)
+            assert instance._is_new_tree_iteration(clusterer_rule_2) is True
+            instance._rule_tree.add_rule(clusterer_rule_2)
+            assert instance._is_new_tree_iteration(clusterer_rule_1) is True
+            assert instance._is_new_tree_iteration(clusterer_rule_2) is False
+            assert instance._is_new_tree_iteration(clusterer_rule_1) is True
 
     async def test_is_clusterable_with_syslog_has_pri(self):
         sample_syslog_with_pri = {
@@ -384,8 +387,10 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
         }
 
         rule = ClustererRule.create_from_dict(rule_definition)
-        self.object._rule_tree.add_rule(rule)
-        self.object._cluster(sample_syslog_with_pri, rule)
+
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            instance._rule_tree.add_rule(rule)
+            instance._cluster(sample_syslog_with_pri, rule)
 
         assert sample_syslog_with_pri == expected
 
@@ -409,8 +414,10 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
         }
 
         rule = ClustererRule.create_from_dict(rule_definition)
-        self.object._rule_tree.add_rule(rule)
-        self.object._cluster(sample_syslog_without_pri, rule)
+
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            instance._rule_tree.add_rule(rule)
+            instance._cluster(sample_syslog_without_pri, rule)
 
         assert sample_syslog_without_pri == expected
 
@@ -427,10 +434,11 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
         }
 
         rule = ClustererRule.create_from_dict(rule_definition)
-        self.object._rule_tree.add_rule(rule)
 
-        event = {"message": None}
-        self.object._cluster(event, rule)
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            instance._rule_tree.add_rule(rule)
+            event = {"message": None}
+            instance._cluster(event, rule)
 
         assert event == {"message": None}
 
@@ -447,11 +455,14 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
         }
 
         rule = ClustererRule.create_from_dict(rule_definition)
-        self.object._rule_tree.add_rule(rule)
 
-        event = {"message": "test signature test"}
-        with mock.patch.object(self.object._rule_tree, "get_rule_id", return_value=None):
-            self.object._cluster(event, rule)
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            instance._rule_tree.add_rule(rule)
+
+            event = {"message": "test signature test"}
+            with mock.patch.object(instance._rule_tree, "get_rule_id", return_value=None):
+                instance._cluster(event, rule)
+
         assert event == {
             "message": "test signature test",
             "cluster_signature": "signature",
@@ -483,10 +494,12 @@ class TestClusterer(BaseProcessorTestCase[Clusterer]):
 
         rule_1 = ClustererRule.create_from_dict(rule_definition_1)
         rule_2 = ClustererRule.create_from_dict(rule_definition_2)
-        self.object._rule_tree.add_rule(rule_1)
-        self.object._rule_tree.add_rule(rule_2)
 
-        results = self.object.test_rules()
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            instance._rule_tree.add_rule(rule_1)
+            instance._rule_tree.add_rule(rule_2)
+            results = instance.test_rules()
+
         assert results
         for rule_results in results.values():
             for result, expected in rule_results:

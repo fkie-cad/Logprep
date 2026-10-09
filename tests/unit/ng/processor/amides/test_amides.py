@@ -214,8 +214,11 @@ class TestAmides(BaseProcessorTestCase[Amides]):
             assert expected_checksum == downloaded_checksum
 
     async def test_normalizer_returns_empty_string(self):
-        with mock.patch.object(self.object, "_normalizer") as mock_normalizer:
-            with mock.patch.object(self.object, "_write_target_field") as mock_write_target:
+        instance = self._create_test_instance(self.CONFIG)
+        await instance.setup()
+
+        with mock.patch.object(instance, "_normalizer") as mock_normalizer:
+            with mock.patch.object(instance, "_write_target_field") as mock_write_target:
                 mock_normalizer.normalize = mock.MagicMock()
                 mock_normalizer.normalize.return_value = ""
                 document = {
@@ -226,5 +229,5 @@ class TestAmides(BaseProcessorTestCase[Amides]):
                     }
                 }
                 event = LogEvent(document, original=b"", input_meta=InputMeta())
-                await self.object.process(event)
+                await instance.process(event)
                 mock_write_target.assert_not_called()

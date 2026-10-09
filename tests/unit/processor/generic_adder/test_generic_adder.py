@@ -617,9 +617,14 @@ class TestGenericAdder(BaseProcessorTestCase):
     @pytest.mark.parametrize("rule, event, expected, context", test_cases)
     def test_generic_adder_testcases(self, rule, event, expected, context, provision_context):
         provision_context(context)
-        self._load_rule(rule)
-        self.object.setup()
-        self.object.process(event)
+
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        instance = self._create_test_instance(config={"Test Instance Name": config})
+        instance.setup()
+        instance.process(event)
+
         assert event == expected
 
     @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
@@ -632,10 +637,12 @@ class TestGenericAdder(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("rule, event, error_message", dynamic_uri_failure_test_cases)
     def test_dynamic_uri_failure_handling(self, rule, event, error_message):
-        self._load_rule(rule)
-        self.object.setup()
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
 
-        result = self.object.process(event)
+        instance = self._create_test_instance(config={"Test Instance Name": config})
+        instance.setup()
+        result = instance.process(event)
 
         assert result.errors == []
         assert len(result.warnings) == 1
@@ -684,6 +691,7 @@ class TestGenericAdder(BaseProcessorTestCase):
                 }
             ),
         )
+        instance.setup()
 
         event = {}
         instance.process(event)

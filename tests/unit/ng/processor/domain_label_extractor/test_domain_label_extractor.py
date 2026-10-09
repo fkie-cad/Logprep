@@ -1,6 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
-
+from copy import deepcopy
 
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
@@ -271,7 +271,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
                 "top_level_domain": "de",
             }
         }
-        rule_dict = {
+        rule = {
             "filter": "url",
             "domain_label_extractor": {
                 "source_fields": ["url.domain"],
@@ -280,9 +280,13 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             },
             "description": "",
         }
-        await self._load_rule(rule_dict)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
         assert document == expected
 
     async def test_domain_extraction_delete_source_fields(self):
@@ -294,7 +298,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
                 "top_level_domain": "de",
             }
         }
-        rule_dict = {
+        rule = {
             "filter": "url",
             "domain_label_extractor": {
                 "source_fields": ["url.domain"],
@@ -304,9 +308,13 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             },
             "description": "",
         }
-        await self._load_rule(rule_dict)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
         assert document == expected
 
     async def test_does_nothing_if_source_field_not_exits(self):
@@ -315,7 +323,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "url": {"domain": "test.domain.de", "subdomain": "exists already"},
             "tags": ["_domain_label_extractor_missing_field_warning"],
         }
-        rule_dict = {
+        rule = {
             "filter": "url",
             "domain_label_extractor": {
                 "source_fields": ["url.not_existing"],
@@ -325,9 +333,13 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             },
             "description": "",
         }
-        await self._load_rule(rule_dict)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
         assert document == expected
 
     async def test_raises_field_exists_warning_if_target_field_exits(self):
@@ -342,7 +354,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             },
         }
 
-        rule_dict = {
+        rule = {
             "filter": "url",
             "domain_label_extractor": {
                 "source_fields": ["url.domain"],
@@ -350,9 +362,13 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             },
             "description": "",
         }
-        await self._load_rule(rule_dict)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
@@ -370,7 +386,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "invalid_domain_in_url_comp\\lex.domain",
         ]
 
-        rule_dict = {
+        rule = {
             "filter": "url",
             "domain_label_extractor": {
                 "source_fields": ["url.comp\\\\lex\\.domain"],
@@ -378,10 +394,13 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             },
             "description": "",
         }
-        await self._load_rule(rule_dict)
-
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
+
         tags = log_event.data.pop("tags")
 
         assert log_event.data == expected_output
@@ -400,7 +419,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "ip_in_source_comp\\lex.ip",
         ]
 
-        rule_dict = {
+        rule = {
             "filter": "source",
             "domain_label_extractor": {
                 "source_fields": ["source.comp\\\\lex\\.ip"],
@@ -408,10 +427,13 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             },
             "description": "",
         }
-        await self._load_rule(rule_dict)
-
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
+
         tags = log_event.data.pop("tags")
 
         assert log_event.data == expected_output

@@ -126,9 +126,9 @@ class RuleLoader:
 
         extensions = tuple(extensions)
 
-        return await asyncio.to_thread(
-            lambda: [str(path) for path in Path(source).glob("**/*") if path.suffix in extensions]
-        )
+        child_paths = await asyncio.to_thread(lambda: list(Path(source).glob("**/*")))
+
+        return [str(path) for path in child_paths if path.suffix in extensions]
 
 
 class DirectoryRuleLoader(RuleLoader):

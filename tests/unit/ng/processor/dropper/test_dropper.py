@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+from copy import deepcopy
 from unittest import mock
 
 from logprep.ng.abc.event import InputMeta, LogEvent
@@ -30,31 +31,41 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
 
     async def test_nested_field_gets_dropped(self):
         rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {}
         document = {"drop": {"me": "something"}}
-        await self._load_rule(rule)
+
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_nested_escaped_field_gets_dropped(self):
         rule = {"filter": "\\\\drop", "dropper": {"drop": ["\\\\drop.me\\.pls\\\\"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {}
         document = {"\\drop": {"me.pls\\": "something"}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_nested_field_with_neighbour_gets_dropped(self):
         rule = {"filter": "keep_me.drop_me", "dropper": {"drop": ["keep_me.drop_me"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {"keep_me": {"keep_me_too": "something"}}
         document = {"keep_me": {"drop_me": "something", "keep_me_too": "something"}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 

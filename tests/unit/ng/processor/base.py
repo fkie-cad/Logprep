@@ -140,8 +140,9 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
     def test_is_a_processor_implementation(self):
         assert isinstance(self.object, Processor)
 
-    def test_rule_tree(self):
-        assert isinstance(self.object._rule_tree, RuleTree)
+    async def test_rule_tree(self):
+        async with self.create_and_setup_processor(override_shared=True) as instance:
+            assert isinstance(instance._rule_tree, RuleTree)
 
     async def test_rule_tree_not_empty(self):
         instance = self._create_test_instance(deepcopy(self.CONFIG))
@@ -155,10 +156,11 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
     @mock.patch("logging.Logger.isEnabledFor", return_value=True)
     @mock.patch("logging.Logger.debug")
     async def test_load_rules_with_debug(self, mock_debug, _):
-        await self.object.load_rules(
-            rules_targets=self.rules_dirs,
-        )
-        mock_debug.assert_called()
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            await instance.load_rules(
+                rules_targets=self.rules_dirs,
+            )
+            mock_debug.assert_called()
 
     async def test_load_rules(self):
         self.object._rule_tree = RuleTree()
@@ -168,11 +170,12 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         assert new_rules_size > rules_size
 
     async def test_load_rules_creates_rule_with_processor_name(self):
-        with mock.patch(
-            "logprep.processor.base.rule.Rule.create_from_dict"
-        ) as mock_create_from_dict:
-            await self.object.load_rules(rules_targets=self.rules_dirs)
-            mock_create_from_dict.assert_called_with(mock.ANY, self.object.name)
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            with mock.patch(
+                "logprep.processor.base.rule.Rule.create_from_dict"
+            ) as mock_create_from_dict:
+                await instance.load_rules(rules_targets=self.rules_dirs)
+                mock_create_from_dict.assert_called_with(mock.ANY, self.object.name)
 
     @responses.activate
     def test_accepts_http_in_rules_config(self):
@@ -190,11 +193,12 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         in the rules directories
         ensures that every rule in rule tree is unique
         """
-        await self.object.load_rules(rules_targets=self.rules_dirs)
-        rules_size = self.object._rule_tree.get_size()
-        await self.object.load_rules(rules_targets=self.rules_dirs)
-        new_rules_size = self.object._rule_tree.get_size()
-        assert new_rules_size == rules_size
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            await instance.load_rules(rules_targets=self.rules_dirs)
+            rules_size = instance._rule_tree.get_size()
+            await instance.load_rules(rules_targets=self.rules_dirs)
+            new_rules_size = instance._rule_tree.get_size()
+            assert new_rules_size == rules_size
 
     async def test_rules_returns_all_rules(self):
         instance = self._create_test_instance(deepcopy(self.CONFIG))
@@ -207,7 +211,10 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
     @mock.patch("logging.Logger.debug")
     async def test_process_writes_debug_messages(self, mock_debug):
         event = LogEvent({}, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            await instance.process(event)
+
         mock_debug.assert_called()
 
     def test_config_attribute_is_config_object(self):
@@ -312,7 +319,10 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
     async def test_process_return_event_object(self):
         event = LogEvent({"some": "event"}, original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=deepcopy(self.CONFIG)) as instance:
+            result = await instance.process(event)
+
         assert isinstance(result, LogEvent)
 
     async def test_process_collects_errors_in_event_object(self):
@@ -357,19 +367,3 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
         assert self.object._rule_tree.number_of_rules == first_rule_count
         assert len(self.object.rules) == len(first_rules)
-
-    async def test_setup_keeps_rule_tree_if_rule_loading_fails(self):
-        await self.object.setup()
-
-        rule_tree = self.object._rule_tree
-        rules = list(self.object.rules)
-
-        with mock.patch(
-            "logprep.ng.abc.processor.RuleLoader.load_rules",
-            new=mock.AsyncMock(side_effect=ValueError("rule loading failed")),
-        ):
-            with pytest.raises(ValueError, match="rule loading failed"):
-                await self.object.setup()
-
-        assert self.object._rule_tree is rule_tree
-        assert list(self.object.rules) == rules

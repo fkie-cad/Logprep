@@ -672,13 +672,13 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         provision_context(context)
 
-        processor = Factory.create({"test instance": config})
-        processor.setup()
+        instance = Factory.create({"test instance": config})
+        instance.setup()
 
         try:
-            processor.process(event)
+            instance.process(event)
         finally:
-            processor.shut_down()
+            instance.shut_down()
 
         assert event == expected
 
@@ -810,35 +810,37 @@ class TestGenericResolver(BaseProcessorTestCase):
         http_getter_conf.write_text(json.dumps(getter_file_content))
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
-            self._load_rule(
-                {
-                    "filter": "to_resolve",
-                    "generic_resolver": {
-                        "field_mapping": {"to_resolve": "resolved"},
-                        "resolve_from_file": {
-                            "path": url,
-                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                        },
-                        "overwrite_target": True,
+
+            config = deepcopy(self.CONFIG)
+            rule = {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_from_file": {
+                        "path": url,
+                        "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                     },
-                }
-            )
+                    "overwrite_target": True,
+                },
+            }
+            config["rules"] = [rule]
 
             expected_1 = {"to_resolve": "12ab34", "resolved": {"new1": "1"}}
             expected_2 = {"to_resolve": "12ab34", "resolved": {"new1": "1", "new2": "2"}}
             document = {"to_resolve": "12ab34"}
 
-            self.object.setup()
+            instance = self._create_test_instance(config={"Test Instance Name": config})
+            instance.setup()
+            instance.process(document)
 
-            self.object.process(document)
             assert document == expected_1
 
             HttpGetter.refresh()  # Try refresh, but no time to update yet
-            self.object.process(document)
+            instance.process(document)
             assert document == expected_1
 
             scheduler.run_all()  # Force update
-            self.object.process(document)
+            instance.process(document)
             assert document == expected_2
 
     def test_resolve_dotted_src_and_dest_field_and_conflict_match(self):
@@ -868,72 +870,70 @@ class TestGenericResolver(BaseProcessorTestCase):
     def test_resolve_from_cache_with_large_enough_cache(self):
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 10
-        self.object = Factory.create({"generic_resolver": config})
 
         event = {"to_resolve": "foo"}
-        self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-                },
-            }
-        )
-        self.object.setup()
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
 
-        self.object.process(event)
+        config["rules"] = [rule]
 
-        assert self.object.metrics.new_results.value == 1
-        assert self.object.metrics.cached_results.value == 0
-        assert self.object.metrics.num_cache_entries.value == 1
+        instance = self._create_test_instance(config={"Test Instance Name": config})
+        instance.setup()
+        instance.process(event)
 
-        self.object.process(event)
+        assert instance.metrics.new_results.value == 1
+        assert instance.metrics.cached_results.value == 0
+        assert instance.metrics.num_cache_entries.value == 1
 
-        assert self.object.metrics.new_results.value == 1
-        assert self.object.metrics.cached_results.value == 1
-        assert self.object.metrics.num_cache_entries.value == 1
+        instance.process(event)
 
-        self.object.process({"to_resolve": "bar"})
+        assert instance.metrics.new_results.value == 1
+        assert instance.metrics.cached_results.value == 1
+        assert instance.metrics.num_cache_entries.value == 1
 
-        assert self.object.metrics.new_results.value == 2
-        assert self.object.metrics.cached_results.value == 1
-        assert self.object.metrics.num_cache_entries.value == 2
+        instance.process({"to_resolve": "bar"})
+
+        assert instance.metrics.new_results.value == 2
+        assert instance.metrics.cached_results.value == 1
+        assert instance.metrics.num_cache_entries.value == 2
 
     def test_resolve_from_cache_with_cache_smaller_than_results(self):
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 1
-        self.object = Factory.create({"generic_resolver": config})
-
         event = {"to_resolve": "foo"}
-        self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-                },
-            }
-        )
-        self.object.setup()
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        config["rules"] = [rule]
 
-        self.object.process(event)
+        instance = self._create_test_instance(config={"Test Instance Name": config})
+        instance.setup()
+        instance.process(event)
 
-        assert self.object.metrics.new_results.value == 1
-        assert self.object.metrics.cached_results.value == 0
-        assert self.object.metrics.num_cache_entries.value == 1
+        assert instance.metrics.new_results.value == 1
+        assert instance.metrics.cached_results.value == 0
+        assert instance.metrics.num_cache_entries.value == 1
 
-        self.object.process(event)
+        instance.process(event)
 
-        assert self.object.metrics.new_results.value == 1
-        assert self.object.metrics.cached_results.value == 1
-        assert self.object.metrics.num_cache_entries.value == 1
+        assert instance.metrics.new_results.value == 1
+        assert instance.metrics.cached_results.value == 1
+        assert instance.metrics.num_cache_entries.value == 1
 
-        self.object.process({"to_resolve": "bar"})
+        instance.process({"to_resolve": "bar"})
 
-        assert self.object.metrics.new_results.value == 2
-        assert self.object.metrics.cached_results.value == 1
-        assert self.object.metrics.num_cache_entries.value == 1
+        assert instance.metrics.new_results.value == 2
+        assert instance.metrics.cached_results.value == 1
+        assert instance.metrics.num_cache_entries.value == 1
 
     def test_resolve_without_cache(self):
         config = deepcopy(self.CONFIG)
@@ -978,37 +978,37 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         event = {"to_resolve": "foo"}
         other_event = {"to_resolve": "bar"}
-        self._load_rule(
-            {
-                "filter": "to_resolve",
-                "generic_resolver": {
-                    "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
-                },
-            }
-        )
-        self.object.setup()
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        config["rules"] = [rule]
 
-        self.object.process(event)
+        instance = self._create_test_instance(config={"Test Instance Name": config})
+        instance.setup()
+        instance.process(event)
 
-        assert self.object.metrics.new_results.value == 0
-        assert self.object.metrics.cached_results.value == 0
-        assert self.object.metrics.num_cache_entries.value == 0
+        assert instance.metrics.new_results.value == 0
+        assert instance.metrics.cached_results.value == 0
+        assert instance.metrics.num_cache_entries.value == 0
 
-        self.object.process(event)
+        instance.process(event)
 
-        assert self.object.metrics.new_results.value == 1
-        assert self.object.metrics.cached_results.value == 1
-        assert self.object.metrics.num_cache_entries.value == 1
+        assert instance.metrics.new_results.value == 1
+        assert instance.metrics.cached_results.value == 1
+        assert instance.metrics.num_cache_entries.value == 1
 
-        self.object.process(other_event)
+        instance.process(other_event)
 
-        assert self.object.metrics.new_results.value == 1
-        assert self.object.metrics.cached_results.value == 1
-        assert self.object.metrics.num_cache_entries.value == 1
+        assert instance.metrics.new_results.value == 1
+        assert instance.metrics.cached_results.value == 1
+        assert instance.metrics.num_cache_entries.value == 1
 
-        self.object.process(other_event)
+        instance.process(other_event)
 
-        assert self.object.metrics.new_results.value == 2
-        assert self.object.metrics.cached_results.value == 2
-        assert self.object.metrics.num_cache_entries.value == 2
+        assert instance.metrics.new_results.value == 2
+        assert instance.metrics.cached_results.value == 2
+        assert instance.metrics.num_cache_entries.value == 2

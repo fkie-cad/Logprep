@@ -2,7 +2,7 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
-
+from copy import deepcopy
 from unittest import mock
 
 from dateutil.tz import tzoffset, tzutc  # type: ignore
@@ -154,12 +154,16 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
             },
             "description": "",
         }
-        await self._load_rule(rule)
-        self.object._local_timezone = tzutc()
-        self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
-            self.object._local_timezone
-        )
-        await self.object.process(document)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            instance._local_timezone = tzutc()
+            instance._local_timezone_name = DatetimeExtractor._get_timezone_name(
+                instance._local_timezone
+            )
+            await instance.process(document)
+
         expected = LogEvent(
             {
                 "winlog": {"event_id": 123},
@@ -195,12 +199,16 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
             },
             "description": "",
         }
-        await self._load_rule(rule)
-        self.object._local_timezone = tzutc()
-        self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
-            self.object._local_timezone
-        )
-        await self.object.process(document)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            instance._local_timezone = tzutc()
+            instance._local_timezone_name = DatetimeExtractor._get_timezone_name(
+                instance._local_timezone
+            )
+            await instance.process(document)
+
         expected = LogEvent(
             {
                 "winlog": {"event_id": 123},
@@ -236,8 +244,12 @@ class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
             },
             "description": "",
         }
-        await self._load_rule(rule)
-        result = await self.object.process(document)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(document)
+
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
 

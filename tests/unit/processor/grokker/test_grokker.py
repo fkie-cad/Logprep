@@ -585,8 +585,8 @@ class TestGrokker(BaseProcessorTestCase):
         }
         config = deepcopy(self.CONFIG)
         config["custom_patterns_dir"] = "tests/testdata/unit/grokker/patterns/"
-        self.object = Factory.create({"grokker": config})
-        self._load_rule(rule)
-        self.object.setup()
-        self.object.process(event)
+        config["rules"] = [rule]
+        instance = self._create_test_instance(config={"Test Instance Name": config})
+        instance.setup()
+        instance.process(event)
         assert event == expected
