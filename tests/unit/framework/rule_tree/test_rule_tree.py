@@ -13,6 +13,7 @@ from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.util import getter
+from logprep.util.getter import GetterFactory
 
 
 @pytest.fixture(name="rule_dict")
@@ -40,7 +41,9 @@ class TestRuleTree:
         assert rule_tree.root.expression is None
 
     def test_init_with_specifying_config(self):
-        rule_tree = RuleTree(config="tests/testdata/unit/tree_config.json")
+        config = GetterFactory.from_string("tests/testdata/unit/tree_config.json").get_dict()
+        rule_config = RuleTree.Config(**config)
+        rule_tree = RuleTree(config=rule_config)
         assert isinstance(rule_tree.root, Node)
         assert rule_tree.rule_parser._rule_tagger._tag_map == {
             "field_name_to_check_for_in_rule": "TAG-TO-CHECK-IF-IN-EVENT"

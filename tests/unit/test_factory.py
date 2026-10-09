@@ -139,6 +139,7 @@ def test_creates_calculator_with_inline_rules():
             }
         }
     )
+    processor.setup()
     assert len(processor.rules) == 1
 
 
@@ -157,6 +158,7 @@ def test_creates_calculator_with_inline_rules_and_files():
             }
         }
     )
+    processor.setup()
     assert len(processor.rules) == 2
     assert processor.rules[0].filter_str == "message1: *"
     assert processor.rules[1].filter_str == "(field1: * AND field2: *)"
@@ -177,6 +179,7 @@ def test_creates_calculator_with_inline_rules_and_file_and_directory():
             }
         }
     )
+    processor.setup()
     assert len(processor.rules) == 3
 
 

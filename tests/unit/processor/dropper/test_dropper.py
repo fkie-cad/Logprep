@@ -1,7 +1,9 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+from copy import deepcopy
 from unittest import mock
 
+from logprep.factory import Factory
 from logprep.processor.dropper.processor import Dropper
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -21,7 +23,10 @@ class TestDropper(BaseProcessorTestCase):
     def test_not_nested_field_gets_dropped_with_rule_loaded_from_file(self):
         expected = {}
         document = {"drop_me": "something"}
-        self.object.process(document)
+
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
 
         assert document == expected
 

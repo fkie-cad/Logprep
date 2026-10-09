@@ -41,6 +41,13 @@ class SelectiveExtractor(FieldManager):
 
     rule_class = SelectiveExtractorRule
 
+    async def setup(self) -> None:
+        await super().setup()
+
+        for rule in self.rules:
+            rule = typing.cast(SelectiveExtractorRule, rule)
+            await rule.setup()
+
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """
         Generates a filtered event based on the incoming event and the configured

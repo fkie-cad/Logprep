@@ -95,6 +95,7 @@ dev = [
   "types-PyYaml",
   "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
   "ipykernel>=7.3.0",
+  "types-python-dateutil>=2.9.0.20260807",
 ]
 
 doc = [
@@ -121,6 +122,7 @@ Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
 [project.scripts]
 logprep = "logprep.run_logprep:cli"
 logprep-ng = "logprep.run_ng:cli"
+
 
 [tool.black]
 line-length = 100

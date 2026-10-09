@@ -36,16 +36,22 @@ class TestCalculator(BaseProcessorTestCase[Calculator]):
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     async def test_testcases(self, rule, event, expected):
-        await self._load_rule(rule)
-        event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            event = LogEvent(event, original=b"", input_meta=InputMeta())
+            await instance.process(event)
+            assert event.data == expected
 
     @pytest.mark.parametrize("rule, event, expected", runtime_failure_test_cases)
     async def test_testcases_failure_handling_at_runtime(self, rule, event, expected):
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert len(result.warnings) == 1
         assert event.data == expected
 

@@ -562,15 +562,14 @@ class TestCalculator(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
     def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
-        self._load_rule(rule)
         self.object.setup()
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
     @pytest.mark.parametrize("rule, event, expected", runtime_failure_test_cases)
     def test_testcases_failure_handling_at_runtime(self, rule, event, expected):
         self._load_rule(rule)
-        self.object.setup()
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert event == expected

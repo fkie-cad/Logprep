@@ -1,6 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
-
+from copy import deepcopy
 
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -24,7 +24,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
                 "subdomain": "url.full",
             }
         }
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
 
         assert document == expected_output
 
@@ -38,7 +40,10 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
                 "subdomain": "www.test",
             }
         }
-        self.object.process(document)
+
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
 
         assert document == expected_output
 
@@ -56,7 +61,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
                 }
             },
         }
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
 
         assert document == expected_output
 
@@ -70,7 +77,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
                 "subdomain": "",
             }
         }
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
 
         assert document == expected_output
 
@@ -81,7 +90,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "tags": ["invalid_domain_in_url_domain"],
         }
 
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
         assert document == expected_output
 
     def test_domain_extraction_without_recognized_tld_with_existing_tag_field(self):
@@ -91,7 +102,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "tags": ["source", "invalid_domain_in_url_domain"],
         }
 
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
         assert document == expected_output
 
     def test_two_invalid_domains(self):
@@ -110,7 +123,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "invalid_domain_in_source_domain",
         ]
 
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
         tags = document.pop("tags")
 
         assert document == expected_output
@@ -133,7 +148,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "tags": ["source", "invalid_domain_in_source_domain"],
         }
 
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
         assert document == expected_output
 
     def test_two_domains_one_is_invalid_one_has_ip(self):
@@ -147,7 +164,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "source": {"domain": "123.123.123.123"},
         }
         expected_tags = ["source", "invalid_domain_in_url_domain", "ip_in_source_domain"]
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
         tags = document.pop("tags")
 
         assert document == expected_output
@@ -163,14 +182,16 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = Factory.create(configuration=config)
         document = {"url": {"domain": "domain.fubarbo"}}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
             "special_tags": ["invalid_domain_in_url_domain"],
         }
 
-        domain_label_extractor.process(document)
+        processor = Factory.create(configuration=config)
+        processor.setup()
+        processor.process(document)
+
         assert document == expected_output
 
     def test_append_to_non_default_tagging_field(self):
@@ -183,14 +204,16 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = Factory.create(config)
         document = {"url": {"domain": "domain.fubarbo"}, "special_tags": ["source"]}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
             "special_tags": ["source", "invalid_domain_in_url_domain"],
         }
 
-        domain_label_extractor.process(document)
+        processor = Factory.create(config)
+        processor.setup()
+        processor.process(document)
+
         assert document == expected_output
 
     def test_domain_extraction_with_separated_tld(self):
@@ -203,7 +226,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
                 "subdomain": "",
             }
         }
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
 
         assert document == expected_output
 
@@ -211,7 +236,10 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         document = {"url": {"domain": "123.123.123.123"}}
         expected_output = {"url": {"domain": "123.123.123.123"}, "tags": ["ip_in_url_domain"]}
 
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
+
         assert document == expected_output
 
     def test_domain_extraction_with_ipv6_target(self):
@@ -221,12 +249,18 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "tags": ["ip_in_url_domain"],
         }
 
-        self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        processor.process(document)
+
         assert document == expected_output
 
     def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-        result = self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        result = processor.process(document)
+
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
 
@@ -308,7 +342,10 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             },
         }
 
-        result = self.object.process(document)
+        processor = Factory.create({"test instance": deepcopy(self.CONFIG)})
+        processor.setup()
+        result = processor.process(document)
+
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected

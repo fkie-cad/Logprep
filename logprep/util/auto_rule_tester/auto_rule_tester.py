@@ -273,6 +273,9 @@ class AutoRuleTester:
         """Perform auto-tests. Main entry"""
         rules_dirs = self._get_rule_dirs_by_processor_name()
         rules_pn = self._get_rules_per_processor_name(rules_dirs)
+
+        self._set_rules_dirs_to_empty()
+
         self._run_if_any_rules_exist(rules_pn)
 
     def _run_if_any_rules_exist(self, rules_pn: dict) -> None:
