@@ -7,11 +7,15 @@ from unittest import mock
 import pytest
 
 from logprep.ng.abc.event import InputMeta, LogEvent
+from logprep.ng.abc.processor import Processor
 from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
 from logprep.ng.processor.selective_extractor.processor import SelectiveExtractor
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.selective_extractor.test_selective_extractor import (
-    test_cases as non_ng_test_cases,
+    Case,
+)
+from tests.unit.processor.selective_extractor.test_selective_extractor import (
+    parametrized_test_cases as non_ng_test_cases,
 )
 
 test_cases = deepcopy(non_ng_test_cases)
@@ -23,13 +27,15 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
 
-    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
-    async def test_testcases(self, rule, event, expected, context, provision_context):
-        provision_context(context)
-        await self._load_rule(rule)
-        event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
+    @pytest.mark.parametrize(["case"], test_cases)
+    async def test_testcases(self, case: Case, provision_context_override):
+        provision_context_override(case.context)
+        await self._load_rule(case.rule)
+        event = LogEvent(case.event, original=b"", input_meta=InputMeta())
+        assert isinstance(self.object, Processor)
+        result = await self.object.process(event)
+        # assert case.expected == event.data
+        assert case.expected_extras == result.data
 
     async def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
