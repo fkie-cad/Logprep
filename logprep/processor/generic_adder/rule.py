@@ -102,10 +102,8 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 from logprep.util import helper
 from logprep.util.converters import convert_from_dict
-from logprep.util.getter import CacheItem, ResourceCache
-from logprep.util.helper import (
-    FieldValue,
-)
+from logprep.util.helper import FieldValue
+from logprep.util.resource_cache import CacheItem, ResourceCache
 
 
 @define(kw_only=True, frozen=True)
@@ -372,7 +370,9 @@ class GenericAdderRule(Rule):
 
     def _recompute_failure_state(self, _item: CacheItem[FieldValue]) -> None:
         assert self._resource_cache is not None
+
         error_items = self._resource_cache.get_error_items()
+
         if len(error_items) == 0:
             self.clear_failed()
         elif len(error_items) == 1:

@@ -100,12 +100,12 @@ from logprep.abc.getter import Getter
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import (
+from logprep.util.helper import DottedTemplate
+from logprep.util.resource_cache import (
     CacheItem,
     ErrorContext,
     ResourceCache,
 )
-from logprep.util.helper import DottedTemplate
 
 logger = logging.getLogger("ListComparison")
 
