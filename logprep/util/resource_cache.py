@@ -148,7 +148,23 @@ class ResourceCache(Generic[T]):
                 is_dynamic=is_dynamic,
                 is_cached=is_cached,
             )
-        if isinstance(getter, RefreshableGetter):
+
+        error: CacheError | None = None
+        content: T | None = None
+        try:
+            content = self._on_data(getter)
+        except (RefreshableGetterError, FileNotFoundError) as exc:
+            error = CacheError(
+                context=ErrorContext.RETRIEVE_URI,
+                exception=exc,
+            )
+        except Exception as exc:
+            error = CacheError(
+                context=ErrorContext.HANDLE_CONTENT,
+                exception=exc,
+            )
+
+        if isinstance(getter, RefreshableGetter) and not is_dynamic:
             getter.keep_alive()
             key = (self._tag, resolved_uri)
             getter.add_callback(
@@ -165,20 +181,6 @@ class ResourceCache(Generic[T]):
                 fnc_args=[resolved_uri],
             )
 
-        error: CacheError | None = None
-        content: T | None = None
-        try:
-            content = self._on_data(getter)
-        except (RefreshableGetterError, FileNotFoundError) as exc:
-            error = CacheError(
-                context=ErrorContext.RETRIEVE_URI,
-                exception=exc,
-            )
-        except Exception as exc:
-            error = CacheError(
-                context=ErrorContext.HANDLE_CONTENT,
-                exception=exc,
-            )
         return CacheItem[T](
             raw_uri=raw_uri,
             resolved_uri=resolved_uri,

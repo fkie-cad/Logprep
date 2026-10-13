@@ -19,6 +19,7 @@ from logprep.util.getter import (
     RefreshableGetterError,
     refresh_getters,
 )
+from logprep.util.helper import DottedTemplate
 from tests.conftest import mock_env
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -850,12 +851,14 @@ class TestListComparison(BaseProcessorTestCase):
             rule = processor.rules[0]
 
             assert len(responses.calls) == 0
-
+            processor.setup()
             processor.process(document)
+            resolved_path = DottedTemplate(list_path).safe_substitute(environment)
+            assert _compare_sets(rule, {"tenant": {"id": "acme"}}) == {
+                resolved_path: {"Foo", "Bar"}
+            }
 
-            assert _compare_sets(rule, {"tenant": {"id": "acme"}}) == {list_path: {"Foo", "Bar"}}
-
-        assert document["user_results"] == {"in_list": [list_path]}
+        assert document["user_results"] == {"in_list": [resolved_path]}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
@@ -878,9 +881,10 @@ class TestListComparison(BaseProcessorTestCase):
                     }
                 ]
             )
+            processor.setup()
+            assert _compare_sets(processor.rules[0]) == {"acme/bad_users.list": {"Foo", "Bar"}}
 
-        assert _compare_sets(processor.rules[0]) == {"acme/bad_users.list": {"Foo", "Bar"}}
-        assert len(responses.calls) == 1
+        assert len(responses.calls) == 2
         assert responses.calls[0].request.url == url
 
     @responses.activate
@@ -1235,7 +1239,7 @@ class TestListComparison(BaseProcessorTestCase):
         assert url not in HttpGetter._target_to_data_caches
 
         processor.process(document)
-        assert len(responses.calls) == 2
+        assert len(responses.calls) == 1
 
     @pytest.mark.parametrize(
         "http_list_content, expected_content",
@@ -1417,10 +1421,8 @@ class TestListComparison(BaseProcessorTestCase):
             assert responses.calls[-1].response.status_code == 500
 
             responses.replace(responses.GET, url=url, body="Foo\n", status=200)
-
             time.sleep(2)
             refresh_getters()
-
             assert rule.data_error is None
             assert _compare_sets(rule) == {list_name: {"Foo"}}
             assert responses.calls[-1].request.url == url

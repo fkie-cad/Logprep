@@ -100,6 +100,7 @@ from logprep.abc.getter import Getter
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.util.environ import ENV_VARS
 from logprep.util.helper import DottedTemplate
 from logprep.util.resource_cache import (
     CacheItem,
@@ -357,7 +358,6 @@ class ListComparisonRule(FieldManagerRule):
             assert item.error is not None
             self.mark_failed(item.error.exception)
         else:
-            # TODO: consider differntiation by tpye to avoid additional checks.
             errors = [item.error.exception for item in error_items if item.error is not None]
             self.mark_failed(ExceptionGroup("rule failed due to list data retrieval", errors))
 
@@ -390,7 +390,9 @@ class ListComparisonRule(FieldManagerRule):
                 f"it is not: {base_path}"
             )
         if list_names is None:
-            list_names = list_paths
+            list_names = list_paths[:]
+
+        list_names = [DottedTemplate(name).safe_substitute(ENV_VARS) for name in list_names]
         list_paths = [
             base_template.safe_substitute(LOGPREP_LIST=list_path) for list_path in list_paths
         ]

@@ -371,7 +371,9 @@ class GenericAdderRule(Rule):
     def _recompute_failure_state(self, _item: CacheItem[FieldValue]) -> None:
         assert self._resource_cache is not None
 
-        error_items = self._resource_cache.get_error_items()
+        error_items = [
+            item for item in self._resource_cache.get_error_items() if not item.is_dynamic
+        ]
 
         if len(error_items) == 0:
             self.clear_failed()
