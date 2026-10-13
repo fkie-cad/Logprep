@@ -118,7 +118,7 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
         to_resolve: resolved
       resolve_from_file:
         path: path/to/resolve_mapping.yml
-        pattern: \d*(?P<mapping>[a-z]+)\d*
+        pattern: \\d*(?P<mapping>[a-z]+)\\d*
 
 ..  code-block:: yaml
     :linenos:
@@ -288,11 +288,21 @@ class GenericResolverRule(FieldManagerRule):
     ):
         super().__init__(filter_rule, config, processor_name)
         self._resource_cache: ResourceCache[JsonObject] | None = None
-        self._additions: JsonObject = {}
+        self._static_additions: JsonObject = {}
 
-    def init_generic_resolver(self, callback_tag: str):
+    def init_generic_resolver(self, callback_tag: str) -> None:
+        """Initialize the additions for this rule.
 
-        self._additions: JsonObject = {}
+        Local lists are loaded eagerly. Static HTTP(S) lists are loaded eagerly and
+        registered for refresh and cleanup callbacks. Dynamic HTTP(S) templates that
+        require event fields are loaded lazily during processing.
+
+        Raises
+        ------
+        InvalidConfigurationError
+            If additions fail to load.
+        """
+
         if self.config.file_path:
             self._raise_if_pattern_is_invalid()
             self._resource_cache = ResourceCache[JsonObject](
@@ -302,15 +312,20 @@ class GenericResolverRule(FieldManagerRule):
             result = self._resource_cache.get_value(self.config.file_path)
             if not result.is_dynamic and result.error is not None:
                 raise InvalidConfigurationError(
-                    f"Error loading additions from {self.config.file_path!r}: {result.error.exception}"
+                    f"Error loading additions from {self.config.file_path!r}:"
+                    f" {result.error.exception}"
                 )
         else:
-            self._additions = self._convert_additions(self.config.additions)
+            self._static_additions = self._convert_additions(self.config.additions)
 
-    def _read_from_getter(self, getter: Getter):
-        return self._convert_additions(
-            getter.get_collection(content_field=self.config.content_field)
-        )
+    def _read_from_getter(self, getter: Getter) -> JsonObject:
+        content = getter.get_collection(content_field=self.config.content_field)
+        if not isinstance(content, dict):
+            raise InvalidConfigurationError(
+                f"Expected an object at {self.config.content_field!r}"
+                f" got {type(content).__name__} instead"
+            )
+        return self._convert_additions(content)
 
     def _convert_additions(self, additions: JsonObject) -> JsonObject:
         additions = convert_ordered_mapping_or_keep_mapping(additions)
@@ -318,7 +333,7 @@ class GenericResolverRule(FieldManagerRule):
             additions = {key.upper(): value for key, value in additions.items()}
         return additions
 
-    def _raise_if_pattern_is_invalid(self):
+    def _raise_if_pattern_is_invalid(self) -> None:
         if "?P<mapping>" not in self.resolve_from_file["pattern"]:
             raise InvalidConfigurationError(
                 f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
@@ -367,5 +382,6 @@ class GenericResolverRule(FieldManagerRule):
     def get_additions(self, event: JsonObject) -> JsonObject:
         """Returns additions from the resolve file"""
         if self._resource_cache is None:
-            return self._additions
+            return self._static_additions
+        assert self.config.file_path is not None
         return self._resource_cache.get_value(self.config.file_path, event).value
