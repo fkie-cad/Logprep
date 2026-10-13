@@ -226,7 +226,7 @@ class TestGenericResolverRule:
                     },
                 },
                 InvalidConfigurationError,
-                "Additions file 'foo' not found",
+                r"Error loading additions from 'foo'.*No.*file",
                 id="no_additional_file_found",
             ),
             pytest.param(
@@ -249,7 +249,8 @@ class TestGenericResolverRule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                GenericResolverRule.create_from_dict(rule)
+                rule = GenericResolverRule.create_from_dict(rule)
+                rule.init_generic_resolver("some_tag")
         else:
             rule_instance = GenericResolverRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
@@ -289,14 +290,16 @@ class TestGenericResolverRule:
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
             rule = GenericResolverRule.create_from_dict(rule_definition)
-            assert rule.additions == from_http_1
+            rule.init_generic_resolver("sometag")
+            assert rule.get_additions({}) == from_http_1
             HttpGetter.refresh()
-            assert rule.additions == from_http_1
+            assert rule.get_additions({}) == from_http_1
             scheduler.run_all()
-            assert rule.additions == from_http_2
-            assert rule.additions == from_http_2
+            assert rule.get_additions({}) == from_http_2
+            assert rule.get_additions({}) == from_http_2
             scheduler.run_all()
-            assert rule.additions == from_http_3
+            assert rule.get_additions({}) == from_http_3
+            RefreshableGetter.remove_callbacks_for_tag("sometag")
 
     @pytest.mark.parametrize(
         ["content_field_config", "expected"],
@@ -377,7 +380,9 @@ class TestGenericResolverRule:
                 },
             }
         )
-        assert rule.additions == {"ab": "ab_server_type", "de": "de_server_type"}
+        rule.init_generic_resolver("sometag")
+        assert rule.get_additions({}) == {"ab": "ab_server_type", "de": "de_server_type"}
+        RefreshableGetter.remove_callbacks_for_tag("sometag")
 
     @responses.activate
     @pytest.mark.parametrize(
@@ -402,7 +407,7 @@ class TestGenericResolverRule:
         responses.add(responses.GET, url, json=body, content_type="application/json")
 
         with pytest.raises(InvalidConfigurationError, match=match):
-            GenericResolverRule.create_from_dict(
+            rule = GenericResolverRule.create_from_dict(
                 {
                     "filter": "to_resolve",
                     "generic_resolver": {
@@ -415,3 +420,5 @@ class TestGenericResolverRule:
                     },
                 }
             )
+            assert isinstance(rule, GenericResolverRule)
+            rule.init_generic_resolver("some_tag")

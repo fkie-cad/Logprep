@@ -720,6 +720,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         with pytest.raises(InvalidConfigurationError, match=error_message):
             self._load_rule(rule)
+            self.object.setup()
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
@@ -735,7 +736,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         expected = {"to_resolve": "something HELLO1", "resolved": resolve_value}
         document = {"to_resolve": "something HELLO1"}
-
+        self.object.setup()
         self.object.process(document)
 
         assert document == expected
@@ -765,7 +766,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 },
             }
         )
-
+        self.object.setup()
         self.object.process(document)
 
         assert document == expected
@@ -790,7 +791,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
 
         document = {"to_resolve": "12ab34"}
-
+        self.object.setup()
         self.object.process(document)
         self.object.process(document)
 
@@ -823,7 +824,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         }
 
         document = {"to_resolve": "12ab34", "other_to_resolve": "00de11"}
-
+        self.object.setup()
         self.object.process(document)
         self.object.process(document)
 

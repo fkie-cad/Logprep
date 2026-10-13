@@ -143,16 +143,17 @@ Examples for generic_resolver:
 
 import re
 import typing
-from functools import cached_property, partial
-from pathlib import Path
+from functools import cached_property
 
 from attrs import define, field, validators
 
+from logprep.abc.getter import Getter
 from logprep.factory_error import InvalidConfigurationError
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_ordered_mapping_or_keep_mapping
-from logprep.util.getter import GetterFactory, RefreshableGetter
-from logprep.util.helper import FieldValue
+from logprep.util.helper import FieldValue, JsonObject
+from logprep.util.resource_cache import ResourceCache
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -268,57 +269,60 @@ class GenericResolverRule(FieldManagerRule):
         ignore_case: bool = field(validator=validators.instance_of(bool), default=False)
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
-        additions: dict[str, FieldValue] = field(default={}, eq=False, init=False)
+        additions: JsonObject = field(default={}, eq=False, init=False)
         """Contains a dictionary of field names and values that should be added."""
 
         deduplicate: bool = field(init=False, default=False)
         """Not active for this processor"""
 
         @property
-        def _file_path(self) -> None | str:
+        def file_path(self) -> None | str:
             """Returns the file path"""
             return self.resolve_from_file.get("path")
 
-        def __attrs_post_init__(self):
-            if self._file_path:
-                getter = GetterFactory.from_string(self._file_path)
-                if isinstance(getter, RefreshableGetter):
-                    getter.add_callback(
-                        f"generic_resolver:{self.id}:{self._file_path}",
-                        partial(self._add_from_path, self._file_path),
-                    )
-                self._add_from_path(self._file_path)
+    def __init__(
+        self,
+        filter_rule: FilterExpression,
+        config: "GenericResolverRule.Config",
+        processor_name: str,
+    ):
+        super().__init__(filter_rule, config, processor_name)
+        self._resource_cache: ResourceCache[JsonObject] | None = None
+        self._additions: JsonObject = {}
 
-        def _add_from_path(self, path: str):
+    def init_generic_resolver(self, callback_tag: str):
+
+        self._additions: JsonObject = {}
+        if self.config.file_path:
             self._raise_if_pattern_is_invalid()
-            self._raise_if_file_does_not_exist(path)
-            additions = self._get_additions_from_path(path)
-            if self.ignore_case:
-                additions = {key.upper(): value for key, value in additions.items()}
-            self.additions = additions
-
-        def _get_additions_from_path(self, path: str) -> dict[str, FieldValue]:
-            try:
-                additions = GetterFactory.from_string(path).get_collection(
-                    content_field=self.content_field
-                )
-                return convert_ordered_mapping_or_keep_mapping(additions)
-            except (ValueError, KeyError) as error:
+            self._resource_cache = ResourceCache[JsonObject](
+                tag=callback_tag,
+                on_data=self._read_from_getter,
+            )
+            result = self._resource_cache.get_value(self.config.file_path)
+            if not result.is_dynamic and result.error is not None:
                 raise InvalidConfigurationError(
-                    f"Error loading additions from '{path}': {error}"
-                ) from error
-
-        def _raise_if_pattern_is_invalid(self):
-            if "?P<mapping>" not in self.resolve_from_file["pattern"]:
-                raise InvalidConfigurationError(
-                    f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
+                    f"Error loading additions from {self.config.file_path!r}: {result.error.exception}"
                 )
+        else:
+            self._additions = self._convert_additions(self.config.additions)
 
-        def _raise_if_file_does_not_exist(self, path: str):
-            if not (path.startswith("http") or Path(path).is_file()):
-                raise InvalidConfigurationError(
-                    f"Additions file '{path}' not found! (Rule ID: '{self.id}')",
-                )
+    def _read_from_getter(self, getter: Getter):
+        return self._convert_additions(
+            getter.get_collection(content_field=self.config.content_field)
+        )
+
+    def _convert_additions(self, additions: JsonObject) -> JsonObject:
+        additions = convert_ordered_mapping_or_keep_mapping(additions)
+        if self.ignore_case:
+            additions = {key.upper(): value for key, value in additions.items()}
+        return additions
+
+    def _raise_if_pattern_is_invalid(self):
+        if "?P<mapping>" not in self.resolve_from_file["pattern"]:
+            raise InvalidConfigurationError(
+                f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
+            )
 
     @property
     def config(self) -> Config:
@@ -360,7 +364,8 @@ class GenericResolverRule(FieldManagerRule):
         """Pattern used to resolve from file"""
         return re.compile(f'^{self.resolve_from_file["pattern"]}$', re.I if self.ignore_case else 0)
 
-    @property
-    def additions(self) -> dict[str, FieldValue]:
+    def get_additions(self, event: JsonObject) -> JsonObject:
         """Returns additions from the resolve file"""
-        return self.config.additions
+        if self._resource_cache is None:
+            return self._additions
+        return self._resource_cache.get_value(self.config.file_path, event).value

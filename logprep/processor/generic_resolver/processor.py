@@ -39,6 +39,7 @@ from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.helper import (
     MISSING,
     FieldValue,
+    JsonObject,
     Missing,
     add_fields_to,
     get_dotted_field_value,
@@ -154,7 +155,7 @@ class GenericResolver(FieldManager):
             if source_field_value is MISSING:
                 continue
             resolved_content = self._find_content_of_first_matching_pattern(
-                rule, str(source_field_value)
+                rule, str(source_field_value), event
             )
             if resolved_content is MISSING:
                 continue
@@ -187,7 +188,7 @@ class GenericResolver(FieldManager):
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
     def _find_content_of_first_matching_pattern(
-        self, rule: GenericResolverRule, source_field_value: str
+        self, rule: GenericResolverRule, source_field_value: str, event: JsonObject
     ) -> FieldValue | Missing:
         if rule.resolve_from_file:
             matches = rule.pattern.match(source_field_value)
@@ -195,7 +196,7 @@ class GenericResolver(FieldManager):
                 mapping = matches.group("mapping")
                 if rule.ignore_case:
                     mapping = mapping.upper()
-                content = rule.additions.get(mapping, MISSING)
+                content = rule.get_additions(event).get(mapping, MISSING)
                 if content is not MISSING:
                     return content
         return self._get_lru_cached_value_from_list(rule, source_field_value)
@@ -224,4 +225,8 @@ class GenericResolver(FieldManager):
 
     def setup(self) -> None:
         super().setup()
+        for rule in self.rules:
+            rule = typing.cast(GenericResolverRule, rule)
+            rule.init_generic_resolver(self._job_tag_for_cleanup)
+
         self._cache_metrics_skip_count = 0

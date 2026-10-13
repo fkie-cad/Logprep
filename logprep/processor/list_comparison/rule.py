@@ -92,7 +92,7 @@ import logging
 import os.path
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
-from typing import Optional, TypeAlias
+from typing import TypeAlias
 
 from attrs import define, field, validators
 
@@ -288,7 +288,7 @@ class ListComparisonRule(FieldManagerRule):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._used_uris: dict[str, str] = {}
-        self._resource_cache: Optional[ResourceCache[ListContent]] = None
+        self._resource_cache: ResourceCache[ListContent] | None = None
 
     @property
     def compare_set_names(self) -> Sequence[str]:
