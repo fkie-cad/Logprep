@@ -121,8 +121,8 @@ reworked_test_cases = [
 
 @pytest.fixture
 def provision_context(
+    request,
     tmp_path: Path,
-    context: MockContext,
     monkeypatch: pytest.MonkeyPatch,
     pytestconfig: pytest.Config,
 ) -> Generator[Callable[[list[MockedUrl | MockedFile]], None]]:
@@ -141,6 +141,7 @@ def provision_context(
     """
     project_root = pytestconfig.rootpath
     with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
+        context = getattr(request.module, "context")
 
         def _provision(context: MockContext = context) -> None:
             for mock_item in context:
@@ -167,7 +168,7 @@ def provision_context(
         yield _provision
 
 
-parametrized_test_cases = [pytest.param(c, id=c.id) for c in test_cases]
+parametrized_test_cases = [pytest.param(c, id=c.id) for c in reworked_test_cases]
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
