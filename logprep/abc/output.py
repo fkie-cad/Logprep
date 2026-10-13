@@ -60,6 +60,17 @@ class Output(Connector):
         But this output can be called as output for extra_data.
         """
 
+        target_id_field: str = field(
+            validator=validators.instance_of(str), default="@metadata.event.id"
+        )
+        """
+        Defines the dotted field in which the event ID is stored for log messages delivered
+        to this output. The default is :code:`@metadata.event.id`.
+        An existing value at this field is overwritten. Parent fields that are not dictionaries
+        are replaced by dictionaries to create the target field.
+        If no event ID was assigned during input preprocessing, the target field is unchanged.
+        """
+
     @property
     def default(self):
         """returns the default parameter"""

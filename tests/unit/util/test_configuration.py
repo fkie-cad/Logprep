@@ -245,6 +245,43 @@ pipeline:
             pytest.fail(f"The verification should pass for a valid configuration.: {error}")
 
     @pytest.mark.parametrize(
+        "first, second",
+        [
+            ({}, {}),
+            ({"target_id_field": "trace.id"}, {"target_id_field": "trace.id"}),
+            ({}, {"target_id_field": "@metadata.event.id"}),
+        ],
+    )
+    def test_verify_accepts_shared_output_id_target(self, first, second):
+        configuration = Configuration(
+            input={"input": {"type": "dummy_input", "documents": []}},
+            output={
+                "first": {"type": "dummy_output", **first},
+                "second": {"type": "dummy_output", **second},
+            },
+        )
+        configuration._verify()
+
+    @pytest.mark.parametrize("default", [True, False])
+    @pytest.mark.parametrize("first_target", ["@metadata.event.id", "trace.first_id", ""])
+    def test_verify_rejects_different_output_id_targets(self, default, first_target):
+        configuration = Configuration(
+            input={"input": {"type": "dummy_input", "documents": []}},
+            output={
+                "first": {"type": "dummy_output", "target_id_field": first_target},
+                "second": {
+                    "type": "dummy_output",
+                    "target_id_field": "trace.second_id",
+                    "default": default,
+                },
+            },
+        )
+        with pytest.raises(
+            InvalidConfigurationErrors, match="All outputs must use the same target_id_field"
+        ):
+            configuration._verify()
+
+    @pytest.mark.parametrize(
         "test_case, test_config, error_count",
         [
             (

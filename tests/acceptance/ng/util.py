@@ -159,7 +159,8 @@ async def get_runner_outputs(
 async def get_test_outputs(
     config_path: str | Path,
 ) -> dict[str, dict]:
-    runner = Runner(await Configuration.from_sources([str(config_path)]))
+    config = await Configuration.from_sources([str(config_path)])
+    runner = Runner(config)
     return await get_runner_outputs(runner=runner)
 
 
