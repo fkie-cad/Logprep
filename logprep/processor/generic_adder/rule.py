@@ -102,7 +102,7 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 from logprep.util import helper
 from logprep.util.converters import convert_from_dict
-from logprep.util.helper import FieldValue
+from logprep.util.helper import FieldValue, JsonObject
 from logprep.util.resource_cache import CacheItem, ResourceCache
 
 
@@ -168,7 +168,7 @@ class GenericAdderRule(Rule):
         of the source fields.
         """
 
-        add: dict[str, FieldValue] = field(
+        add: JsonObject = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
                 value_validator=helper.field_value_validator,
@@ -277,7 +277,7 @@ class GenericAdderRule(Rule):
         first existing file by setting :code:`generic_adder.only_first_existing_file: true`.
         In that case, only one file must exist."""
 
-        def __attrs_post_init__(self):
+        def __attrs_post_init__(self) -> None:
             if self.add_from_file and self.add_from_uri:
                 raise ValueError(
                     "Deprecated add_from_file and new add_from_uri cannot both be configured"
@@ -312,7 +312,7 @@ class GenericAdderRule(Rule):
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
         self._used_uris: list[UriConfig] = []
-        self._resource_cache: typing.Optional[ResourceCache[FieldValue]] = None
+        self._resource_cache: ResourceCache[FieldValue] | None = None
 
     def _fetch_and_cache_uri(self, getter: Getter) -> FieldValue:
         return getter.get_collection(content_field=self.config.content_field)
@@ -354,11 +354,9 @@ class GenericAdderRule(Rule):
             )
         assert len(self._used_uris) == 1
         self._resource_cache.clear_errors()
-        self.clear_failed()  # TODO: clear_errors should be fine...
+        self.clear_failed()
 
-    def _content_to_items_to_add(
-        self, config: UriConfig, content: FieldValue
-    ) -> dict[str, FieldValue]:
+    def _content_to_items_to_add(self, config: UriConfig, content: FieldValue) -> JsonObject:
         if config.target_field is not None:
             return {config.target_field: content}
 
@@ -385,7 +383,8 @@ class GenericAdderRule(Rule):
             errors = [item.error.exception for item in error_items if item.error is not None]
             self.mark_failed(ExceptionGroup("generic_adder URI loading failed", errors))
 
-    def additions(self, event: dict[str, FieldValue]) -> Iterator[dict[str, FieldValue]]:
+    def get_additions(self, event: JsonObject) -> Iterator[JsonObject]:
+        """Get the additions for a specific event."""
         if self.config.add:
             yield self.config.add
 
@@ -395,6 +394,6 @@ class GenericAdderRule(Rule):
             cache_entry = self._resource_cache.get_value(config.uri, event)
             yield self._content_to_items_to_add(config, cache_entry.value)
 
-    def add(self, event: dict[str, FieldValue]) -> dict[str, FieldValue]:
+    def add(self, event: JsonObject) -> JsonObject:
         """Returns the fields to add"""
-        return {key: value for items in self.additions(event) for key, value in items.items()}
+        return {key: value for items in self.get_additions(event) for key, value in items.items()}

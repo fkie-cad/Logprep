@@ -285,7 +285,7 @@ class GenericResolverRule(FieldManagerRule):
         filter_rule: FilterExpression,
         config: "GenericResolverRule.Config",
         processor_name: str,
-    ):
+    ) -> None:
         super().__init__(filter_rule, config, processor_name)
         self._resource_cache: ResourceCache[JsonObject] | None = None
         self._static_additions: JsonObject = {}

@@ -90,7 +90,6 @@ Examples for list_comparison:
 
 import logging
 import os.path
-from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
 from typing import TypeAlias
 
@@ -113,40 +112,6 @@ logger = logging.getLogger("ListComparison")
 ListName: TypeAlias = str
 ListContent: TypeAlias = set[str]
 # TODO support arbitrary FieldValue types
-
-
-@define(kw_only=True)
-class _CompareSet(ABC):
-    name: ListName
-
-    @abstractmethod
-    def update_content(self, uri: str, content: ListContent | None) -> None:
-        """Updates the cached and post-processed content"""
-
-
-@define(kw_only=True)
-class _StaticCompareSet(_CompareSet):
-    content: ListContent | None
-    error: Exception | None = field(default=None)
-
-    def update_content(self, _: str, content: ListContent | None) -> None:
-        self.content = content
-
-
-@define(kw_only=True)
-class _DynamicCompareSet(_CompareSet):
-    uri_template: DottedTemplate
-    uri_to_content: dict[str, ListContent] = field(factory=dict)
-
-    def update_content(self, uri: str, content: ListContent | None) -> None:
-        if content is None:
-            self.remove_content(uri)
-        else:
-            self.uri_to_content[uri] = content
-
-    def remove_content(self, uri: str) -> None:
-        """Remove the cached contents for a specific uri"""
-        self.uri_to_content.pop(uri, None)
 
 
 class ListComparisonRule(FieldManagerRule):
@@ -292,6 +257,7 @@ class ListComparisonRule(FieldManagerRule):
 
     @property
     def compare_set_names(self) -> Sequence[str]:
+        """The representative names that are specified as keys in list_path."""
         return list(self._used_uris.keys())
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:

@@ -44,14 +44,14 @@ class GenericAdder(Processor):
         """Returns all rules"""
         return typing.cast(Sequence[GenericAdderRule], super().rules)
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         for rule in self.rules:
             rule.init_generic_adder(self._job_tag_for_cleanup)
 
-    def _apply_rules(self, event: dict[str, FieldValue], rule: GenericAdderRule):
+    def _apply_rules(self, event: dict[str, FieldValue], rule: GenericAdderRule) -> None:
         try:
-            for items_to_add in rule.additions(event):
+            for items_to_add in rule.get_additions(event):
                 if items_to_add:
                     add_fields_to(
                         event,

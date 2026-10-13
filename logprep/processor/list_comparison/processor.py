@@ -70,7 +70,7 @@ class ListComparison(Processor):
 
     rule_class = ListComparisonRule
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         for rule in self.rules:
             rule = typing.cast(ListComparisonRule, rule)
