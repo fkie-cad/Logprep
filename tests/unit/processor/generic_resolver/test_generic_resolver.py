@@ -112,6 +112,49 @@ example_test_cases = [
         },
         id="resolve from an URL and content field",
     ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "http://localhost/resolve-mapping-text-plain",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type"},
+        {
+            "http://localhost/resolve-mapping-text-plain": {
+                "body": {"content": {"ab": "ab_server_type"}},
+                "content_type": "text/plain",
+            }
+        },
+        id="content_field also works when the server sends text/plain",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "http://localhost/${user.id}",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        },
+        {"to_resolve": "12ab34", "user": {"id": "acme"}},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type", "user": {"id": "acme"}},
+        {
+            "http://localhost/acme": {
+                "body": {"content": {"ab": "ab_server_type", "de": "de_server_type"}},
+            }
+        },
+        id="resolve from an event-dynamic URL and content field",
+    ),
 ]
 
 test_cases = normalize_test_cases(
