@@ -21,7 +21,8 @@ from logprep.util.getter import GetterFactory, RefreshableGetter, RefreshableGet
 from logprep.util.helper import DottedTemplate, JsonObject, get_dotted_field_value
 
 
-class RetrievalContextError(LogprepException): ...
+class RetrievalContextError(LogprepException):
+    """Exception indicating insufficient context on resource retrieval"""
 
 
 Uri: TypeAlias = str
@@ -32,15 +33,24 @@ DynamicUriTemplate: TypeAlias = DottedTemplate
 
 
 class ErrorContext(StrEnum):
+    """The context an error occurred in"""
+
     RESOLVE_URI = auto()
+    """An error occurred while resolving the uri"""
     RETRIEVE_URI = auto()
+    """An error occurred while retrieving the resolved uri"""
     HANDLE_CONTENT = auto()
+    """An error occurred while processing the retrieved content"""
 
 
 @define(frozen=True, kw_only=True)
 class CacheError:
+    """Information about the error state of an CacheItem in a ResourceCache context"""
+
     context: ErrorContext
+    """The context the error occurred in"""
     exception: Exception
+    """The actual exception caught"""
 
 
 T = TypeVar("T")
@@ -48,15 +58,31 @@ T = TypeVar("T")
 
 @define(frozen=True, kw_only=True)
 class CacheItem(Generic[T]):
+    """Caching information for a requests handled by the ResourceCache"""
+
     raw_uri: RawUri
+    """The URI originally passed to the cache"""
+
     resolved_uri: ResolvedUri | None = None
+    """The URI with resolved templating used for resource retrieval"""
+
     content: T | None = None
+    """The content derived from the retrieved resource"""
+
     error: CacheError | None = None
+    """Information about a possible errors related to the item"""
+
     is_cached: bool = True
+    """True if this item is cached in the ResourceCache"""
+
     is_dynamic: bool = False
+    """True if the CacheItem originates from a event-dynamic request"""
 
     @property
     def value(self) -> T:
+        """The current value of the cache item. If an error is present it will
+        be raised on reading the property.
+        """
         if self.error:
             raise self.error.exception
         assert self.content is not None
@@ -64,6 +90,10 @@ class CacheItem(Generic[T]):
 
 
 class ResourceCache(Generic[T]):
+    """An caching system to work with contents derived from resources.
+    Taking care of refresh/timeout lifecycle by utilizing the Getter system"""
+
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         tag: str,
@@ -73,6 +103,24 @@ class ResourceCache(Generic[T]):
         on_cleanup: Callable[[CacheItem[T]], None] | None = None,
         allow_dynamic_files: bool = False,
     ) -> None:
+        """
+        Initialize a new ResourceCache object.
+
+        Parameters
+        ----------
+        tag : str
+            Tag used to manage callbacks in the underlining Getter system
+        on_data : Callable[[Getter], T]
+            Callback called on initially retrieving and updating resources.
+            Responsible for deriving the target type form the resource.
+        on_update : Callable[[CacheItem[T]], None] | None, optional
+            Callback invoked if any CacheItem changes for any reason.
+        on_cleanup : Callable[[CacheItem[T]], None] | None, optional
+            Callback invoked if a CacheItem reaches the end of its lifecycle
+        allow_dynamic_files : bool, optional
+            If set to True a url templating will be enabled on URIs referencing
+            Files. Defaults to False.
+        """
         self._tag = tag
         self._on_data = on_data
         self._on_update = on_update
@@ -82,16 +130,19 @@ class ResourceCache(Generic[T]):
         self._allow_dynamic_files = allow_dynamic_files
 
     def clear(self) -> None:
+        """Clear the contents of this ResourceCache"""
         RefreshableGetter.remove_callbacks_for_tag(self._tag)
         self._resolve_cache.clear()
         self._content_cache.clear()
 
     def clear_errors(self) -> None:
+        """Clear all cached items currently in error state"""
         to_delete = [uri for uri, item in self._content_cache.items() if item.error is not None]
         for uri in to_delete:
             self._cleanup_callback(uri)
 
     def get_error_items(self) -> Sequence[CacheItem[T]]:
+        """Get all cached items currently in error state"""
         return [item for item in self._content_cache.values() if item.error is not None]
 
     def _getter_fetch_callback(self, getter: Getter, uri: ResolvedUri) -> None:
@@ -105,7 +156,7 @@ class ResourceCache(Generic[T]):
         old_item = self._content_cache[uri]
         try:
             content = self._on_data(getter)
-        except Exception as error:
+        except Exception as error:  # pylint: disable=broad-exception-caught
             return CacheItem[T](
                 raw_uri=old_item.raw_uri,
                 resolved_uri=old_item.resolved_uri,
@@ -137,7 +188,7 @@ class ResourceCache(Generic[T]):
     ) -> CacheItem[T]:
         try:
             getter = GetterFactory.from_string(resolved_uri, expand_env=False)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             return CacheItem[T](
                 raw_uri=raw_uri,
                 resolved_uri=resolved_uri,
@@ -158,7 +209,7 @@ class ResourceCache(Generic[T]):
                 context=ErrorContext.RETRIEVE_URI,
                 exception=exc,
             )
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             error = CacheError(
                 context=ErrorContext.HANDLE_CONTENT,
                 exception=exc,
@@ -267,10 +318,15 @@ class ResourceCache(Generic[T]):
         return self._handle_dynamic_uri(raw_uri, uri_template, event)
 
     def get_value(self, uri: Uri, event: JsonObject | None = None) -> CacheItem[T]:
+        """Retrieve a value derived from the resource described from the passed
+        resource. To retrieve event-dynamic resources event data can be passed.
+        The function will never raise but communicate any errors via the returned
+        cache item.
+        """
         cached_resolved = self._resolve_cache.get(uri)
         if cached_resolved is None:
             return self._handle_unknown_uri(uri, event)
-        elif isinstance(cached_resolved, ResolvedUri):
+        if isinstance(cached_resolved, ResolvedUri):
             return self._handle_resolved_uri(uri, cached_resolved, is_dynamic=False)
         assert isinstance(cached_resolved, DynamicUriTemplate)
         return self._handle_dynamic_uri(uri, cached_resolved, event)

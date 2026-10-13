@@ -115,7 +115,7 @@ class GenericResolver(FieldManager):
 
     _cache_metrics_skip_count: int
 
-    rule_class = GenericResolverRule
+    rule_class = GenericResolverRule  # type: ignore
 
     @property
     def config(self) -> Config:
