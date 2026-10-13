@@ -5,9 +5,9 @@
 import json
 import shutil
 import uuid
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, Callable, TypeAlias
+from typing import Any, TypeAlias
 from unittest import mock
 
 import attrs
@@ -20,6 +20,46 @@ from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.util.helper import JsonObject
 from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
+
+
+@attrs.define(kw_only=True, slots=True)
+class MockedUrl:
+    url: str
+    body: str
+    content_type: str | None = field(default="application/json")
+
+
+@attrs.define(kw_only=True, slots=True)
+class MockedFile:
+    path: str = field(default="")
+    source_path: str | None = field(default=None)
+    body: str | None = field(default=None)  # Json
+
+    # Alternative: @root_validator \n def any_of(cls, v): ?
+    def __post_init__(self):
+        if self.source_path is None and self.body is None:
+            raise TypeError("Value needed for at least one: source_path, body")
+
+
+MockContext: TypeAlias = list[MockedFile | MockedUrl]
+
+
+@attrs.define(kw_only=True, slots=True)
+class Case:
+    id: str
+    rule: dict[str, Any]
+    event: JsonObject
+    expected: JsonObject
+    expected_extras: list[JsonObject] | None = field(default=None)
+    context: MockContext | None = field(default=None)
+
+    def case_to_param(self):
+        return (
+            pytest.param(
+                self.rule, self.event, self.expected, self.expected_extras, self.context, self.id
+            ),
+        )
+
 
 example_test_cases = [
     pytest.param(
@@ -58,105 +98,9 @@ test_cases = normalize_test_cases(
     ),
 )
 
-
-@attrs.define
-class MockedUrl:
-    url: str
-    body: str
-    content_type: str | None = field(default="application/json")
-
-
-@attrs.define
-class MockedPath:
-    dest_path: str
-    source_path: str | None = field(default=None)
-    body: str | None = field(default=None)  # Json
-
-
-@pytest.fixture
-def provision_context(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
-) -> Generator[Callable[[list[MockedUrl | MockedPath]], None]]:
-    """Experimental override for this test file only.
-
-    The context is expected to have the following structure:
-    .. code-block:: json
-
-    [
-        MockedUrl(url="http://example.tld/any/path", body="{"any": "json serializable content"}", spec=),
-        MockedUrl(url="https://...", body={}), # same as http://
-        MockedUrl(url="http://example.tld/any/path", body={}, content_type="application/json", # default content_type }),
-        MockedPath(refpath="file://any/path/to/dict/or/file"),
-        ...
-    ],
-
-
-
-        "file://some/path/contents.txt": {
-            "body": {
-                "any": "json serializable content"
-            }
-        }
-        "some/path/contents.txt": { } # same as file://
-    }
-
-    The helper covers the most relevant aspects of mocking and provisioning:
-    - ``http://`` / ``https://`` are registered as mocked ``GET`` responses. The
-      response is served as ``application/json`` unless the spec sets a
-      ``content_type`` (e.g. ``text/plain``), in which case the body is still
-      JSON-serialized but sent under that content type. Requests are automatically mocked
-      using `responses`.
-    - ``file://`` or a bare path is written into an isolated working directory the
-      test is switched into, so a rule's relative file path resolves to it without
-      any rewriting. The working directory is only changed when a file path is provided.
-    """
-    project_root = pytestconfig.rootpath
-    with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
-
-        def _provision(context: MockContext) -> None:
-            for x in context:
-                if isinstance(x, MockedUrl):
-                    mocked_responses.add(
-                        responses.GET, x.url, body=json.dumps(x.body), content_type=x.content_type
-                    )
-                elif isinstance(x, MockedPath):
-                    dst_path = tmp_path / x.dest_path.removeprefix("file://")
-                    dst_path.parent.mkdir(parents=True, exist_ok=True)
-                    if x.source_path is not None:
-                        src_path = Path(x.source_path)
-                        if not src_path.is_absolute():
-                            src_path = project_root / src_path
-                        shutil.copy(src_path, dst_path)
-                    else:
-                        dst_path.write_text(json.dumps(x.body), encoding="utf-8")
-            monkeypatch.chdir(tmp_path)
-
-        yield _provision
-
-
-MockContext: TypeAlias = list[MockedPath | MockedUrl]
-
-
-@attrs.define
-class Case:
-    id: str
-    rule: dict[str, Any]
-    event: JsonObject
-    expected: JsonObject
-    expected_extras: list[JsonObject] | None = field(default=None)
-    context: MockContext | None = field(default=None)
-
-    def __len__(self):
-        return 1
-
-    def _get_params(self):
-        return [self.rule, self.event, self.expected, self.expected_extras, self.context]
-
-    # params = property(_get_params)
-
-
-test_cases = [
+reworked_test_cases = [
     Case(
+        id="Test process returns extracted fields",
         rule={
             "filter": "message",
             "selective_extractor": {
@@ -171,9 +115,57 @@ test_cases = [
             MockedUrl(url="http://example.com", body='{"whatever":"json"}'),
             # MockedPath(refpath="blabla"),
         ],
-        id="test_process_returns_extracted_fields",
     ),
 ]
+
+
+@pytest.fixture
+def provision_context(
+    tmp_path: Path,
+    context: MockContext,
+    monkeypatch: pytest.MonkeyPatch,
+    pytestconfig: pytest.Config,
+) -> Generator[Callable[[list[MockedUrl | MockedFile]], None]]:
+    """Experimental override for this test file only.
+
+    The helper covers the most relevant aspects of mocking and provisioning.
+    MockContext is either MockedUrl or MockedFile.
+    - MockedUrl-Objects are registered as mocked ``GET`` responses. The
+      response is served as ``application/json`` unless the spec sets a
+      ``content_type`` (e.g. ``text/plain``), in which case the body is still
+      JSON-serialized but sent under that content type. Requests are automatically mocked
+      using `responses`.
+    - ``file://`` or a bare path is written into an isolated working directory the
+      test is switched into, so a rule's relative file path resolves to it without
+      any rewriting. The working directory is only changed when a tmp_path is provided.
+    """
+    project_root = pytestconfig.rootpath
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
+
+        def _provision(context: MockContext = context) -> None:
+            for mock_item in context:
+                match mock_item:
+                    case MockedUrl():
+                        mocked_responses.add(
+                            responses.GET,
+                            mock_item.url,
+                            body=json.dumps(mock_item.body),
+                            content_type=mock_item.content_type,
+                        )
+                    case MockedFile():
+                        dst_path = tmp_path / mock_item.path.removeprefix("file://")
+                        dst_path.parent.mkdir(parents=True, exist_ok=True)
+                        if mock_item.source_path is None:
+                            dst_path.write_text(json.dumps(mock_item.body), encoding="utf-8")
+                        else:
+                            src_path = Path(mock_item.source_path)
+                            if not src_path.is_absolute():
+                                src_path = project_root / src_path
+                            shutil.copy(src_path, dst_path)
+            monkeypatch.chdir(tmp_path)
+
+        yield _provision
+
 
 parametrized_test_cases = [pytest.param(c, id=c.id) for c in test_cases]
 
