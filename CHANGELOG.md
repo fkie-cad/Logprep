@@ -5,6 +5,7 @@
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
 * field_manager: add flag for deactivating deduplication
 * calculator: extended expression functionality
+* generic_resolver: enable use of dynamic templating for resource URIs
 
 ### Improvements
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
