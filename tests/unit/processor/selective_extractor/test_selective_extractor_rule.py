@@ -295,12 +295,11 @@ class TestSelectiveExtractorRule:
                 False,
             ),
             (
-            "Should not be equal cause of different to_string fields",
+            "Should not be equal cause string conversion of different fields",
             {
                 "filter": "test",
                 "selective_extractor": {
-                    "event_template": {"field1": "${field1}", "field2": "${field2}"},
-                    "to_string": ["field1"],
+                    "event_template": {"field1": "${field1|str}", "field2": "${field2}"},
                     "outputs": [{"kafka": "topic"}],
                 },
             },
@@ -498,14 +497,13 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"value": "${field1}"},
-                        "to_string": "field1",
+                        "event_template": {"value": "${field1|unknown}"},
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
                 b"",
                 InvalidRuleDefinitionError,
-                "to_sring has to be a list of source fields",
+                "types can only be converted to strings",
             ),
             (
                 {
@@ -524,11 +522,10 @@ class TestSelectiveExtractorRule:
                     "selective_extractor": {
                         "event_template": {
                             "content": {
-                                "value": "${raw_value}",
+                                "value": "${raw_value|str}",
                                 "ttl": "${ttl}",
                             }
                         },
-                        "to_string": ["raw_value"],
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
