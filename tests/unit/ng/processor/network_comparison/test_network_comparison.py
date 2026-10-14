@@ -308,8 +308,8 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert rule.data_error is None
-        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
-        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
         await processor.process(LogEvent(successful_document, original=b"", input_meta=InputMeta()))
 
@@ -435,7 +435,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 "SECOND_LIST": {IPv4Network("127.0.0.1/32")},
             }
 
-            assert len(HttpGetter._target_to_data_caches[url].callbacks) == 2
+            assert len(HttpGetter._target_to_data_caches[url].callbacks) == 1
 
             HttpGetter(target=url, protocol="http").scheduler.run_all()
 

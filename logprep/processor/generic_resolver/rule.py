@@ -208,6 +208,16 @@ class GenericResolverRule(FieldManagerRule):
         a regex pattern which can be used to resolve values.
         The resolve list in the file at :code:`path` is then used in conjunction with
         the regex pattern in :code:`pattern`.
+        Environment variables and dotted event fields can be inserted with placeholders such as
+        :code:`${LOGPREP_DATA_API}` and :code:`${tenant.id}` on the `path`.
+
+        .. security-best-practice::
+            :title: |PROCESSOR| - Dynamic URI destinations
+
+            Event fields used in dynamic URIs may be attacker-controlled. Keep the URI
+            scheme, host, and port static and use dynamic values only in path components.
+            Avoid interpolating event fields into the URI authority, especially the host,
+            so an attacker cannot influence where Logprep sends requests.
 
         .. security-best-practice::
            :title: |PROCESSOR| - Resolve From File Memory Consumption

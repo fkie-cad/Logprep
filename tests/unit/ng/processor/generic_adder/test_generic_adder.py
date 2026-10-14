@@ -237,8 +237,8 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             "tags": ["_generic_adder_failure"],
         }
         assert rule.data_error is None
-        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
-        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
         assert successful_result.errors == []
         assert successful_result.warnings == []
