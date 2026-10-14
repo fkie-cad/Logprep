@@ -108,11 +108,10 @@ example_test_cases = [
                         "content": {
                             "set": "${set}",
                             "key": "${key}",
-                            "value": "${int_value}",
+                            "value": "${int_value|str}",
                         }
                     },
                 },
-                "to_string": ["int_value"],
                 "outputs": [{"opensearch": "list-updates"}],
             },
         },
@@ -190,18 +189,60 @@ test_cases = normalize_test_cases(
             "filter": "condition",
             "selective_extractor": {
                 "event_template": {
-                    "integer": "${integer}",
-                    "float": "${float}",
-                    "string": "${string}",
+                    "integer": "${integer|str}",
+                    "float": "${float|str}",
+                    "string": "${string|str}",
                     "boolean": "${boolean}",
                 },
-                "to_string": ["integer", "float", "string"],
                 "outputs": [{"opensearch": "index"}],
             },
         },
         {"condition": True, "integer": 42, "float": 3.5, "string": "foo", "boolean": True},
         {"integer": "42", "float": "3.5", "string": "foo", "boolean": True},
         id="event template converts explicitly selected values to strings",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {
+                    "original": "${value}",
+                    "converted": "${value|str}",
+                },
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {
+            "condition": True,
+            "value": 42,
+        },
+        {
+            "original": 42,
+            "converted": "42",
+        },
+        id="event template converts individual placeholders using str modifier",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {
+                    "escaped_placeholder": r"\${value}",
+                    "escaped_modifier": r"\${value|unknown}", # should be used as normal string value?
+                    "escaped_dollar": r"\$",
+                    "resolved": "${value}",
+                },
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "value": 42},
+        {
+            "escaped_placeholder": "${value}",
+            "escaped_modifier": "${value|unknown}",
+            "escaped_dollar": "$",
+            "resolved": 42,
+        },
+        id="event template supports escaping",
     ),
     pytest.param(
         {
@@ -226,6 +267,18 @@ test_cases = normalize_test_cases(
         {"condition": True, "field": "foo"},
         {"value": "${field"},
         id="malformed placeholder syntax is treated as string",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"value": "${}"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "field": "foo"},
+        {"value": "${}"},
+        id="empty placeholder is treated as string",
     ),
     pytest.param(
         {
@@ -285,8 +338,7 @@ failure_test_cases = [
         {
             "filter": "condition",
             "selective_extractor": {
-                "event_template": {"mapping": "${mapping}"},
-                "to_string": ["mapping"],
+                "event_template": {"mapping": "${mapping|str}"},
                 "outputs": [{"opensearch": "index"}],
             },
         },
@@ -297,14 +349,13 @@ failure_test_cases = [
             "tags": ["_selective_extractor_failure"],
         },
         ".*ProcessingWarning.*",
-        id="to_string on mapping causes processing warning",
+        id="string conversion on mapping causes processing warning",
     ),
     pytest.param(
         {
             "filter": "condition",
             "selective_extractor": {
-                "event_template": {"values": "${values}"},
-                "to_string": ["values"],
+                "event_template": {"values": "${values|str}"},
                 "outputs": [{"opensearch": "index"}],
             },
         },
@@ -315,14 +366,13 @@ failure_test_cases = [
             "tags": ["_selective_extractor_failure"],
         },
         ".*ProcessingWarning.*",
-        id="to_string on list causes processing warning",
+        id="string conversion on list causes processing warning",
     ),
     pytest.param(
         {
             "filter": "condition",
             "selective_extractor": {
-                "event_template": {"value": "${value}"},
-                "to_string": ["value"],
+                "event_template": {"value": "${value|str}"},
                 "outputs": [{"opensearch": "index"}],
             },
         },
@@ -333,7 +383,7 @@ failure_test_cases = [
             "tags": ["_selective_extractor_failure"],
         },
         ".*ProcessingWarning.*",
-        id="to_string on None causes processing warning",
+        id="string conversion on None causes processing warning",
     ),
 ]
 
