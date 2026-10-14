@@ -54,7 +54,7 @@ class GenericAdder(Processor):
         rule = typing.cast(GenericAdderRule, rule)
 
         try:
-            for items_to_add in rule.get_additions(event):
+            for items_to_add in rule.additions(event):
                 if items_to_add:
                     add_fields_to(
                         event,
