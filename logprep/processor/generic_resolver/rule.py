@@ -320,9 +320,15 @@ class GenericResolverRule(FieldManagerRule):
 
     def _read_from_getter(self, getter: Getter) -> JsonObject:
         content = getter.get_collection(content_field=self.config.content_field)
+        if isinstance(content, list) and all(isinstance(item, dict) for item in content):
+            merged_content = {}
+            for item in content:
+                merged_content.update(item)
+            content = merged_content
+
         if not isinstance(content, dict):
             raise InvalidConfigurationError(
-                f"Expected an object at {self.config.content_field!r}"
+                f"Expected an object or list of objects at {self.config.content_field!r}"
                 f" got {type(content).__name__} instead"
             )
         return self._convert_additions(content)

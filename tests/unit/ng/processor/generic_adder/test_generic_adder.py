@@ -19,7 +19,6 @@ from logprep.processor.base.exceptions import (
     ProcessingWarning,
 )
 from logprep.util.getter import HttpGetter
-from tests.conftest import FIELD_VALUE_TEST_CASES
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
     dynamic_uri_failure_test_cases as non_ng_dynamic_uri_failure_test_cases,
@@ -187,9 +186,9 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         event = {"tenant": "acme"}
 
         await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
-
-        shared = HttpGetter._target_to_data_caches[url]
-        assert len(shared.callbacks) == 1
+        resolved_uri = "https://values.example/acme"
+        shared = HttpGetter._target_to_data_caches[resolved_uri]
+        assert len(shared.callbacks) == 1, HttpGetter._target_to_data_caches
         assert len(shared.cleanup_callbacks) == 1
 
         await processor.shut_down()

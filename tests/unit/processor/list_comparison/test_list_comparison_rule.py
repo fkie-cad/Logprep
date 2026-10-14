@@ -1,12 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import typing
-from unittest import mock
 
 import pytest
 
 from logprep.factory_error import InvalidConfigurationError
-from logprep.processor.list_comparison.rule import ListComparisonRule, _StaticCompareSet
+from logprep.processor.list_comparison.rule import ListComparisonRule
 
 
 @pytest.fixture(name="rule_definition")
@@ -124,67 +123,6 @@ class TestListComparisonRule:
             match="list_search_base_path must be set either in the processor config or in the rule",
         ):
             rule.init_list_comparison("test_owner")
-
-    @pytest.mark.skip("TODO internals")
-    @pytest.mark.parametrize(
-        ("url", "will_fail"),
-        [
-            pytest.param("something", True),
-            pytest.param("https://something", False),
-        ],
-    )
-    def test_expects_refreshable_getter(self, url, will_fail):
-        rule_definition = {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-            },
-        }
-        rule = typing.cast(ListComparisonRule, ListComparisonRule.create_from_dict(rule_definition))
-        compare_set = _StaticCompareSet(name="user_list.txt", content=set())
-
-        with mock.patch(
-            "logprep.processor.list_comparison.rule.ListComparisonRule._update_compare_sets_via_http",
-            return_value=mock.MagicMock(),
-        ):
-            if will_fail:
-                with pytest.raises(TypeError, match=f"The target {url} must be a url"):
-                    rule._load_and_refresh_uri(compare_set, url)
-            else:
-                rule._load_and_refresh_uri(compare_set, url)
-
-    @pytest.mark.skip("TODO internals")
-    def test_rule_remains_failed_until_all_static_compare_sets_recover(self):
-        rule_definition = {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-            },
-        }
-        rule = typing.cast(ListComparisonRule, ListComparisonRule.create_from_dict(rule_definition))
-
-        compare_set_a = _StaticCompareSet(name="LIST_A", content=set())
-        compare_set_b = _StaticCompareSet(name="LIST_B", content=set())
-        rule._static_sets = [compare_set_a, compare_set_b]
-
-        error_a = RuntimeError("LIST_A failed")
-        error_b = RuntimeError("LIST_B failed")
-
-        rule._mark_failed(compare_set_a, error_a)
-        rule._mark_failed(compare_set_b, error_b)
-
-        assert isinstance(rule.data_error, ExceptionGroup)
-        assert rule.data_error.exceptions == (error_a, error_b)
-
-        rule._clear_failed(compare_set_a)
-        assert rule.data_error is error_b
-
-        rule._clear_failed(compare_set_b)
-        assert rule.data_error is None
 
     @pytest.mark.parametrize(
         "list_comparison_config, error_message",

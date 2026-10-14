@@ -10,7 +10,7 @@ import responses
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.generic_adder.rule import GenericAdderRule, UriConfig
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import GetterFactory, HttpGetter, RefreshableGetter
+from logprep.util.getter import GetterFactory, HttpGetter
 from tests.conftest import mock_env
 
 
@@ -322,41 +322,6 @@ class TestGenericAdderRule:
         assert rule.add({"tenant": "second"}) == {"enrichment": {"value": 2}}
         assert rule.add({"tenant": "first"}) == {"enrichment": {"value": 1}}
         assert len(responses.calls) == 2
-
-    @pytest.mark.skip("Internals")
-    @responses.activate
-    def test_dynamic_uri_refreshes_and_cleans_up_its_source_cache(self, tmp_path):
-        url = "https://values.example/acme"
-        responses.add(responses.GET, url, json={"value": 1})
-        getter_config = tmp_path / "http_getter.json"
-        getter_config.write_text(json.dumps({url: {"refresh_interval": 1, "timeout_interval": 1}}))
-        rule = GenericAdderRule.create_from_dict(
-            {
-                "filter": "*",
-                "generic_adder": {
-                    "add_from_uri": {
-                        "uri": "https://values.example/${tenant}",
-                        "target_field": "enrichment",
-                    }
-                },
-            }
-        )
-
-        with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(getter_config)}):
-            rule.init_generic_adder("generic-adder-test")
-            assert rule.add({"tenant": "acme"}) == {"enrichment": {"value": 1}}
-            source = rule._uri_sources[0]
-            getter = GetterFactory.from_string(url)
-            assert isinstance(getter, HttpGetter)
-            assert getter.scheduler is not None
-
-            responses.replace(responses.GET, url, json={"value": 2})
-            getter.scheduler.run_all()
-
-            assert rule.add({"tenant": "acme"}) == {"enrichment": {"value": 2}}
-            RefreshableGetter.reset(cleanup=True)
-
-        assert source.content_by_uri == {}
 
     @responses.activate
     def test_dynamic_uri_refresh_failure_keeps_last_value_and_later_recovers(self, tmp_path):

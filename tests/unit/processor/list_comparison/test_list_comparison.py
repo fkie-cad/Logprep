@@ -1069,7 +1069,6 @@ class TestListComparison(BaseProcessorTestCase):
         second_document = {"tenant": "acme", "user": "Bar"}
         url = "http://localhost/acme/bad_users.list"
         responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
-
         processor = self._create_lister(
             [
                 {
@@ -1083,15 +1082,20 @@ class TestListComparison(BaseProcessorTestCase):
                 }
             ]
         )
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
 
-        with mock.patch("logprep.util.getter.time.monotonic", side_effect=[100.0, 125.0]):
             processor.process(first_document)
+            assert len(responses.calls) == 1
+
             assert HttpGetter._target_to_data_caches[url].last_called == 100.0
 
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=125.0):
+
             processor.process(second_document)
+            assert len(responses.calls) == 1
+
             assert HttpGetter._target_to_data_caches[url].last_called == 125.0
 
-        assert len(responses.calls) == 1
         assert first_document["user_results"] == {"in_list": ["bad_users.list"]}
         assert second_document["user_results"] == {"in_list": ["bad_users.list"]}
 
@@ -1194,8 +1198,8 @@ class TestListComparison(BaseProcessorTestCase):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert rule.data_error is None
-        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
-        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
         processor.process(successful_document)
 
@@ -1226,7 +1230,6 @@ class TestListComparison(BaseProcessorTestCase):
                 }
             ]
         )
-
         with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
             processor.process(document)
 
@@ -1239,7 +1242,7 @@ class TestListComparison(BaseProcessorTestCase):
         assert url not in HttpGetter._target_to_data_caches
 
         processor.process(document)
-        assert len(responses.calls) == 1
+        assert len(responses.calls) == 2
 
     @pytest.mark.parametrize(
         "http_list_content, expected_content",

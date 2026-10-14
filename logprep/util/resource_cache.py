@@ -215,7 +215,7 @@ class ResourceCache(Generic[T]):
                 exception=exc,
             )
 
-        if isinstance(getter, RefreshableGetter) and not is_dynamic:
+        if isinstance(getter, RefreshableGetter):
             getter.keep_alive()
             key = (self._tag, resolved_uri)
             getter.add_callback(
