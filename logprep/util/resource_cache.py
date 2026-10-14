@@ -37,8 +37,10 @@ class ErrorContext(StrEnum):
 
     RESOLVE_URI = auto()
     """An error occurred while resolving the uri"""
+
     RETRIEVE_URI = auto()
     """An error occurred while retrieving the resolved uri"""
+
     HANDLE_CONTENT = auto()
     """An error occurred while processing the retrieved content"""
 
