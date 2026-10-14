@@ -295,12 +295,11 @@ class ResourceCache(Generic[T]):
         return self._handle_resolved_uri(raw_uri, resolved_uri, is_dynamic=True)
 
     def _handle_unknown_uri(self, raw_uri: RawUri, event: JsonObject | None) -> CacheItem[T]:
-
         resolved_uri = DottedTemplate(raw_uri).safe_substitute(ENV_VARS)
         uri_template = DottedTemplate(resolved_uri)
-
         if len(uri_template.get_identifiers()) == 0:
             self._resolve_cache[raw_uri] = resolved_uri
+
             return self._handle_resolved_uri(raw_uri, resolved_uri, is_dynamic=False)
 
         if not self._allow_dynamic_files and not resolved_uri.startswith("http"):
