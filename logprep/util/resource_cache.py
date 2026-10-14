@@ -51,6 +51,7 @@ class CacheError:
 
     context: ErrorContext
     """The context the error occurred in"""
+
     exception: Exception
     """The actual exception caught"""
 
