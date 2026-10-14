@@ -27,9 +27,22 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
     async def test_testcases(self, rule, event, expected, context, provision_context):
         provision_context(context)
         await self._load_rule(rule)
+        original_data = deepcopy(event)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
-        assert event.data == expected
+        if "event_template" in rule["selective_extractor"]:
+            expected_events = [
+                FilteredEvent(expected, output_name=output_name, output_target=output_target)
+                for output in rule["selective_extractor"]["outputs"]
+                for output_name, output_target in output.items()
+                if expected
+            ]
+            assert event.extra_data == expected_events
+            assert event.data == original_data
+            assert event.errors == []
+            assert event.warnings == []
+        else:
+            assert event.data == expected
 
     async def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
