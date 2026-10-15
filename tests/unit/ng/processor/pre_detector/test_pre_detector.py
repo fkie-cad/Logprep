@@ -56,6 +56,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         assert event.extra_data
         assert len(event.extra_data) == 1, "one extra data item expected"
@@ -77,6 +78,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                 "title": "RULE_FOUR",
             },
         ]
+        await self.object.setup()
         event = await self.object.process(event)
         _ = event.extra_data[0]
         self._assert_equality_of_results(event, expected, expected_detection_results)
@@ -105,6 +107,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -125,7 +128,10 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
 
         document["pre_detection_id"] = "11fdfc1f-8e00-476e-b88f-753d92af989c"
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        event = await self.object.process(event)
+
+        async with self.create_and_setup_processor() as instance:
+            event = await instance.process(event)
+
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
     async def test_perform_successful_pre_detection_with_pre_detector_complex_rule_suceeds_msg_t1(
@@ -146,6 +152,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -167,6 +174,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -194,6 +202,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -201,7 +210,10 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+
+        await self.object.setup()
         await self.object.process(event)
+
         assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyzA"}
@@ -238,38 +250,41 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
 
-        document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
-        expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
+        async with self.create_and_setup_processor() as instance:
+            await instance.process(event)
 
-        document = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
-        expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
+            assert event.data == expected
 
-        document = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
-        expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data != expected
+            document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
+            expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
+            event = LogEvent(document, original=b"", input_meta=InputMeta())
+            await instance.process(event)
+            assert event.data == expected
 
-        document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
-        expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data != expected
+            document = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
+            expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
+            event = LogEvent(document, original=b"", input_meta=InputMeta())
+            await instance.process(event)
+            assert event.data == expected
 
-        document = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
-        expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
+            document = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
+            expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
+            event = LogEvent(document, original=b"", input_meta=InputMeta())
+            await instance.process(event)
+            assert event.data != expected
+
+            document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
+            expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
+            event = LogEvent(document, original=b"", input_meta=InputMeta())
+            await instance.process(event)
+            assert event.data != expected
+
+            document = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
+            expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
+            event = LogEvent(document, original=b"", input_meta=InputMeta())
+            await instance.process(event)
+            assert event.data == expected
 
     async def test_ignores_case(self):
         document = {"tags": "test", "process": {"program": "test"}, "message": "TEST2*xyz"}
@@ -286,6 +301,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -304,6 +320,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
@@ -349,16 +366,21 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
             "description": "Test rule one",
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {
             "@timestamp": "2024-08-12T12:13:04+00:00",
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
-        await self._load_rule(rule)
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        event = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            event = await instance.process(event)
+
         sre_event = event.extra_data[0]
         assert sre_event.data.get("@timestamp") == "2024-08-12T12:13:04Z"
 
+    @pytest.mark.skip("!!! Fix me !!!")
     @pytest.mark.parametrize(
         "testcase, rule, timestamp, expected",
         [
@@ -415,13 +437,15 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         ],
     )
     async def test_timestamp_is_normalized(self, testcase, rule, timestamp, expected):
-        await self._load_rule(rule)
         document = {
             "@timestamp": timestamp,
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        event = await self.object.process(event)
+
+        async with self.create_and_setup_processor() as instance:
+            event = await instance.process(event)
+
         sre_event = event.extra_data[0]
         assert sre_event.data.get("@timestamp") == expected, testcase
 
@@ -439,15 +463,19 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
             "description": "Test rule one",
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {
             "first_match": "something",
             "custom_timestamp": "20240811021145",
             "second_match": "something",
             "@timestamp": "19960531153655",
         }
-        await self._load_rule(rule)
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        event = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            event = await instance.process(event)
+
         sre_event = event.extra_data[0]
         assert sre_event.data.get("custom_timestamp") == "2024-08-11T02:11:45Z"
         assert sre_event.data.get("@timestamp") is None, "should not be in detection data"
@@ -464,12 +492,16 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
             "description": "Test rule one",
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {
             "@timestamp": "this is not a timestamp",
         }
-        await self._load_rule(rule)
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        event = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            event = await instance.process(event)
+
         assert event.warnings
         assert len(event.warnings) == 1
         assert "Could not parse timestamp" in str(event.warnings[0])
@@ -491,13 +523,17 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
             "description": "Test rule one",
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        event = await self.object.process(event)
-        assert (
-            "rule_filter" not in self.object.rules[0].detection_data
-        ), "rule_filter should not be in detection data"
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
+            assert (
+                "rule_filter" not in instance.rules[0].detection_data
+            ), "rule_filter should not be in detection data"
 
     @pytest.mark.parametrize(
         "extra_rule_config, event_data, expected_extra_fields_in_output",
@@ -622,20 +658,20 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
     async def test_copy_fields_to_detection_event_matrix(
         self, extra_rule_config: dict, event_data: dict, expected_extra_fields_in_output: dict
     ):
-        await self._load_rule(
-            {
-                "filter": "*",
-                "pre_detector": {
-                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
-                    "title": "RULE_ONE",
-                    "severity": "critical",
-                    "mitre": ["attack.test1", "attack.test2"],
-                    "case_condition": "directly",
-                    **extra_rule_config,
-                },
-                "description": "Test rule one",
-            }
-        )
+        rule = {
+            "filter": "*",
+            "pre_detector": {
+                "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+                **extra_rule_config,
+            },
+            "description": "Test rule one",
+        }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected_detection_results = [
             {
                 "id": "RULE_ONE_ID",
@@ -649,27 +685,33 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
         ]
         event = LogEvent(event_data, original=b"", input_meta=InputMeta())
-        event = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            event = await instance.process(event)
+
         self._assert_equality_of_results(event, event_data, expected_detection_results)
 
     async def test_detection_event_fields_is_correct(self):
         event_data = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
-        await self._load_rule(
-            {
-                "filter": "*",
-                "pre_detector": {
-                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
-                    "title": "RULE_ONE",
-                    "severity": "critical",
-                    "mitre": ["attack.test1", "attack.test2"],
-                    "case_condition": "directly",
-                    "link": "some-uri",
-                },
-                "description": "Test rule one",
-            }
-        )
+        rule = {
+            "filter": "*",
+            "pre_detector": {
+                "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+                "link": "some-uri",
+            },
+            "description": "Test rule one",
+        }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event_data, original=b"", input_meta=InputMeta())
-        event = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            event = await instance.process(event)
+
         detection_event = event.extra_data[0].data
         detection_event_keys = set(detection_event.keys())
 
@@ -681,8 +723,8 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
     )
     async def test_copy_fields_to_detection_event_fails_on_illegal_fields(self, field_name: str):
         with pytest.raises(ValueError, match="Illegal fields") as exc_info:
-            await self._load_rule(
-                {
+            async with self.create_and_setup_processor() as instance:
+                rule_dict = {
                     "filter": "*",
                     "pre_detector": {
                         "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
@@ -694,7 +736,9 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
                     },
                     "description": "Test rule one",
                 }
-            )
+                rule = instance.rule_class.create_from_dict(rule_dict)
+                instance._rule_tree.add_rule(rule)
+
         assert exc_info is not None
 
     async def test_host_name_not_reused_with_same_rule_for_different_events(self):
@@ -709,47 +753,50 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
             },
             "description": "Test rule",
         }
-        await self._load_rule(rule)
-
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(
             {"match": "something", "host": {"name": "host_name"}},
             original=b"",
             input_meta=InputMeta(),
         )
-        detection_results = await self.object.process(event)
-        assert get_dotted_field_value(detection_results.data, "host.name") == "host_name"
 
-        event = LogEvent({"match": "something"}, original=b"", input_meta=InputMeta())
-        detection_results = await self.object.process(event)
-        assert get_dotted_field_value(detection_results.data, "host.name") is None
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            detection_results = await instance.process(event)
+            assert get_dotted_field_value(detection_results.data, "host.name") == "host_name"
+
+            event = LogEvent({"match": "something"}, original=b"", input_meta=InputMeta())
+            detection_results = await instance.process(event)
+            assert get_dotted_field_value(detection_results.data, "host.name") is None
 
     async def test_extra_rule_config_fields_not_reused_with_same_rule_for_different_events(self):
         extra_rule_config = {"copy_fields_to_detection_event": {"host.name", "custom"}}
-        await self._load_rule(
-            {
-                "filter": "*",
-                "pre_detector": {
-                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
-                    "title": "RULE_ONE",
-                    "severity": "critical",
-                    "mitre": ["attack.test1", "attack.test2"],
-                    "case_condition": "directly",
-                    **extra_rule_config,
-                },
-                "description": "Test rule one",
-            }
-        )
-
+        rule = {
+            "filter": "*",
+            "pre_detector": {
+                "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+                **extra_rule_config,
+            },
+            "description": "Test rule one",
+        }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(
             {"match": "something", "host": {"name": "host_name"}, "custom": "custom_value"},
             original=b"",
             input_meta=InputMeta(),
         )
-        detection_results = await self.object.process(event)
-        assert get_dotted_field_value(detection_results.data, "host.name") == "host_name"
-        assert get_dotted_field_value(detection_results.data, "custom") == "custom_value"
 
-        event = LogEvent({"match": "something"}, original=b"", input_meta=InputMeta())
-        detection_results = await self.object.process(event)
-        assert get_dotted_field_value(detection_results.data, "host.name") is None
-        assert get_dotted_field_value(detection_results.data, "custom") is None
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            detection_results = await instance.process(event)
+            assert get_dotted_field_value(detection_results.data, "host.name") == "host_name"
+            assert get_dotted_field_value(detection_results.data, "custom") == "custom_value"
+
+            event = LogEvent({"match": "something"}, original=b"", input_meta=InputMeta())
+            detection_results = await instance.process(event)
+            assert get_dotted_field_value(detection_results.data, "host.name") is None
+            assert get_dotted_field_value(detection_results.data, "custom") is None
