@@ -7,7 +7,7 @@ import pytest
 import responses
 
 from logprep.abc.getter import Getter
-from logprep.util.getter import RefreshableGetterError
+from logprep.util.getter import GetterNotFoundError, RefreshableGetterError
 from logprep.util.resource_cache import (
     ErrorContext,
     ResourceCache,
@@ -284,6 +284,35 @@ class TestResourceCache:
         assert result.is_dynamic is True
         assert data_callback.call_count == 0
         assert update_callback.call_count == 0
+        assert cleanup_callback.call_count == 0
+
+    @responses.activate
+    def test_get_resource_error_on_retrieve_uri_with_unknown_scheme(self):
+
+        data_callback = Mock()
+        update_callback = Mock()
+        cleanup_callback = Mock()
+        tag = "my_cleanup_tag"
+        uri = "gopher://example.dd/foo"
+
+        cache = ResourceCache[str](
+            tag=tag,
+            on_data=data_callback,
+            on_cleanup=cleanup_callback,
+            on_update=update_callback,
+        )
+
+        result = cache.get_value(uri)
+
+        assert result.content is None
+        assert result.raw_uri == uri
+        assert result.resolved_uri == uri
+        assert result.error is not None
+        assert result.error.context == ErrorContext.RESOLVE_URI
+        assert isinstance(result.error.exception, GetterNotFoundError)
+        assert result.is_cached is True
+        assert result.is_dynamic is False
+        assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
     @responses.activate

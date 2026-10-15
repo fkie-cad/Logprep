@@ -17,7 +17,12 @@ from attrs import define
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
 from logprep.util.environ import ENV_VARS
-from logprep.util.getter import GetterFactory, RefreshableGetter, RefreshableGetterError
+from logprep.util.getter import (
+    GetterFactory,
+    GetterNotFoundError,
+    RefreshableGetter,
+    RefreshableGetterError,
+)
 from logprep.util.helper import DottedTemplate, JsonObject, get_dotted_field_value
 
 
@@ -191,12 +196,12 @@ class ResourceCache(Generic[T]):
     ) -> CacheItem[T]:
         try:
             getter = GetterFactory.from_string(resolved_uri, expand_env=False)
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except GetterNotFoundError as exc:
             return CacheItem[T](
                 raw_uri=raw_uri,
                 resolved_uri=resolved_uri,
                 error=CacheError(
-                    context=ErrorContext.RETRIEVE_URI,
+                    context=ErrorContext.RESOLVE_URI,
                     exception=exc,
                 ),
                 is_dynamic=is_dynamic,
