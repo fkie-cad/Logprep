@@ -99,7 +99,6 @@ from logprep.abc.getter import Getter
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.environ import ENV_VARS
 from logprep.util.helper import DottedTemplate
 from logprep.util.resource_cache import (
     CacheItem,
@@ -358,7 +357,6 @@ class ListComparisonRule(FieldManagerRule):
         if list_names is None:
             list_names = list_paths[:]
 
-        list_names = [DottedTemplate(name).safe_substitute(ENV_VARS) for name in list_names]
         list_paths = [
             base_template.safe_substitute(LOGPREP_LIST=list_path) for list_path in list_paths
         ]

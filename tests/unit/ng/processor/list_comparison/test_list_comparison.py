@@ -19,7 +19,6 @@ from logprep.util.getter import (
     RefreshableGetterError,
     refresh_getters,
 )
-from logprep.util.helper import DottedTemplate
 from tests.conftest import mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.list_comparison.test_list_comparison import (
@@ -378,13 +377,10 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             assert len(responses.calls) == 0
 
             await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
-            resolved_path = DottedTemplate(list_path).safe_substitute(environment)
 
-            assert _compare_sets(rule, {"tenant": {"id": "acme"}}) == {
-                resolved_path: {"Foo", "Bar"}
-            }
+            assert _compare_sets(rule, {"tenant": {"id": "acme"}}) == {list_path: {"Foo", "Bar"}}
 
-        assert document["user_results"] == {"in_list": [resolved_path]}
+        assert document["user_results"] == {"in_list": [list_path]}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
@@ -408,7 +404,9 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 ]
             )
 
-        assert _compare_sets(processor.rules[0]) == {"acme/bad_users.list": {"Foo", "Bar"}}
+        assert _compare_sets(processor.rules[0]) == {
+            "${LIST_TENANT}/bad_users.list": {"Foo", "Bar"}
+        }
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
