@@ -319,12 +319,7 @@ class GenericResolverRule(FieldManagerRule):
                 tag=callback_tag,
                 on_data=self._read_from_getter,
             )
-            result = self._resource_cache.get_value(self.config.file_path)
-            if not result.is_dynamic and result.error is not None:
-                raise InvalidConfigurationError(
-                    f"Error loading additions from {self.config.file_path!r}:"
-                    f" {result.error.exception}"
-                )
+            self._resource_cache.preload(self.config.file_path)
         else:
             self._static_additions = self._convert_additions(self.config.additions)
 
@@ -400,4 +395,4 @@ class GenericResolverRule(FieldManagerRule):
         if self._resource_cache is None:
             return self._static_additions
         assert self.config.file_path is not None
-        return self._resource_cache.get_value(self.config.file_path, event).value
+        return self._resource_cache.get_value(self.config.file_path, event)

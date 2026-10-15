@@ -39,7 +39,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_value(uri)
+        result = cache.get_cache_item(uri)
 
         assert endpoint.call_count == 1
         assert result.content == resource_content
@@ -48,6 +48,9 @@ class TestResourceCache:
         assert result.error is None
         assert result.is_cached is True
         assert result.is_dynamic is False
+        assert result.will_refresh is True
+        assert result.is_static is False
+        assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
@@ -72,8 +75,8 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result1 = cache.get_value(uri)
-        result2 = cache.get_value(uri)
+        result1 = cache.get_cache_item(uri)
+        result2 = cache.get_cache_item(uri)
 
         assert endpoint.call_count == 1
         assert id(result1) == id(result2)
@@ -103,7 +106,7 @@ class TestResourceCache:
         )
 
         with mock_env({"MY_ENV": "foo"}):
-            result = cache.get_value(raw_uri)
+            result = cache.get_cache_item(raw_uri)
 
         assert endpoint.call_count == 1
         assert result.content == resource_content
@@ -112,6 +115,9 @@ class TestResourceCache:
         assert result.error is None
         assert result.is_cached is True
         assert result.is_dynamic is False
+        assert result.will_refresh is True
+        assert result.is_static is False
+        assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
@@ -130,7 +136,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_value(raw_uri, {"nested": {"value": "foo"}})
+        result = cache.get_cache_item(raw_uri, {"nested": {"value": "foo"}})
 
         assert result.content is None
         assert result.raw_uri == raw_uri
@@ -140,7 +146,9 @@ class TestResourceCache:
         assert isinstance(result.error.exception, RetrievalContextError)
         assert "dynamic file" in result.error.exception.message.lower()
         assert result.is_cached is False
-        assert result.is_dynamic is True
+        assert result.is_dynamic is False
+        assert result.will_refresh is False
+        assert result.has_unrecoverable_error is True
         assert data_callback.call_count == 0
         assert update_callback.call_count == 0
         assert cleanup_callback.call_count == 0
@@ -167,7 +175,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_value(raw_uri, {"nested": {"value": "foo"}})
+        result = cache.get_cache_item(raw_uri, {"nested": {"value": "foo"}})
 
         assert endpoint.call_count == 1
         assert result.content == resource_content
@@ -176,6 +184,9 @@ class TestResourceCache:
         assert result.error is None
         assert result.is_cached is True
         assert result.is_dynamic is True
+        assert result.will_refresh is True
+        assert result.is_static is False
+        assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
@@ -195,7 +206,7 @@ class TestResourceCache:
         )
 
         unresolved_uri = "http://example.dd/${foo}"
-        result = cache.get_value(unresolved_uri)
+        result = cache.get_cache_item(unresolved_uri)
 
         assert result.content is None
         assert result.raw_uri == unresolved_uri
@@ -205,6 +216,9 @@ class TestResourceCache:
         assert isinstance(result.error.exception, RetrievalContextError)
         assert result.is_cached is False
         assert result.is_dynamic is True
+        assert result.will_refresh is False
+        assert result.is_static is False
+        assert result.has_unrecoverable_error is False
         assert data_callback.call_count == 0
         assert update_callback.call_count == 0
         assert cleanup_callback.call_count == 0
@@ -225,7 +239,7 @@ class TestResourceCache:
         )
 
         unresolved_uri = "http://example.dd/${foo}"
-        result = cache.get_value(unresolved_uri, {"bar": "nope"})
+        result = cache.get_cache_item(unresolved_uri, {"bar": "nope"})
 
         assert result.content is None
         assert result.raw_uri == unresolved_uri
@@ -235,6 +249,9 @@ class TestResourceCache:
         assert isinstance(result.error.exception, ValueError)
         assert result.is_cached is False
         assert result.is_dynamic is True
+        assert result.will_refresh is False
+        assert result.is_static is False
+        assert result.has_unrecoverable_error is False
         assert data_callback.call_count == 0
         assert update_callback.call_count == 0
         assert cleanup_callback.call_count == 0
@@ -272,7 +289,7 @@ class TestResourceCache:
         )
 
         unresolved_uri = "http://example.dd/${foo}"
-        result = cache.get_value(unresolved_uri, {"foo": value})
+        result = cache.get_cache_item(unresolved_uri, {"foo": value})
 
         assert result.content is None
         assert result.raw_uri == unresolved_uri
@@ -282,6 +299,9 @@ class TestResourceCache:
         assert isinstance(result.error.exception, ValueError)
         assert result.is_cached is False
         assert result.is_dynamic is True
+        assert result.will_refresh is False
+        assert result.is_static is False
+        assert result.has_unrecoverable_error is False
         assert data_callback.call_count == 0
         assert update_callback.call_count == 0
         assert cleanup_callback.call_count == 0
@@ -302,7 +322,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_value(uri)
+        result = cache.get_cache_item(uri)
 
         assert result.content is None
         assert result.raw_uri == uri
@@ -312,6 +332,9 @@ class TestResourceCache:
         assert isinstance(result.error.exception, GetterNotFoundError)
         assert result.is_cached is True
         assert result.is_dynamic is False
+        assert result.will_refresh is False
+        assert result.is_static is True
+        assert result.has_unrecoverable_error is True
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
@@ -334,7 +357,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_value(uri)
+        result = cache.get_cache_item(uri)
 
         assert endpoint.call_count == 1
 
@@ -346,6 +369,9 @@ class TestResourceCache:
         assert isinstance(result.error.exception, RefreshableGetterError)
         assert result.is_cached is True
         assert result.is_dynamic is False
+        assert result.will_refresh is True
+        assert result.is_static is False
+        assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
@@ -371,7 +397,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_value(uri)
+        result = cache.get_cache_item(uri)
 
         assert endpoint.call_count == 1
 
@@ -383,5 +409,8 @@ class TestResourceCache:
         assert isinstance(result.error.exception, MyErrorType)
         assert result.is_cached is True
         assert result.is_dynamic is False
+        assert result.will_refresh is True
+        assert result.is_static is False
+        assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0

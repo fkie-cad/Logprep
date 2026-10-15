@@ -330,19 +330,14 @@ class GenericAdderRule(Rule):
             return
 
         self._used_uris = list(self.config.add_from_uri)
-        for used_uri in self._used_uris:
-            result = self._resource_cache.get_value(used_uri.uri)
-            if result.error is not None and not result.is_dynamic:
-                raise InvalidRuleDefinitionError(
-                    f"Could not load generic_adder URI: {result.resolved_uri}"
-                )
+        self._resource_cache.preload(*(item.uri for item in self._used_uris))
 
     def _init_first_existing_file(self) -> None:
         assert self._resource_cache is not None
         missing_files: list[str] = []
 
         for config in self.config.add_from_uri:
-            result = self._resource_cache.get_value(config.uri)
+            result = self._resource_cache.get_cache_item(config.uri)
             if result.error is not None:
                 missing_files.append(config.uri)
             else:
@@ -391,8 +386,8 @@ class GenericAdderRule(Rule):
         for config in self._used_uris:
             assert self._resource_cache is not None
 
-            cache_entry = self._resource_cache.get_value(config.uri, event)
-            yield self._content_to_items_to_add(config, cache_entry.value)
+            value = self._resource_cache.get_value(config.uri, event)
+            yield self._content_to_items_to_add(config, value)
 
     def add(self, event: JsonObject) -> JsonObject:
         """Returns the fields to add"""

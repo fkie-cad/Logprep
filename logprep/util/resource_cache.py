@@ -16,6 +16,7 @@ from attrs import define
 
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
+from logprep.factory_error import InvalidResourcesError
 from logprep.util.environ import ENV_VARS
 from logprep.util.getter import (
     GetterFactory,
@@ -83,18 +84,21 @@ class CacheItem(Generic[T]):
     is_cached: bool = True
     """True if this item is cached in the ResourceCache"""
 
+    will_refresh: bool = False
+    """True if the resource is subject of the automatic refresh loop"""
+
     is_dynamic: bool = False
     """True if the CacheItem originates from a event-dynamic request"""
 
     @property
-    def value(self) -> T:
-        """The current value of the cache item. If an error is present it will
-        be raised on reading the property.
-        """
-        if self.error:
-            raise self.error.exception
-        assert self.content is not None
-        return self.content
+    def is_static(self) -> bool:
+        """True if the cache result will is not dynamic and will not refresh"""
+        return not (self.is_dynamic or self.will_refresh)
+
+    @property
+    def has_unrecoverable_error(self):
+        """True if the cache item has an error and is"""
+        return self.error is not None and self.is_static
 
 
 class ResourceCache(Generic[T]):
@@ -172,6 +176,7 @@ class ResourceCache(Generic[T]):
                     context=ErrorContext.HANDLE_CONTENT,
                     exception=error,
                 ),
+                will_refresh=old_item.will_refresh,
                 is_dynamic=old_item.is_dynamic,
             )
 
@@ -206,10 +211,12 @@ class ResourceCache(Generic[T]):
                 ),
                 is_dynamic=is_dynamic,
                 is_cached=is_cached,
+                will_refresh=False,
             )
 
         error: CacheError | None = None
         content: T | None = None
+        is_refreshable = False
         try:
             content = self._on_data(getter)
         except (RefreshableGetterError, FileNotFoundError) as exc:
@@ -224,6 +231,7 @@ class ResourceCache(Generic[T]):
             )
 
         if isinstance(getter, RefreshableGetter):
+            is_refreshable = True
             getter.keep_alive()
             key = (self._tag, resolved_uri)
             getter.add_callback(
@@ -247,6 +255,7 @@ class ResourceCache(Generic[T]):
             error=error,
             is_dynamic=is_dynamic,
             is_cached=is_cached,
+            will_refresh=is_refreshable,
         )
 
     def _handle_resolved_uri(
@@ -259,8 +268,10 @@ class ResourceCache(Generic[T]):
             self._content_cache[resolved_uri] = new_item
             if self._on_update is not None:
                 self._on_update(new_item)
-        RefreshableGetter.keep_alive_for_target(resolved_uri)
-        return self._content_cache[resolved_uri]
+        cache_item = self._content_cache[resolved_uri]
+        if cache_item.will_refresh:
+            RefreshableGetter.keep_alive_for_target(resolved_uri)
+        return cache_item
 
     def _handle_dynamic_uri(
         self, raw_uri: RawUri, uri_template: DynamicUriTemplate, event: JsonObject | None
@@ -318,13 +329,13 @@ class ResourceCache(Generic[T]):
                     ),
                 ),
                 is_cached=False,
-                is_dynamic=True,
+                is_dynamic=False,
             )
 
         self._resolve_cache[raw_uri] = uri_template
         return self._handle_dynamic_uri(raw_uri, uri_template, event)
 
-    def get_value(self, uri: Uri, event: JsonObject | None = None) -> CacheItem[T]:
+    def get_cache_item(self, uri: Uri, event: JsonObject | None = None) -> CacheItem[T]:
         """Retrieve a value derived from the resource described from the passed
         resource. To retrieve event-dynamic resources event data can be passed.
         The function will never raise but communicate any errors via the returned
@@ -337,3 +348,22 @@ class ResourceCache(Generic[T]):
             return self._handle_resolved_uri(uri, cached_resolved, is_dynamic=False)
         assert isinstance(cached_resolved, DynamicUriTemplate)
         return self._handle_dynamic_uri(uri, cached_resolved, event)
+
+    def get_value(self, uri: Uri, event: JsonObject) -> T:
+        cache_item = self.get_cache_item(uri, event)
+        if cache_item.error is not None:
+            raise cache_item.error.exception
+        assert cache_item.content is not None
+        return cache_item.content
+
+    def preload(self, *uris: Uri) -> None:
+        """Attempts to load all passed URIs. Raises an InvalidResourcesError
+        if an uri is non-dynamic and not refreshable"""
+        results = [self.get_cache_item(uri) for uri in uris]
+        unrecoverable_errors = {
+            item.raw_uri: item.error.exception
+            for item in results
+            if item.error is not None and item.has_unrecoverable_error
+        }
+        if len(unrecoverable_errors) > 0:
+            raise InvalidResourcesError(unrecoverable_errors)

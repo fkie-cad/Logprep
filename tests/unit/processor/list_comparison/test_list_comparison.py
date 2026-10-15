@@ -8,6 +8,7 @@ from unittest import mock
 import pytest
 import responses
 
+from logprep.factory_error import InvalidResourcesError
 from logprep.processor.base.exceptions import (
     ProcessingWarning,
 )
@@ -751,7 +752,7 @@ class TestListComparison(BaseProcessorTestCase):
                 }
             }
         )
-        with pytest.raises(ValueError, match="Content is not a list"):
+        with pytest.raises(InvalidResourcesError, match="Content is not a list"):
             processor.setup()
 
     @responses.activate

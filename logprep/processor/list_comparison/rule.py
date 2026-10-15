@@ -102,7 +102,6 @@ from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import DottedTemplate
 from logprep.util.resource_cache import (
     CacheItem,
-    ErrorContext,
     ResourceCache,
 )
 
@@ -306,10 +305,7 @@ class ListComparisonRule(FieldManagerRule):
                 base_path, list_paths, list_names
             )
 
-        for used_uri in self._used_uris.values():
-            result = self._resource_cache.get_value(used_uri)
-            if result.error is not None and result.error.context is ErrorContext.HANDLE_CONTENT:
-                raise result.error.exception
+        self._resource_cache.preload(*self._used_uris.values())
 
     def _recompute_failure_state(self, _item: CacheItem[ListContent]) -> None:
         assert self._resource_cache is not None
@@ -391,7 +387,7 @@ class ListComparisonRule(FieldManagerRule):
         """
         assert self._resource_cache is not None
         for key, uri in self._used_uris.items():
-            yield key, self._resource_cache.get_value(uri, event).value
+            yield key, self._resource_cache.get_value(uri, event)
 
     @property
     def failure_tags(self) -> list[str]:
