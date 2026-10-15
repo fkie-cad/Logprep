@@ -8,10 +8,12 @@ from typing import Any, ClassVar
 
 from attrs import define, field, validators
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.framework.rule_tree.rule_tree import RuleTreeNG
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
 from logprep.ng.abc.event import LogEvent
+from logprep.ng.util.getter import GetterFactory
+from logprep.ng.util.rule_loader import RuleLoader
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.util.environ import ENV_VARS
@@ -23,7 +25,6 @@ from logprep.util.helper import (
     has_dotted_field,
     pop_dotted_field_value,
 )
-from logprep.util.rule_loader import RuleLoader
 
 
 @define
@@ -76,18 +77,12 @@ class Processor(Component):
 
     rule_class: ClassVar[type[Rule] | None] = None
     _event: LogEvent
-    _rule_tree: RuleTree
+    _rule_tree: RuleTreeNG
     _strategy = None
     _bypass_rule_tree: bool
 
-    def __init__(self, name: str, configuration: "Processor.Config") -> None:
+    def __init__(self, name: str, configuration: Config) -> None:
         super().__init__(name, configuration)
-        self._rule_tree = RuleTree(config=self.config.tree_config)
-        self.load_rules(rules_targets=self.config.rules)
-        self._bypass_rule_tree = False
-        if ENV_VARS.get("LOGPREP_BYPASS_RULE_TREE"):
-            self._bypass_rule_tree = True
-            logger.debug("Bypassing rule tree for processor %s", self.name)
 
     @property
     def config(self) -> Config:
@@ -95,7 +90,7 @@ class Processor(Component):
         return typing.cast("Processor.Config", self._config)
 
     @property
-    def rules(self) -> Sequence["Rule"]:
+    def rules(self) -> Sequence[Rule]:
         """Returns all rules
 
         Returns
@@ -149,7 +144,7 @@ class Processor(Component):
         rule.metrics.number_of_processed_events.inc(1)
         return event
 
-    async def _process_rule_tree_multiple_times(self, tree: RuleTree, event: dict) -> None:
+    async def _process_rule_tree_multiple_times(self, tree: RuleTreeNG, event: dict) -> None:
         applied_rules = set()
         matching_rules: Iterable[Rule] = tree.get_matching_rules(event)
         while matching_rules:
@@ -158,12 +153,12 @@ class Processor(Component):
                 applied_rules.add(rule)
             matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
-    async def _process_rule_tree_once(self, tree: RuleTree, event: dict) -> None:
+    async def _process_rule_tree_once(self, tree: RuleTreeNG, event: dict) -> None:
         matching_rules = tree.get_matching_rules(event)
         for rule in matching_rules:
             await self._process_rule(rule, event)
 
-    async def _process_rule_tree(self, event: dict, tree: RuleTree) -> None:
+    async def _process_rule_tree(self, event: dict, tree: RuleTreeNG) -> None:
         if self.config.apply_multiple_times:
             await self._process_rule_tree_multiple_times(tree, event)
         else:
@@ -210,17 +205,28 @@ class Processor(Component):
 
         """
 
-    def load_rules(self, rules_targets: Sequence[str | dict]) -> None:
+    async def load_rules(
+        self,
+        rules_targets: Sequence[str | dict],
+        rule_tree: RuleTreeNG | None = None,
+    ) -> None:
         """method to add rules from directories or urls"""
         try:
-            rules = RuleLoader(rules_targets, self.name).rules
+            rules = await RuleLoader(
+                rules_targets,
+                self.name,
+            ).load_rules()
         except ValueError as error:
             logger.error("Loading rules from %s failed: %s ", rules_targets, error)
             raise error
+
+        target_rule_tree = rule_tree if rule_tree is not None else self._rule_tree
+
         for rule in rules:
-            self._rule_tree.add_rule(rule)
+            target_rule_tree.add_rule(rule)
+
         if logger.isEnabledFor(logging.DEBUG):
-            number_rules = self._rule_tree.number_of_rules
+            number_rules = target_rule_tree.number_of_rules
             logger.debug("%s loaded %s rules", self.description, number_rules)
 
     @staticmethod
@@ -278,6 +284,22 @@ class Processor(Component):
         """Set up the processor."""
 
         await super().setup()
+
+        self._bypass_rule_tree = False
+        if ENV_VARS.get("LOGPREP_BYPASS_RULE_TREE"):
+            self._bypass_rule_tree = True
+            logger.debug("Bypassing rule tree for processor %s", self.name)
+
+        rule_tree_config = RuleTreeNG.Config()
+
+        if self.config.tree_config:
+            rule_tree_config_data = await GetterFactory.from_string(
+                self.config.tree_config
+            ).get_dict()
+            rule_tree_config = RuleTreeNG.Config(**rule_tree_config_data)
+
+        self._rule_tree = RuleTreeNG(config=rule_tree_config)
+        await self.load_rules(rules_targets=self.config.rules)
 
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup

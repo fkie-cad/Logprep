@@ -16,6 +16,7 @@ ENFORCED_UV_CONFIG = {
 DEFAULT_UV_CONFIG = {
     # TODO should be set in accordance with parent lifecycle grace periods
     "timeout_graceful_shutdown": 10,
+    "ws": "none",
 }
 
 DISALLOWED_CONFIG_KEYS = {
@@ -49,7 +50,8 @@ class AsyncHTTPServer:
         await self._server.serve()
 
     async def wait_until_started(self, poll_interval: float = 0.05) -> None:
-        """Wait until the server (which has been `run()` already) is ready to serve by polling an internal flag
+        """Wait until the server (which has been `run()` already) is ready to serve by
+        polling an internal flag
 
         Parameters
         ----------

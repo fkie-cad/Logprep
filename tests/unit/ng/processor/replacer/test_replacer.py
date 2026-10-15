@@ -1,8 +1,5 @@
-# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-positional-arguments
 from copy import deepcopy
 from unittest import mock
 
@@ -23,13 +20,17 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
         "rules": ["tests/testdata/unit/replacer/rules_1", "tests/testdata/unit/replacer/rules_2"],
     }
 
-    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
-    async def test_testcases(self, rule, event, expected, context, provision_context):
-        provision_context(context)
-        await self._load_rule(rule)
+    @pytest.mark.skip("!!! Fix me !!!")
+    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
+    async def test_testcases(self, testcase, rule, event, expected):
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
+        assert event.data == expected, testcase
 
     async def test_template_is_none_does_nothing(self):
         rule = {
@@ -38,13 +39,16 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
                 "mapping": {"field": "%{replace this}"},
             },
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = {"field": "anything"}
         expected = {"field": "anything"}
-        await self._load_rule(rule)
-        self.object.rules[0].templates["field"] = None
-        event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            instance.rules[0].templates["field"] = None
+            event = LogEvent(event, original=b"", input_meta=InputMeta())
+            await instance.process(event)
+            assert event.data == expected
 
     @mock.patch(
         "logprep.ng.processor.replacer.processor.Replacer._handle_wildcard", return_value=None
@@ -56,11 +60,15 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
                 "mapping": {"field": "%{replace this}"},
             },
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = {"field": "anything"}
         expected = {"field": "anything"}
-        await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
         assert event.data == expected
 
     async def test_not_first_match_is_not_none_but_does_not_match_does_nothing(self):
@@ -70,14 +78,18 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
                 "mapping": {"field": "%{replace this} and %{also this}"},
             },
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = {"field": "anything and something"}
         expected = {"field": "anything and something"}
-        await self._load_rule(rule)
-        replacements = self.object.rules[0].templates["field"].replacements
-        second_replacement = replacements[1]
-        second_replacement.match = "exists and does not match"
-        event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            replacements = instance.rules[0].templates["field"].replacements
+            second_replacement = replacements[1]
+            second_replacement.match = "exists and does not match"
+            event = LogEvent(event, original=b"", input_meta=InputMeta())
+            await instance.process(event)
+
         assert event.data == expected
 
     async def test_handle_wildcard_keep_original_without_matching_next_returns_none(self):

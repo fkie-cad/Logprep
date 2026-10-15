@@ -31,8 +31,8 @@ from collections.abc import Sequence
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address
 
 from logprep.ng.processor.list_comparison.processor import ListComparison
-from logprep.processor.list_comparison.rule import ListComparisonRule
-from logprep.processor.network_comparison.rule import NetworkComparisonRule
+from logprep.ng.processor.list_comparison.rule import ListComparisonRule
+from logprep.ng.processor.network_comparison.rule import NetworkComparisonRule
 from logprep.util.helper import FieldValue
 
 
