@@ -72,8 +72,8 @@ class Labeler(Processor):
         return typing.cast(Sequence[LabelerRule], super().rules)
 
     async def setup(self) -> None:
-        self._schema = await LabelingSchema.create_from_file(self.config.schema)
         await super().setup()
+        self._schema = await LabelingSchema.create_from_file(self.config.schema)
         for rule in self.rules:
             if self.config.include_parent_labels:
                 rule.add_parent_labels_from_schema(self._schema)

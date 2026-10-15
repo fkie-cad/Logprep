@@ -63,7 +63,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
 
     CONFIG = {
         "type": "labeler",
-        "schema": "tests/testdata/unit/labeler/schemas/schema.json",
+        "schema": "tests/testdata/unit/labeler/schemas/schema_umlauts.json",
         "rules": ["tests/testdata/unit/labeler/rules"],
     }
 
