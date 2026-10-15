@@ -86,7 +86,6 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
 
         assert log_event.data == expected
 
-    @pytest.mark.skip("!!! Fix me !!!")
     async def test_process_adds_labels_to_event_with_umlauts(self):
         rule = {
             "filter": "äpplyrüle: nö",
