@@ -34,8 +34,9 @@ class TestCalculator(BaseProcessorTestCase[Calculator]):
         "rules": ["tests/testdata/unit/calculator/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    async def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         config = deepcopy(self.CONFIG)
         config["rules"] = [rule]
         async with self.create_and_setup_processor(config_patch=config) as instance:
@@ -43,8 +44,11 @@ class TestCalculator(BaseProcessorTestCase[Calculator]):
             await instance.process(event)
             assert event.data == expected
 
-    @pytest.mark.parametrize("rule, event, expected", runtime_failure_test_cases)
-    async def test_testcases_failure_handling_at_runtime(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], runtime_failure_test_cases)
+    async def test_testcases_failure_handling_at_runtime(
+        self, rule, event, expected, context, provision_context
+    ):
+        provision_context(context)
         config = deepcopy(self.CONFIG)
         config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())

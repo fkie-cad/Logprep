@@ -10,7 +10,7 @@ import pytest
 from logprep.filter.expression.filter_expression import Exists, StringFilterExpression
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
-from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.framework.rule_tree.rule_tree import RuleTreeNG as RuleTree
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.util import getter
 from logprep.util.getter import GetterFactory

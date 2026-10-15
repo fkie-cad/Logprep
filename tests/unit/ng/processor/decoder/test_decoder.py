@@ -27,11 +27,9 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
         "rules": ["tests/testdata/unit/decoder/rules"],
     }
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        test_cases,
-    )
-    async def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
 
         config = deepcopy(self.CONFIG)
