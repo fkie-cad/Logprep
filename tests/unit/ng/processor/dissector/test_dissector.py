@@ -25,8 +25,9 @@ class TestDissector(BaseProcessorTestCase[Dissector]):
         "rules": ["tests/testdata/unit/dissector/rules"],
     }
 
-    @pytest.mark.parametrize("rule, event, expected", test_cases)
-    async def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         log_event = LogEvent(event, original=b"test_message", input_meta=InputMeta())
 
         config = deepcopy(self.CONFIG)

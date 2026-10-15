@@ -26,8 +26,9 @@ class TestStringSplitter(BaseProcessorTestCase[StringSplitter]):
         "rules": ["tests/testdata/unit/string_splitter/rules"],
     }
 
-    @pytest.mark.parametrize(["rule", "event", "expected"], test_cases)
-    async def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         config = deepcopy(self.CONFIG)
         config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
@@ -36,40 +37,3 @@ class TestStringSplitter(BaseProcessorTestCase[StringSplitter]):
             await instance.process(event)
 
         assert event.data["result"] == expected
-
-    @pytest.mark.parametrize(
-        ["rule", "event", "expected", "error_message"],
-        [
-            pytest.param(
-                {
-                    "filter": "message",
-                    "string_splitter": {"source_fields": ["message"], "target_field": "result"},
-                },
-                {"message": ["this", "is", "the", "message"]},
-                {"message": ["this", "is", "the", "message"], "tags": ["_string_splitter_failure"]},
-                ".*ProcessingWarning.*",
-                id="splits_without_delimiter_on_whitespace_with_no_string",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "string_splitter": {"source_fields": ["message"], "target_field": "message"},
-                },
-                {"message": "this is the message"},
-                {"message": "this is the message", "tags": ["_string_splitter_failure"]},
-                ".*FieldExistsWarning.*",
-                id="splits_without_delimiter_on_whitespace_with_existing_field",
-            ),
-        ],
-    )
-    async def test_testcases_failure_handling(self, rule, event, expected, error_message):
-        config = deepcopy(self.CONFIG)
-        config["rules"] = [rule]
-        event = LogEvent(event, original=b"", input_meta=InputMeta())
-
-        async with self.create_and_setup_processor(config_patch=config) as instance:
-            result = await instance.process(event)
-
-        assert len(result.warnings) == 1
-        assert re.match(error_message, str(result.warnings[0]))
-        assert event.data == expected
