@@ -40,15 +40,10 @@ class PipelineManager:
                 cast(Processor, recorder.create(processor_config))
                 for processor_config in self.configuration.pipeline
             ]
-
-            for processor in processors:
-                await processor.config.tree_config
-
             named_outputs = {
                 output_name: cast(Output, recorder.create({output_name: output}))
                 for output_name, output in self.configuration.output.items()
             }
-
             error_output = (
                 cast(Output, recorder.create(self.configuration.error_output))
                 if self.configuration.error_output

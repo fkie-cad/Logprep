@@ -21,7 +21,7 @@ def _create_component() -> mock.NonCallableMagicMock:
     component = mock.NonCallableMagicMock()
     component.setup = mock.AsyncMock()
     component.shut_down = mock.AsyncMock()
-    component.config.tree_config = mock.AsyncMock(return_value={})()
+    component.config.tree_config = None
     return component
 
 
