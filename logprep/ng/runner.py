@@ -16,11 +16,11 @@ from logprep.ng.util.async_helpers import StoppableTask
 from logprep.ng.util.config_refresh import StopConfigRefresh, wait_for_refreshed_config
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.ng.util.getter import RefreshableGetter
 from logprep.ng.util.logging_helpers import (
     decouple_logging_via_queue,
     inject_task_names_in_log_records,
 )
-from logprep.util.getter import RefreshableGetter
 
 logger = logging.getLogger("Runner")
 
@@ -47,12 +47,14 @@ class Runner:
         )
 
     async def _refresh_getters(self):
+        """Periodically refresh refreshable getters until the runner is stopped"""
         while True:
-            # TODO make getters async
-            RefreshableGetter.refresh()
+            await RefreshableGetter.refresh()
+
             try:
                 async with asyncio.timeout(self._config.refreshable_getter_base_interval_s):
                     await self._stop_event.wait()
+
                 logger.debug("stopped refreshing getters as the stop_event has been set")
                 return
             except TimeoutError:
