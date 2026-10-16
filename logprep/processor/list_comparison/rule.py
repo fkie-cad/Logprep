@@ -308,19 +308,12 @@ class ListComparisonRule(FieldManagerRule):
         self._resource_cache.preload(*self._used_uris.values())
 
     def _recompute_failure_state(self, _item: CacheItem[ListContent]) -> None:
-        assert self._resource_cache is not None
-        error_items = [
-            item for item in self._resource_cache.get_error_items() if not item.is_dynamic
-        ]
-        if len(error_items) == 0:
+        assert self._resource_cache
+        static_resource_errors = self._resource_cache.get_static_resource_error_state()
+        if static_resource_errors is None:
             self.clear_failed()
-        elif len(error_items) == 1:
-            item = error_items[0]
-            assert item.error is not None
-            self.mark_failed(item.error.exception)
         else:
-            errors = [item.error.exception for item in error_items if item.error is not None]
-            self.mark_failed(ExceptionGroup("rule failed due to list data retrieval", errors))
+            self.mark_failed(static_resource_errors)
 
     def _init_list_comparison_from_local_file(
         self, base_path: str, list_paths: Sequence[str], list_names: Sequence[str] | None

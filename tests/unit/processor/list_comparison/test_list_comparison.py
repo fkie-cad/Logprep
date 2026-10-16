@@ -17,7 +17,6 @@ from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
     HttpGetter,
     RefreshableGetter,
-    RefreshableGetterError,
     refresh_getters,
 )
 from tests.conftest import mock_env
@@ -1327,7 +1326,7 @@ class TestListComparison(BaseProcessorTestCase):
         ):
             processor.setup()
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert captured_sessions
 
         retries = captured_sessions[0].get_adapter(url).max_retries
@@ -1368,7 +1367,7 @@ class TestListComparison(BaseProcessorTestCase):
         document = {"user": "Foo"}
         processor.process(document)
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500
@@ -1417,7 +1416,7 @@ class TestListComparison(BaseProcessorTestCase):
             document = {"user": "Foo"}
             processor.process(document)
 
-            assert isinstance(rule.data_error, RefreshableGetterError)
+            assert isinstance(rule.data_error, InvalidResourcesError)
             assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
             assert responses.calls[-1].request.url == url
             assert responses.calls[-1].response.status_code == 500

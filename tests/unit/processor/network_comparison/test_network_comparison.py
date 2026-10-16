@@ -8,10 +8,11 @@ from pathlib import Path
 import pytest
 import responses
 
+from logprep.factory_error import InvalidResourcesError
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.network_comparison.rule import NetworkComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter, RefreshableGetter, RefreshableGetterError
+from logprep.util.getter import HttpGetter, RefreshableGetter
 from tests.conftest import mock_env
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -756,7 +757,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
         processor.process(document)
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
         assert len(responses.calls) == 4
         assert responses.calls[0].request.url == url
@@ -786,7 +787,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         document = {"ip": "1.2.3.4"}
         processor.process(document)
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500

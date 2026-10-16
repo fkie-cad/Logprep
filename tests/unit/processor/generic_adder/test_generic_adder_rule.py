@@ -409,13 +409,12 @@ class TestGenericAdderRule:
             second_getter.scheduler.run_all()
 
             assert isinstance(rule.data_error, InvalidResourcesError)
-            assert len(rule.data_error.exceptions) == 2
 
             responses.replace(responses.GET, first_url, json={"value": 3})
             first_getter.scheduler.run_all()
 
             assert rule.data_error is not None
-            assert not isinstance(rule.data_error, InvalidResourcesError)
+            assert isinstance(rule.data_error, InvalidResourcesError)
 
             responses.replace(responses.GET, second_url, json={"value": 4})
             second_getter.scheduler.run_all()
