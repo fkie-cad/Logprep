@@ -93,7 +93,7 @@ from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import CounterMetric, HistogramMetric, Metric
-from logprep.ng.abc.event import OutputEvent
+from logprep.ng.abc.event import LogEvent, OutputEvent
 from logprep.ng.abc.output import CriticalOutputError, Output
 from logprep.ng.util.retry import Backoff, BlockingCircuitBreaker, RetriesExhaustedError
 
@@ -401,6 +401,8 @@ class OpensearchOutput(Output):
         )
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
+        use_event_id_as_doc_id: bool = field(default=False, validator=validators.instance_of(bool))
+        """If the event id should be used as the document id, should event ids not be activated this is unexpected behavior. Default is 'False'"""
 
     __slots__ = ("_search_context",)
 
@@ -502,6 +504,12 @@ class OpensearchOutput(Output):
             **event.data,
             # TODO disallow overwriting arbitrary os metadata (_ prefixed) in the future
         }
+        if (
+            self.config.use_event_id_as_doc_id
+            and isinstance(event, LogEvent)
+            and event.event_id is not None
+        ):
+            raw_action["_id"] = event.event_id
         try:
             meta, source = expand_action(raw_action)
             lines = [self._encoder.encode(meta)]

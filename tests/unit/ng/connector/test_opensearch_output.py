@@ -19,7 +19,7 @@ from opensearchpy import ConnectionTimeout
 from opensearchpy import OpenSearchException as SearchException
 from opensearchpy import RequestError, TransportError
 
-from logprep.ng.abc.event import InputMeta, LogEvent, OutputEvent
+from logprep.ng.abc.event import ExtraDataEvent, InputMeta, LogEvent, OutputEvent
 from logprep.ng.abc.output import CriticalOutputError
 from logprep.ng.connector.opensearch.output import BulkError, OpensearchOutput
 from logprep.ng.util.retry import RetriesExhaustedError
@@ -65,6 +65,69 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
         "initial_backoff": 0.001,
         "max_backoff": 0.001,
     }
+
+    @pytest.mark.parametrize("value", ["true", 1, None])
+    async def test_rejects_invalid_use_event_id_as_doc_id(self, value):
+        with pytest.raises(TypeError, match="use_event_id_as_doc_id"):
+            self._create_test_instance(config_patch={"use_event_id_as_doc_id": value})
+
+    @pytest.mark.parametrize(
+        "config_patch, event_id, existing_id, expected_id",
+        [
+            ({}, "event-123", None, None),
+            ({}, "event-123", "explicit-id", "explicit-id"),
+            ({"use_event_id_as_doc_id": True}, "event-123", None, "event-123"),
+            ({"use_event_id_as_doc_id": True}, "event-123", "explicit-id", "event-123"),
+            ({"use_event_id_as_doc_id": True}, None, None, None),
+            ({"use_event_id_as_doc_id": True}, None, "explicit-id", "explicit-id"),
+            (
+                {"use_event_id_as_doc_id": True, "target_id_field": "trace.id"},
+                "event-123",
+                None,
+                "event-123",
+            ),
+        ],
+    )
+    async def test_store_uses_event_id_as_document_id(
+        self,
+        mock_client,
+        get_sent_bulk_actions,
+        *,
+        config_patch,
+        event_id,
+        existing_id,
+        expected_id,
+    ):
+        self.object = self._create_test_instance(config_patch=config_patch)
+        data = {"message": "hello"}
+        if existing_id is not None:
+            data["_id"] = existing_id
+        event = LogEvent(data, event_id=event_id, original=None, input_meta=InputMeta())
+        mock_client.bulk.return_value = _bulk_response(201)
+
+        await self._setup_and_store([event])
+
+        assert get_sent_bulk_actions()[0].get("_id") == expected_id
+        assert "_id" not in event.data or event.data["_id"] == existing_id
+        assert event.stored
+        assert not event.is_failed()
+
+    @pytest.mark.parametrize("existing_id", [None, "explicit-id"])
+    async def test_store_extra_data_preserves_document_id(
+        self, mock_client, get_sent_bulk_actions, existing_id
+    ):
+        self.object = self._create_test_instance(config_patch={"use_event_id_as_doc_id": True})
+        data = {"message": "extra data"}
+        if existing_id is not None:
+            data["_id"] = existing_id
+        event = ExtraDataEvent(data, output_name=None, output_target=None)
+        mock_client.bulk.return_value = _bulk_response(201)
+
+        await self._setup_and_store([event])
+
+        assert get_sent_bulk_actions()[0].get("_id") == existing_id
+        assert event.stored
+        assert not event.is_failed()
 
     @pytest.fixture
     def mock_client(self):

@@ -5,6 +5,7 @@
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
 * field_manager: add flag for deactivating deduplication
 * calculator: extended expression functionality
+* preprocessor: add unique event ids to every event when enabled
 
 ### Improvements
 * bump version for `urllib` to address CVEs

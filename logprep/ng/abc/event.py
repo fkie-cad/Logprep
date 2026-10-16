@@ -107,6 +107,8 @@ class LogEvent(_BaseFailableEvent, OutputEvent, ProcessableEvent):
 
     data: dict[str, FieldValue] = field()
 
+    event_id: str | None = field(default=None)
+
     original: bytes | None = field(kw_only=True)
     input_meta: InputMeta = field(kw_only=True)
 
