@@ -98,7 +98,7 @@ class TestNetworkComparisonRule:
     ):
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
 
-        rule.init_list_comparison("test_owner", "tests/testdata/unit/network_comparison/rules")
+        rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")
 
         compare_sets = dict(rule.iter_compare_sets({}))
 
@@ -168,7 +168,7 @@ class TestNetworkComparisonRule:
         }
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
 
-        rule.init_list_comparison("test_owner", "tests/testdata/unit/network_comparison/rules")
+        rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")
 
         compare_sets = dict(rule.iter_compare_sets({}))
 
@@ -192,4 +192,4 @@ class TestNetworkComparisonRule:
             InvalidResourcesError,
             match="'invalid_network' does not appear to be an IPv4 or IPv6 network",
         ):
-            rule.init_list_comparison("test_owner", "tests/testdata/unit/network_comparison/rules")
+            rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")

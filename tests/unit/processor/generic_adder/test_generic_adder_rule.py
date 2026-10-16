@@ -148,7 +148,7 @@ class TestGenericAdderRule:
                 },
             }
         )
-        rule.init_generic_adder("generic-adder-test")
+        rule.init_generic_adder()
 
         additions = rule.add({"tenant": {"id": "acme"}})
 
@@ -172,7 +172,7 @@ class TestGenericAdderRule:
             }
         )
 
-        rule.init_generic_adder("generic-adder-test")
+        rule.init_generic_adder()
 
         assert rule.add({}) == {"enrichment": response_content}
         assert rule.add({}) == {"enrichment": response_content}
@@ -200,7 +200,7 @@ class TestGenericAdderRule:
             }
         )
 
-        rule.init_generic_adder("generic-adder-test")
+        rule.init_generic_adder()
 
         assert rule.add({}) == {"enrichment": response_content["payload"]}
 
@@ -224,7 +224,7 @@ class TestGenericAdderRule:
                 },
             }
         )
-        rule.init_generic_adder("generic-adder-test")
+        rule.init_generic_adder()
 
         assert rule.add({"tenant": "acme"}) == {"enrichment": response_content["payload"]}
 
@@ -244,7 +244,7 @@ class TestGenericAdderRule:
             }
         )
 
-        rule.init_generic_adder("generic-adder-test")
+        rule.init_generic_adder()
         assert isinstance(rule.data_error, InvalidResourcesError)
 
     def test_merges_inline_and_ordered_file_uri_sources(self, tmp_path):
@@ -262,7 +262,7 @@ class TestGenericAdderRule:
             }
         )
 
-        rule.init_generic_adder("generic-adder-test")
+        rule.init_generic_adder()
 
         assert rule.add({}) == {
             "inline": True,
@@ -289,7 +289,7 @@ class TestGenericAdderRule:
             }
         )
 
-        rule.init_generic_adder("generic-adder-test")
+        rule.init_generic_adder()
 
         assert rule.add({}) == {
             "first": response_content,
@@ -313,7 +313,7 @@ class TestGenericAdderRule:
                 },
             }
         )
-        rule.init_generic_adder("generic-adder-test")
+        rule.init_generic_adder()
 
         assert rule.add({"tenant": "first"}) == {"enrichment": {"value": 1}}
         assert rule.add({"tenant": "second"}) == {"enrichment": {"value": 2}}
@@ -339,7 +339,7 @@ class TestGenericAdderRule:
         )
 
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(getter_config)}):
-            rule.init_generic_adder("generic-adder-test")
+            rule.init_generic_adder()
             assert rule.add({"tenant": "acme"}) == {"enrichment": {"value": 1}}
             getter = GetterFactory.from_string(url)
             assert isinstance(getter, HttpGetter)
@@ -385,7 +385,7 @@ class TestGenericAdderRule:
         )
 
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(getter_config)}):
-            rule.init_generic_adder("generic-adder-test")
+            rule.init_generic_adder()
             first_getter = GetterFactory.from_string(first_url)
             second_getter = GetterFactory.from_string(second_url)
             assert isinstance(first_getter, HttpGetter)
@@ -490,8 +490,8 @@ class TestGenericAdderRule:
     ):
         rule1 = GenericAdderRule.create_from_dict(rule_definition)
         rule2 = GenericAdderRule.create_from_dict(other_rule_definition)
-        rule1.init_generic_adder("generic-adder-test")
-        rule2.init_generic_adder("generic-adder-test")
+        rule1.init_generic_adder()
+        rule2.init_generic_adder()
         assert (rule1 == rule2) == is_equal, testcase
 
     def test_rule_accepts_bool_type(self):
@@ -543,7 +543,7 @@ class TestGenericAdderRule:
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
             rule = GenericAdderRule.create_from_dict(rule_definition)
-            rule.init_generic_adder("generic-adder-test")
+            rule.init_generic_adder()
             assert rule.add({}) == expected_1
             HttpGetter.refresh()
             assert rule.add({}) == expected_1

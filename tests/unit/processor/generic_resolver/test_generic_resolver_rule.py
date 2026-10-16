@@ -250,7 +250,7 @@ class TestGenericResolverRule:
         if error:
             with pytest.raises(error, match=message):
                 rule = GenericResolverRule.create_from_dict(rule)
-                rule.init_generic_resolver("some_tag")
+                rule.init_generic_resolver()
         else:
             rule_instance = GenericResolverRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
@@ -290,7 +290,7 @@ class TestGenericResolverRule:
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
             rule = GenericResolverRule.create_from_dict(rule_definition)
-            rule.init_generic_resolver("sometag")
+            rule.init_generic_resolver()
             assert rule.get_additions({}) == from_http_1
             HttpGetter.refresh()
             assert rule.get_additions({}) == from_http_1
@@ -299,7 +299,6 @@ class TestGenericResolverRule:
             assert rule.get_additions({}) == from_http_2
             scheduler.run_all()
             assert rule.get_additions({}) == from_http_3
-            RefreshableGetter.remove_callbacks_for_tag("sometag")
 
     @pytest.mark.parametrize(
         ["content_field_config", "expected"],
@@ -380,9 +379,8 @@ class TestGenericResolverRule:
                 },
             }
         )
-        rule.init_generic_resolver("sometag")
+        rule.init_generic_resolver()
         assert rule.get_additions({}) == {"ab": "ab_server_type", "de": "de_server_type"}
-        RefreshableGetter.remove_callbacks_for_tag("sometag")
 
     @responses.activate
     @pytest.mark.parametrize(
@@ -420,5 +418,5 @@ class TestGenericResolverRule:
             }
         )
 
-        rule.init_generic_resolver("some_tag")
+        rule.init_generic_resolver()
         assert isinstance(rule.data_error, InvalidResourcesError)

@@ -99,7 +99,7 @@ class TestListComparisonRule:
 
         rule = typing.cast(ListComparisonRule, rule)
 
-        rule.init_list_comparison("test_owner", "tests/testdata/unit/list_comparison/rules")
+        rule.init_list_comparison("tests/testdata/unit/list_comparison/rules")
 
         compare_sets = dict(rule.iter_compare_sets({}))
 
@@ -122,7 +122,7 @@ class TestListComparisonRule:
             InvalidConfigurationError,
             match="list_search_base_path must be set either in the processor config or in the rule",
         ):
-            rule.init_list_comparison("test_owner")
+            rule.init_list_comparison()
 
     @pytest.mark.parametrize(
         "list_comparison_config, error_message",
@@ -170,4 +170,4 @@ class TestListComparisonRule:
         rule_dict = {"filter": "user", "list_comparison": list_comparison_config}
         with pytest.raises(ValueError, match=error_message):
             rule = typing.cast(ListComparisonRule, ListComparisonRule.create_from_dict(rule_dict))
-            rule.init_list_comparison("irrelevant_tag", "/base/path")
+            rule.init_list_comparison("/base/path")

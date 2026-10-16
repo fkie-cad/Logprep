@@ -882,7 +882,7 @@ class TestListComparison(BaseProcessorTestCase):
                 "${LIST_TENANT}/bad_users.list": {"Foo", "Bar"}
             }
 
-        assert len(responses.calls) == 2
+        assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
     @responses.activate
