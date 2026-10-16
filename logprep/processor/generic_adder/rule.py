@@ -364,19 +364,12 @@ class GenericAdderRule(Rule):
     def _recompute_failure_state(self, _item: CacheItem[FieldValue]) -> None:
         assert self._resource_cache is not None
 
-        error_items = [
-            item for item in self._resource_cache.get_error_items() if not item.is_dynamic
-        ]
+        static_resource_error = self._resource_cache.get_static_resource_error_state()
 
-        if len(error_items) == 0:
+        if static_resource_error is None:
             self.clear_failed()
-        elif len(error_items) == 1:
-            error_item = error_items[0]
-            assert error_item.error
-            self.mark_failed(error_item.error.exception)
         else:
-            errors = [item.error.exception for item in error_items if item.error is not None]
-            self.mark_failed(ExceptionGroup("generic_adder URI loading failed", errors))
+            self.mark_failed(static_resource_error)
 
     def get_additions(self, event: JsonObject) -> Iterator[JsonObject]:
         """Get the additions for a specific event."""

@@ -590,6 +590,8 @@ dynamic_uri_failure_test_cases = [
         "value for dynamic URI field 'tenant' is not a scalar value",
         id="Reject non-scalar dynamic URI field",
     ),
+]
+invalid_setup_test_cases = [
     pytest.param(
         {
             "filter": "*",
@@ -600,10 +602,8 @@ dynamic_uri_failure_test_cases = [
                 }
             },
         },
-        {"filename": "additions_file"},
         "Dynamic file URIs are not supported",
         id="Reject dynamic file URI",
-        marks=[pytest.mark.skip("TODO check behaviour changed")],
     ),
 ]
 
@@ -642,6 +642,12 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert len(result.warnings) == 1
         assert error_message in str(result.warnings[0])
         assert event["tags"] == ["_generic_adder_failure"]
+
+    @pytest.mark.parametrize("rule, error_message", invalid_setup_test_cases)
+    def test_setup_failure_handling(self, rule, error_message):
+        self._load_rule(rule)
+        with pytest.raises(InvalidResourcesError, match=error_message):
+            self.object.setup()
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
         with pytest.raises(InvalidResourcesError, match=r"'I_DO_NOT_EXIST'.*No.*file"):

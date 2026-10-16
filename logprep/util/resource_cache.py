@@ -91,14 +91,9 @@ class CacheItem(Generic[T]):
     """True if the CacheItem originates from a event-dynamic request"""
 
     @property
-    def is_static(self) -> bool:
-        """True if the cache result will is not dynamic and will not refresh"""
-        return not (self.is_dynamic or self.will_refresh)
-
-    @property
     def has_unrecoverable_error(self):
         """True if the cache item has an error and is"""
-        return self.error is not None and self.is_static
+        return self.error is not None and not (self.is_dynamic or self.will_refresh)
 
 
 class ResourceCache(Generic[T]):
@@ -156,6 +151,19 @@ class ResourceCache(Generic[T]):
     def get_error_items(self) -> Sequence[CacheItem[T]]:
         """Get all cached items currently in error state"""
         return [item for item in self._content_cache.values() if item.error is not None]
+
+    def get_static_resource_error_state(self) -> InvalidResourcesError | None:
+        """Returns a InvalidResourcesError if there are any errors with on static
+        Resources. If no errors are present None is returned."""
+
+        static_errors = {
+            item.raw_uri: item.error.exception
+            for item in self._content_cache.values()
+            if item.error is not None and not item.is_dynamic
+        }
+        if len(static_errors) == 0:
+            return None
+        return InvalidResourcesError(static_errors)
 
     def _getter_fetch_callback(self, getter: Getter, uri: ResolvedUri) -> None:
         new_item = self._get_updated_cache_item(getter, uri)
@@ -269,7 +277,8 @@ class ResourceCache(Generic[T]):
             if self._on_update is not None:
                 self._on_update(new_item)
         cache_item = self._content_cache[resolved_uri]
-        if cache_item.will_refresh:
+        if cache_item.is_dynamic and cache_item.will_refresh:
+            # NOTE: keep_alive_for_target must not be called for static resources.
             RefreshableGetter.keep_alive_for_target(resolved_uri)
         return cache_item
 

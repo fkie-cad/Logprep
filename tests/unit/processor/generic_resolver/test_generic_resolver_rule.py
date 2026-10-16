@@ -384,7 +384,6 @@ class TestGenericResolverRule:
         assert rule.get_additions({}) == {"ab": "ab_server_type", "de": "de_server_type"}
         RefreshableGetter.remove_callbacks_for_tag("sometag")
 
-    @pytest.mark.skip("TODO check if behaviour is right. HTTP resource could recover")
     @responses.activate
     @pytest.mark.parametrize(
         ["body", "content_field", "match"],
@@ -407,19 +406,19 @@ class TestGenericResolverRule:
         url = "http://localhost:12346/resolve"
         responses.add(responses.GET, url, json=body, content_type="application/json")
 
-        with pytest.raises(InvalidResourcesError, match=match):
-            rule = GenericResolverRule.create_from_dict(
-                {
-                    "filter": "to_resolve",
-                    "generic_resolver": {
-                        "field_mapping": {"to_resolve": "resolved"},
-                        "resolve_from_file": {
-                            "path": url,
-                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                        },
-                        "content_field": content_field,
+        rule = GenericResolverRule.create_from_dict(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_from_file": {
+                        "path": url,
+                        "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                     },
-                }
-            )
-            assert isinstance(rule, GenericResolverRule)
-            rule.init_generic_resolver("some_tag")
+                    "content_field": content_field,
+                },
+            }
+        )
+
+        rule.init_generic_resolver("some_tag")
+        assert isinstance(rule.data_error, InvalidResourcesError)

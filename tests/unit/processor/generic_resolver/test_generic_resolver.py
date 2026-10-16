@@ -11,7 +11,6 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.factory_error import InvalidResourcesError
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
@@ -675,7 +674,7 @@ failure_test_cases = [
             },
         },
         {EXAMPLE_URL: {"body": {"content": {"ab": "ab_server_type"}}}},
-        "Error loading additions",
+        "Failed to load static resources",
         id="content_field key absent from the loaded mapping",
     ),
 ]
@@ -714,14 +713,16 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert event == expected
 
-    @pytest.mark.skip("TODO behaviour changed for failing url errors on startup")
     @pytest.mark.parametrize("rule, context, error_message", failure_test_cases)
     def test_testcases_failure_handling(self, rule, context, error_message, provision_context):
         provision_context(context)
 
-        with pytest.raises(InvalidResourcesError, match=error_message):
-            self._load_rule(rule)
-            self.object.setup()
+        self._load_rule(rule)
+        self.object.setup()
+        document = {"to_resolve": "bla"}
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert error_message in str(result.warnings[0])
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):

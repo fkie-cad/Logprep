@@ -49,7 +49,6 @@ class TestResourceCache:
         assert result.is_cached is True
         assert result.is_dynamic is False
         assert result.will_refresh is True
-        assert result.is_static is False
         assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
@@ -116,7 +115,6 @@ class TestResourceCache:
         assert result.is_cached is True
         assert result.is_dynamic is False
         assert result.will_refresh is True
-        assert result.is_static is False
         assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
@@ -185,7 +183,6 @@ class TestResourceCache:
         assert result.is_cached is True
         assert result.is_dynamic is True
         assert result.will_refresh is True
-        assert result.is_static is False
         assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
@@ -217,7 +214,6 @@ class TestResourceCache:
         assert result.is_cached is False
         assert result.is_dynamic is True
         assert result.will_refresh is False
-        assert result.is_static is False
         assert result.has_unrecoverable_error is False
         assert data_callback.call_count == 0
         assert update_callback.call_count == 0
@@ -250,7 +246,6 @@ class TestResourceCache:
         assert result.is_cached is False
         assert result.is_dynamic is True
         assert result.will_refresh is False
-        assert result.is_static is False
         assert result.has_unrecoverable_error is False
         assert data_callback.call_count == 0
         assert update_callback.call_count == 0
@@ -300,7 +295,6 @@ class TestResourceCache:
         assert result.is_cached is False
         assert result.is_dynamic is True
         assert result.will_refresh is False
-        assert result.is_static is False
         assert result.has_unrecoverable_error is False
         assert data_callback.call_count == 0
         assert update_callback.call_count == 0
@@ -333,7 +327,6 @@ class TestResourceCache:
         assert result.is_cached is True
         assert result.is_dynamic is False
         assert result.will_refresh is False
-        assert result.is_static is True
         assert result.has_unrecoverable_error is True
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
@@ -370,7 +363,6 @@ class TestResourceCache:
         assert result.is_cached is True
         assert result.is_dynamic is False
         assert result.will_refresh is True
-        assert result.is_static is False
         assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
@@ -410,7 +402,6 @@ class TestResourceCache:
         assert result.is_cached is True
         assert result.is_dynamic is False
         assert result.will_refresh is True
-        assert result.is_static is False
         assert result.has_unrecoverable_error is False
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0

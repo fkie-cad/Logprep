@@ -153,7 +153,7 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_ordered_mapping_or_keep_mapping
 from logprep.util.helper import FieldValue, JsonObject
-from logprep.util.resource_cache import ResourceCache
+from logprep.util.resource_cache import CacheItem, ResourceCache
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -316,8 +316,7 @@ class GenericResolverRule(FieldManagerRule):
         if self.config.file_path:
             self._raise_if_pattern_is_invalid()
             self._resource_cache = ResourceCache[JsonObject](
-                tag=callback_tag,
-                on_data=self._read_from_getter,
+                tag=callback_tag, on_data=self._read_from_getter, on_update=self._update_error_state
             )
             self._resource_cache.preload(self.config.file_path)
         else:
@@ -337,6 +336,14 @@ class GenericResolverRule(FieldManagerRule):
                 f" got {type(content).__name__} instead"
             )
         return self._convert_additions(content)
+
+    def _update_error_state(self, _cache_item: CacheItem[JsonObject]) -> None:
+        assert self._resource_cache
+        resource_error = self._resource_cache.get_static_resource_error_state()
+        if resource_error is None:
+            self.clear_failed()
+        else:
+            self.mark_failed(resource_error)
 
     def _convert_additions(self, additions: JsonObject) -> JsonObject:
         additions = convert_ordered_mapping_or_keep_mapping(additions)

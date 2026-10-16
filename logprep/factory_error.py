@@ -17,7 +17,7 @@ class InvalidResourcesError(InvalidConfigurationError):
     def __init__(self, errors: dict[str, Exception]) -> None:
         self.errors = errors
         super().__init__(
-            "Failed to load static, non-refreshable reources:\n"
+            "Failed to load static resources:\n"
             + "\n".join(f"\t{url!r}: {exc!r} " for url, exc in self.errors.items())
         )
 

@@ -228,9 +228,8 @@ class TestGenericAdderRule:
 
         assert rule.add({"tenant": "acme"}) == {"enrichment": response_content["payload"]}
 
-    @pytest.mark.skip("TODO check behaviour changed")
     @responses.activate
-    def test_static_url_failed_initial_load_raises(self):
+    def test_static_url_failed_initial_load_results_in_data_error(self):
         url = "https://values.example/static"
         responses.add(responses.GET, url, status=500)
         rule = GenericAdderRule.create_from_dict(
@@ -245,11 +244,8 @@ class TestGenericAdderRule:
             }
         )
 
-        with pytest.raises(
-            InvalidResourcesError,
-            match=r".*not load.*URI.*https://values.example/static",
-        ):
-            rule.init_generic_adder("generic-adder-test")
+        rule.init_generic_adder("generic-adder-test")
+        assert isinstance(rule.data_error, InvalidResourcesError)
 
     def test_merges_inline_and_ordered_file_uri_sources(self, tmp_path):
         first_file = tmp_path / "first.json"
@@ -412,14 +408,14 @@ class TestGenericAdderRule:
             first_getter.scheduler.run_all()
             second_getter.scheduler.run_all()
 
-            assert isinstance(rule.data_error, ExceptionGroup)
+            assert isinstance(rule.data_error, InvalidResourcesError)
             assert len(rule.data_error.exceptions) == 2
 
             responses.replace(responses.GET, first_url, json={"value": 3})
             first_getter.scheduler.run_all()
 
             assert rule.data_error is not None
-            assert not isinstance(rule.data_error, ExceptionGroup)
+            assert not isinstance(rule.data_error, InvalidResourcesError)
 
             responses.replace(responses.GET, second_url, json={"value": 4})
             second_getter.scheduler.run_all()
