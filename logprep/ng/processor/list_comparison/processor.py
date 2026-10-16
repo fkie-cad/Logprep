@@ -165,9 +165,3 @@ class ListComparison(Processor):
     def _matches_compare_set(prepared_values: set[FieldValue], set_values: set[str]) -> bool:
         """Return whether any prepared event value matches the given compare set."""
         return not prepared_values.isdisjoint(set_values)
-
-    def _shut_down(self) -> None:
-        super()._shut_down()
-        for rule in self.rules:
-            rule = typing.cast(ListComparisonRule, rule)
-            rule.shut_down()

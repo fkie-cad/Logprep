@@ -409,3 +409,6 @@ class Rule:
                 raise ValueError
 
         return special_fields
+
+    def shut_down(self) -> None:
+        pass

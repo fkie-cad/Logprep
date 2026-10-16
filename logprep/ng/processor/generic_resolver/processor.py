@@ -223,9 +223,3 @@ class GenericResolver(FieldManager):
             rule.init_generic_resolver()
 
         self._cache_metrics_skip_count = 0
-
-    def _shut_down(self) -> None:
-        super()._shut_down()
-        for rule in self.rules:
-            rule = typing.cast(GenericResolverRule, rule)
-            rule.shut_down()

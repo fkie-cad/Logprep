@@ -62,9 +62,3 @@ class GenericAdder(Processor):
                     )
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error
-
-    def _shut_down(self) -> None:
-        super()._shut_down()
-        for rule in self.rules:
-            rule = typing.cast(GenericAdderRule, rule)
-            rule.shut_down()
