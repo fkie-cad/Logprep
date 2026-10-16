@@ -251,7 +251,11 @@ class ListComparisonRule(FieldManagerRule):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._used_uris: dict[str, str] = {}
-        self._resource_cache: ResourceCache[ListContent] | None = None
+        self._resource_cache = ResourceCache[ListContent](
+            on_data=self._get_list_contents_from_getter,
+            on_update=self._recompute_failure_state,
+            on_cleanup=self._recompute_failure_state,
+        )
 
     @property
     def compare_set_names(self) -> Sequence[str]:
@@ -271,7 +275,6 @@ class ListComparisonRule(FieldManagerRule):
 
     def init_list_comparison(
         self,
-        callback_tag: str,
         base_path: str | None = None,
     ) -> None:
         """Initialize comparison lists for this rule.
@@ -287,12 +290,7 @@ class ListComparisonRule(FieldManagerRule):
         """
 
         base_path = self._get_list_search_base_path(base_path)
-        self._resource_cache = ResourceCache[ListContent](
-            tag=callback_tag,
-            on_data=self._get_list_contents_from_getter,
-            on_update=self._recompute_failure_state,
-            on_cleanup=self._recompute_failure_state,
-        )
+
         list_paths = list(self._config.list_paths.values()) or self._config.list_file_paths
         list_names = list(self._config.list_paths.keys()) or None
 
@@ -308,7 +306,6 @@ class ListComparisonRule(FieldManagerRule):
         self._resource_cache.preload(*self._used_uris.values())
 
     def _recompute_failure_state(self, _item: CacheItem[ListContent]) -> None:
-        assert self._resource_cache
         static_resource_errors = self._resource_cache.get_static_resource_error_state()
         if static_resource_errors is None:
             self.clear_failed()
@@ -378,7 +375,6 @@ class ListComparisonRule(FieldManagerRule):
             Re-raises the stored data loading error if a dynamic HTTP(S) list cannot be
             loaded, so the processor can apply the rule's failure tags.
         """
-        assert self._resource_cache is not None
         for key, uri in self._used_uris.items():
             yield key, self._resource_cache.get_value(uri, event)
 
@@ -386,3 +382,6 @@ class ListComparisonRule(FieldManagerRule):
     def failure_tags(self) -> list[str]:
         """Returns the failure tags"""
         return self._config.tag_on_failure
+
+    def shut_down(self) -> None:
+        self._resource_cache.clear()

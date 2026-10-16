@@ -229,6 +229,12 @@ class GenericResolver(FieldManager):
         super().setup()
         for rule in self.rules:
             rule = typing.cast(GenericResolverRule, rule)
-            rule.init_generic_resolver(self._job_tag_for_cleanup)
+            rule.init_generic_resolver()
 
         self._cache_metrics_skip_count = 0
+
+    def _shut_down(self) -> None:
+        super()._shut_down()
+        for rule in self.rules:
+            rule = typing.cast(GenericResolverRule, rule)
+            rule.shut_down()

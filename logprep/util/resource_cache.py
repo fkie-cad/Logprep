@@ -103,7 +103,6 @@ class ResourceCache(Generic[T]):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        tag: str,
         *,
         on_data: Callable[[Getter], T],
         on_update: Callable[[CacheItem[T]], None] | None = None,
@@ -115,8 +114,6 @@ class ResourceCache(Generic[T]):
 
         Parameters
         ----------
-        tag : str
-            Tag used to manage callbacks in the underlining Getter system
         on_data : Callable[[Getter], T]
             Callback called on initially retrieving and updating resources.
             Responsible for deriving the target type form the resource.
@@ -128,7 +125,7 @@ class ResourceCache(Generic[T]):
             If set to True a url templating will be enabled on URIs referencing
             Files. Defaults to False.
         """
-        self._tag = tag
+        self._tag = f"{type(self).__name__}-{id(self)}"
         self._on_data = on_data
         self._on_update = on_update
         self._on_cleanup = on_cleanup
@@ -141,6 +138,9 @@ class ResourceCache(Generic[T]):
         RefreshableGetter.remove_callbacks_for_tag(self._tag)
         self._resolve_cache.clear()
         self._content_cache.clear()
+
+    def __del__(self) -> None:
+        RefreshableGetter.remove_callbacks_for_tag(self._tag)
 
     def clear_errors(self) -> None:
         """Clear all cached items currently in error state"""

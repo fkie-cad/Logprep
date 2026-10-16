@@ -297,10 +297,12 @@ class GenericResolverRule(FieldManagerRule):
         processor_name: str,
     ) -> None:
         super().__init__(filter_rule, config, processor_name)
-        self._resource_cache: ResourceCache[JsonObject] | None = None
+        self._resource_cache = ResourceCache[JsonObject](
+            on_data=self._read_from_getter, on_update=self._update_error_state
+        )
         self._static_additions: JsonObject = {}
 
-    def init_generic_resolver(self, callback_tag: str) -> None:
+    def init_generic_resolver(self) -> None:
         """Initialize the additions for this rule.
 
         Local lists are loaded eagerly. Static HTTP(S) lists are loaded eagerly and
@@ -309,15 +311,13 @@ class GenericResolverRule(FieldManagerRule):
 
         Raises
         ------
-        InvalidConfigurationError
+        InvalidResourcesError
             If additions fail to load.
         """
 
         if self.config.file_path:
             self._raise_if_pattern_is_invalid()
-            self._resource_cache = ResourceCache[JsonObject](
-                tag=callback_tag, on_data=self._read_from_getter, on_update=self._update_error_state
-            )
+
             self._resource_cache.preload(self.config.file_path)
         else:
             self._static_additions = self._convert_additions(self.config.additions)
@@ -338,7 +338,6 @@ class GenericResolverRule(FieldManagerRule):
         return self._convert_additions(content)
 
     def _update_error_state(self, _cache_item: CacheItem[JsonObject]) -> None:
-        assert self._resource_cache
         resource_error = self._resource_cache.get_static_resource_error_state()
         if resource_error is None:
             self.clear_failed()
@@ -399,7 +398,9 @@ class GenericResolverRule(FieldManagerRule):
 
     def get_additions(self, event: JsonObject) -> JsonObject:
         """Returns additions from the resolve file"""
-        if self._resource_cache is None:
-            return self._static_additions
-        assert self.config.file_path is not None
-        return self._resource_cache.get_value(self.config.file_path, event)
+        if self.config.file_path is not None:
+            return self._resource_cache.get_value(self.config.file_path, event)
+        return self._static_additions
+
+    def shut_down(self) -> None:
+        self._resource_cache.clear()

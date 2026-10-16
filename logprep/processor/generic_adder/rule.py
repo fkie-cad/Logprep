@@ -312,19 +312,17 @@ class GenericAdderRule(Rule):
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
         self._used_uris: list[UriConfig] = []
-        self._resource_cache: ResourceCache[FieldValue] | None = None
+        self._resource_cache = ResourceCache[FieldValue](
+            on_data=self._fetch_and_cache_uri,
+            on_update=self._recompute_failure_state,
+        )
 
     def _fetch_and_cache_uri(self, getter: Getter) -> FieldValue:
         return getter.get_collection(content_field=self.config.content_field)
 
-    def init_generic_adder(self, job_tag: str) -> None:
+    def init_generic_adder(self) -> None:
         """Initializes the generic adder and assignes the job_tag for callback cleanup"""
-        assert self._resource_cache is None
-        self._resource_cache = ResourceCache[FieldValue](
-            tag=job_tag,
-            on_data=self._fetch_and_cache_uri,
-            on_update=self._recompute_failure_state,
-        )
+
         if self.config.only_first_existing_file:
             self._init_first_existing_file()
             return
@@ -333,7 +331,6 @@ class GenericAdderRule(Rule):
         self._resource_cache.preload(*(item.uri for item in self._used_uris))
 
     def _init_first_existing_file(self) -> None:
-        assert self._resource_cache is not None
         missing_files: list[str] = []
 
         for config in self.config.add_from_uri:
@@ -362,8 +359,6 @@ class GenericAdderRule(Rule):
             got {type(content).__name__}""")
 
     def _recompute_failure_state(self, _item: CacheItem[FieldValue]) -> None:
-        assert self._resource_cache is not None
-
         static_resource_error = self._resource_cache.get_static_resource_error_state()
 
         if static_resource_error is None:
@@ -385,3 +380,6 @@ class GenericAdderRule(Rule):
     def add(self, event: JsonObject) -> JsonObject:
         """Returns the fields to add"""
         return {key: value for items in self.get_additions(event) for key, value in items.items()}
+
+    def shut_down(self) -> None:
+        self._resource_cache.clear()
