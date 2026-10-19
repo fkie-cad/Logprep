@@ -116,7 +116,7 @@ class DomainResolver(Processor):
            :title: |PROCESSOR| - Max Cached Domains
         """
 
-        timeout_block_time: float = field(default=5.0, validator=validators.instance_of(float))
+        timeout_block_minutes: float = field(default=5.0, validator=validators.instance_of(float))
         """Minutes after which a timed out domain can be resolved again."""
 
         max_caching_days: int = field(validator=validators.instance_of(int))
@@ -124,7 +124,7 @@ class DomainResolver(Processor):
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
         repeatedly) and the load on subsequent components (i.e. Logstash or Opensearch).
         Setting the caching days to Null deactivates the caching. In case the cache size has been
-        exceeded (see `domain_resolver.max_cached_domains`),the oldest cached resolved domains will
+        exceeded (see `domain_resolver.max_cached_domains`), the oldest cached resolved domains will
         be discarded first.Thus, it is possible that a domain is re-added to the cache before
         max_caching_days has elapsed if it was discarded due to the size limit."""
 
@@ -229,7 +229,7 @@ class DomainResolver(Processor):
         self._dns_resolver.timeout = self.config.timeout
         self._dns_resolver.lifetime = self.config.lifetime
 
-        cache_max_timedelta = timedelta(minutes=self.config.timeout_block_time).total_seconds()
+        cache_max_timedelta = timedelta(minutes=self.config.timeout_block_minutes).total_seconds()
         self._timeout_cache = Cache(
             max_items=self.config.max_cached_domains,
             max_timedelta=cache_max_timedelta,
