@@ -13,6 +13,7 @@
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
 * calculator: optimized runtime expression evaluation
 * docs: improve documentation around dynamic templating for `generic_adder`
+* docs: improve documentation around dynamic templating in `list_comparison` and `network_comparison` processors
 
 ### Bugfix
 * decoder: corrected rfc 5324 in docs to 5424
