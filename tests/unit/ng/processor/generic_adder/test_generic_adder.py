@@ -14,12 +14,11 @@ from aiohttp import web
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_adder.processor import GenericAdder
+from logprep.ng.util.getter import HttpGetter, RefreshableGetter
 from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
     ProcessingWarning,
 )
-from logprep.util.getter import HttpGetter, RefreshableGetter
-from tests.conftest import FIELD_VALUE_TEST_CASES
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
     dynamic_uri_failure_test_cases as non_ng_dynamic_uri_failure_test_cases,
@@ -54,7 +53,6 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         yield
         RefreshableGetter.reset()
 
-    @pytest.mark.skip("TBD, no problem in non-ng, but in ng some case(s) failing")
     @pytest.mark.parametrize("rule, event, expected, context", test_cases)
     async def test_generic_adder_testcases(self, rule, event, expected, context, provision_context):
         provision_context(context)
@@ -192,7 +190,6 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             "enrichment": response_content,
         }
 
-    @pytest.mark.skip("!!! Fix me !!!")
     async def test_shutdown_removes_dynamic_uri_callbacks(self, aiohttp_server):
         async def handler(_: web.Request) -> web.Response:
             return web.json_response({"value": 1})
@@ -227,7 +224,6 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         assert shared.callbacks == []
         assert shared.cleanup_callbacks == []
 
-    @pytest.mark.skip("!!! Fix me !!!")
     async def test_dynamic_url_failure_is_event_scoped(self, aiohttp_server):
         async def handler(request: web.Request) -> web.Response:
             tenant = request.match_info["tenant"]

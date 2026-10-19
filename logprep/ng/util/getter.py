@@ -789,7 +789,7 @@ class FileGetter(Getter):
     async def _get_raw(self) -> tuple[bytes, ContentType | None]:
         """Open file and return its binary content and detected content type"""
         path = Path(self.target)
-        raw_content = await asyncio.to_thread(path.read_bytes)
+        raw_content = path.read_bytes()
 
         match path.suffix:
             case ".txt":

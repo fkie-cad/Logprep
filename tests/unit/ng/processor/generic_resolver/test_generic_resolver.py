@@ -6,6 +6,7 @@
 import json
 from copy import deepcopy
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from aiohttp import web
@@ -54,48 +55,17 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         expected,
         context,
         provision_context,
-        aiohttp_server,
     ):
         config = deepcopy(self.CONFIG)
-        rule = deepcopy(rule)
-
         if config.get("tree_config"):
             config["tree_config"] = str(Path(config["tree_config"]).resolve())
-
-        http_context = {
-            path: response
-            for path, response in context.items()
-            if path.startswith(("http://", "https://"))
-        }
-        file_context = {
-            path: response
-            for path, response in context.items()
-            if not path.startswith(("http://", "https://"))
-        }
-
-        provision_context(file_context)
-
-        if http_context:
-            _, response = next(iter(http_context.items()))
-
-            async def handler(_: web.Request) -> web.Response:
-                return web.json_response(response["body"])
-
-            app = web.Application()
-            app.router.add_get("/resolve-mapping", handler)
-            server = await aiohttp_server(app)
-
-            rule["generic_resolver"]["resolve_from_file"]["path"] = str(
-                server.make_url("/resolve-mapping")
-            )
-
         config["rules"] = [rule]
+        provision_context(context)
 
-        processor = Factory.create({"test instance": config})
         log_event = LogEvent(event, original=b"", input_meta=InputMeta())
 
-        await processor.setup()
-        await processor.process(log_event)
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
@@ -106,46 +76,16 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         context,
         error_message,
         provision_context,
-        aiohttp_server,
     ):
-        rule = deepcopy(rule)
+        config = deepcopy(self.CONFIG)
+        if config.get("tree_config"):
+            config["tree_config"] = str(Path(config["tree_config"]).resolve())
+        config["rules"] = [rule]
+        provision_context(context)
 
-        http_context = {
-            path: response
-            for path, response in context.items()
-            if path.startswith(("http://", "https://"))
-        }
-        file_context = {
-            path: response
-            for path, response in context.items()
-            if not path.startswith(("http://", "https://"))
-        }
-
-        if file_context:
-            provision_context(file_context)
-
-        if http_context:
-            _, response = next(iter(http_context.items()))
-
-            async def handler(_: web.Request) -> web.Response:
-                return web.json_response(response["body"])
-
-            app = web.Application()
-            app.router.add_get("/resolve-mapping", handler)
-            server = await aiohttp_server(app)
-
-            rule["generic_resolver"]["resolve_from_file"]["path"] = str(
-                server.make_url("/resolve-mapping")
-            )
-
-        processor = self._create_test_instance(
-            {
-                "rules": [rule],
-            }
-        )
-
+        instance = self._create_test_instance(config)
         with pytest.raises(InvalidConfigurationError, match=error_message):
-            await processor.setup()
+            await instance.setup()
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     async def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
@@ -521,14 +461,9 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         assert self.object.metrics.cached_results.value == 1
         assert self.object.metrics.num_cache_entries.value == 2
 
-    @pytest.mark.skip("!!! Fix me !!!")
     async def test_resolve_from_cache_with_cache_smaller_than_results(self):
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 1
-
-        event_1 = {"to_resolve": "foo"}
-        event_2 = {"to_resolve": "bar"}
-
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -537,6 +472,9 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             },
         }
         config["rules"] = [rule]
+
+        event_1 = {"to_resolve": "foo"}
+        event_2 = {"to_resolve": "bar"}
 
         async with self.create_and_setup_processor(config_patch=config) as instance:
             await instance.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
@@ -547,9 +485,9 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
             await instance.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
 
-            assert instance.metrics.new_results.value == 2
+            assert instance.metrics.new_results.value == 1
             assert instance.metrics.cached_results.value == 1
-            assert instance.metrics.num_cache_entries.value == 2
+            assert instance.metrics.num_cache_entries.value == 1
 
             await instance.process(LogEvent(event_2, original=b"", input_meta=InputMeta()))
 
@@ -573,7 +511,9 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         }
         config["rules"] = [rule]
 
-        async with self.create_and_setup_processor(config_patch=config) as instance:
+        async with self.create_and_setup_processor(
+            config_patch=config, mock_metrics=False
+        ) as instance:
             await instance.process(LogEvent(event_1, original=b"", input_meta=InputMeta()))
 
             assert instance.metrics.new_results.value == 0

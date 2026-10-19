@@ -47,7 +47,7 @@ class RuleLoader:
             case str():
                 path = Path(self.source)
 
-                if await asyncio.to_thread(path.is_dir):
+                if path.is_dir():
                     rules.extend(
                         await DirectoryRuleLoader(
                             self.source,
@@ -55,7 +55,7 @@ class RuleLoader:
                         ).load_rules()
                     )
 
-                if await asyncio.to_thread(path.is_file):
+                if path.is_file():
                     rules.extend(
                         await FileRuleLoader(
                             self.source,

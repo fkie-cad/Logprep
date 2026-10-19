@@ -34,8 +34,8 @@ import logging
 import re
 import tempfile
 import typing
-from collections.abc import AsyncIterator, Sequence
-from contextlib import asynccontextmanager
+from collections.abc import Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -51,18 +51,15 @@ from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_valu
 logger = logging.getLogger("Grokker")
 
 
-@asynccontextmanager
-async def _temporary_directory(*, suffix: str = "") -> AsyncIterator[Path]:
+@contextmanager
+def _temporary_directory(*, suffix: str = "") -> typing.Iterator[Path]:
     """Create and clean up a temporary directory without blocking the event loop."""
-    temporary_directory = await asyncio.to_thread(
-        tempfile.TemporaryDirectory,
-        suffix=suffix,
-    )
+    temporary_directory = tempfile.TemporaryDirectory(suffix=suffix)
 
     try:
         yield Path(temporary_directory.name)
     finally:
-        await asyncio.to_thread(temporary_directory.cleanup)
+        temporary_directory.cleanup()
 
 
 class Grokker(FieldManager):
@@ -106,7 +103,7 @@ class Grokker(FieldManager):
             try:
                 result = grok.match(field_value)
             except TimeoutError as error:
-                self._handle_missing_fields(event, rule, rule.actions.keys(), source_values)
+                self._handle_missing_fields(event, rule, list(rule.actions.keys()), source_values)
                 raise ProcessingError(
                     f"Grok pattern timeout for source field: '{dotted_field}' in rule '{rule}', "
                     f"the grok pattern might be too complex.",
@@ -124,7 +121,7 @@ class Grokker(FieldManager):
                 merge_with_target=rule.merge_with_target,
                 overwrite_target=rule.overwrite_target,
             )
-        if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
+        if self._handle_missing_fields(event, rule, list(rule.actions.keys()), source_values):
             return
         if not any_match:
             raise ProcessingWarning("no grok pattern matched", rule, event)
@@ -136,7 +133,7 @@ class Grokker(FieldManager):
         custom_patterns_dir = self.config.custom_patterns_dir
 
         if re.search(r"http(s)?:\/\/.*?\.zip", custom_patterns_dir):
-            async with _temporary_directory(suffix="grok") as patterns_tmp_path:
+            with _temporary_directory(suffix="grok") as patterns_tmp_path:
                 await self._download_zip_file(
                     source_file=custom_patterns_dir,
                     target_dir=patterns_tmp_path,

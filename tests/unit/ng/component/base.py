@@ -4,7 +4,7 @@ import itertools
 import typing
 from abc import ABC
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import ExitStack, asynccontextmanager
 from functools import partial
 from logging import getLogger
 from typing import Callable, Generic, Iterable, TypeVar
@@ -18,6 +18,7 @@ from attrs.exceptions import FrozenInstanceError
 from logprep.factory import Factory
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
+from logprep.processor.base.rule import Rule
 from logprep.util.helper import camel_to_snake
 
 ComponentTypeT = TypeVar("ComponentTypeT", bound=Component)
@@ -51,18 +52,31 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
         *,
         config_patch: dict | None = None,
         override_shared: bool = False,
+        mock_metrics: bool = False,
     ) -> AsyncGenerator[ComponentTypeT]:
-        instance = self._create_test_instance(config_patch=config_patch)
+        with ExitStack() as stack:
+            if mock_metrics:
+                for cls in (Component, Rule):
+                    stack.enter_context(
+                        mock.patch.object(
+                            cls,
+                            "metrics",
+                            new_callable=mock.PropertyMock,
+                            return_value=mock.MagicMock(),
+                        )
+                    )
 
-        try:
-            await instance.setup()
+            instance = self._create_test_instance(config_patch=config_patch)
 
-            if override_shared:
-                self.object = instance
+            try:
+                await instance.setup()
 
-            yield instance
-        finally:
-            await instance.shut_down()
+                if override_shared:
+                    self.object = instance
+
+                yield instance
+            finally:
+                await instance.shut_down()
 
     def _create_test_instance(self, config_patch: dict | None = None) -> ComponentTypeT:
         config = self.CONFIG | (config_patch if config_patch is not None else {})

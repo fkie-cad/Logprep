@@ -20,9 +20,8 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
         "rules": ["tests/testdata/unit/replacer/rules_1", "tests/testdata/unit/replacer/rules_2"],
     }
 
-    @pytest.mark.skip("!!! Fix me !!!")
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    async def test_testcases(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context, provision_context):
         config = deepcopy(self.CONFIG)
         config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
@@ -30,7 +29,7 @@ class TestReplacer(BaseProcessorTestCase[Replacer]):
         async with self.create_and_setup_processor(config_patch=config) as instance:
             await instance.process(event)
 
-        assert event.data == expected, testcase
+        assert event.data == expected
 
     async def test_template_is_none_does_nothing(self):
         rule = {

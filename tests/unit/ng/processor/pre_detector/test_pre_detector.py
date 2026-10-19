@@ -380,7 +380,6 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         sre_event = event.extra_data[0]
         assert sre_event.data.get("@timestamp") == "2024-08-12T12:13:04Z"
 
-    @pytest.mark.skip("!!! Fix me !!!")
     @pytest.mark.parametrize(
         "testcase, rule, timestamp, expected",
         [
@@ -437,17 +436,18 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         ],
     )
     async def test_timestamp_is_normalized(self, testcase, rule, timestamp, expected):
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {
             "@timestamp": timestamp,
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        async with self.create_and_setup_processor() as instance:
-            event = await instance.process(event)
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            detection_results = await instance.process(event)
 
-        sre_event = event.extra_data[0]
-        assert sre_event.data.get("@timestamp") == expected, testcase
+        assert detection_results.data.get("@timestamp") == expected
 
     async def test_custom_timestamp_field_can_be_used(self):
         rule = {
