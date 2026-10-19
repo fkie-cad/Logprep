@@ -41,6 +41,7 @@ from dns.resolver import Resolver, NXDOMAIN, LifetimeTimeout, NoAnswer, NoNamese
 
 from logprep.ng.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
@@ -253,7 +254,11 @@ class DomainResolver(Processor):
 
         if not isinstance(domain_or_url_str, str):
             self.metrics.invalid_domains.inc(1)
-            return
+            raise ProcessingWarning(
+                f'Invalid domain "{domain_or_url_str}" in "{source_field}": Domain must be a string',
+                rule,
+                event,
+            )
 
         url = urlsplit(domain_or_url_str)
         domain = url.hostname
@@ -261,7 +266,11 @@ class DomainResolver(Processor):
             domain = url.path
         if not domain:
             self.metrics.invalid_domains.inc(1)
-            return
+            raise ProcessingWarning(
+                f'Invalid domain "{domain_or_url_str}" in "{source_field}": Could not be parsed',
+                rule,
+                event,
+            )
         self.metrics.total_urls.inc(1)
         if self.config.cache_enabled:
             result = self._resolve_with_cache(domain)

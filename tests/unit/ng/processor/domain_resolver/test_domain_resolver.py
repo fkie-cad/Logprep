@@ -267,6 +267,46 @@ class TestDomainResolver(BaseProcessorTestCase):
             await self.object.process(event)
         assert document == expected
 
+    async def test_domain_is_not_string(self):
+        await self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        fqdn = 123
+        await self._load_rule(rule)
+        document = {"fqdn": fqdn}
+        expected = {"fqdn": fqdn, "tags": ["_domain_resolver_failure"]}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            result = await self.object.process(event)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert 'Invalid domain "123" in "fqdn": Domain must be a string' in str(result.warnings[0])
+        assert document == expected
+
+    async def test_domain_without_hostname(self):
+        await self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        fqdn = "https://"
+        await self._load_rule(rule)
+        document = {"fqdn": fqdn}
+        expected = {"fqdn": fqdn, "tags": ["_domain_resolver_failure"]}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            result = await self.object.process(event)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert 'Invalid domain "https://" in "fqdn": Could not be parsed' in str(result.warnings[0])
+        assert document == expected
+
     @staticmethod
     def _mock_resolve_answer(expected_ip, mock_resolve):
         mock_answer = MagicMock()

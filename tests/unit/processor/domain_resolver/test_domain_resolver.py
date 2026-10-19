@@ -290,6 +290,42 @@ class TestDomainResolver(BaseProcessorTestCase):
             self.object.process(document)
         assert document == expected
 
+    def test_domain_is_not_string(self):
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        fqdn = 123
+        self._load_rule(rule)
+        document = {"fqdn": fqdn}
+        expected = {"fqdn": fqdn, "tags": ["_domain_resolver_failure"]}
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert 'Invalid domain "123" in "fqdn": Domain must be a string' in str(result.warnings[0])
+        assert document == expected
+
+    def test_domain_without_hostname(self):
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        fqdn = "https://"
+        self._load_rule(rule)
+        document = {"fqdn": fqdn}
+        expected = {"fqdn": fqdn, "tags": ["_domain_resolver_failure"]}
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert 'Invalid domain "https://" in "fqdn": Could not be parsed' in str(result.warnings[0])
+        assert document == expected
+
     @staticmethod
     def _mock_resolve_answer(expected_ip, mock_resolve):
         mock_answer = MagicMock()
