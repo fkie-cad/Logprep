@@ -74,6 +74,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         "logprep_domain_resolver_timeouts",
         "logprep_domain_resolver_invalid_domains",
         "logprep_domain_resolver_unknown_domains",
+        "logprep_domain_resolver_no_answer_domains",
         "logprep_domain_resolver_timeouts_cached",
     ]
 

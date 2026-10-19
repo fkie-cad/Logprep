@@ -4,6 +4,7 @@
 * domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
 * domain_resolver: remove `debug_cache`
 * domain_resolver: `source_fields` must be a list with exactly one element
+* domain_resolver: add `no_answer_domains` metric to domain resolver
 
 ### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
