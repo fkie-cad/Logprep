@@ -116,6 +116,9 @@ class DomainResolver(Processor):
 
         .. security-best-practice::
            :title: |PROCESSOR| - Max Cached Domains
+
+           Ensure to set this to a reasonable value to avoid excessive memory usage
+           and OOM situations by the domain resolver cache.
         """
 
         timeout_block_minutes: float = field(default=5.0, validator=validators.instance_of(float))
