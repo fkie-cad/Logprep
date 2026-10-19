@@ -81,13 +81,13 @@ def test_events_pseudonymized_correctly(tmp_path, config: Configuration):
         expected_logprep_outputs = [
             event for event in expected_output if "pseudonym" not in event.keys()
         ]
-        output = Path(config.output["jsonl"]["output_file"]).read_bytes()
-        extra_output = Path(config.output["jsonl"]["output_file_custom"]).read_bytes()
-        error_output = Path(config.error_output["jsonl"]["output_file"]).read_bytes()
+        output_bytes = Path(config.output["jsonl"]["output_file"]).read_bytes()
+        extra_output_bytes = Path(config.output["jsonl"]["output_file_custom"]).read_bytes()
+        error_output_bytes = Path(config.error_output["jsonl"]["output_file"]).read_bytes()
         decoder = msgspec.json.Decoder()
-        output = decoder.decode_lines(output)
-        extra_output = decoder.decode_lines(extra_output)
-        error_output = decoder.decode_lines(error_output)
+        output = decoder.decode_lines(output_bytes)
+        extra_output = decoder.decode_lines(extra_output_bytes)
+        error_output = decoder.decode_lines(error_output_bytes)
         assert output, "should not be empty"
         assert len(error_output) == 0, "There shouldn't be any logprep errors"
         assert extra_output, "extra outputs should not be empty"

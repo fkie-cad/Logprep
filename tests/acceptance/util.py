@@ -178,7 +178,8 @@ def get_patched_runner(config_path):
     runner : Runner
         The patched logprep runner
     """
-    runner = Runner(Configuration.from_sources([config_path]))
+    config = Configuration.from_sources([config_path])
+    runner = Runner(config)
 
     # patch runner to stop on empty pipeline
     def keep_iterating():

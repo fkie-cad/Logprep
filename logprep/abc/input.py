@@ -12,6 +12,7 @@ from copy import deepcopy
 from functools import cached_property
 from hmac import HMAC
 from typing import Tuple
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
@@ -34,6 +35,7 @@ from logprep.util.helper import (
     get_field_value,
 )
 from logprep.util.preprocessor import (
+    LOGPREP_ID_FIELD,
     FullEventConfig,
     HmacConfig,
     PreprocessingConfig,
@@ -217,6 +219,8 @@ class Input(Connector):
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
         try:
+            event_id = self._generate_event_id(event)
+
             if self._add_full_event_to_target_field:
                 assert self.config.preprocessing.add_full_event_to_target_field is not None
                 self._write_full_event_to_target_field(
@@ -247,9 +251,40 @@ class Input(Connector):
                 self._add_env_enrichment_to_event(
                     event, self.config.preprocessing.enrich_by_env_variables
                 )
+
+            if event_id is not None:
+                event[LOGPREP_ID_FIELD] = event_id
+
         except (FieldExistsWarning, TimeParserException) as error:
             raise CriticalInputError(self, error.args[0], event) from error
         return event
+
+    def _generate_event_id(self, event: dict) -> str | None:
+        event_id: FieldValue | Missing = MISSING
+
+        if self.config.preprocessing.source_id.source_field is not None:
+            event_id = get_dotted_field_value_with_missing(
+                event, self.config.preprocessing.source_id.source_field
+            )
+
+        if event_id is MISSING and self.config.preprocessing.source_id.on_missing == "GENERATE":
+            event_id = uuid4().hex
+        elif event_id is MISSING and self.config.preprocessing.source_id.on_missing == "FAIL":
+            raise CriticalInputError(
+                self,
+                f"Event ID source field {self.config.preprocessing.source_id.source_field} is missing",
+                event,
+            )
+        elif event_id is MISSING and self.config.preprocessing.source_id.on_missing == "IGNORE":
+            return None
+        elif not isinstance(event_id, str) or event_id == "":
+            raise CriticalInputError(
+                self,
+                f"Event ID source field {self.config.preprocessing.source_id.source_field} must contain a string; got {type(event_id)}",
+                event,
+            )
+
+        return event_id
 
     def batch_finished_callback(self) -> None:
         """Can be called by output connectors after processing a batch of one or more records."""

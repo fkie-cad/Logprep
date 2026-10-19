@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from logprep.util.configuration import Configuration
+from logprep.util.configuration import Configuration, LoggerConfig
 from tests.acceptance.util import run_logprep, wait_for_output
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
@@ -90,7 +90,10 @@ def test_error_output_errors_are_logged_if_error_output_has_an_error(
     tmp_path, config: Configuration
 ):
     config.input = {
-        "dummy": {"type": "dummy_input", "documents": [{"something": "yeah"}, "Exception"]}
+        "dummy": {
+            "type": "dummy_input",
+            "documents": [{"something": "yeah"}, "Exception"],
+        }
     }
     config.error_output = {"dummy": {"type": "dummy_output", "exceptions": ["Exception"]}}
     config.error_backlog_size = 1
@@ -114,9 +117,7 @@ def test_error_output_flushes_if_timeout_is_reached(tmp_path, config: Configurat
             "documents": [{"something": "yeah"}],
         }
     }
-    config.logger = {
-        "level": "DEBUG",
-    }
+    config.logger = LoggerConfig(level="DEBUG")
     config.error_output = {error_output_name: {"type": "dummy_output", "timeout": 1}}
     config.error_backlog_size = 10000
     config.output.update({"kafka": {"type": "dummy_output", "default": False}})

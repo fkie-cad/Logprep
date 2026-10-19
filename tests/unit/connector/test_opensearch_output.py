@@ -28,6 +28,62 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         "timeout": 5000,
     }
 
+    @pytest.mark.parametrize("value", ["true", 1, None])
+    def test_rejects_invalid_use_event_id_as_doc_id(self, value):
+        with pytest.raises(TypeError, match="use_event_id_as_doc_id"):
+            Factory.create({"output": {**self.CONFIG, "use_event_id_as_doc_id": value}})
+
+    @pytest.mark.parametrize(
+        "config_patch, document, expected_id",
+        [
+            ({}, {"event_id": "event-123"}, None),
+            ({}, {"event_id": "event-123", "_id": "explicit-id"}, "explicit-id"),
+            (
+                {"use_event_id_as_doc_id": True},
+                {"event_id": "event-123", "_id": "explicit-id"},
+                "event-123",
+            ),
+            ({"use_event_id_as_doc_id": True}, {}, None),
+            ({"use_event_id_as_doc_id": True}, {"event_id": None}, None),
+            ({"use_event_id_as_doc_id": True}, {"_id": "explicit-id"}, "explicit-id"),
+        ],
+    )
+    def test_store_uses_event_id_as_document_id(self, config_patch, document, expected_id):
+        self.object = Factory.create(
+            {
+                "output": {
+                    **self.CONFIG,
+                    "message_backlog_size": 2,
+                    "target_id_field": "event_id",
+                    **config_patch,
+                }
+            }
+        )
+        self.object.store(document)
+        assert self.object._message_backlog[0].get("_id") == expected_id
+
+    @pytest.mark.parametrize(
+        "target_field, document",
+        [
+            ("@metadata.event.id", {"@metadata": {"event": {"id": "event-123"}}}),
+            ("trace.id", {"trace": {"id": "event-123"}}),
+            (r"event\.id", {"event.id": "event-123"}),
+        ],
+    )
+    def test_store_reads_dotted_event_id_for_document_id(self, target_field, document):
+        self.object = Factory.create(
+            {
+                "output": {
+                    **self.CONFIG,
+                    "message_backlog_size": 2,
+                    "use_event_id_as_doc_id": True,
+                    "target_id_field": target_field,
+                }
+            }
+        )
+        self.object.store(document)
+        assert self.object._message_backlog[0].get("_id") == "event-123"
+
     def test_describe_returns_output(self):
         assert (
             self.object.description
