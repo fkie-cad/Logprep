@@ -4,6 +4,7 @@ import time
 from datetime import timedelta
 
 from collections import OrderedDict
+from collections.abc import Hashable
 from enum import Enum, auto
 from typing import TypeVar, Generic
 
@@ -40,7 +41,7 @@ class Cache(Generic[T]):
     ):
         self._max_items = max_items
         self._max_timedelta = max_timedelta
-        self._store = OrderedDict[T]()
+        self._store = OrderedDict[Hashable, _CacheEntry]()
         super().__init__()
 
     def size(self):
