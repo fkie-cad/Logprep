@@ -6,7 +6,7 @@ from datetime import timedelta
 
 import pytest
 
-from logprep.util.cache import Cache
+from logprep.util.cache import Cache, NOT_CACHED
 
 
 @pytest.fixture(name="cache")
@@ -15,9 +15,6 @@ def cache_fixture():
 
 
 class TestCache:
-    def test_is_ordered_dict(self, cache: Cache):
-        assert isinstance(cache, OrderedDict)
-
     def test_init_default(self):
         default_cache = Cache()
         assert default_cache._max_items == 1000000
@@ -28,48 +25,61 @@ class TestCache:
         assert cache._max_timedelta == 0.1
 
     def test_new_cache_is_empty(self, cache: Cache):
-        assert not cache
+        assert not cache._store
 
     def test_is_cached_nonzero_deltatime(self, cache: Cache):
         for _ in range(3):
-            assert not cache.is_cached("foo")
+            assert cache.get("foo") == NOT_CACHED
             cache.add("foo", None)
-            assert cache.is_cached("foo")
+            assert cache.get("foo") != NOT_CACHED
             time.sleep(0.1)  # nosemgrep
 
     def test_is_cached_zero_deltatime(self, cache: Cache):
         cache._max_timedelta = 0
         for _ in range(10):
-            assert not cache.is_cached("foo")
+            assert cache.get("foo") == NOT_CACHED
 
     def test_max_items_add(self, cache):
         extra_items = 3
-        cache_hash = hash(frozenset(cache))
+        cache_hash = hash(frozenset(cache._store))
         for i in range(cache._max_items + extra_items):
             cache.add(i, None)
-            new_cache_hash = hash(frozenset(cache))
+            new_cache_hash = hash(frozenset(cache._store))
             assert cache_hash != new_cache_hash
             cache_hash = new_cache_hash
-            assert len(cache) == min(i + 1, cache._max_items)
-        assert set(cache.keys()) == set(range(extra_items, cache._max_items + extra_items))
+            assert len(cache._store) == min(i + 1, cache._max_items)
+        assert set(cache._store.keys()) == set(range(extra_items, cache._max_items + extra_items))
 
-    def test_add_refreshes(self, cache: Cache):
-        assert not cache.is_cached("foo")
+    def test_add_refreshes_on_add(self, cache: Cache):
+        assert cache.get("foo") == NOT_CACHED
         cache.add("foo", None)
-        assert cache.is_cached("foo")
-        old_decay_time = cache["foo"].insertion_time
+        assert cache.get("foo") is None
+        old_decay_time = cache._store["foo"].insertion_time
         time.sleep(0.1)
         cache.add("foo", None)
-        new_decay = cache["foo"].insertion_time
+        new_decay = cache._store["foo"].insertion_time
         assert new_decay is not None
         assert old_decay_time is not None
         assert new_decay > old_decay_time
 
-    def test_get_cached_value(self, cache: Cache):
-        assert cache.get_cached_value("foo") is None
+    def test_add_optionally_refreshes_on_get(self, cache: Cache):
         cache.add("foo", None)
-        assert cache.get_cached_value("foo") is None
+        original_insertion_time = cache._store["foo"].insertion_time
 
-        assert cache.get_cached_value("bar") is None
+        cache.get("foo")
+        assert cache._store["foo"].insertion_time == original_insertion_time
+
+        cache.get("bar", refresh_lifetime=True)
+        assert cache._store["foo"].insertion_time == original_insertion_time
+
+        cache.get("foo", refresh_lifetime=True)
+        assert cache._store["foo"].insertion_time > original_insertion_time
+
+    def test_get_cached_value(self, cache: Cache):
+        assert cache.get("foo") == NOT_CACHED
+        cache.add("foo", None)
+        assert cache.get("foo") is None
+
+        assert cache.get("bar") == NOT_CACHED
         cache.add("bar", "baz")
-        assert cache.get_cached_value("bar") == "baz"
+        assert cache.get("bar") == "baz"

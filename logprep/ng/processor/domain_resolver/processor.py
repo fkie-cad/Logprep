@@ -44,7 +44,7 @@ from logprep.metrics.metrics import CounterMetric
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.domain_resolver.rule import DomainResolverRule
-from logprep.util.cache import Cache
+from logprep.util.cache import Cache, NOT_CACHED
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import get_dotted_field_value, FieldValue
 
@@ -297,12 +297,13 @@ class DomainResolver(Processor):
     def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult | None:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
 
-        if self._domain_cache.is_cached(hash_string):
+        cached_resolved = self._domain_cache.get(hash_string)
+        if cached_resolved != NOT_CACHED:
             self.metrics.resolved_cached.inc(1)
             self._domain_cache.refresh_time_to_live(hash_string)
-            return self._domain_cache.get_cached_value(hash_string)
+            return cached_resolved
 
-        if self._timeout_cache.is_cached(hash_string):
+        if self._timeout_cache.get(hash_string) != NOT_CACHED:
             self.metrics.timeouts_cached.inc(1)
             return FailedResult(FailureType.TIMEOUT)
 

@@ -18,6 +18,7 @@ from logprep.ng.processor.domain_resolver.processor import (
 )
 
 from logprep.factory import Factory
+from logprep.util.cache import NOT_CACHED
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
@@ -76,14 +77,14 @@ class TestDomainResolver(BaseProcessorTestCase):
         with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = LifetimeTimeout
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            assert len(self.object._timeout_cache) == 0
+            assert self.object._timeout_cache.size() == 0
             await self.object.process(event)
             mock_resolve.assert_called_once()
             mock_resolve.side_effect = None
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            assert len(self.object._timeout_cache) == 1
+            assert self.object._timeout_cache.size() == 1
             await self.object.process(event)
-            assert len(self.object._timeout_cache) == 1
+            assert self.object._timeout_cache.size() == 1
             mock_resolve.assert_called_once()
         assert event.data.get("reoslved_ip") is None
 
@@ -118,11 +119,11 @@ class TestDomainResolver(BaseProcessorTestCase):
         with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = NXDOMAIN
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            assert not self.object._domain_cache.is_cached(hash_str)
+            assert self.object._domain_cache.get(hash_str) == NOT_CACHED
             await self.object.process(event)
             mock_resolve.assert_called_once()
-            assert self.object._domain_cache.is_cached(hash_str)
-            assert not self.object._domain_cache.is_cached("some_hash")
+            assert self.object._domain_cache.get(hash_str) != NOT_CACHED
+            assert self.object._domain_cache.get("some_hash") == NOT_CACHED
         assert document.get("reoslved_ip") is None
 
     async def test_url_to_ip_resolved_and_added(self):
@@ -181,7 +182,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             result = domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, SuccessResult)
             assert result.resolved_ip == "1.2.3.4"
-            assert len(domain_resolver._timeout_cache) == 0
+            assert domain_resolver._timeout_cache.size() == 0
 
         domain_resolver: DomainResolver = cast(DomainResolver, Factory.create({"resolver": config}))
         await domain_resolver.setup()
@@ -192,21 +193,21 @@ class TestDomainResolver(BaseProcessorTestCase):
             result = domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, FailedResult)
             assert result.failure_type == FailureType.TIMEOUT
-            assert len(domain_resolver._timeout_cache) == 1
+            assert domain_resolver._timeout_cache.size() == 1
 
         with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
             result = domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, FailedResult)
             assert result.failure_type == FailureType.TIMEOUT
-            assert len(domain_resolver._timeout_cache) == 1
+            assert domain_resolver._timeout_cache.size() == 1
 
             domain_resolver._timeout_cache.clear()
 
             result = domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, SuccessResult)
             assert result.resolved_ip == "1.2.3.4"
-            assert len(domain_resolver._timeout_cache) == 0
+            assert domain_resolver._timeout_cache.size() == 0
 
     async def test_do_nothing_if_source_not_in_event(self):
         await self.object.setup()
