@@ -91,7 +91,7 @@ class CacheItem(Generic[T]):
     """True if the CacheItem originates from a event-dynamic request"""
 
     @property
-    def has_unrecoverable_error(self):
+    def has_unrecoverable_error(self) -> bool:
         """True if the cache item has an error and is"""
         return self.error is not None and not (self.is_dynamic or self.will_refresh)
 
@@ -248,7 +248,6 @@ class ResourceCache(Generic[T]):
                 deduplication_key=key,
                 fnc_args=[getter, resolved_uri],
             )
-
             getter.add_cleanup_callback(
                 self._tag,
                 self._cleanup_callback,
@@ -345,10 +344,9 @@ class ResourceCache(Generic[T]):
         return self._handle_dynamic_uri(raw_uri, uri_template, event)
 
     def get_cache_item(self, uri: Uri, event: JsonObject | None = None) -> CacheItem[T]:
-        """Retrieve a value derived from the resource described from the passed
-        resource. To retrieve event-dynamic resources event data can be passed.
-        The function will never raise but communicate any errors via the returned
-        cache item.
+        """Retrieve a CacheItem from the passed uri and optional event data
+        for event-dynamic resources.
+        The function will never raise but communicate any errors via the returned CacheItem.
         """
         cached_resolved = self._resolve_cache.get(uri)
         if cached_resolved is None:
@@ -358,7 +356,12 @@ class ResourceCache(Generic[T]):
         assert isinstance(cached_resolved, DynamicUriTemplate)
         return self._handle_dynamic_uri(uri, cached_resolved, event)
 
-    def get_value(self, uri: Uri, event: JsonObject) -> T:
+    def get_value(self, uri: Uri, event: JsonObject | None = None) -> T:
+        """Get the value derived from the passed uri and event data
+        for event-dynamic resources.
+        The function will raise if an exception is associated with the CacheItem
+        associated to the resource.
+        """
         cache_item = self.get_cache_item(uri, event)
         if cache_item.error is not None:
             raise cache_item.error.exception

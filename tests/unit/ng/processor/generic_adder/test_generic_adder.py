@@ -12,10 +12,10 @@ import pytest
 import responses
 
 from logprep.factory import Factory
+from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_adder.processor import GenericAdder
 from logprep.processor.base.exceptions import (
-    InvalidRuleDefinitionError,
     ProcessingWarning,
 )
 from logprep.util.getter import HttpGetter
@@ -81,7 +81,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         assert event["tags"] == ["_generic_adder_failure"]
 
     async def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
-        with pytest.raises(InvalidRuleDefinitionError, match=r"Could not load generic_adder URI"):
+        with pytest.raises(InvalidResourcesError, match=r"'I_DO_NOT_EXIST'.*No.*file"):
             config = deepcopy(self.CONFIG)
             config["rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}

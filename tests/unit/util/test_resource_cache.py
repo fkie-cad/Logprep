@@ -7,7 +7,10 @@ import pytest
 import responses
 
 from logprep.abc.getter import Getter
-from logprep.util.getter import GetterNotFoundError, RefreshableGetterError
+from logprep.util.getter import (
+    GetterNotFoundError,
+    RefreshableGetterError,
+)
 from logprep.util.resource_cache import (
     ErrorContext,
     ResourceCache,
@@ -28,12 +31,10 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
         uri = "https://example.dd/foo"
         endpoint = responses.add(responses.GET, uri, body=resource_content)
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -54,6 +55,54 @@ class TestResourceCache:
         assert cleanup_callback.call_count == 0
 
     @responses.activate
+    def test_get_value_gives_same_content(self):
+
+        resource_content = str(uuid4())
+
+        def data_callback(getter: Getter):
+            return str(getter.get_raw(), encoding="utf-8")
+
+        update_callback = Mock()
+        cleanup_callback = Mock()
+        uri = "https://example.dd/foo"
+        endpoint = responses.add(responses.GET, uri, body=resource_content)
+
+        cache = ResourceCache[str](
+            on_data=data_callback,
+            on_cleanup=cleanup_callback,
+            on_update=update_callback,
+        )
+
+        result = cache.get_cache_item(uri)
+        assert id(cache.get_value(uri, {})) == id(result.content)
+        assert endpoint.call_count == 1
+
+    @responses.activate
+    def test_clear_removes_cached(self):
+
+        resource_content = str(uuid4())
+
+        def data_callback(getter: Getter):
+            return str(getter.get_raw(), encoding="utf-8")
+
+        update_callback = Mock()
+        cleanup_callback = Mock()
+        uri = "https://example.dd/foo"
+        endpoint = responses.add(responses.GET, uri, body=resource_content)
+
+        cache = ResourceCache[str](
+            on_data=data_callback,
+            on_cleanup=cleanup_callback,
+            on_update=update_callback,
+        )
+
+        old_content = cache.get_value(uri, {})
+        cache.clear()
+        new_content = cache.get_value(uri, {})
+        assert id(old_content) != id(new_content)
+        assert endpoint.call_count == 2
+
+    @responses.activate
     def test_get_resource_idempotent_trough_caching(self):
 
         resource_content = str(uuid4())
@@ -63,12 +112,10 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
         uri = "https://example.dd/foo"
         endpoint = responses.add(responses.GET, uri, body=resource_content)
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -92,13 +139,11 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
         raw_uri = "https://example.dd/${MY_ENV}"
         resolved_uri = "https://example.dd/foo"
         endpoint = responses.add(responses.GET, resolved_uri, body=resource_content)
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -124,11 +169,9 @@ class TestResourceCache:
         data_callback = Mock()
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
         raw_uri = "file:///root/${nested.value}/file.txt"
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -161,13 +204,11 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
         raw_uri = "https://example.dd/${nested.value}"
         resolved_uri = "https://example.dd/foo"
         endpoint = responses.add(responses.GET, resolved_uri, body=resource_content)
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -188,15 +229,38 @@ class TestResourceCache:
         assert cleanup_callback.call_count == 0
 
     @responses.activate
+    def test_dynamic_resource_is_cached(self):
+
+        resource_content = str(uuid4())
+
+        def data_callback(getter: Getter):
+            return str(getter.get_raw(), encoding="utf-8")
+
+        update_callback = Mock()
+        cleanup_callback = Mock()
+        raw_uri = "https://example.dd/${nested.value}"
+        resolved_uri = "https://example.dd/foo"
+        endpoint = responses.add(responses.GET, resolved_uri, body=resource_content)
+
+        cache = ResourceCache[str](
+            on_data=data_callback,
+            on_cleanup=cleanup_callback,
+            on_update=update_callback,
+        )
+        event_data = {"nested": {"value": "foo"}}
+        result = cache.get_cache_item(raw_uri, event_data)
+
+        assert id(cache.get_value(raw_uri, event_data)) == id(result.content)
+        assert endpoint.call_count == 1
+
+    @responses.activate
     def test_get_resource_error_on_resolve_uri_no_event(self):
 
         data_callback = Mock()
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -225,10 +289,8 @@ class TestResourceCache:
         data_callback = Mock()
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -274,10 +336,8 @@ class TestResourceCache:
         data_callback = Mock()
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -306,11 +366,9 @@ class TestResourceCache:
         data_callback = Mock()
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
         uri = "gopher://example.dd/foo"
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -339,12 +397,10 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
         uri = "https://example.dd/foo"
         endpoint = responses.add(responses.GET, uri, status=404)
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
@@ -368,6 +424,54 @@ class TestResourceCache:
         assert cleanup_callback.call_count == 0
 
     @responses.activate
+    def test_get_error_items(self):
+
+        def data_callback(getter: Getter):
+            return str(getter.get_raw(), encoding="utf-8")
+
+        update_callback = Mock()
+        cleanup_callback = Mock()
+        uri = "https://example.dd/foo"
+        responses.add(responses.GET, uri, status=404)
+
+        cache = ResourceCache[str](
+            on_data=data_callback,
+            on_cleanup=cleanup_callback,
+            on_update=update_callback,
+        )
+
+        result = cache.get_cache_item(uri)
+
+        error_items = cache.get_error_items()
+        assert len(error_items) == 1
+        assert error_items[0] == result
+
+    @responses.activate
+    def test_clear_error_items(self):
+
+        def data_callback(getter: Getter):
+            return str(getter.get_raw(), encoding="utf-8")
+
+        update_callback = Mock()
+        cleanup_callback = Mock()
+        uri = "https://example.dd/foo"
+        responses.add(responses.GET, uri, status=404)
+
+        cache = ResourceCache[str](
+            on_data=data_callback,
+            on_cleanup=cleanup_callback,
+            on_update=update_callback,
+        )
+
+        cache.get_cache_item(uri)
+
+        error_items_before_clear = cache.get_error_items()
+        assert len(error_items_before_clear) == 1
+        cache.clear_errors()
+        error_items_after_clear = cache.get_error_items()
+        assert len(error_items_after_clear) == 0
+
+    @responses.activate
     def test_get_resource_error_on_handle_content(self):
 
         class MyErrorType(Exception): ...
@@ -378,12 +482,10 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        tag = "my_cleanup_tag"
         uri = "https://example.dd/foo"
         endpoint = responses.add(responses.GET, uri, body="NOPE")
 
         cache = ResourceCache[str](
-            tag=tag,
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,

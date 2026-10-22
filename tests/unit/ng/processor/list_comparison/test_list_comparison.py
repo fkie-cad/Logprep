@@ -9,6 +9,7 @@ from unittest import mock
 import pytest
 import responses
 
+from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.list_comparison.processor import ListComparison
 from logprep.processor.base.exceptions import ProcessingWarning
@@ -16,7 +17,6 @@ from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
     HttpGetter,
     RefreshableGetter,
-    RefreshableGetterError,
     refresh_getters,
 )
 from tests.conftest import mock_env
@@ -276,7 +276,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 ],
             }
         )
-        with pytest.raises(ValueError, match="Content is not a list"):
+        with pytest.raises(InvalidResourcesError, match="Content is not a list"):
             await processor.setup()
 
     @responses.activate
@@ -850,7 +850,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         ):
             await processor.setup()
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert captured_sessions
 
         retries = captured_sessions[0].get_adapter(url).max_retries
@@ -891,7 +891,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         document = {"user": "Foo"}
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500
@@ -940,7 +940,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             document = {"user": "Foo"}
             await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-            assert isinstance(rule.data_error, RefreshableGetterError)
+            assert isinstance(rule.data_error, InvalidResourcesError)
             assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
             assert responses.calls[-1].request.url == url
             assert responses.calls[-1].response.status_code == 500

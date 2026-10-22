@@ -178,6 +178,7 @@ class TestGenericAdderRule:
         assert rule.add({}) == {"enrichment": response_content}
         assert len(responses.calls) == 1
         assert len(HttpGetter._target_to_data_caches[url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[url].cleanup_callbacks) == 1
 
     @responses.activate
     def test_content_field_is_applied_to_static_http_uri(self):
@@ -295,6 +296,7 @@ class TestGenericAdderRule:
             "first": response_content,
             "second": response_content,
         }
+        assert len(HttpGetter._target_to_data_caches[url].callbacks) == 1
 
     @responses.activate
     def test_dynamic_uri_caches_each_resolved_uri_independently(self):
