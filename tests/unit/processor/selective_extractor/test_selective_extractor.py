@@ -22,7 +22,6 @@ from attrs import field
 from logprep.abc.processor import Processor, ProcessorResult
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.util.helper import JsonObject
-from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -41,8 +40,13 @@ class MockedFile:
 
     # Alternative: @root_validator \n def any_of(cls, v): ?
     def __post_init__(self):
-        if self.source_path is None and self.body is None:
-            raise TypeError("Value needed for at least one: source_path, body")
+        has_source = self.source_path is not None
+        has_body = self.body is not None
+        if has_source == has_body:
+            if self.source_path is None and self.body is None:
+                raise TypeError("Value needed for at least one: source_path, body")
+            else:
+                raise ValueError("Setting both source and body is not allowed.")
 
 
 MockContext: TypeAlias = list[MockedFile | MockedUrl]
@@ -68,42 +72,16 @@ class ProcessorTestCase:
         return pytest.param(self.deepcpy, id=self.id)
 
 
-example_test_cases = [
-    pytest.param(
-        {
-            "filter": "message",
-            "selective_extractor": {
-                "source_fields": ["other.message", "not.exists", "message"],
-                "outputs": [{"opensearch": "index"}],
-                "ignore_missing_fields": False,
-            },
-        },
-        {"message": "test_message", "other": {"message": "my message value"}},
-        {
-            "message": "test_message",
-            "other": {"message": "my message value"},
-            "tags": ["_selective_extractor_missing_field_warning"],
-        },
-        id="test process extracts dotted fields and complains on missing fields",
-    )
-]
+@attrs.define(kw_only=True, slots=True, frozen=True)
+class ProcessorFailureTestCase(ProcessorTestCase):
+    error_message: str
 
-test_cases = normalize_test_cases(
-    *example_test_cases,
-    pytest.param(
-        {
-            "filter": "message",
-            "selective_extractor": {
-                "source_fields": ["other.message", "message", "not.exists"],
-                "outputs": [{"opensearch": "index"}],
-                "ignore_missing_fields": True,
-            },
-        },
-        {"message": "test_message", "other": {"message": "my message value"}},
-        {"message": "test_message", "other": {"message": "my message value"}},
-        id="test process extracts dotted fields and ignores missing fields",
-    ),
-)
+
+# example_test_cases = []
+
+# test_cases = normalize_test_cases(
+#     *example_test_cases,
+# )
 
 reworked_test_cases = [
     ProcessorTestCase(
@@ -123,6 +101,38 @@ reworked_test_cases = [
         #    MockedFile(refpath="blabla"),
         # ],
     ),
+    ProcessorTestCase(
+        id="test process extracts dotted fields and ignores missing fields",
+        rule={
+            "filter": "message",
+            "selective_extractor": {
+                "source_fields": ["other.message", "message", "not.exists"],
+                "outputs": [{"opensearch": "index"}],
+                "ignore_missing_fields": True,
+            },
+        },
+        event={"message": "test_message", "other": {"message": "my message value"}},
+        expected={"message": "test_message", "other": {"message": "my message value"}},
+        expected_extras=[{"message": "test_message", "other": {"message": "my message value"}}],
+    ),
+    ProcessorTestCase(
+        id="test process extracts dotted fields and complains on missing fields",
+        rule={
+            "filter": "message",
+            "selective_extractor": {
+                "source_fields": ["other.message", "not.exists", "message"],
+                "outputs": [{"opensearch": "index"}],
+                "ignore_missing_fields": False,
+            },
+        },
+        event={"message": "test_message", "other": {"message": "my message value"}},
+        expected={
+            "message": "test_message",
+            "other": {"message": "my message value"},
+            "tags": ["_selective_extractor_missing_field_warning"],
+        },
+        expected_extras=[{"message": "test_message", "other": {"message": "my message value"}}],
+    ),
 ]
 
 
@@ -141,8 +151,10 @@ def provision_context(
       ``content_type`` (e.g. ``text/plain``), in which case the body is still
       JSON-serialized but sent under that content type. Requests are automatically mocked
       using `responses`.
-    - ``file://`` or a bare path is written into an isolated working directory the
-      test is switched into, so a rule's relative file path resolves to it without
+    - MockedFile-Objects can be defined in one of two ways.
+        1) Via a json "body" directly from code
+        2) Via a path (string) to a file which gets copied
+      An isolated working directory is created, which the test is switched into, so a rule's relative file path resolves to it without
       any rewriting. The working directory is only changed when a tmp_path is provided.
     """
     project_root = pytestconfig.rootpath
@@ -175,16 +187,13 @@ def provision_context(
         yield _provision
 
 
-parametrized_test_cases = [c.case_to_param() for c in reworked_test_cases]
-
-
 class TestSelectiveExtractor(BaseProcessorTestCase):
     CONFIG = {
         "type": "selective_extractor",
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
 
-    @pytest.mark.parametrize(["case"], parametrized_test_cases)
+    @pytest.mark.parametrize("case", reworked_test_cases)
     def test_testcases(self, case: ProcessorTestCase, provision_context):
         provision_context(case.context)
         self._load_rule(case.rule)
