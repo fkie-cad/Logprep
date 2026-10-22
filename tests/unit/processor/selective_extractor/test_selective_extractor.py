@@ -6,6 +6,7 @@ import json
 import shutil
 import uuid
 from collections.abc import Callable, Generator
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, TypeAlias
 from unittest import mock
@@ -13,6 +14,9 @@ from unittest import mock
 import attrs
 import pytest
 import responses
+from _pytest.mark.structures import (
+    ParameterSet,  # pyright: ignore[reportPrivateImportUsage]
+)
 from attrs import field
 
 from logprep.abc.processor import Processor, ProcessorResult
@@ -44,8 +48,8 @@ class MockedFile:
 MockContext: TypeAlias = list[MockedFile | MockedUrl]
 
 
-@attrs.define(kw_only=True, slots=True)
-class Case:
+@attrs.define(kw_only=True, slots=True, frozen=True)
+class ProcessorTestCase:
     id: str
     rule: dict[str, Any]
     event: JsonObject
@@ -53,12 +57,15 @@ class Case:
     expected_extras: list[JsonObject] | None = field(default=None)
     context: MockContext | None = field(default=None)
 
-    def case_to_param(self):
-        return (
-            pytest.param(
-                self.rule, self.event, self.expected, self.expected_extras, self.context, self.id
-            ),
-        )
+    @property
+    def deepcpy(self) -> ProcessorTestCase:
+        return deepcopy(self)
+
+    def case_to_param(self) -> ParameterSet:
+        """Export a ProcessorTestCase as a Pytest-ParameterSet.
+        Uses a deepcopy to avoid problems with in-place changes on event.
+        """
+        return pytest.param(self.deepcpy, id=self.id)
 
 
 example_test_cases = [
@@ -99,7 +106,7 @@ test_cases = normalize_test_cases(
 )
 
 reworked_test_cases = [
-    Case(
+    ProcessorTestCase(
         id="Test process returns extracted fields",
         rule={
             "filter": "message",
@@ -111,17 +118,16 @@ reworked_test_cases = [
         event={"message": "test_message", "message2": "test_message2", "other": "field"},
         expected={"message": "test_message", "message2": "test_message2", "other": "field"},
         expected_extras=[{"message": "test_message", "message2": "test_message2"}],
-        context=[
-            MockedUrl(url="http://example.com", body='{"whatever":"json"}'),
-            # MockedPath(refpath="blabla"),
-        ],
+        # context=[
+        #    MockedUrl(url="http://example.com", body='{"whatever":"json"}'),
+        #    MockedFile(refpath="blabla"),
+        # ],
     ),
 ]
 
 
 @pytest.fixture
 def provision_context(
-    request,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     pytestconfig: pytest.Config,
@@ -141,9 +147,10 @@ def provision_context(
     """
     project_root = pytestconfig.rootpath
     with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
-        context = getattr(request.module, "context")
 
-        def _provision(context: MockContext = context) -> None:
+        def _provision(context: MockContext) -> None:
+            if not context:  # includes falsy values such as []
+                return
             for mock_item in context:
                 match mock_item:
                     case MockedUrl():
@@ -168,7 +175,7 @@ def provision_context(
         yield _provision
 
 
-parametrized_test_cases = [pytest.param(c, id=c.id) for c in reworked_test_cases]
+parametrized_test_cases = [c.case_to_param() for c in reworked_test_cases]
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
@@ -178,7 +185,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
     }
 
     @pytest.mark.parametrize(["case"], parametrized_test_cases)
-    def test_testcases(self, case: Case, provision_context):
+    def test_testcases(self, case: ProcessorTestCase, provision_context):
         provision_context(case.context)
         self._load_rule(case.rule)
         assert isinstance(self.object, Processor)

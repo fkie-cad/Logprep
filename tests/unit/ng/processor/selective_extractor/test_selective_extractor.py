@@ -12,7 +12,7 @@ from logprep.ng.processor.selective_extractor.filtered_event import FilteredEven
 from logprep.ng.processor.selective_extractor.processor import SelectiveExtractor
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.selective_extractor.test_selective_extractor import (
-    Case,
+    ProcessorTestCase,
 )
 from tests.unit.processor.selective_extractor.test_selective_extractor import (
     parametrized_test_cases as non_ng_test_cases,
@@ -28,7 +28,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
     }
 
     @pytest.mark.parametrize(["case"], test_cases)
-    async def test_testcases(self, case: Case, provision_context_override):
+    async def test_testcases(self, case: ProcessorTestCase, provision_context_override):
         provision_context_override(case.context)
         await self._load_rule(case.rule)
         event = LogEvent(case.event, original=b"", input_meta=InputMeta())
