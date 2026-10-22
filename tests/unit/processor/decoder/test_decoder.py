@@ -8,9 +8,10 @@ import pytest
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.processor.decoder.decoders import parse_logfmt
 from logprep.util.typing import is_list_of
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [
+example_test_cases = [
     pytest.param(
         {
             "filter": "message",
@@ -24,7 +25,7 @@ test_cases = [
             "message": '{"to_decode": "decode value"}',
             "new_field": {"to_decode": "decode value"},
         },
-        id="decodes_simple_json_to_target_field",
+        id="decodes simple json to target field",
     ),
     pytest.param(
         {
@@ -39,73 +40,7 @@ test_cases = [
             "message": '{"to.decode": "decode value"}',
             "new_field": {"to.decode": "decode value"},
         },
-        id="decodes_simple_json_to_target_field_dotted",
-    ),
-    pytest.param(
-        {
-            "filter": "json_message OR escaped_message",
-            "decoder": {
-                "mapping": {
-                    "json_message": "json_field",
-                    "escaped_message": "escaped_field",
-                }
-            },
-        },
-        {
-            "escaped_message": '{"to_decode": "decode value"}',
-            "json_message": '{"json_decode": "json_value"}',
-        },
-        {
-            "escaped_message": '{"to_decode": "decode value"}',
-            "json_message": '{"json_decode": "json_value"}',
-            "json_field": {"json_decode": "json_value"},
-            "escaped_field": {"to_decode": "decode value"},
-        },
-        id="decodes_json_with_mapping_to_corresponding_target_fields",
-    ),
-    pytest.param(
-        {
-            "filter": "json\\.message OR escaped\\.message",
-            "decoder": {
-                "mapping": {
-                    "json\\.message": "json\\.field",
-                    "escaped\\.message": "escaped\\.field",
-                }
-            },
-        },
-        {
-            "escaped.message": '{"to.decode": "decode value"}',
-            "json.message": '{"json.decode": "json.value"}',
-        },
-        {
-            "escaped.message": '{"to.decode": "decode value"}',
-            "json.message": '{"json.decode": "json.value"}',
-            "json.field": {"json.decode": "json.value"},
-            "escaped.field": {"to.decode": "decode value"},
-        },
-        id="decodes_json_with_mapping_to_corresponding_target_fields_dotted",
-    ),
-    pytest.param(
-        {
-            "filter": "json\\.message\\\\ OR escaped\\.message\\\\",
-            "decoder": {
-                "mapping": {
-                    "json\\.message\\\\": "json\\.field\\\\",
-                    "escaped\\.message\\\\": "escaped\\.field\\\\",
-                }
-            },
-        },
-        {
-            "escaped.message\\": '{"to.decode": "decode value"}',
-            "json.message\\": '{"json.decode": "json.value"}',
-        },
-        {
-            "escaped.message\\": '{"to.decode": "decode value"}',
-            "json.message\\": '{"json.decode": "json.value"}',
-            "json.field\\": {"json.decode": "json.value"},
-            "escaped.field\\": {"to.decode": "decode value"},
-        },
-        id="decodes_json_with_mapping_to_corresponding_target_fields_dotted_and_backslashes",
+        id="decodes simple json to target field dotted",
     ),
     pytest.param(
         {
@@ -118,53 +53,7 @@ test_cases = [
         },
         {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
         {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "new_field": "this,is,the,message"},
-        id="decodes_simple_base64",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "source_fields": ["message"],
-                "target_field": "new_field",
-                "source_format": "base64",
-                "delete_source_fields": True,
-            },
-        },
-        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
-        {"new_field": "this,is,the,message"},
-        id="decodes_simple_base64_and_removes_source_field",
-    ),
-    pytest.param(
-        {
-            "filter": "message1",
-            "decoder": {
-                "mapping": {"message1": "new_field1", "message2": "new_field2"},
-                "source_format": "base64",
-                "delete_source_fields": True,
-            },
-        },
-        {
-            "message1": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
-            "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
-        },
-        {"new_field1": "this,is,the,message", "new_field2": "this,is,the,message"},
-        id="decodes_simple_base64_and_removes_source_fields_with_mapping",
-    ),
-    pytest.param(
-        {
-            "filter": "message1",
-            "decoder": {
-                "mapping": {"message1": "message1", "message2": "message2"},
-                "source_format": "base64",
-                "overwrite_target": True,
-            },
-        },
-        {
-            "message1": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
-            "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
-        },
-        {"message1": "this,is,the,message", "message2": "this,is,the,message"},
-        id="decodes_simple_base64_and_overwrites_source_fields",
+        id="decodes simple base64",
     ),
     pytest.param(
         {
@@ -220,6 +109,276 @@ test_cases = [
             },
         },
         id="parse nginx",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0"
+        },
+        {
+            "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0",
+            "parsed": {
+                "host": "mymachine",
+                "ident": "su",
+                "message": "'su root' failed for user on /dev/pts/0",
+                "pid": "12345",
+                "pri": "34",
+                "time": "Oct 3 10:15:32",
+            },
+        },
+        id="parse syslog rfc 3164",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164_local",
+                "overwrite_target": True,
+            },
+        },
+        {"message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0"},
+        {
+            "message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0",
+            "parsed": {
+                "ident": "su",
+                "message": "'su root' failed for user on /dev/pts/0",
+                "pid": "12345",
+                "pri": "34",
+                "time": "Oct 3 10:15:32",
+            },
+        },
+        id="parse syslog rfc 3164 local",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc5424",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0"
+        },
+        {
+            "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0",
+            "parsed": {
+                "host": "mymachine.example.com",
+                "ident": "su",
+                "pid": "12345",
+                "message": "'su root' failed for user on /dev/pts/0",
+                "pri": "34",
+                "time": "2025-01-03T14:07:15.003Z",
+                "msgid": "ID47",
+                "extradata": "-",
+            },
+        },
+        id="parse syslog rfc 5424",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "logfmt",
+                "overwrite_target": True,
+            },
+        },
+        {"message": 'level=INFO host=Ubuntu msg="Connected to PostgreSQL database"'},
+        {
+            "message": 'level=INFO host=Ubuntu msg="Connected to PostgreSQL database"',
+            "parsed": {
+                "host": "Ubuntu",
+                "level": "INFO",
+                "msg": "Connected to PostgreSQL database",
+            },
+        },
+        id="parse logfmt",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "cri",
+                "overwrite_target": True,
+            },
+        },
+        {"message": "2019-04-30T02:12:41.8443515Z stdout F message"},
+        {
+            "message": "2019-04-30T02:12:41.8443515Z stdout F message",
+            "parsed": {
+                "stream": "stdout",
+                "flags": "F",
+                "message": "message",
+                "timestamp": "2019-04-30T02:12:41.8443515Z",
+            },
+        },
+        id="parse cri",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "docker",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}'
+        },
+        {
+            "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}',
+            "parsed": {
+                "stream": "stderr",
+                "output": "log message",
+                "timestamp": "2019-04-30T02:12:41.8443515Z",
+            },
+        },
+        id="parse docker",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "message"},
+                "source_format": "decolorize",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": "ls\r\n\x1b[00m\x1b[01;31mexamplefile.zip\x1b[00m\r\n\x1b[01;31m",
+        },
+        {
+            "message": "ls\r\nexamplefile.zip\r\n",
+        },
+        id="decolorize simple",
+    ),
+]
+
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    pytest.param(
+        {
+            "filter": "json_message OR escaped_message",
+            "decoder": {
+                "mapping": {
+                    "json_message": "json_field",
+                    "escaped_message": "escaped_field",
+                }
+            },
+        },
+        {
+            "escaped_message": '{"to_decode": "decode value"}',
+            "json_message": '{"json_decode": "json_value"}',
+        },
+        {
+            "escaped_message": '{"to_decode": "decode value"}',
+            "json_message": '{"json_decode": "json_value"}',
+            "json_field": {"json_decode": "json_value"},
+            "escaped_field": {"to_decode": "decode value"},
+        },
+        id="decodes json with mapping to corresponding target fields",
+    ),
+    pytest.param(
+        {
+            "filter": "json\\.message OR escaped\\.message",
+            "decoder": {
+                "mapping": {
+                    "json\\.message": "json\\.field",
+                    "escaped\\.message": "escaped\\.field",
+                }
+            },
+        },
+        {
+            "escaped.message": '{"to.decode": "decode value"}',
+            "json.message": '{"json.decode": "json.value"}',
+        },
+        {
+            "escaped.message": '{"to.decode": "decode value"}',
+            "json.message": '{"json.decode": "json.value"}',
+            "json.field": {"json.decode": "json.value"},
+            "escaped.field": {"to.decode": "decode value"},
+        },
+        id="decodes json with mapping to corresponding target fields - dotted",
+    ),
+    pytest.param(
+        {
+            "filter": "json\\.message\\\\ OR escaped\\.message\\\\",
+            "decoder": {
+                "mapping": {
+                    "json\\.message\\\\": "json\\.field\\\\",
+                    "escaped\\.message\\\\": "escaped\\.field\\\\",
+                }
+            },
+        },
+        {
+            "escaped.message\\": '{"to.decode": "decode value"}',
+            "json.message\\": '{"json.decode": "json.value"}',
+        },
+        {
+            "escaped.message\\": '{"to.decode": "decode value"}',
+            "json.message\\": '{"json.decode": "json.value"}',
+            "json.field\\": {"json.decode": "json.value"},
+            "escaped.field\\": {"to.decode": "decode value"},
+        },
+        id="decodes json with mapping to corresponding target fields - dotted and backslashes",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "source_format": "base64",
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
+        {"new_field": "this,is,the,message"},
+        id="decodes simple base64 and removes source field",
+    ),
+    pytest.param(
+        {
+            "filter": "message1",
+            "decoder": {
+                "mapping": {"message1": "new_field1", "message2": "new_field2"},
+                "source_format": "base64",
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "message1": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
+            "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
+        },
+        {"new_field1": "this,is,the,message", "new_field2": "this,is,the,message"},
+        id="decodes simple base64 and removes source fields with mapping",
+    ),
+    pytest.param(
+        {
+            "filter": "message1",
+            "decoder": {
+                "mapping": {"message1": "message1", "message2": "message2"},
+                "source_format": "base64",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message1": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
+            "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==",
+        },
+        {"message1": "this,is,the,message", "message2": "this,is,the,message"},
+        id="decodes simple base64 and overwrites source fields",
     ),
     pytest.param(
         {
@@ -316,31 +475,6 @@ test_cases = [
                 "overwrite_target": True,
             },
         },
-        {
-            "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0"
-        },
-        {
-            "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0",
-            "parsed": {
-                "host": "mymachine",
-                "ident": "su",
-                "message": "'su root' failed for user on /dev/pts/0",
-                "pid": "12345",
-                "pri": "34",
-                "time": "Oct 3 10:15:32",
-            },
-        },
-        id="parse syslog rfc 3164",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
-                "source_format": "syslog_rfc3164",
-                "overwrite_target": True,
-            },
-        },
         {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
         {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
         id="parse empty message for syslog rfc 3164 without error",
@@ -354,58 +488,9 @@ test_cases = [
                 "overwrite_target": True,
             },
         },
-        {"message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0"},
-        {
-            "message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0",
-            "parsed": {
-                "ident": "su",
-                "message": "'su root' failed for user on /dev/pts/0",
-                "pid": "12345",
-                "pri": "34",
-                "time": "Oct 3 10:15:32",
-            },
-        },
-        id="parse syslog rfc 3164 local",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
-                "source_format": "syslog_rfc3164_local",
-                "overwrite_target": True,
-            },
-        },
         {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
         {"message": "", "@timestamp": "2026-04-01T10:46:00.682181235Z"},
         id="parse empty message for syslog rfc 3164 local without error",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
-                "source_format": "syslog_rfc5424",
-                "overwrite_target": True,
-            },
-        },
-        {
-            "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0"
-        },
-        {
-            "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0",
-            "parsed": {
-                "host": "mymachine.example.com",
-                "ident": "su",
-                "pid": "12345",
-                "message": "'su root' failed for user on /dev/pts/0",
-                "pri": "34",
-                "time": "2025-01-03T14:07:15.003Z",
-                "msgid": "ID47",
-                "extradata": "-",
-            },
-        },
-        id="parse syslog rfc 5424",
     ),
     pytest.param(
         {
@@ -500,49 +585,6 @@ test_cases = [
             "filter": "message",
             "decoder": {
                 "mapping": {"message": "parsed"},
-                "source_format": "cri",
-                "overwrite_target": True,
-            },
-        },
-        {"message": "2019-04-30T02:12:41.8443515Z stdout F message"},
-        {
-            "message": "2019-04-30T02:12:41.8443515Z stdout F message",
-            "parsed": {
-                "stream": "stdout",
-                "flags": "F",
-                "message": "message",
-                "timestamp": "2019-04-30T02:12:41.8443515Z",
-            },
-        },
-        id="parse cri",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
-                "source_format": "docker",
-                "overwrite_target": True,
-            },
-        },
-        {
-            "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}'
-        },
-        {
-            "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}',
-            "parsed": {
-                "stream": "stderr",
-                "output": "log message",
-                "timestamp": "2019-04-30T02:12:41.8443515Z",
-            },
-        },
-        id="parse docker",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "parsed"},
                 "source_format": "docker",
                 "overwrite_target": True,
             },
@@ -559,23 +601,6 @@ test_cases = [
             },
         },
         id="parse docker with additional fields",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "decoder": {
-                "mapping": {"message": "message"},
-                "source_format": "decolorize",
-                "overwrite_target": True,
-            },
-        },
-        {
-            "message": "ls\r\n\x1b[00m\x1b[01;31mexamplefile.zip\x1b[00m\r\n\x1b[01;31m",
-        },
-        {
-            "message": "ls\r\nexamplefile.zip\r\n",
-        },
-        id="decolorize simple",
     ),
     pytest.param(
         {
@@ -611,7 +636,7 @@ test_cases = [
         },
         id="base64 double quote escape",
     ),
-]
+)
 
 failure_test_cases = [
     pytest.param(
@@ -625,7 +650,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_failure"]},
-        id="not_base64_source_string",
+        id="not base64 source string",
     ),
     pytest.param(
         {
@@ -637,7 +662,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_failure"]},
-        id="not_base64_source_string_with_mapping",
+        id="not base64 source string with mapping",
     ),
     pytest.param(
         {
@@ -649,7 +674,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
-        id="source_field_not_found_with_mapping",
+        id="source field not found with mapping",
     ),
     pytest.param(
         {
@@ -662,7 +687,7 @@ failure_test_cases = [
         },
         {"message": "not base64"},
         {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
-        id="source_field_not_found_with_single_source_field",
+        id="source field not found with single source field",
     ),
     pytest.param(
         {
@@ -674,7 +699,7 @@ failure_test_cases = [
         },
         {"message": "not json"},
         {"message": "not json", "tags": ["_decoder_failure"]},
-        id="json_decode_error_with_mapping",
+        id="json decode error with mapping",
     ),
     pytest.param(
         {
@@ -687,7 +712,7 @@ failure_test_cases = [
         },
         {"message": "not json"},
         {"message": "not json", "tags": ["_decoder_failure"]},
-        id="json_decode_error_with_single_field",
+        id="json decode error with single field",
     ),
     pytest.param(
         {
@@ -740,7 +765,7 @@ failure_test_cases = [
             "message": "nocri",
             "tags": ["_decoder_failure"],
         },
-        id="not cri ",
+        id="not cri",
     ),
     pytest.param(
         {
@@ -803,19 +828,14 @@ class TestDecoder(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/decoder/rules"],
     }
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        test_cases,
-    )
-    def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context, provision_context):
+        provision_context(context)
         self._load_rule(rule)
         result = self.object.process(event)
         assert event == expected, f"{result.errors}"
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        failure_test_cases,
-    )
+    @pytest.mark.parametrize(["rule", "event", "expected"], failure_test_cases)
     def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
         result = self.object.process(event)

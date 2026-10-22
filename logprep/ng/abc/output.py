@@ -10,7 +10,8 @@ from attrs import define, field, validators
 
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.connector import Connector
-from logprep.ng.abc.event import OutputEvent
+from logprep.ng.abc.event import LogEvent, OutputEvent
+from logprep.util.helper import add_fields_to
 
 
 class OutputError(LogprepException):
@@ -57,6 +58,17 @@ class Output(Connector):
         But this output can be called as output for extra_data.
         """
 
+        target_id_field: str = field(
+            validator=validators.instance_of(str), default="@metadata.event.id"
+        )
+        """
+        Defines the dotted field in which the event ID is stored for log messages delivered
+        to this output. The default is :code:`@metadata.event.id`.
+        An existing value at this field is overwritten. Parent fields that are not dictionaries
+        are replaced by dictionaries to create the target field.
+        If no event ID was assigned during input preprocessing, the target field is unchanged.
+        """
+
     @property
     def config(self) -> Config:
         """Provides the properly typed configuration object"""
@@ -91,6 +103,15 @@ class Output(Connector):
         """
         try:
             # TODO ensure to retry forever for retryable errors
+            for event in events:
+                if isinstance(event, LogEvent) and event.event_id is not None:
+                    # If multiple outputs are served, this wouldnt work correctly if multiple target_id_field are set,
+                    # as stale data would be retained
+                    add_fields_to(
+                        event.data,
+                        {self.config.target_id_field: event.event_id},
+                        overwrite_target=True,
+                    )
             await self._store(events)
         except Exception as error:
             for event in events:

@@ -43,7 +43,12 @@ class ConfigurationForTests:
     logprep_config = Configuration(
         version=1,
         timeout=0.001,
-        input={"dummy": {"type": "dummy_input", "documents": [{"test": "empty"}]}},
+        input={
+            "dummy": {
+                "type": "dummy_input",
+                "documents": [{"test": "empty"}],
+            }
+        },
         output={"dummy": {"type": "dummy_output"}},
         pipeline=[
             {"mock_processor1": {"proc": "conf"}},
@@ -192,7 +197,10 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup = mock.MagicMock()
         input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
         expected_output_data = deepcopy(input_data)
-        connector_config = {"type": "dummy_input", "documents": input_data}
+        connector_config = {
+            "type": "dummy_input",
+            "documents": input_data,
+        }
         self.pipeline._input = original_create({"dummy": connector_config})
         self.pipeline._output = {"dummy": original_create({"dummy": {"type": "dummy_output"}})}
         self.pipeline.run()
@@ -772,7 +780,9 @@ class TestPipelineWithActualInput:
             "test_input": {
                 "type": "dummy_input",
                 "documents": [],
-                "preprocessing": {"log_arrival_time_target_field": "arrival_time"},
+                "preprocessing": {
+                    "log_arrival_time_target_field": "arrival_time",
+                },
             }
         }
 

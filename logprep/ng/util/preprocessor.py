@@ -4,6 +4,12 @@ Common
 
 Configuration properties shared between input types.
 
+.. autoclass:: logprep.util.preprocessor.EventIdConfig
+   :no-index-entry:
+   :members:
+   :undoc-members:
+   :inherited-members:
+
 .. autoclass:: logprep.util.preprocessor.PreprocessingConfig
    :no-index-entry:
    :members:
@@ -36,6 +42,7 @@ import zlib
 from functools import cached_property
 from hmac import HMAC
 from importlib.metadata import version
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 import msgspec
@@ -142,6 +149,8 @@ class Preprocessor:
             The event might already be modified at this point.
         """
         try:
+            self._add_event_id(event)
+
             if self._add_full_event_to_target_field:
                 assert self._config.add_full_event_to_target_field is not None
                 self._write_full_event_to_target_field(
@@ -170,8 +179,32 @@ class Preprocessor:
                 )
             if self._add_env_enrichment:
                 self._add_env_enrichment_to_event(event.data, self._config.enrich_by_env_variables)
+
         except (FieldExistsWarning, TimeParserException, DecodeError, UnicodeDecodeError) as error:
             raise PreprocessingError(str(error)) from error
+
+    def _add_event_id(self, event: LogEvent) -> None:
+        event_id: FieldValue | Missing = MISSING
+
+        if self._config.source_id.source_field is not None:
+            event_id = get_dotted_field_value_with_missing(
+                event.data, self._config.source_id.source_field
+            )
+
+        if event_id is MISSING and self._config.source_id.on_missing == "GENERATE":
+            event.event_id = uuid4().hex
+        elif event_id is MISSING and self._config.source_id.on_missing == "FAIL":
+            raise PreprocessingError(
+                f"Event ID source field {self._config.source_id.source_field} is missing",
+            )
+        elif event_id is MISSING and self._config.source_id.on_missing == "IGNORE":
+            event.event_id = None
+        elif not isinstance(event_id, str) or event_id == "":
+            raise PreprocessingError(
+                f"Event ID source field {self._config.source_id.source_field} must contain a string; got {type(event_id)}",
+            )
+        else:
+            event.event_id = event_id
 
     def _add_env_enrichment_to_event(self, event: dict, enrichments: dict) -> None:
         """Add the env enrichment information to the event"""

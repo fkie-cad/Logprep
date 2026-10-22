@@ -9,7 +9,9 @@ from pathlib import Path
 
 import pytest
 import responses
+from schedule import Scheduler
 
+from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
@@ -681,7 +683,7 @@ failure_test_cases = [
 
 
 class TestGenericResolver(BaseProcessorTestCase):
-    CONFIG = {
+    CONFIG: dict = {
         "type": "generic_resolver",
         "rules": ["tests/testdata/unit/generic_resolver/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
@@ -731,7 +733,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "filter": "to_resolve",
                 "generic_resolver": {
                     "field_mapping": {"to_resolve": "resolved"},
-                    "resolve_list": {".*HELLO\\d": resolve_value},
+                    "resolve_list": {r".*HELLO\d": resolve_value},
                 },
             }
         )
@@ -745,7 +747,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     def test_resolve_not_dotted_field_no_conflict_different_values_match_from_file(
-        self, resolve_value, tmp_path
+        self, resolve_value, tmp_path: Path
     ):
         resolve_file_path = tmp_path / "rule.json"
 
@@ -768,7 +770,9 @@ class TestGenericResolver(BaseProcessorTestCase):
                 },
             }
         )
+        assert isinstance(self.object, Processor)
         self.object.setup()
+
         self.object.process(document)
 
         assert document == expected
@@ -833,7 +837,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert document == expected
 
     @responses.activate
-    def test_resolve_from_http(self, tmp_path):
+    def test_resolve_from_http(self, tmp_path: Path):
         target = "localhost:123"
         url = f"http://{target}"
 
@@ -862,6 +866,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             expected_1 = {"to_resolve": "12ab34", "resolved": {"new1": "1"}}
             expected_2 = {"to_resolve": "12ab34", "resolved": {"new1": "1", "new2": "2"}}
             document = {"to_resolve": "12ab34"}
+            assert isinstance(self.object, Processor)
 
             self.object.setup()
 
@@ -872,6 +877,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             self.object.process(document)
             assert document == expected_1
 
+            assert isinstance(scheduler, Scheduler)
             scheduler.run_all()  # Force update
             self.object.process(document)
             assert document == expected_2

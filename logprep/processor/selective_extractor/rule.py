@@ -97,6 +97,13 @@ It is possible to mix both extraction sources. They will be merged to one list w
    :undoc-members:
    :inherited-members:
    :noindex:
+
+Examples for selective_extractor:
+------------------------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.selective_extractor.test_selective_extractor
+   :template: testcase-renderer.tmpl
+
 """
 
 import typing

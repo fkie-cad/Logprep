@@ -4,6 +4,8 @@
 Input
 =====
 
+Incoming events must respect the :ref:`reserved-event-fields`.
+
 .. security-best-practice::
    :title: Input Connectors
    :location: config.input.<INPUT-Name>.type and config.input.<INPUT-Name>.preprocessing.hmac
@@ -66,4 +68,4 @@ Input
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.util.input_common
+.. automodule:: logprep.util.preprocessor

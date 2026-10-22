@@ -210,6 +210,7 @@ from schedule import Scheduler
 from logprep.abc.component import Component
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
+from logprep.abc.output import Output
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
@@ -1010,9 +1011,18 @@ class Configuration:
         if not self.output:
             errors.append(RequiredConfigurationKeyMissingError("output"))
         else:
+            output_shared_target_id: str | None = None
             for output_name, output_config in self.output.items():
                 try:
-                    Factory.create({output_name: output_config})
+                    tmp_output = Factory.create({output_name: output_config})
+                    tmp_output = typing.cast(Output, tmp_output)
+                    target_id_field = typing.cast(Output.Config, tmp_output._config).target_id_field
+                    if output_shared_target_id is None:
+                        output_shared_target_id = target_id_field
+                    elif output_shared_target_id != target_id_field:
+                        raise InvalidConfigurationError(
+                            "All outputs must use the same target_id_field"
+                        )
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
         if self.error_output:
