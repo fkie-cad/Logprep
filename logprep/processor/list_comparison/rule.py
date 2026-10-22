@@ -251,6 +251,7 @@ class ListComparisonRule(FieldManagerRule):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._used_uris: dict[str, str] = {}
+        self._compare_set_names: list[str] = []
         self._resource_cache = ResourceCache[ListContent](
             on_data=self._get_list_contents_from_getter,
             on_update=self._recompute_failure_state,
@@ -260,7 +261,7 @@ class ListComparisonRule(FieldManagerRule):
     @property
     def compare_set_names(self) -> Sequence[str]:
         """The representative names that are specified as keys in list_path."""
-        return list(self._used_uris.keys())
+        return self._compare_set_names
 
     def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if self._config.list_search_base_path:
@@ -302,7 +303,7 @@ class ListComparisonRule(FieldManagerRule):
             self._used_uris = self._init_list_comparison_from_local_file(
                 base_path, list_paths, list_names
             )
-
+        self._compare_set_names = list(self._used_uris.keys())
         self._resource_cache.preload(*self._used_uris.values())
 
     def _recompute_failure_state(self, _item: CacheItem[ListContent]) -> None:
