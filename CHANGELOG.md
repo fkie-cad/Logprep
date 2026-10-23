@@ -6,6 +6,7 @@
 ### Improvements
 
 ### Bugfix
+* domain_label_resolver: fix error-handling on invalid input types and partial urls
 
 ## 21.1.0
 ### Breaking
