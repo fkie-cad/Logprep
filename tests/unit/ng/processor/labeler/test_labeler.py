@@ -105,7 +105,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"äpplyrüle": "nö", "label": {"räpörter": ["windöws"]}}
 
-        # TODO: adapt tests to new setup logic; temporarily mock additional calls.
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
         with mock.patch(
             "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
         ):
@@ -142,7 +142,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
             "label": {"reporter": ["client", "windows"], "object": ["file"]},
         }
 
-        # TODO: adapt tests to new setup logic; temporarily mock additional calls.
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
         with mock.patch(
             "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
         ):
@@ -191,7 +191,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
             "label": {"some_new_label": ["some_new_value"]},
         }
 
-        # TODO: adapt tests to new setup logic; temporarily mock additional calls.
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
         with mock.patch(
             "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
         ):
@@ -215,7 +215,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
             "label": {"some_new_label": ["some_new_value"]},
         }
 
-        # TODO: adapt tests to new setup logic; temporarily mock additional calls.
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
         with mock.patch(
             "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
         ):
@@ -240,7 +240,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
             "label": {"some_new_label": ["some_new_value"]},
         }
 
-        # TODO: adapt tests to new setup logic; temporarily mock additional calls.
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
         with mock.patch(
             "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
         ):
@@ -268,7 +268,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
             "label": {"some_new_label": ["some_new_value"]},
         }
 
-        # TODO: adapt tests to new setup logic; temporarily mock additional calls.
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
         with mock.patch(
             "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
         ):
@@ -311,7 +311,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"applyrule": "yes", "label": {"reporter": ["foo", "windows"]}}
 
-        # TODO: adapt tests to new setup logic; temporarily mock additional calls.
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
         with mock.patch(
             "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
         ):

@@ -324,7 +324,7 @@ class RuleTree:
         return self._root
 
 
-# TODO: NG-migration: remove RuleTreeNG class and adapt non-NG init instead
+# TODO(async-followup): NG-migration: remove RuleTreeNG class and adapt non-NG init instead
 class RuleTreeNG(RuleTree):
     """Represent a set of NG rules using a rule tree model."""
 
