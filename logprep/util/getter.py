@@ -11,7 +11,12 @@ from functools import cached_property
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
-from typing import Any, Callable, ClassVar, Iterable
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Iterable,
+)
 from urllib.parse import urlparse
 
 import requests
@@ -57,7 +62,7 @@ class GetterFactory:
     """Provides methods to create getters."""
 
     @classmethod
-    def from_string(cls, getter_string: str) -> "Getter":
+    def from_string(cls, getter_string: str, expand_env: bool = True) -> "Getter":
         """Factory method to return a getter from a string in format :code:`<protocol>://<target>`.
         If no protocol is given, then the file protocol is assumed.
 
@@ -65,6 +70,10 @@ class GetterFactory:
         ----------
         getter_string : str
             A string describing the getter protocol and target information.
+        expand_env: bool
+            If set to True uri-templates variables will be resolved from the
+            environment variables.
+
 
         Returns
         -------
@@ -72,7 +81,8 @@ class GetterFactory:
             The generated getter.
         """
         protocol, target = cls._dissect(getter_string)
-        target = cls._expand_variables(target, ENV_VARS)
+        if expand_env:
+            target = cls._expand_variables(target, ENV_VARS)
         # get credentials
         if protocol is None:
             protocol = "file"

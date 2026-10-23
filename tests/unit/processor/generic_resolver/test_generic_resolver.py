@@ -13,7 +13,6 @@ from schedule import Scheduler
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
@@ -113,6 +112,49 @@ example_test_cases = [
             }
         },
         id="resolve from an URL and content field",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "http://localhost/resolve-mapping-text-plain",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        },
+        {"to_resolve": "12ab34"},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type"},
+        {
+            "http://localhost/resolve-mapping-text-plain": {
+                "body": {"content": {"ab": "ab_server_type"}},
+                "content_type": "text/plain",
+            }
+        },
+        id="content_field also works when the server sends text/plain",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "http://localhost/${user.id}",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "content_field": "content",
+            },
+        },
+        {"to_resolve": "12ab34", "user": {"id": "acme"}},
+        {"to_resolve": "12ab34", "resolved": "ab_server_type", "user": {"id": "acme"}},
+        {
+            "http://localhost/acme": {
+                "body": {"content": {"ab": "ab_server_type", "de": "de_server_type"}},
+            }
+        },
+        id="resolve from an event-dynamic URL and content field",
     ),
 ]
 
@@ -634,7 +676,7 @@ failure_test_cases = [
             },
         },
         {EXAMPLE_URL: {"body": {"content": {"ab": "ab_server_type"}}}},
-        "Error loading additions",
+        "Failed to load static resources",
         id="content_field key absent from the loaded mapping",
     ),
 ]
@@ -677,8 +719,12 @@ class TestGenericResolver(BaseProcessorTestCase):
     def test_testcases_failure_handling(self, rule, context, error_message, provision_context):
         provision_context(context)
 
-        with pytest.raises(InvalidConfigurationError, match=error_message):
-            self._load_rule(rule)
+        self._load_rule(rule)
+        self.object.setup()
+        document = {"to_resolve": "bla"}
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert error_message in str(result.warnings[0])
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
@@ -694,7 +740,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         expected = {"to_resolve": "something HELLO1", "resolved": resolve_value}
         document = {"to_resolve": "something HELLO1"}
-
+        self.object.setup()
         self.object.process(document)
 
         assert document == expected
@@ -724,8 +770,9 @@ class TestGenericResolver(BaseProcessorTestCase):
                 },
             }
         )
-
         assert isinstance(self.object, Processor)
+        self.object.setup()
+
         self.object.process(document)
 
         assert document == expected
@@ -750,7 +797,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
 
         document = {"to_resolve": "12ab34"}
-
+        self.object.setup()
         self.object.process(document)
         self.object.process(document)
 
@@ -783,7 +830,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         }
 
         document = {"to_resolve": "12ab34", "other_to_resolve": "00de11"}
-
+        self.object.setup()
         self.object.process(document)
         self.object.process(document)
 

@@ -12,14 +12,13 @@ import pytest
 import responses
 
 from logprep.factory import Factory
+from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_adder.processor import GenericAdder
 from logprep.processor.base.exceptions import (
-    InvalidRuleDefinitionError,
     ProcessingWarning,
 )
 from logprep.util.getter import HttpGetter
-from tests.conftest import FIELD_VALUE_TEST_CASES
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
     dynamic_uri_failure_test_cases as non_ng_dynamic_uri_failure_test_cases,
@@ -82,7 +81,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         assert event["tags"] == ["_generic_adder_failure"]
 
     async def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
-        with pytest.raises(InvalidRuleDefinitionError, match=r"Could not load generic_adder URI"):
+        with pytest.raises(InvalidResourcesError, match=r"'I_DO_NOT_EXIST'.*No.*file"):
             config = deepcopy(self.CONFIG)
             config["rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
@@ -187,9 +186,9 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         event = {"tenant": "acme"}
 
         await processor.process(LogEvent(event, original=b"", input_meta=InputMeta()))
-
-        shared = HttpGetter._target_to_data_caches[url]
-        assert len(shared.callbacks) == 1
+        resolved_uri = "https://values.example/acme"
+        shared = HttpGetter._target_to_data_caches[resolved_uri]
+        assert len(shared.callbacks) == 1, HttpGetter._target_to_data_caches
         assert len(shared.cleanup_callbacks) == 1
 
         await processor.shut_down()
@@ -238,8 +237,8 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
             "tags": ["_generic_adder_failure"],
         }
         assert rule.data_error is None
-        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
-        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
         assert successful_result.errors == []
         assert successful_result.warnings == []

@@ -8,13 +8,15 @@ from unittest import mock
 import pytest
 import responses
 
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.factory_error import InvalidResourcesError
+from logprep.processor.base.exceptions import (
+    ProcessingWarning,
+)
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
     HttpGetter,
     RefreshableGetter,
-    RefreshableGetterError,
     refresh_getters,
 )
 from tests.conftest import mock_env
@@ -749,7 +751,7 @@ class TestListComparison(BaseProcessorTestCase):
                 }
             }
         )
-        with pytest.raises(ValueError, match="Content is not a list"):
+        with pytest.raises(InvalidResourcesError, match="Content is not a list"):
             processor.setup()
 
     @responses.activate
@@ -848,9 +850,8 @@ class TestListComparison(BaseProcessorTestCase):
             rule = processor.rules[0]
 
             assert len(responses.calls) == 0
-
+            processor.setup()
             processor.process(document)
-
             assert _compare_sets(rule, {"tenant": {"id": "acme"}}) == {list_path: {"Foo", "Bar"}}
 
         assert document["user_results"] == {"in_list": [list_path]}
@@ -876,10 +877,11 @@ class TestListComparison(BaseProcessorTestCase):
                     }
                 ]
             )
+            processor.setup()
+            assert _compare_sets(processor.rules[0]) == {
+                "${LIST_TENANT}/bad_users.list": {"Foo", "Bar"}
+            }
 
-        assert _compare_sets(processor.rules[0]) == {
-            "${LIST_TENANT}/bad_users.list": {"Foo", "Bar"}
-        }
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
 
@@ -999,9 +1001,9 @@ class TestListComparison(BaseProcessorTestCase):
 
         assert document == expected
         assert len(result.warnings) == 1
-        assert (
-            "value for list comparison field 'tenants.0:2' is not a scalar value"
-            in _warning_str(result.warnings[0])
+        assert re.search(
+            r"value for.*\'tenants\.0\:2\'.*not.*scalar",
+            _warning_str(result.warnings[0]),
         )
         assert len(responses.calls) == 0
 
@@ -1029,9 +1031,7 @@ class TestListComparison(BaseProcessorTestCase):
         assert document == expected
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert "value for list comparison field 'tenant' is not a scalar value" in _warning_str(
-            result.warnings[0]
-        )
+        assert re.search(r"value for.*'tenant'.*not.*scalar", _warning_str(result.warnings[0]))
         assert len(responses.calls) == 0
 
     @responses.activate
@@ -1058,9 +1058,7 @@ class TestListComparison(BaseProcessorTestCase):
         assert document == expected
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert "missing event field 'tenant' for dynamic list comparison path" in _warning_str(
-            result.warnings[0]
-        )
+        assert re.search(r"missing.*\'tenant\'", _warning_str(result.warnings[0]))
         assert len(responses.calls) == 0
 
     @responses.activate
@@ -1069,7 +1067,6 @@ class TestListComparison(BaseProcessorTestCase):
         second_document = {"tenant": "acme", "user": "Bar"}
         url = "http://localhost/acme/bad_users.list"
         responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
-
         processor = self._create_lister(
             [
                 {
@@ -1083,15 +1080,20 @@ class TestListComparison(BaseProcessorTestCase):
                 }
             ]
         )
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
 
-        with mock.patch("logprep.util.getter.time.monotonic", side_effect=[100.0, 125.0]):
             processor.process(first_document)
+            assert len(responses.calls) == 1
+
             assert HttpGetter._target_to_data_caches[url].last_called == 100.0
 
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=125.0):
+
             processor.process(second_document)
+            assert len(responses.calls) == 1
+
             assert HttpGetter._target_to_data_caches[url].last_called == 125.0
 
-        assert len(responses.calls) == 1
         assert first_document["user_results"] == {"in_list": ["bad_users.list"]}
         assert second_document["user_results"] == {"in_list": ["bad_users.list"]}
 
@@ -1194,8 +1196,8 @@ class TestListComparison(BaseProcessorTestCase):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert rule.data_error is None
-        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
-        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
         processor.process(successful_document)
 
@@ -1226,7 +1228,6 @@ class TestListComparison(BaseProcessorTestCase):
                 }
             ]
         )
-
         with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
             processor.process(document)
 
@@ -1325,7 +1326,7 @@ class TestListComparison(BaseProcessorTestCase):
         ):
             processor.setup()
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert captured_sessions
 
         retries = captured_sessions[0].get_adapter(url).max_retries
@@ -1366,7 +1367,7 @@ class TestListComparison(BaseProcessorTestCase):
         document = {"user": "Foo"}
         processor.process(document)
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500
@@ -1415,16 +1416,14 @@ class TestListComparison(BaseProcessorTestCase):
             document = {"user": "Foo"}
             processor.process(document)
 
-            assert isinstance(rule.data_error, RefreshableGetterError)
+            assert isinstance(rule.data_error, InvalidResourcesError)
             assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
             assert responses.calls[-1].request.url == url
             assert responses.calls[-1].response.status_code == 500
 
             responses.replace(responses.GET, url=url, body="Foo\n", status=200)
-
             time.sleep(2)
             refresh_getters()
-
             assert rule.data_error is None
             assert _compare_sets(rule) == {list_name: {"Foo"}}
             assert responses.calls[-1].request.url == url

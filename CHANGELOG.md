@@ -15,6 +15,7 @@
 * field_manager: add flag for deactivating deduplication
 * calculator: extended expression functionality
 * preprocessor: add unique event ids to every event when enabled
+* generic_resolver: enable use of dynamic templating for resource URIs
 
 ### Improvements
 * bump version for `urllib` to address CVEs
