@@ -122,7 +122,10 @@ class Requester(FieldManager):
                 conflicting_fields.extend(error.skipped_fields)
         if rule.target_field_mapping:
             source_fields = rule.target_field_mapping.keys()
-            contents = self._get_field_values(self._get_result(response), source_fields)
+            result: dict[str, FieldValue] = typing.cast(
+                dict[str, FieldValue], self._get_result(response)
+            )
+            contents = self._get_field_values(result, source_fields)
             targets = rule.target_field_mapping.values()
             try:
                 add_fields_to(
@@ -272,7 +275,7 @@ class Requester(FieldManager):
         kwargs["ssl"] = ssl_context
 
     @staticmethod
-    def _get_result(response: RequesterResponse) -> dict | str:
+    def _get_result(response: RequesterResponse) -> FieldValue:
         try:
             result = json.loads(response.content)
         except json.JSONDecodeError:

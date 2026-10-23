@@ -3,7 +3,7 @@
 from json import JSONDecodeError
 from typing import Any, List, Optional
 
-from jsonref import loads
+from jsonref import loads  # type: ignore[import-untyped]
 
 from logprep.ng.util.getter import GetterFactory
 from logprep.processor.base.exceptions import (

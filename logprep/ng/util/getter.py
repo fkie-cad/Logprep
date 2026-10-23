@@ -2,6 +2,9 @@
 They are returned by the GetterFactory.
 """
 
+# TODO(async-followup): Remove mypy ignore after completing the async migration.
+# mypy: disable-error-code="override"
+
 import asyncio
 import logging
 import re
