@@ -447,7 +447,7 @@ class TestPreDetector(BaseProcessorTestCase[PreDetector]):
         async with self.create_and_setup_processor(config_patch=config) as instance:
             detection_results = await instance.process(event)
 
-        assert detection_results.data.get("@timestamp") == expected
+        assert detection_results.extra_data[0].data.get("@timestamp") == expected
 
     async def test_custom_timestamp_field_can_be_used(self):
         rule = {

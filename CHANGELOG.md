@@ -18,6 +18,8 @@
 * preprocessor: add unique event ids to every event when enabled
 
 ### Improvements
+* bump version for `urllib` to address CVEs
+* docs: rework examples for calculator, decoder, deduplicator, dissector, field_manager, ip_informer, key_checker, replacer, selective_extractor, string_splitter
 * timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
 * calculator: optimized runtime expression evaluation
 * docs: improve documentation around dynamic templating for `generic_adder`
