@@ -229,6 +229,7 @@ class DomainResolver(Processor):
         blocking the event loop.
         """
         try:
+            # TODO(async-followup): consider https://github.com/aio-libs/aiodns?
             result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
             resolved_ip = await asyncio.to_thread(
                 result.get,
