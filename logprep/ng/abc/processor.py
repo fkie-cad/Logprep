@@ -81,9 +81,6 @@ class Processor(Component):
     _strategy = None
     _bypass_rule_tree: bool
 
-    def __init__(self, name: str, configuration: Config) -> None:
-        super().__init__(name, configuration)
-
     @property
     def config(self) -> Config:
         """Provides the properly typed configuration object"""
