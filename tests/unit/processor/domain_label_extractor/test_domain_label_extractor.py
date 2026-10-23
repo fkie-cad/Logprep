@@ -185,7 +185,18 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
                 },
                 "tags": ["source", "invalid_domain_in_url_domain"],
             },
-            id="without recognized tld with existing tag field",
+            id="invalid with existing list in tag field",
+        ),
+        pytest.param(
+            TEST_RULE,
+            {"url": {"domain": "http://["}, "tags": "source"},
+            {
+                "url": {
+                    "domain": "http://[",
+                },
+                "tags": ["source", "invalid_domain_in_url_domain"],
+            },
+            id="invalid with existing str in tag field",
         ),
         pytest.param(
             TEST_RULE,
