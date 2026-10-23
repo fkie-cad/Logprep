@@ -88,9 +88,7 @@ class RuleLoader:
             case dict():
                 rule_definitions.append(self.source)
             case str():
-                path = Path(self.source)
-
-                if await asyncio.to_thread(path.is_dir):
+                if Path(self.source).is_dir():
                     rule_definitions.extend(
                         await DirectoryRuleLoader(
                             self.source,

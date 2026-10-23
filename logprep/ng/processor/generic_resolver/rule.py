@@ -300,7 +300,7 @@ class GenericResolverRule(FieldManagerRule):
 
     async def _add_from_path(self, path: str) -> None:
         self._raise_if_pattern_is_invalid()
-        await self._raise_if_file_does_not_exist(path)
+        self._raise_if_file_does_not_exist(path)
 
         additions = await self._get_additions_from_path(path)
 
@@ -326,11 +326,11 @@ class GenericResolverRule(FieldManagerRule):
                 f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
             )
 
-    async def _raise_if_file_does_not_exist(self, path: str) -> None:
+    def _raise_if_file_does_not_exist(self, path: str) -> None:
         if path.startswith("http"):
             return
 
-        if not await asyncio.to_thread(Path(path).is_file):
+        if not Path(path).is_file():
             raise InvalidConfigurationError(
                 f"Additions file '{path}' not found! (Rule ID: '{self.id}')",
             )

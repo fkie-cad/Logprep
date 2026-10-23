@@ -74,26 +74,21 @@ class GeoipEnricher(FieldManager):
     async def _load_city_db(self) -> database.Reader:
         db_path = Path(self.config.db_path)
 
-        if not await asyncio.to_thread(db_path.exists):
+        if not Path(self.config.db_path).exists():
             logger.debug("start geoip database download...")
 
             logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-            await asyncio.to_thread(
-                logprep_tmp_dir.mkdir,
-                parents=True,
-                exist_ok=True,
-            )
-
+            logprep_tmp_dir.mkdir(parents=True, exist_ok=True)
             db_path_file = logprep_tmp_dir / f"{self.name}.mmdb"
             lock = AsyncFileLock(str(db_path_file) + ".lock")
 
             async with lock:
-                if not await asyncio.to_thread(db_path_file.exists):
+                if not db_path_file.exists():
                     tmp = db_path_file.with_suffix(".tmp")
                     getter = GetterFactory.from_string(self.config.db_path)
                     raw = await getter.get_raw()
-                    await asyncio.to_thread(tmp.write_bytes, raw)
-                    await asyncio.to_thread(tmp.replace, db_path_file)
+                    tmp.write_bytes(raw)
+                    tmp.replace(db_path_file)
 
             db_path = db_path_file
             logger.debug("finished geoip database download.")

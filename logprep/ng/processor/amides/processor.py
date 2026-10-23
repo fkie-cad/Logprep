@@ -217,16 +217,16 @@ class Amides(FieldManager):
     async def _load_and_unpack_models(self):
         models_path = self._config.models_path
 
-        if not await asyncio.to_thread(Path(models_path).exists):
+        if not Path(models_path).exists():
             logger.debug("Getting AMIDES models archive...")
             models_archive = Path(f"{current_process().name}-{self.name}.zip")
             getter = GetterFactory.from_string(str(models_path))
             raw = await getter.get_raw()
-            await asyncio.to_thread(models_archive.write_bytes, raw)
+            models_archive.write_bytes(raw)
             logger.debug("Finished getting AMIDES models archive...")
             models_path = str(models_archive.absolute())
 
-        return await asyncio.to_thread(self._load_models_from_archive, models_path)
+        return self._load_models_from_archive(models_path)
 
     @staticmethod
     def _load_models_from_archive(models_path: str):
