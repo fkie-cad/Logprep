@@ -8,9 +8,11 @@ import shutil
 from collections.abc import Generator, Sequence
 from multiprocessing import active_children, set_start_method
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 from unittest import mock
+from unittest.mock import AsyncMock, MagicMock
 
+import aiohttp
 import pytest
 import responses
 from _pytest.mark.structures import ParameterSet
@@ -147,42 +149,34 @@ def mock_env(env_dict: dict) -> _MockEnv:
 def provision_context(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
 ) -> Generator[Callable[[dict], None]]:
-    """
-    Return a helper that provisions a ``test_cases`` context for a rule.
-
-    The context is expected to have the following structure:
-    .. code-block:: json
-
-    {
-        "http://example.tld/any/path": {
-            "body": {
-                "any": "json serializable content"
-            },
-            "content_type": "application/json", # default content_type
-        }
-        "https://...": { }, # same as http://
-        "file://some/path/contents.txt": {
-            "body": {
-                "any": "json serializable content"
-            }
-        }
-        "some/path/contents.txt": { } # same as file://
-        "file://some/path/contents.txt": {
-            "source": "/path/to/file/to/be/copied"
-        }
-    }
-
-    The helper covers the most relevant aspects of mocking and provisioning:
-    - ``http://`` / ``https://`` are registered as mocked ``GET`` responses. The
-      response is served as ``application/json`` unless the spec sets a
-      ``content_type`` (e.g. ``text/plain``), in which case the body is still
-      JSON-serialized but sent under that content type. Requests are automatically mocked
-      using `responses`.
-    - ``file://`` or a bare path is written into an isolated working directory the
-      test is switched into, so a rule's relative file path resolves to it without
-      any rewriting. The working directory is only changed when a file path is provided.
-    """
     project_root = pytestconfig.rootpath
+    aiohttp_responses: dict[str, Any] = {}
+
+    async def mock_aiohttp_request(self, method, url, **kwargs):
+        url = str(url)
+
+        if method.upper() != "GET" or url not in aiohttp_responses:
+            raise AssertionError(f"Unexpected aiohttp request: {method} {url}")
+
+        spec = aiohttp_responses[url]
+        body = json.dumps(spec["body"])
+
+        response = MagicMock()
+        response.status = 200
+        response.headers = {"Content-Type": spec.get("content_type", "application/json")}
+        response.json = AsyncMock(return_value=spec["body"])
+        response.text = AsyncMock(return_value=body)
+        response.read = AsyncMock(return_value=body.encode())
+        response.__aenter__.return_value = response
+
+        return response
+
+    monkeypatch.setattr(
+        aiohttp.ClientSession,
+        "_request",
+        mock_aiohttp_request,
+    )
+
     with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
 
         def _provision(context: dict) -> None:
@@ -194,9 +188,14 @@ def provision_context(
                         body=json.dumps(spec["body"]),
                         content_type=spec.get("content_type", "application/json"),
                     )
+
+                    # Additionally mock aiohttp requests
+                    aiohttp_responses[path] = spec
+
                 else:
                     file_path = tmp_path / path.removeprefix("file://")
                     file_path.parent.mkdir(parents=True, exist_ok=True)
+
                     if "source" in spec:
                         ref_path = Path(spec["source"])
                         src_path = ref_path if ref_path.is_absolute() else project_root / ref_path
