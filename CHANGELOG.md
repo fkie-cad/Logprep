@@ -2,6 +2,15 @@
 ### Breaking
 
 ### Features
+
+### Improvements
+
+### Bugfix
+
+## 21.1.0
+### Breaking
+
+### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
 * field_manager: add flag for deactivating deduplication
 * calculator: extended expression functionality
