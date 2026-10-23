@@ -9,6 +9,9 @@ If you define multiple outputs with the attribute :code:`default: true` then be 
 logprep only guaranties that one output has received data by calling the
 :code:`batch_finished_callback`.
 
+Use ``target_id_field`` to choose the output field for the event ID. The internal
+field is reserved; see :ref:`reserved-event-fields`.
+
 .. security-best-practice::
    :title: Output Connectors
    :location: config.output.<Output-Name>.type

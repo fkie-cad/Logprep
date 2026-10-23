@@ -13,7 +13,7 @@ name = "logprep"
 description = "Logprep allows to collect, process and forward log messages from various data sources."
 requires-python = ">=3.11"
 readme = "README.md"
-version = "21.0.0"
+version = "21.1.0"
 license = { file = "LICENSE" }
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -44,7 +44,7 @@ keywords = [
   "logdata",
 ]
 dependencies = [
-  "aiohttp>=3.14.3", # [>=3.14.3]: CVE-2026-69244
+  "aiohttp>=3.14.4", # [>=3.14.4]: CVE-2026-111066
   "attrs<26",
   "confluent-kafka>2,<3",
   "filelock<4",
@@ -61,7 +61,7 @@ dependencies = [
   "requests>=2.33.0,<3", # [>=2.33.0]: CVE-2026-25645
   "ruamel.yaml<1",
   "schedule<2",
-  "urllib3>=2.7.0,<3", # [>=2.7.0]: CVE-2026-44431, CVE-2026-44432
+  "urllib3>=2.8.0,<3", # [>=2.8.0]: CVE-2026-97687, CVE-2026-97689
   "uvicorn<1",
   "msgspec<1",
   "boto3<2",

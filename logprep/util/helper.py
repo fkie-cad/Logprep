@@ -330,7 +330,7 @@ def get_dotted_field_value_with_missing(
 ) -> FieldValue | Missing:
     """
     Returns the value of a requested dotted_field by iterating over the event dictionary until the
-    field was found. In case the field could not be found None is returned.
+    field was found. In case the field could not be found :code:`MISSING` is returned.
 
     Parameters
     ----------

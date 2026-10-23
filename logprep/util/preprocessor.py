@@ -27,11 +27,21 @@ Configuration properties shared between input types.
    :members:
    :undoc-members:
    :inherited-members:
+
+.. autoclass:: logprep.util.preprocessor.EventIdConfig
+   :no-index-entry:
+   :members:
+   :undoc-members:
+   :inherited-members:
 """
+
+from typing import Literal
 
 from attrs import Factory, define, field, validators
 
 from logprep.util.converters import convert_from_dict
+
+LOGPREP_ID_FIELD = "@LOGPREP_EVENT_ID"
 
 
 @define(kw_only=True)
@@ -118,6 +128,45 @@ class FullEventConfig:
 
 
 @define(kw_only=True)
+class EventIdConfig:
+    """Configuration properties for assigning an ID to each incoming log message."""
+
+    source_field: str | None = field(
+        validator=validators.optional(
+            validator=validators.and_(validators.instance_of(str), validators.min_len(1))
+        ),
+        default=None,
+    )
+    """
+    Defines the dotted field in the incoming log message from which the event ID should be read.
+    The value must be a non-empty string and is used unchanged. The sender is responsible for
+    ensuring that these IDs are unique. The field is read before other preprocessing steps
+    change the log message.
+    If not set or the field is missing, the behavior is determined by :code:`on_missing`.
+    An existing value that is not a non-empty string causes an error regardless of
+    :code:`on_missing`.
+    """
+
+    on_missing: Literal["GENERATE", "FAIL", "IGNORE"] = field(
+        validator=validators.in_(("GENERATE", "FAIL", "IGNORE")),
+        default="IGNORE",
+    )
+    """
+    Specifies what happens if :code:`source_field` is not configured or the field is missing
+    from the incoming log message. The following values are supported:
+
+    * :code:`GENERATE`: Assigns a new UUID version 4 as 32 hexadecimal characters without
+      hyphens.
+    * :code:`FAIL`: Rejects the log message with a preprocessing error.
+    * :code:`IGNORE`: Processes the log message without an event ID. This is the default.
+
+    To disable event IDs, set this option to :code:`IGNORE` and leave :code:`source_field` unset.
+    If a source field is configured and contains a valid ID, that ID is still used with
+    :code:`IGNORE`.
+    """
+
+
+@define(kw_only=True)
 class PreprocessingConfig:
     """
     Different configuration options for event preprocessing, available in all
@@ -181,4 +230,14 @@ class PreprocessingConfig:
     to one singular field or subfield.
     This feature is optional and can be enabled by setting the properties of this object.
     See :class:`.FullEventConfig` for further details.
+    """
+
+    source_id: EventIdConfig = field(
+        converter=lambda d: convert_from_dict(EventIdConfig, d), factory=EventIdConfig
+    )
+    """
+    Defines how an event ID is assigned to each incoming log message.
+    By default missing IDs are ignored. The ID is written to the field
+    configured by :code:`target_id_field` on the output when the message is stored.
+    See :class:`.EventIdConfig` for using an existing ID or disabling event IDs.
     """

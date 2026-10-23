@@ -12,6 +12,7 @@ import multiprocessing
 
 # pylint: disable=logging-fstring-interpolation
 import multiprocessing.queues
+import typing
 import warnings
 from ctypes import c_bool
 from datetime import datetime, timezone
@@ -42,7 +43,11 @@ from logprep.metrics.metrics import CounterMetric, HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.configuration import Configuration
 from logprep.util.getter import refresh_getters
+from logprep.util.helper import (
+    add_fields_to,
+)
 from logprep.util.pipeline_profiler import PipelineProfiler
+from logprep.util.preprocessor import LOGPREP_ID_FIELD
 
 
 @attrs.define(kw_only=True)
@@ -306,7 +311,17 @@ class Pipeline:
     def _store_event(self, event: dict) -> None:
         for output_name, output in self._output.items():
             if output.default:
+                event_id: str | None = event.get(LOGPREP_ID_FIELD)
+
+                if event_id is not None:
+                    del event[LOGPREP_ID_FIELD]
+                    add_fields_to(
+                        event,
+                        {typing.cast(Output.Config, output._config).target_id_field: event_id},
+                        overwrite_target=True,
+                    )
                 output.store(event)
+
                 self.logger.debug(f"Stored output in {output_name}")
 
     @Metric.measure_time()

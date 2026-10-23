@@ -43,6 +43,9 @@ from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.output import CriticalOutputError, Output
 from logprep.metrics.metrics import Metric
+from logprep.util.helper import (
+    get_dotted_field_value,
+)
 
 logger = logging.getLogger("OpenSearchOutput")
 
@@ -139,6 +142,8 @@ class OpensearchOutput(Output):
         )
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
+        use_event_id_as_doc_id: bool = field(default=False, validator=validators.instance_of(bool))
+        """If the event id should be used as the document id, should event ids not be activated this is unexpected behavior. Default is 'False'"""
 
     __slots__ = ["_message_backlog", "_failed"]
 
@@ -253,6 +258,10 @@ class OpensearchOutput(Output):
         """
         document["_index"] = target
         document["_op_type"] = document.get("_op_type", self.config.default_op_type)
+        if self.config.use_event_id_as_doc_id:
+            event_id = get_dotted_field_value(document, self.config.target_id_field)
+            if event_id is not None:
+                document["_id"] = event_id
         self.metrics.number_of_processed_events.inc(1)
         self._message_backlog.append(document)
         self._write_to_search_context()
