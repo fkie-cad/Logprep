@@ -29,24 +29,37 @@ Processor Configuration
 .. automodule:: logprep.processor.grokker.rule
 """
 
+import asyncio
 import logging
 import re
 import tempfile
 import typing
 from collections.abc import Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from zipfile import ZipFile
 
 from attrs import define, field, validators
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.grokker.rule import GrokkerRule
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("Grokker")
+
+
+@contextmanager
+def _temporary_directory(*, suffix: str = "") -> typing.Iterator[Path]:
+    """Create and clean up a temporary directory without blocking the event loop."""
+    temporary_directory = tempfile.TemporaryDirectory(suffix=suffix)
+
+    try:
+        yield Path(temporary_directory.name)
+    finally:
+        temporary_directory.cleanup()
 
 
 class Grokker(FieldManager):
@@ -78,6 +91,7 @@ class Grokker(FieldManager):
         return typing.cast(Sequence[GrokkerRule], super().rules)
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
+        """Apply the configured grok patterns to an event"""
         rule = typing.cast(GrokkerRule, rule)
         any_match = False
         source_values = []
@@ -89,7 +103,7 @@ class Grokker(FieldManager):
             try:
                 result = grok.match(field_value)
             except TimeoutError as error:
-                self._handle_missing_fields(event, rule, rule.actions.keys(), source_values)
+                self._handle_missing_fields(event, rule, list(rule.actions.keys()), source_values)
                 raise ProcessingError(
                     f"Grok pattern timeout for source field: '{dotted_field}' in rule '{rule}', "
                     f"the grok pattern might be too complex.",
@@ -107,7 +121,7 @@ class Grokker(FieldManager):
                 merge_with_target=rule.merge_with_target,
                 overwrite_target=rule.overwrite_target,
             )
-        if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
+        if self._handle_missing_fields(event, rule, list(rule.actions.keys()), source_values):
             return
         if not any_match:
             raise ProcessingWarning("no grok pattern matched", rule, event)
@@ -115,26 +129,54 @@ class Grokker(FieldManager):
     async def setup(self) -> None:
         """Loads the action mapping. Has to be called before processing"""
         await super().setup()
+
         custom_patterns_dir = self.config.custom_patterns_dir
+
         if re.search(r"http(s)?:\/\/.*?\.zip", custom_patterns_dir):
-            with tempfile.TemporaryDirectory("grok") as patterns_tmp_path:
-                self._download_zip_file(
-                    source_file=custom_patterns_dir, target_dir=Path(patterns_tmp_path)
+            with _temporary_directory(suffix="grok") as patterns_tmp_path:
+                await self._download_zip_file(
+                    source_file=custom_patterns_dir,
+                    target_dir=patterns_tmp_path,
                 )
+
                 for rule in self.rules:
-                    rule.set_mapping_actions(patterns_tmp_path)
-                return
+                    await asyncio.to_thread(
+                        rule.set_mapping_actions,
+                        str(patterns_tmp_path),
+                    )
+            return
+
         if custom_patterns_dir:
             for rule in self.rules:
-                rule.set_mapping_actions(custom_patterns_dir)
+                await asyncio.to_thread(
+                    rule.set_mapping_actions,
+                    str(custom_patterns_dir),
+                )
             return
-        for rule in self.rules:
-            rule.set_mapping_actions()
 
-    def _download_zip_file(self, source_file: str, target_dir: Path):
+        for rule in self.rules:
+            await asyncio.to_thread(rule.set_mapping_actions)
+
+    async def _download_zip_file(self, source_file: str, target_dir: Path):
+        """Download and extract a ZIP archive containing custom grok patterns"""
         logger.debug("start grok pattern download...")
+
+        getter = GetterFactory.from_string(source_file)
+        raw = await getter.get_raw()
+        logger.debug("finished grok pattern download.")
+
+        await asyncio.to_thread(
+            self._extract_zip_file,
+            raw,
+            target_dir,
+        )
+
+    @staticmethod
+    def _extract_zip_file(archive_content: bytes, target_dir: Path) -> None:
+        """Extract ZIP archive content into the target directory"""
         with tempfile.TemporaryFile("wb+") as archive:
-            archive.write(GetterFactory.from_string(source_file).get_raw())
-            logger.debug("finished grok pattern download.")
+            archive.write(archive_content)
+            archive.seek(0)
+
             with ZipFile(archive, mode="r") as zip_file:
                 zip_file.extractall(target_dir)

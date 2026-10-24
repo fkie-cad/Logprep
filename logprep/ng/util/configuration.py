@@ -190,6 +190,7 @@ The following config file will be valid by setting the given environment variabl
                 group.id: test"
 """
 
+import asyncio
 import json
 import logging
 import typing
@@ -200,16 +201,15 @@ from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 from attrs import asdict, define, field, fields, validators
-from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
 
-from logprep.abc.getter import Getter
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.component import NgComponent
+from logprep.ng.abc.getter import Getter
 from logprep.ng.abc.processor import Processor
 from logprep.ng.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
@@ -219,18 +219,18 @@ from logprep.ng.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
     MIN_CONFIG_REFRESH_INTERVAL,
 )
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util import http
-from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
-from logprep.util.environ import ENV_VARS, del_env_var, set_env_var
-from logprep.util.getter import (
+from logprep.ng.util.getter import (
     FileGetter,
     GetterFactory,
     GetterNotFoundError,
     RefreshableGetter,
     RefreshableGetterError,
 )
-from logprep.util.rule_loader import RuleLoader
+from logprep.ng.util.rule_loader import RuleLoader
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.util import http
+from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
+from logprep.util.environ import ENV_VARS, del_env_var, set_env_var
 
 logger = logging.getLogger("Config")
 
@@ -776,7 +776,7 @@ class Configuration:
         # pylint: enable=protected-access
 
     @classmethod
-    def from_source(cls, config_path: str) -> "Configuration":
+    async def from_source(cls, config_path: str) -> "Configuration":
         """Create configuration from an uri source.
 
         Parameters
@@ -792,7 +792,7 @@ class Configuration:
         """
         try:
             config_getter = GetterFactory.from_string(config_path)
-            config_dict = config_getter.get_dict()
+            config_dict = await config_getter.get_dict()
             config = Configuration(**(config_dict | {"getter": config_getter}))
         except TypeError as error:
             raise InvalidConfigurationError(
@@ -826,9 +826,13 @@ class Configuration:
         configs: List[Configuration] = []
         for config_path in config_paths:
             try:
-                config = Configuration.from_source(config_path)
+                config = await Configuration.from_source(config_path)
                 configs.append(config)
-            except (GetterNotFoundError, RequestException, CredentialsEnvNotFoundError) as error:
+            except (
+                GetterNotFoundError,
+                RefreshableGetterError,
+                CredentialsEnvNotFoundError,
+            ) as error:
                 raise ConfigGetterException(f"{config_path} {error}") from error
             except FileNotFoundError as error:
                 raise ConfigGetterException(
@@ -844,7 +848,7 @@ class Configuration:
         configuration._configs = tuple(configs)
         configuration._set_attributes_from_configs()
         try:
-            configuration._build_merged_pipeline()
+            await configuration._build_merged_pipeline()
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         try:
@@ -953,14 +957,16 @@ class Configuration:
         versions = (config.version for config in self._configs if config.version)
         self.version = ", ".join(versions)
 
-    def _build_merged_pipeline(self) -> None:
+    async def _build_merged_pipeline(self) -> None:
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
         pipeline = list(chain(*pipelines))
         errors: list[Exception] = []
         pipeline_with_loaded_rules = []
         for processor_definition in pipeline:
             try:
-                processor_definition_with_rules = self._load_rule_definitions(processor_definition)
+                processor_definition_with_rules = await self._load_rule_definitions(
+                    processor_definition
+                )
                 pipeline_with_loaded_rules.append(processor_definition_with_rules)
             except (
                 FactoryError,
@@ -974,12 +980,13 @@ class Configuration:
             raise InvalidConfigurationErrors(errors)
         self.pipeline = pipeline_with_loaded_rules
 
-    def _load_rule_definitions(self, processor_definition: dict) -> dict:
+    @staticmethod
+    async def _load_rule_definitions(processor_definition: dict) -> dict:
         processor_definition = deepcopy(processor_definition)
         _ = Factory.create(processor_definition)
         processor_name, processor_config = processor_definition.popitem()
         rule_sources = processor_config.get("rules", [])
-        rules_definitions = RuleLoader(rule_sources, processor_name).rule_definitions
+        rules_definitions = await RuleLoader(rule_sources, processor_name).load_rule_definitions()
         processor_config["rules"] = rules_definitions
         return {processor_name: processor_config}
 
@@ -1003,18 +1010,21 @@ class Configuration:
         return getattr(Configuration(), attribute)
 
     async def _verify(self) -> None:
-        """Verify the configuration."""
+        """Verify the configuration"""
         errors: list[Exception] = []
+
         try:
             self._verify_environment()
         except MissingEnvironmentError as error:
             errors.append(error)
+
         try:
             if not self.input:
                 raise RequiredConfigurationKeyMissingError("input")
             Factory.create(self.input)
         except Exception as error:  # pylint: disable=broad-except
             errors.append(error)
+
         if not self.output:
             errors.append(RequiredConfigurationKeyMissingError("output"))
         else:
@@ -1023,12 +1033,14 @@ class Configuration:
                     Factory.create({output_name: output_config})
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
+
             default_outputs = {
                 # TODO remove redundant default value for property "default"
                 name: config
                 for name, config in self.output.items()
                 if config.get("default", True)
             }
+
             if len(default_outputs) > 1:
                 errors.append(
                     InvalidConfigurationError(
@@ -1037,17 +1049,26 @@ class Configuration:
                         ", ".join(default_outputs.keys()),
                     )
                 )
+
         if self.error_output:
             for output_name, output_config in self.error_output.items():
                 try:
                     Factory.create({output_name: output_config})
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
+
         for processor_config in self.pipeline:
             try:
-                processor = typing.cast(Processor, Factory.create(deepcopy(processor_config)))
-                await processor.setup()
-                self._verify_rules(processor)
+                processor = typing.cast(
+                    Processor,
+                    Factory.create(deepcopy(processor_config)),
+                )
+
+                try:
+                    await processor.setup()
+                    self._verify_rules(processor)
+                finally:
+                    await processor.shut_down()
             except (
                 FactoryError,
                 TypeError,
@@ -1058,18 +1079,25 @@ class Configuration:
                 errors.append(error)
             except FileNotFoundError as error:
                 errors.append(InvalidConfigurationError(f"File not found: {error.filename}"))
+
             try:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
+
         if ENV_NAME_LOGPREP_CREDENTIALS_FILE in ENV_VARS:
             try:
                 credentials_file_path = ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
                 if credentials_file_path is None:
                     raise ValueError("credentials file path was None but expected it to be set")
-                _ = CredentialsFactory.get_content(Path(credentials_file_path))
+
+                _ = await asyncio.to_thread(
+                    CredentialsFactory.get_content,
+                    Path(credentials_file_path),
+                )
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
+
         if errors:
             raise InvalidConfigurationErrors(errors)
 
