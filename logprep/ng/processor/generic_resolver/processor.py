@@ -220,8 +220,6 @@ class GenericResolver(FieldManager):
         """Set up the processor and initialize its rules."""
         await super().setup()
 
-        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
-
         for rule in self.rules:
             rule = typing.cast(GenericResolverRule, rule)
             await rule.setup(self._job_tag_for_cleanup)
