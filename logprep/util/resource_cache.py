@@ -24,7 +24,12 @@ from logprep.util.getter import (
     RefreshableGetter,
     RefreshableGetterError,
 )
-from logprep.util.helper import DottedTemplate, JsonObject, get_dotted_field_value
+from logprep.util.helper import (
+    MISSING,
+    DottedTemplate,
+    JsonObject,
+    get_dotted_field_value_with_missing,
+)
 
 
 class RetrievalContextError(LogprepException):
@@ -92,7 +97,7 @@ class CacheItem(Generic[T]):
 
     @property
     def has_unrecoverable_error(self) -> bool:
-        """True if the cache item has an error and is"""
+        """True if the cache item has an error and is unrecoverable"""
         return self.error is not None and not (self.is_dynamic or self.will_refresh)
 
 
@@ -300,12 +305,12 @@ class ResourceCache(Generic[T]):
             )
 
         values = {
-            identifier: get_dotted_field_value(event, identifier)
+            identifier: get_dotted_field_value_with_missing(event, identifier)
             for identifier in event_identifiers
         }
 
         for identifier, val in values.items():
-            if val is None:
+            if val is MISSING:
                 return _resolve_error(
                     ValueError(f"missing event field {identifier!r} for dynamic URI")
                 )
