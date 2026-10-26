@@ -46,8 +46,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         result = await self.object.process(event)
         assert result.data == expected_output
 
-    @pytest.mark.skip("TODO clearify async Factory")
-    def test_new_non_default_tagging_field(self):
+    async def test_new_non_default_tagging_field(self):
         config = {
             "Test DomainLabelExtractor Name": {
                 "type": "domain_label_extractor",
@@ -63,12 +62,11 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "url": {"domain": "http://["},
             "special_tags": ["invalid_domain_in_url_domain"],
         }
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        result = await domain_label_extractor.process(event)
+        assert event.data == expected_output
 
-        domain_label_extractor.process(document)
-        assert document == expected_output
-
-    @pytest.mark.skip("TODO clearify async Factory")
-    def test_append_to_non_default_tagging_field(self):
+    async def test_append_to_non_default_tagging_field(self):
         config = {
             "Test DomainLabelExtractor Name": {
                 "type": "domain_label_extractor",
@@ -85,9 +83,10 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "url": {"domain": "http://["},
             "special_tags": ["source", "invalid_domain_in_url_domain"],
         }
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        domain_label_extractor.process(document)
-        assert document == expected_output
+        result = await domain_label_extractor.process(event)
+        assert result.data == expected_output
 
     async def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
@@ -97,8 +96,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
 
-    @pytest.mark.skip("TODO clearify async Factory")
-    def test_raises_on_invalid_tagging_field(self):
+    async def test_raises_on_invalid_tagging_field(self):
         config = {
             "Test DomainLabelExtractor Name": {
                 "type": "domain_label_extractor",
@@ -109,9 +107,11 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         }
 
         domain_label_extractor = Factory.create(config)
-        domain_label_extractor.setup()
+        await domain_label_extractor.setup()
         document = {"url": {"domain": "http://["}, "special_tags": False}
-        result = domain_label_extractor.process(document)
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+
+        result = await domain_label_extractor.process(event)
         assert len(result.errors) == 1
         assert isinstance(result.errors[0], ProcessingCriticalError)
 
