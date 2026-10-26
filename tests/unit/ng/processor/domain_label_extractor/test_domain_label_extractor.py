@@ -62,7 +62,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "url": {"domain": "http://["},
             "special_tags": ["invalid_domain_in_url_domain"],
         }
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
         await domain_label_extractor.process(log_event)
         assert log_event.data == expected_output
 
@@ -83,7 +83,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "url": {"domain": "http://["},
             "special_tags": ["source", "invalid_domain_in_url_domain"],
         }
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
 
         await domain_label_extractor.process(log_event)
         assert log_event.data == expected_output
@@ -131,4 +131,4 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
-        assert result.data == expected
+        assert document == expected
