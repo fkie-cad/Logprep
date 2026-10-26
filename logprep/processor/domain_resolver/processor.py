@@ -45,7 +45,7 @@ from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache, NOT_CACHED
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, JsonObject
 
 logger = logging.getLogger("DomainResolver")
 
@@ -255,7 +255,7 @@ class DomainResolver(Processor):
 
         self._hasher = SHA256Hasher()
 
-    def _apply_rules(self, event: dict[str, typing.Any], rule: DomainResolverRule):
+    def _apply_rules(self, event: JsonObject, rule: DomainResolverRule) -> None:
         source_field = rule.source_fields[0]
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
