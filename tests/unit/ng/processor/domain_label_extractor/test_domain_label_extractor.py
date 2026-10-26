@@ -41,7 +41,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
 
     @pytest.mark.parametrize(["document", "expected_output"], multi_rule_test_cases)
     async def test_domain_extractor_multi_rule(self, document, expected_output):
-        event = LogEvent(deepcopy(document), original=b"", input_meta=InputMeta())
+        event = LogEvent(deepcopy(document), original=b"test_message", input_meta=InputMeta())
 
         result = await self.object.process(event)
         assert result.data == expected_output
