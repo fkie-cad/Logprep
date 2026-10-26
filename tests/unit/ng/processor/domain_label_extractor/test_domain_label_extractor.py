@@ -62,9 +62,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "url": {"domain": "http://["},
             "special_tags": ["invalid_domain_in_url_domain"],
         }
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
-        result = await domain_label_extractor.process(event)
-        assert event.data == expected_output
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await domain_label_extractor.process(log_event)
+        assert log_event.data == expected_output
 
     async def test_append_to_non_default_tagging_field(self):
         config = {
@@ -83,14 +83,14 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             "url": {"domain": "http://["},
             "special_tags": ["source", "invalid_domain_in_url_domain"],
         }
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        result = await domain_label_extractor.process(event)
-        assert result.data == expected_output
+        await domain_label_extractor.process(log_event)
+        assert log_event.data == expected_output
 
     async def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
 
         result = await self.object.process(event)
         assert len(result.warnings) == 1
@@ -126,7 +126,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
                 "top_level_domain": "de",
             },
         }
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
 
         result = await self.object.process(event)
         assert len(result.warnings) == 1
