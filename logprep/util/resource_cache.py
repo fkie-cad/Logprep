@@ -245,6 +245,9 @@ class ResourceCache(Generic[T]):
 
         if isinstance(getter, RefreshableGetter):
             is_refreshable = True
+            if is_dynamic:
+                # NOTE: keep_alive_for_target must not be called for static resources.
+                RefreshableGetter.keep_alive_for_target(resolved_uri)
             getter.keep_alive()
             key = (self._tag, resolved_uri)
             getter.add_callback(
