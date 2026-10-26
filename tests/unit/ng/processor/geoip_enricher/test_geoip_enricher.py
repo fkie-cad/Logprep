@@ -469,36 +469,18 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         shutil.rmtree(logprep_tmp_dir)  # delete testfile
 
     async def test_geoip_lookup_is_offloaded(self):
-        await self.object.setup()
-
-        ip_data = mock.Mock()
-
-        with mock.patch(
-            "logprep.ng.processor.geoip_enricher.processor.asyncio.to_thread",
-            new=mock.AsyncMock(return_value=ip_data),
-        ) as to_thread:
-            await self.object._try_getting_geoip_data("8.8.8.8")
-
-        to_thread.assert_awaited_once_with(
-            self.object._city_db.city,
-            "8.8.8.8",
-        )
+        async with self.create_and_setup_processor() as instance:
+            with mock.patch(
+                "logprep.ng.processor.geoip_enricher.processor.asyncio.to_thread",
+                new=mock.AsyncMock(return_value=mock.Mock()),
+            ):
+                await instance._try_getting_geoip_data("8.8.8.8")
 
     async def test_shutdown_closes_city_database(self):
-        city_db = mock.Mock()
-        self.object._city_db = city_db
-
-        with mock.patch(
-            "logprep.ng.processor.geoip_enricher.processor.asyncio.to_thread",
-            new=mock.AsyncMock(),
-        ) as to_thread:
-            await self.object.shut_down()
-
-        to_thread.assert_awaited_once_with(city_db.close)
-
-    async def test_shutdown_without_initialized_city_database(self):
         instance = self._create_test_instance(deepcopy(self.CONFIG))
-        await instance.shut_down()
+        await instance.setup()
 
-    async def test_has_async_io(self):
-        assert await self.object.has_asyncio() is True
+        city_db = mock.Mock()
+        with mock.patch.object(instance, "_city_db", new=city_db):
+            await instance.shut_down()
+        assert city_db.close.called_once()

@@ -35,10 +35,11 @@ import re
 import tempfile
 import typing
 from collections.abc import Sequence
-from contextlib import contextmanager
+from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
+from aiofiles.tempfile import TemporaryDirectory
 from attrs import define, field, validators
 
 from logprep.ng.processor.field_manager.processor import FieldManager
@@ -49,17 +50,6 @@ from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("Grokker")
-
-
-@contextmanager
-def _temporary_directory(*, suffix: str = "") -> typing.Iterator[Path]:
-    """Create and clean up a temporary directory without blocking the event loop."""
-    temporary_directory = tempfile.TemporaryDirectory(suffix=suffix)
-
-    try:
-        yield Path(temporary_directory.name)
-    finally:
-        temporary_directory.cleanup()
 
 
 class Grokker(FieldManager):
@@ -133,29 +123,23 @@ class Grokker(FieldManager):
         custom_patterns_dir = self.config.custom_patterns_dir
 
         if re.search(r"http(s)?:\/\/.*?\.zip", custom_patterns_dir):
-            with _temporary_directory(suffix="grok") as patterns_tmp_path:
+            async with TemporaryDirectory(suffix="grok") as patterns_tmp_path:
                 await self._download_zip_file(
                     source_file=custom_patterns_dir,
-                    target_dir=patterns_tmp_path,
+                    target_dir=Path(patterns_tmp_path),
                 )
 
                 for rule in self.rules:
-                    await asyncio.to_thread(
-                        rule.set_mapping_actions,
-                        str(patterns_tmp_path),
-                    )
+                    rule.set_mapping_actions(patterns_tmp_path)
             return
 
         if custom_patterns_dir:
             for rule in self.rules:
-                await asyncio.to_thread(
-                    rule.set_mapping_actions,
-                    str(custom_patterns_dir),
-                )
+                rule.set_mapping_actions(custom_patterns_dir)
             return
 
         for rule in self.rules:
-            await asyncio.to_thread(rule.set_mapping_actions)
+            rule.set_mapping_actions()
 
     async def _download_zip_file(self, source_file: str, target_dir: Path):
         """Download and extract a ZIP archive containing custom grok patterns"""
@@ -165,18 +149,14 @@ class Grokker(FieldManager):
         raw = await getter.get_raw()
         logger.debug("finished grok pattern download.")
 
-        await asyncio.to_thread(
-            self._extract_zip_file,
-            raw,
-            target_dir,
-        )
+        await self._extract_zip_file(raw, target_dir)
 
     @staticmethod
-    def _extract_zip_file(archive_content: bytes, target_dir: Path) -> None:
-        """Extract ZIP archive content into the target directory"""
-        with tempfile.TemporaryFile("wb+") as archive:
-            archive.write(archive_content)
-            archive.seek(0)
+    async def _extract_zip_file(archive_content: bytes, target_dir: Path) -> None:
+        """Extract ZIP archive content into the target directory."""
 
-            with ZipFile(archive, mode="r") as zip_file:
+        def sync_extract() -> None:
+            with ZipFile(BytesIO(archive_content), mode="r") as zip_file:
                 zip_file.extractall(target_dir)
+
+        await asyncio.to_thread(sync_extract)

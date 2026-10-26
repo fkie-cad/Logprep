@@ -70,6 +70,7 @@ dependencies = [
   "uvloop<1",
   "httptools<1",
   "more-itertools>=11.1.0",
+  "aiofiles>=25.1.0",
 ]
 
 [project.optional-dependencies]
@@ -96,6 +97,7 @@ dev = [
   "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
   "ipykernel>=7.3.0",
   "types-python-dateutil>=2.9.0.20260807",
+  "types-aiofiles",
 ]
 
 doc = [

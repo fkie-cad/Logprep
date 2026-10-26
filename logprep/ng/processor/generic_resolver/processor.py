@@ -222,7 +222,7 @@ class GenericResolver(FieldManager):
 
         for rule in self.rules:
             rule = typing.cast(GenericResolverRule, rule)
-            await rule.setup(self._job_tag_for_cleanup)
+            await rule.init(self._job_tag_for_cleanup)
 
         self._cache_metrics_skip_count = 0
 

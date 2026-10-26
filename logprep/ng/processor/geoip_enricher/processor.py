@@ -106,11 +106,7 @@ class GeoipEnricher(FieldManager):
     async def _try_getting_geoip_data(self, ip_string: str) -> dict:
         try:
             ip_addr = str(ip_address(ip_string))
-            ip_data = await asyncio.to_thread(
-                self._city_db.city,
-                ip_addr,
-            )
-
+            ip_data = self._city_db.city(ip_addr)
             geoip_data = GEOIP_DATA_STUBS.copy()
 
             geoip_data |= {
@@ -167,14 +163,5 @@ class GeoipEnricher(FieldManager):
 
     async def shut_down(self) -> None:
         """Close the GeoIP database and shut down the processor"""
-        city_db = getattr(self, "_city_db", None)
-
-        if city_db is not None:
-            await asyncio.to_thread(city_db.close)
-            del self._city_db
-
+        self._city_db.close()
         await super().shut_down()
-
-    async def has_asyncio(self) -> bool:
-        """Return whether the processor performs asynchronous I/O operations."""
-        return True

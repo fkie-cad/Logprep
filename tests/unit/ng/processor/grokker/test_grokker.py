@@ -72,8 +72,14 @@ class TestGrokker(BaseProcessorTestCase[Grokker]):
             "filter": "message",
             "grokker": {"mapping": {"message": "this is %{ID:userfield}"}},
         }
+        config = deepcopy(self.CONFIG)
+        config["custom_patterns_dir"] = (
+            "http://localhost:8000/tests/testdata/unit/grokker/patterns.zip"
+        )
+        config["rules"] = [rule]
 
         event = {"message": "this is user-456"}
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
         expected = {"message": "this is user-456", "userfield": "user-456"}
 
         archive_data = await GetterFactory.from_string(
@@ -86,17 +92,8 @@ class TestGrokker(BaseProcessorTestCase[Grokker]):
         ) as mock_getter:
             mock_getter.return_value = archive_data
 
-            config = deepcopy(self.CONFIG)
-            config["custom_patterns_dir"] = (
-                "http://localhost:8000/tests/testdata/unit/grokker/patterns.zip"
-            )
-            config["rules"] = [rule]
-
-            self.object = Factory.create({"grokker": config})
-            event = LogEvent(event, original=b"", input_meta=InputMeta())
-
-            await self.object.setup()
-            await self.object.process(event)
+            async with self.create_and_setup_processor(config_patch=config) as instance:
+                await instance.process(event)
 
         assert event.data == expected
 

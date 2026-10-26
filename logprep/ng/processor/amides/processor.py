@@ -226,13 +226,16 @@ class Amides(FieldManager):
             logger.debug("Finished getting AMIDES models archive...")
             models_path = str(models_archive.absolute())
 
-        return self._load_models_from_archive(models_path)
+        return await self._load_models_from_archive(models_path)
 
     @staticmethod
-    def _load_models_from_archive(models_path: str):
-        with ZipFile(models_path, mode="r") as zip_file:
-            with zip_file.open("model", mode="r") as models_file:
-                return joblib.load(models_file)
+    async def _load_models_from_archive(models_path: str):
+        def sync_load():
+            with ZipFile(models_path, mode="r") as zip_file:
+                with zip_file.open("model", mode="r") as models_file:
+                    return joblib.load(models_file)
+
+        return await asyncio.to_thread(sync_load)
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(AmidesRule, rule)

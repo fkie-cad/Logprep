@@ -1091,6 +1091,8 @@ class Configuration:
                 if credentials_file_path is None:
                     raise ValueError("credentials file path was None but expected it to be set")
 
+                # TODO(async-followup): Refactor CredentialsFactory.get_content to use a Getter
+                #       or accept preloaded data for parsing.
                 _ = await asyncio.to_thread(
                     CredentialsFactory.get_content,
                     Path(credentials_file_path),

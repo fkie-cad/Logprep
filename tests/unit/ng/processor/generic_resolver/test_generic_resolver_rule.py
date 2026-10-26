@@ -251,9 +251,9 @@ class TestGenericResolverRule:
 
         if error:
             with pytest.raises(error, match=message):
-                await rule_instance.setup("test")
+                await rule_instance.init("test")
         else:
-            await rule_instance.setup("test")
+            await rule_instance.init("test")
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("generic_resolver").items():
                 assert hasattr(rule_instance._config, key)
@@ -297,7 +297,7 @@ class TestGenericResolverRule:
         try:
             with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
                 rule = GenericResolverRule.create_from_dict(rule_definition)
-                await rule.setup("test")
+                await rule.init("test")
 
                 scheduler = HttpGetter(protocol="http", target=url).scheduler
                 assert scheduler is not None
@@ -396,7 +396,7 @@ class TestGenericResolverRule:
             }
         )
 
-        await rule.setup("test")
+        await rule.init("test")
 
         assert rule.additions == expected
 
@@ -447,7 +447,7 @@ class TestGenericResolverRule:
         )
 
         with pytest.raises(InvalidConfigurationError, match=match):
-            await rule.setup("test")
+            await rule.init("test")
 
     def test_additions_are_not_shared_between_configs(self):
         first = GenericResolverRule.Config(
@@ -507,7 +507,7 @@ class TestGenericResolverRule:
         try:
             with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
                 rule = GenericResolverRule.create_from_dict(rule_definition)
-                await rule.setup("test")
+                await rule.init("test")
 
                 scheduler = HttpGetter(protocol="http", target=url).scheduler
                 assert scheduler is not None
