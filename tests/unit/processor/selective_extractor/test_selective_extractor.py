@@ -36,9 +36,8 @@ class MockedUrl:
 class MockedFile:
     path: str = field(default="")
     source_path: str | None = field(default=None)
-    body: str | None = field(default=None)  # Json
+    body: str | None = field(default=None)
 
-    # Alternative: @root_validator \n def any_of(cls, v): ?
     def __post_init__(self):
         has_source = self.source_path is not None
         has_body = self.body is not None
@@ -61,15 +60,11 @@ class ProcessorTestCase:
     expected_extras: list[JsonObject] | None = field(default=None)
     context: MockContext | None = field(default=None)
 
-    @property
-    def deepcpy(self) -> ProcessorTestCase:
-        return deepcopy(self)
-
     def case_to_param(self) -> ParameterSet:
         """Export a ProcessorTestCase as a Pytest-ParameterSet.
         Uses a deepcopy to avoid problems with in-place changes on event.
         """
-        return pytest.param(self.deepcpy, id=self.id)
+        return pytest.param(deepcopy(self), id=self.id)
 
 
 @attrs.define(kw_only=True, slots=True, frozen=True)
@@ -77,13 +72,7 @@ class ProcessorFailureTestCase(ProcessorTestCase):
     error_message: str
 
 
-# example_test_cases = []
-
-# test_cases = normalize_test_cases(
-#     *example_test_cases,
-# )
-
-reworked_test_cases = [
+example_test_cases = [
     ProcessorTestCase(
         id="Test process returns extracted fields",
         rule={
@@ -101,6 +90,9 @@ reworked_test_cases = [
         #    MockedFile(refpath="blabla"),
         # ],
     ),
+]
+test_cases = [
+    *example_test_cases,
     ProcessorTestCase(
         id="test process extracts dotted fields and ignores missing fields",
         rule={
@@ -173,15 +165,17 @@ def provision_context(
                             content_type=mock_item.content_type,
                         )
                     case MockedFile():
-                        dst_path = tmp_path / mock_item.path.removeprefix("file://")
-                        dst_path.parent.mkdir(parents=True, exist_ok=True)
+                        destination_path = tmp_path / mock_item.path.removeprefix("file://")
+                        destination_path.parent.mkdir(parents=True, exist_ok=True)
                         if mock_item.source_path is None:
-                            dst_path.write_text(json.dumps(mock_item.body), encoding="utf-8")
+                            destination_path.write_text(
+                                json.dumps(mock_item.body), encoding="utf-8"
+                            )
                         else:
-                            src_path = Path(mock_item.source_path)
-                            if not src_path.is_absolute():
-                                src_path = project_root / src_path
-                            shutil.copy(src_path, dst_path)
+                            source_path = Path(mock_item.source_path)
+                            if not source_path.is_absolute():
+                                source_path = project_root / source_path
+                            shutil.copy(source_path, destination_path)
             monkeypatch.chdir(tmp_path)
 
         yield _provision
@@ -193,7 +187,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
 
-    @pytest.mark.parametrize("case", reworked_test_cases)
+    @pytest.mark.parametrize("case", test_cases)
     def test_testcases(self, case: ProcessorTestCase, provision_context):
         provision_context(case.context)
         self._load_rule(case.rule)
