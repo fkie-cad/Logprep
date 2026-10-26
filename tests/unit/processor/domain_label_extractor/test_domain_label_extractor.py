@@ -19,7 +19,8 @@ TEST_RULE = {
     "description": "",
 }
 
-test_cases = [
+
+example_test_cases = [
     pytest.param(
         TEST_RULE,
         {"url": {"domain": "https://url.full.domain.de/path/file?param=1"}},
@@ -32,6 +33,19 @@ test_cases = [
             }
         },
         id="extraction from full url",
+    ),
+    pytest.param(
+        TEST_RULE,
+        {"url": {"domain": "domain.fubarbo"}},
+        {
+            "url": {
+                "domain": "domain.fubarbo",
+                "registered_domain": "",
+                "top_level_domain": "",
+                "subdomain": "",
+            },
+        },
+        id="extraction without recognized tld",
     ),
     pytest.param(
         TEST_RULE,
@@ -61,6 +75,21 @@ test_cases = [
     ),
     pytest.param(
         TEST_RULE,
+        {"url": {"domain": "123.123.123.123"}},
+        {"url": {"domain": "123.123.123.123"}, "tags": ["ip_in_url_domain"]},
+        id="with_ipv4_target",
+    ),
+    pytest.param(
+        TEST_RULE,
+        {"url": {"domain": "http://["}},
+        {
+            "url": {"domain": "http://["},
+            "tags": ["invalid_domain_in_url_domain"],
+        },
+        id="invalid domain",
+    ),
+    pytest.param(
+        TEST_RULE,
         {"url": {"domain": "NOT AN URL"}},
         {
             "url": {
@@ -74,15 +103,6 @@ test_cases = [
     ),
     pytest.param(
         TEST_RULE,
-        {"url": {"domain": "http://["}},
-        {
-            "url": {"domain": "http://["},
-            "tags": ["invalid_domain_in_url_domain"],
-        },
-        id="invalid domain",
-    ),
-    pytest.param(
-        TEST_RULE,
         {"url": {"domain": ["NOT", "AN", "URL"]}},
         {
             "url": {"domain": ["NOT", "AN", "URL"]},
@@ -90,6 +110,10 @@ test_cases = [
         },
         id="invalid content (list)",
     ),
+]
+
+test_cases = [
+    *example_test_cases,
     pytest.param(
         TEST_RULE,
         {"url": {"domain": {"NOT": "AN URL"}}},
@@ -158,19 +182,6 @@ test_cases = [
     ),
     pytest.param(
         TEST_RULE,
-        {"url": {"domain": "domain.fubarbo"}},
-        {
-            "url": {
-                "domain": "domain.fubarbo",
-                "registered_domain": "",
-                "top_level_domain": "",
-                "subdomain": "",
-            },
-        },
-        id="extraction without recognized tld",
-    ),
-    pytest.param(
-        TEST_RULE,
         {"url": {"domain": "http://["}, "tags": ["source"]},
         {
             "url": {
@@ -203,12 +214,6 @@ test_cases = [
             }
         },
         id="with separated tld",
-    ),
-    pytest.param(
-        TEST_RULE,
-        {"url": {"domain": "123.123.123.123"}},
-        {"url": {"domain": "123.123.123.123"}, "tags": ["ip_in_url_domain"]},
-        id="with_ipv4_target",
     ),
     pytest.param(
         TEST_RULE,

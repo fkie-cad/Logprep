@@ -9,6 +9,7 @@ and :code:`target_field`. Former is used to identify the field
 And the latter is used to define the parent field where theresults should be written to.
 Both fields can be dotted subfields. The sub fields of the parent output field of the
 result are: :code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`.
+If no valid TLD can be identified all all sub fields will be empty.
 
 In the following example the domain :code:`www.sub.domain.de`
 will be split into it's subdomain :code:`www.sub`, it's
@@ -54,6 +55,12 @@ will result in the following output
    :undoc-members:
    :inherited-members:
    :noindex:
+
+Examples for |PROCESSOR_NAME|:
+------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.domain_label_extractor.test_domain_label_extractor
+   :template: testcase-renderer.tmpl
 """
 
 import typing
