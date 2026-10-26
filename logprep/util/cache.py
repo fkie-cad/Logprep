@@ -76,7 +76,7 @@ class Cache(Generic[T]):
     def refresh_time_to_live(self, key) -> bool:
         """Update the items timestamp inside the cache."""
         last_stored = self.get(key)
-        if last_stored != NOT_CACHED:
+        if last_stored is not NOT_CACHED:
             self._store[key].insertion_time = time.time()
             return True
         return False

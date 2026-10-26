@@ -29,15 +29,15 @@ class TestCache:
 
     def test_is_cached_nonzero_deltatime(self, cache: Cache):
         for _ in range(3):
-            assert cache.get("foo") == NOT_CACHED
+            assert cache.get("foo") is NOT_CACHED
             cache.add("foo", None)
-            assert cache.get("foo") != NOT_CACHED
+            assert cache.get("foo") is not NOT_CACHED
             time.sleep(0.1)  # nosemgrep
 
     def test_is_cached_zero_deltatime(self, cache: Cache):
         cache._max_timedelta = 0
         for _ in range(10):
-            assert cache.get("foo") == NOT_CACHED
+            assert cache.get("foo") is NOT_CACHED
 
     def test_max_items_add(self, cache):
         extra_items = 3
@@ -51,7 +51,7 @@ class TestCache:
         assert set(cache._store.keys()) == set(range(extra_items, cache._max_items + extra_items))
 
     def test_add_refreshes_on_add(self, cache: Cache):
-        assert cache.get("foo") == NOT_CACHED
+        assert cache.get("foo") is NOT_CACHED
         cache.add("foo", None)
         assert cache.get("foo") is None
         old_decay_time = cache._store["foo"].insertion_time
@@ -76,10 +76,10 @@ class TestCache:
         assert cache._store["foo"].insertion_time > original_insertion_time
 
     def test_get_cached_value(self, cache: Cache):
-        assert cache.get("foo") == NOT_CACHED
+        assert cache.get("foo") is NOT_CACHED
         cache.add("foo", None)
         assert cache.get("foo") is None
 
-        assert cache.get("bar") == NOT_CACHED
+        assert cache.get("bar") is NOT_CACHED
         cache.add("bar", "baz")
         assert cache.get("bar") == "baz"

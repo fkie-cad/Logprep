@@ -297,12 +297,12 @@ class DomainResolver(Processor):
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
 
         cached_resolved = self._domain_cache.get(hash_string)
-        if cached_resolved != NOT_CACHED:
+        if cached_resolved is not NOT_CACHED:
             self.metrics.resolved_cached.inc(1)
             self._domain_cache.refresh_time_to_live(hash_string)
             return cached_resolved
 
-        if self._timeout_cache.get(hash_string) != NOT_CACHED:
+        if self._timeout_cache.get(hash_string) is not NOT_CACHED:
             self.metrics.timeouts_cached.inc(1)
             return FailedResult(FailureType.TIMEOUT)
 
