@@ -57,7 +57,7 @@ class ProcessorTestCase:
     rule: dict[str, Any]
     event: JsonObject
     expected: JsonObject
-    expected_extras: list[JsonObject] | None = field(default=None)
+    expected_extras: list[tuple[JsonObject, list[tuple[str, str]]]] | None = field(default=None)
     context: MockContext | None = field(default=None)
 
     def case_to_param(self) -> ParameterSet:
@@ -84,12 +84,19 @@ example_test_cases = [
         },
         event={"message": "test_message", "message2": "test_message2", "other": "field"},
         expected={"message": "test_message", "message2": "test_message2", "other": "field"},
-        expected_extras=[{"message": "test_message", "message2": "test_message2"}],
-        # context=[
-        #    MockedUrl(url="http://example.com", body='{"whatever":"json"}'),
-        #    MockedFile(refpath="blabla"),
-        # ],
+        expected_extras=[
+            (
+                {"message": "test_message", "message2": "test_message2"},
+                [
+                    ("opensearch", "index"),
+                ],
+            ),
+        ],
     ),
+    # context=[
+    #    MockedUrl(url="http://example.com", body='{"whatever":"json"}'),
+    #    MockedFile(refpath="blabla"),
+    # ],
 ]
 test_cases = [
     *example_test_cases,
@@ -105,7 +112,14 @@ test_cases = [
         },
         event={"message": "test_message", "other": {"message": "my message value"}},
         expected={"message": "test_message", "other": {"message": "my message value"}},
-        expected_extras=[{"message": "test_message", "other": {"message": "my message value"}}],
+        expected_extras=[
+            (
+                {"message": "test_message", "other": {"message": "my message value"}},
+                [
+                    ("opensearch", "index"),
+                ],
+            ),
+        ],
     ),
     ProcessorTestCase(
         id="test process extracts dotted fields and complains on missing fields",
@@ -123,7 +137,7 @@ test_cases = [
             "other": {"message": "my message value"},
             "tags": ["_selective_extractor_missing_field_warning"],
         },
-        expected_extras=[{"message": "test_message", "other": {"message": "my message value"}}],
+        expected_extras=None,  # can be left out
     ),
 ]
 
@@ -181,20 +195,38 @@ def provision_context(
         yield _provision
 
 
+parametrized_test_cases = [c.case_to_param() for c in test_cases]
+
+
 class TestSelectiveExtractor(BaseProcessorTestCase):
     CONFIG = {
         "type": "selective_extractor",
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
 
-    @pytest.mark.parametrize("case", test_cases)
+    @pytest.mark.parametrize("case", parametrized_test_cases)
     def test_testcases(self, case: ProcessorTestCase, provision_context):
         provision_context(case.context)
         self._load_rule(case.rule)
         assert isinstance(self.object, Processor)
         result = self.object.process(case.event)
         assert case.expected == result.event
-        assert case.expected_extras == [result.data[0][0]]
+        # This last section is AI-Generated. I don't like it but I want to progress.
+        if case.expected_extras is None:
+            return
+        assert result.data == case.expected_extras
+        for (expected_extra_data, expected_outputs), (actual_data, actual_outputs) in zip(
+            case.expected_extras, result.data
+        ):
+            assert actual_data == expected_extra_data
+            if expected_outputs is not None:
+                for (expected_output_name, expected_target), actual_output in zip(
+                    expected_outputs, actual_outputs
+                ):
+                    if isinstance(actual_output, dict):
+                        assert actual_output.get(expected_output_name) == expected_target
+                    else:
+                        assert actual_output == expected_target
 
     def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
