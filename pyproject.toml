@@ -47,7 +47,7 @@ dependencies = [
   "aiohttp>=3.14.4", # [>=3.14.4]: CVE-2026-111066
   "attrs<26",
   "confluent-kafka>2,<3",
-  "filelock<4",
+  "filelock>=4.2.1<5", # CVE-2026-112940
   "geoip2>=5.2.0,<6", # Setuptools has been replaced with 5.2.0 (CVE)
   "jsonref<2",
   "luqum<2",
