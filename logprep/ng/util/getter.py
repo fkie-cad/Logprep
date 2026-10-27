@@ -21,7 +21,9 @@ from typing import Any, ClassVar, Iterable, TypeAlias
 from urllib.parse import urlparse
 
 import aiohttp
+import requests
 from attrs import define, field, validators
+from urllib3 import Retry
 
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.getter import ContentType, Getter
@@ -225,7 +227,7 @@ class RefreshableGetter(Getter, ABC):
 
     @cache.setter
     def cache(self, value: bytes) -> None:
-        """Sets the cache for the current target"""
+        """Sets the cache for the target"""
         self.shared.cache = value
 
     @property
@@ -670,7 +672,7 @@ class RefreshableGetter(Getter, ABC):
 
     @classmethod
     def timed_out_for_target(cls, target: str) -> bool:
-        """Whether the target has timed out"""
+        """Whether this target has timed out"""
         target_shared = cls._target_to_data_caches.get(target)
         if target_shared is None:
             return False
@@ -834,8 +836,6 @@ class HttpGetter(RefreshableGetter):
 
     # Intentionally shared across HttpGetter instances to reuse credentials per domain.
     _credentials_registry: ClassVar[dict[str, Credentials]] = {}  # shared
-    _MAX_RETRIES: ClassVar[int] = 3
-    _RETRY_STATUS_CODES: ClassVar[frozenset[int]] = frozenset({500, 502, 503, 504})
 
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
 
@@ -860,17 +860,68 @@ class HttpGetter(RefreshableGetter):
             creds = CredentialsFactory.from_target(self.uri)
         return creds if creds else Credentials()
 
+    def _get_domain_uri(self) -> str:
+        """Return scheme and domain used to identify shared credentials."""
+        parsed_uri = urlparse(self.uri)
+        return f"{parsed_uri.scheme}://{parsed_uri.netloc}"
+
+    def _get_credentials(self) -> Credentials:
+        """Get or create shared credentials for the current target."""
+        domain_uri = self._get_domain_uri()
+
+        if domain_uri not in self._credentials_registry:
+            self._credentials_registry[domain_uri] = self.credentials
+
+        return self._credentials_registry[domain_uri]
+
+    def _get_requests_session_sync(self) -> requests.Session:
+        """Get the configured requests session used as credential configuration source."""
+        return self._get_credentials().get_session()
+
     async def _get_aiohttp_request_kwargs(self) -> dict[str, Any]:
-        """Build aiohttp request arguments from the configured credentials"""
+        """Build aiohttp request arguments from the configured credentials."""
         return await asyncio.to_thread(self._get_aiohttp_request_kwargs_sync)
+
+    def _get_aiohttp_request_kwargs_sync(self) -> dict[str, Any]:
+        """Convert requests session authentication and TLS settings to aiohttp arguments."""
+        requests_session = self._get_requests_session_sync()
+
+        request_kwargs: dict[str, Any] = {}
+        headers: dict[str, str] = {}
+
+        authorization = requests_session.headers.get("Authorization")
+        if authorization:
+            if isinstance(authorization, bytes):
+                authorization = authorization.decode("utf-8")
+            headers["Authorization"] = authorization
+
+        auth = requests_session.auth
+        if isinstance(auth, tuple):
+            username, password = auth
+            headers["Authorization"] = aiohttp.encode_basic_auth(
+                username,
+                password,
+            )
+
+        if headers:
+            request_kwargs["headers"] = headers
+
+        ssl_context = self._create_ssl_context(
+            requests_session.verify,
+            requests_session.cert,
+        )
+        if ssl_context is not None:
+            request_kwargs["ssl"] = ssl_context
+
+        return request_kwargs
 
     @staticmethod
     def _create_ssl_context(
-        verify: bool | str,
+        verify: bool | str | None,
         cert: str | tuple[str, str] | None,
     ) -> ssl.SSLContext | bool | None:
-        """Convert credential TLS settings to aiohttp SSL settings"""
-        if verify is True and cert is None:
+        """Convert credential TLS settings to aiohttp SSL settings."""
+        if verify in (True, None) and cert is None:
             return None
 
         if verify is False and cert is None:
@@ -897,43 +948,9 @@ class HttpGetter(RefreshableGetter):
 
         return ssl_context
 
-    def _get_aiohttp_request_kwargs_sync(self) -> dict[str, Any]:
-        """Build aiohttp request arguments from the configured credentials"""
-        domain = urlparse(self.uri).netloc
-        scheme = urlparse(self.uri).scheme
-        domain_uri = f"{scheme}://{domain}"
-
-        if domain_uri not in self._credentials_registry:
-            self._credentials_registry[domain_uri] = self.credentials
-
-        credentials = self._credentials_registry[domain_uri]
-        session = credentials.get_session()
-
-        request_kwargs: dict[str, Any] = {}
-        headers = {}
-
-        if session.auth:
-            username, password = session.auth
-            headers["Authorization"] = aiohttp.encode_basic_auth(
-                username,
-                password,
-            )
-
-        authorization = session.headers.get("Authorization")
-        if authorization:
-            headers["Authorization"] = authorization
-
-        if headers:
-            request_kwargs["headers"] = headers
-
-        ssl_context = self._create_ssl_context(
-            verify=session.verify,
-            cert=session.cert,
-        )
-        if ssl_context is not None:
-            request_kwargs["ssl"] = ssl_context
-
-        return request_kwargs
+    def _get_retry_config_sync(self) -> Retry:
+        """Return retry configuration for HTTP requests."""
+        return self._get_credentials().get_retry_config()
 
     async def _get_from_target(
         self,
@@ -941,92 +958,96 @@ class HttpGetter(RefreshableGetter):
         content, content_type, status = await self._do_request()
         return content, content_type, status != 304
 
-    async def _do_request(
-        self,
-    ) -> tuple[bytes, ContentType | None, int]:
-        """Gets the content from a http server via a URI"""
-        request_kwargs = await self._get_aiohttp_request_kwargs()
-
-        credential_headers = request_kwargs.pop("headers", {})
-        headers = credential_headers | self._headers
-
+    async def _do_request(self) -> tuple[bytes, ContentType | None, int]:
+        """Get the content from an HTTP server via a URI."""
         if self.hash:
-            headers["If-None-Match"] = self.hash
+            self._headers.update({"If-None-Match": self.hash})
 
         try:
-            async with aiohttp.ClientSession(
-                trust_env=True,
-            ) as session:
-                for attempt in range(self._MAX_RETRIES + 1):
-                    try:
-                        async with session.get(
-                            url=self.uri,
-                            timeout=aiohttp.ClientTimeout(total=5),
-                            allow_redirects=True,
-                            headers=headers,
-                            **request_kwargs,
-                        ) as response:
-                            if (
-                                response.status in self._RETRY_STATUS_CODES
-                                and attempt < self._MAX_RETRIES
-                            ):
-                                logger.warning(
-                                    "retrying %s after status=%d (%d/%d)",
-                                    self.uri,
-                                    response.status,
-                                    attempt + 1,
-                                    self._MAX_RETRIES,
-                                )
+            credential_kwargs = await self._get_aiohttp_request_kwargs()
+        except requests.exceptions.RequestException as error:
+            # Credential initialization can perform synchronous OAuth requests.
+            raise RefreshableGetterError(str(error)) from error
+
+        headers = dict(self._headers)
+        headers.update(credential_kwargs.pop("headers", {}))
+
+        request_kwargs: dict[str, Any] = {
+            "timeout": aiohttp.ClientTimeout(total=5),
+            "allow_redirects": True,
+            "headers": headers,
+            **credential_kwargs,
+        }
+
+        retry_config = self._get_retry_config_sync()
+        max_retries = retry_config.total if isinstance(retry_config.total, int) else 0
+
+        async with aiohttp.ClientSession(trust_env=True) as session:
+            for attempt in range(max_retries + 1):
+                try:
+                    async with session.get(
+                        self.uri,
+                        **request_kwargs,
+                    ) as response:
+                        if retry_config.is_retry(
+                            method="GET",
+                            status_code=response.status,
+                        ):
+                            if attempt < max_retries:
                                 continue
 
-                            if response.status == 401:
-                                if ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
-                                    raise RefreshableGetterError(
-                                        f"{response.status}, "
-                                        f"message={response.reason!r}, "
-                                        f"url={self.uri!r}"
-                                    )
-
-                                raise CredentialsEnvNotFoundError(
-                                    "Credentials file not found. Please set the environment variable "
-                                    f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
-                                )
-
+                        try:
                             response.raise_for_status()
+                        except aiohttp.ClientResponseError as error:
+                            self._handle_http_error(error)
 
-                            logger.debug(
-                                "querying %s with etag=%s yielded status=%d",
-                                self.uri,
-                                self.hash,
-                                response.status,
-                            )
+                        content = await response.read()
 
-                            if "ETag" in response.headers:
-                                self.hash = response.headers["ETag"]
-
-                            return (
-                                await response.read(),
-                                response.content_type,
-                                response.status,
-                            )
-
-                    except (aiohttp.ClientConnectionError, asyncio.TimeoutError):
-                        if attempt >= self._MAX_RETRIES:
-                            raise
-
-                        logger.warning(
-                            "retrying %s after connection error (%d/%d)",
-                            self.uri,
-                            attempt + 1,
-                            self._MAX_RETRIES,
+                        content_type_header = response.headers.get("Content-Type")
+                        content_type = (
+                            content_type_header.split(";", 1)[0].strip()
+                            if content_type_header
+                            else None
                         )
 
-        except aiohttp.ClientError as error:
-            raise RefreshableGetterError(str(error)) from error
-        except asyncio.TimeoutError as error:
-            raise RefreshableGetterError(str(error)) from error
+                        logger.debug(
+                            "querying %s with etag=%s yielded status=%d",
+                            self.uri,
+                            self.hash,
+                            response.status,
+                        )
 
-        raise RuntimeError("HTTP request retry loop exited unexpectedly")
+                        if "etag" in response.headers:
+                            self.hash = response.headers["etag"]
+
+                        return content, content_type, response.status
+
+                except (
+                    aiohttp.ClientConnectionError,
+                    aiohttp.ClientPayloadError,
+                    asyncio.TimeoutError,
+                ) as error:
+                    if attempt < max_retries:
+                        continue
+                    raise RefreshableGetterError(str(error)) from error
+                except aiohttp.ClientError as error:
+                    raise RefreshableGetterError(str(error)) from error
+
+        raise RuntimeError("Unexpected retry state")
+
+    @staticmethod
+    def _handle_http_error(error: aiohttp.ClientResponseError) -> None:
+        """Handle HTTP errors while preserving the legacy credentials error behavior."""
+        if error.status != 401:
+            raise RefreshableGetterError(str(error)) from error
+        if ENV_VARS.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
+            raise RefreshableGetterError(str(error)) from error
+        raise CredentialsEnvNotFoundError(
+            (
+                "Credentials file not found. Please set the environment variable "
+                f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
+            )
+        ) from error
 
 
 async def refresh_getters():

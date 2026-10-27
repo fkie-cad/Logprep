@@ -446,12 +446,18 @@ class Credentials:
         validator=validators.instance_of((Session, type(None))), default=None
     )
 
+    @staticmethod
+    def get_retry_config() -> Retry:
+        """Return the HTTP retry configuration."""
+        return Retry(
+            total=3,
+            status_forcelist=[500, 502, 503, 504],
+        )
+
     def get_session(self):
-        """returns session with retry configuration"""
         if self._session is None:
             self._session = Session()
-            max_retries = 3
-            retries = Retry(total=max_retries, status_forcelist=[500, 502, 503, 504])
+            retries = self.get_retry_config()
             self._session.mount("https://", HTTPAdapter(max_retries=retries))
             self._session.mount("http://", HTTPAdapter(max_retries=retries))
         return self._session
