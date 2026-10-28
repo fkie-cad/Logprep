@@ -6,20 +6,24 @@ import inspect
 import json
 import shutil
 from collections.abc import Generator, Sequence
+from copy import deepcopy
 from multiprocessing import active_children, set_start_method
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, TypeAlias
 from unittest import mock
 
+import attrs
 import pytest
 import responses
 from _pytest.mark.structures import ParameterSet
+from attrs import field
 from prometheus_client import REGISTRY
 
 from logprep.registry import Registry
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.environ import _ENV_SNAPSHOT
 from logprep.util.getter import RefreshableGetter
+from logprep.util.helper import JsonObject
 
 
 @pytest.fixture(autouse=True)
@@ -141,6 +145,111 @@ def mock_env(env_dict: dict) -> _MockEnv:
                 ...
     """
     return _MockEnv(env_dict)
+
+
+@attrs.define(kw_only=True, slots=True)
+class MockedUrl:
+    """Mocks HTTP request to url"""
+
+    url: str
+    body: str
+    content_type: str | None = field(default="application/json")
+
+
+@attrs.define(kw_only=True, slots=True)
+class MockedFile:
+    """Mocks a file by providing either a json-body from code or a path to copy a file from"""
+
+    path: str = field(default="")
+    source_path: str | None = field(default=None)
+    body: str | None = field(default=None)
+
+    def __post_init__(self):
+        has_source = self.source_path is not None
+        has_body = self.body is not None
+        if has_source == has_body:
+            if self.source_path is None and self.body is None:
+                raise TypeError("Value needed for at least one: source_path, body")
+            else:
+                raise ValueError("Setting both source and body is not allowed.")
+
+
+MockContext: TypeAlias = list[MockedFile | MockedUrl]
+
+
+@attrs.define(kw_only=True, slots=True, frozen=True)
+class ProcessorTestCase:
+    id: str
+    rule: dict[str, Any]
+    event: JsonObject
+    expected: JsonObject
+    expected_extras: list[tuple[JsonObject, list[tuple[str, str]]]] = field(factory=list)
+    context: MockContext | None = field(default=None)
+
+    def case_to_param(self) -> ParameterSet:
+        """Export a ProcessorTestCase as a Pytest-ParameterSet.
+        Uses a deepcopy to avoid problems with in-place changes on event.
+        """
+        return pytest.param(deepcopy(self), id=self.id)
+
+
+@attrs.define(kw_only=True, slots=True, frozen=True)
+class ProcessorFailureTestCase(ProcessorTestCase):
+    error_message: str
+
+
+@pytest.fixture
+def provision_context_new(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pytestconfig: pytest.Config,
+) -> Generator[Callable[[list[MockedUrl | MockedFile]], None]]:
+    """Experimental override for this test file only.
+
+    The helper covers the most relevant aspects of mocking and provisioning.
+    MockContext is either MockedUrl or MockedFile.
+    - MockedUrl-Objects are registered as mocked ``GET`` responses. The
+      response is served as ``application/json`` unless the spec sets a
+      ``content_type`` (e.g. ``text/plain``), in which case the body is still
+      JSON-serialized but sent under that content type. Requests are automatically mocked
+      using `responses`.
+    - MockedFile-Objects can be defined in one of two ways.
+        1) Via a json "body" directly from code
+        2) Via a path (string) to a file which gets copied
+      An isolated working directory is created, which the test is switched into,
+      so a rule's relative file path resolves to it without any rewriting.
+      The working directory is only changed when a tmp_path is provided.
+    """
+    project_root = pytestconfig.rootpath
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
+
+        def _provision(context: MockContext) -> None:
+            if not context:  # includes falsy values such as []
+                return
+            for mock_item in context:
+                match mock_item:
+                    case MockedUrl():
+                        mocked_responses.add(
+                            responses.GET,
+                            mock_item.url,
+                            body=json.dumps(mock_item.body),
+                            content_type=mock_item.content_type,
+                        )
+                    case MockedFile():
+                        destination_path = tmp_path / mock_item.path.removeprefix("file://")
+                        destination_path.parent.mkdir(parents=True, exist_ok=True)
+                        if mock_item.source_path is None:
+                            destination_path.write_text(
+                                json.dumps(mock_item.body), encoding="utf-8"
+                            )
+                        else:
+                            source_path = Path(mock_item.source_path)
+                            if not source_path.is_absolute():
+                                source_path = project_root / source_path
+                            shutil.copy(source_path, destination_path)
+            monkeypatch.chdir(tmp_path)
+
+        yield _provision
 
 
 @pytest.fixture

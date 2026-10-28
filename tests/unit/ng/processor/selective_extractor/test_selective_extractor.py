@@ -17,9 +17,6 @@ from tests.unit.processor.selective_extractor.test_selective_extractor import (
 from tests.unit.processor.selective_extractor.test_selective_extractor import (
     parametrized_test_cases as non_ng_test_cases,
 )
-from tests.unit.processor.selective_extractor.test_selective_extractor import (
-    provision_context as provision_context_override,
-)
 
 test_cases = deepcopy(non_ng_test_cases)
 
@@ -31,34 +28,22 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
     }
 
     @pytest.mark.parametrize(["case"], test_cases)
-    async def test_testcases(self, case: ProcessorTestCase, provision_context_override):
-        provision_context_override(case.context)
+    async def test_testcases(self, case: ProcessorTestCase, provision_context_new):
+        provision_context_new(case.context)
         await self._load_rule(case.rule)
         event = LogEvent(case.event, original=b"", input_meta=InputMeta())
         assert isinstance(self.object, Processor)
         result: LogEvent = await self.object.process(event)
         assert case.expected == event.data
 
-        if case.expected_extras:
-            assert len(result.extra_data) == len(case.expected_extras)
-            for extra_data, (expected_extra_data, expected_outputs) in zip(
-                result.extra_data, case.expected_extras
-            ):
-                assert extra_data.data == expected_extra_data
-                for expected_output_name, expected_target in expected_outputs:
-                    assert extra_data.output_name == expected_output_name
-                    assert extra_data.output_target == expected_target
-
-        # if case.expected_extras:
-        #     for expected_extra_data, expected_outputs in case.expected_extras:
-        #         zipper = zip(result.extra_data, expected_outputs)
-        #         for extra_data, (expected_output_name, expected_target) in zipper:
-        #             assert extra_data.data == expected_extra_data
-        #             assert extra_data.output_name == expected_output_name
-        #             assert extra_data.output_target == expected_target
-        #         assert len(result.extra_data) == len(expected_outputs)
-
-        # FilteredEvent(_errors=[], warnings=[], data={'message': 'test_message', 'other': {'message': 'my message value'}}, output_name='opensearch', output_target='index', stored=False)
+        assert len(result.extra_data) == len(case.expected_extras)
+        for extra_data, (expected_extra_data, expected_outputs) in zip(
+            result.extra_data, case.expected_extras
+        ):
+            assert extra_data.data == expected_extra_data
+            for expected_output_name, expected_target in expected_outputs:
+                assert extra_data.output_name == expected_output_name
+                assert extra_data.output_target == expected_target
 
     async def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
