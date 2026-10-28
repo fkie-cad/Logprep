@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 import json
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 import responses
@@ -260,7 +261,7 @@ class TestGenericResolverRule:
 
     @responses.activate
     def test_rule_callback_updates_additions_and_preserves_original_add(self, tmp_path):
-        target = "localhost:123"
+        target = f"{uuid4()}.dd"
         url = f"http://{target}"
 
         rule_definition = {

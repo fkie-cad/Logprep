@@ -6,6 +6,7 @@
 import json
 from copy import deepcopy
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 import responses
@@ -185,7 +186,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
     @responses.activate
     async def test_resolve_from_http(self, tmp_path):
-        target = "localhost:123"
+        target = f"{uuid4()}.dd"
         url = f"http://{target}"
 
         responses.add(responses.GET, url, json={"ab": {"new1": "1"}})
