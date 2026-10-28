@@ -101,11 +101,13 @@ Authentication Process:
 
 import json
 import logging
+import ssl
 from base64 import b64encode
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
+import aiohttp
 import requests
 from attrs import define, field, validators
 from requests import HTTPError, Session
@@ -446,21 +448,41 @@ class Credentials:
         validator=validators.instance_of((Session, type(None))), default=None
     )
 
+    _aiohttp_session: aiohttp.ClientSession | None = field(
+        validator=validators.instance_of((aiohttp.ClientSession, type(None))),
+        default=None,
+        init=False,
+        repr=False,
+    )
+
     @staticmethod
     def get_retry_config() -> Retry:
-        """Return the HTTP retry configuration."""
+        """Return the HTTP retry configuration"""
         return Retry(
             total=3,
             status_forcelist=[500, 502, 503, 504],
         )
 
-    def get_session(self):
+    def get_session(self) -> Session:
+        """Return the requests session with retry configuration"""
         if self._session is None:
             self._session = Session()
             retries = self.get_retry_config()
             self._session.mount("https://", HTTPAdapter(max_retries=retries))
             self._session.mount("http://", HTTPAdapter(max_retries=retries))
         return self._session
+
+    async def get_aiohttp_session(self) -> aiohttp.ClientSession:
+        """Return the shared aiohttp session"""
+        if self._aiohttp_session is None or self._aiohttp_session.closed:
+            self._aiohttp_session = aiohttp.ClientSession(trust_env=True)
+        return self._aiohttp_session
+
+    async def close_aiohttp_session(self) -> None:
+        """Close the shared aiohttp session"""
+        if self._aiohttp_session is not None:
+            await self._aiohttp_session.close()
+            self._aiohttp_session = None
 
     def _no_authorization_header(self, session):
         """checks if authorization header already exists in the given request session"""
@@ -488,6 +510,32 @@ class Credentials:
                     f" code 400 Bad Request: {response.json().get('error')}"
                 ) from error
             raise
+
+    async def _handle_aiohttp_bad_requests_errors(
+        self,
+        response: aiohttp.ClientResponse,
+    ) -> None:
+        """Handle aiohttp requests with status code 400"""
+        try:
+            response.raise_for_status()
+        except aiohttp.ClientResponseError as error:
+            if response.status == 400:
+                response_data = await response.json()
+                raise CredentialsBadRequestError(
+                    "Authentication failed with status"
+                    f" code 400 Bad Request: {response_data.get('error')}"
+                ) from error
+            raise
+
+    async def close_sessions(self) -> None:
+        """Close the shared HTTP sessions"""
+        if self._session is not None:
+            self._session.close()
+            self._session = None
+
+        if self._aiohttp_session is not None:
+            await self._aiohttp_session.close()
+            self._aiohttp_session = None
 
 
 @define(kw_only=True)
@@ -532,6 +580,15 @@ class BasicAuthCredentials(Credentials):
         session.auth = (self.username, self.password)
         return session
 
+    async def get_aiohttp_session(self) -> aiohttp.ClientSession:
+        """Return the shared aiohttp session configured for basic authentication"""
+        session = await super().get_aiohttp_session()
+        session.headers["Authorization"] = aiohttp.encode_basic_auth(
+            self.username,
+            self.password,
+        )
+        return session
+
 
 @define(kw_only=True)
 class OAuth2TokenCredentials(Credentials):
@@ -551,6 +608,12 @@ class OAuth2TokenCredentials(Credentials):
     def get_session(self) -> Session:
         """request session with Bearer Token set in the authorization header"""
         session = super().get_session()
+        session.headers["Authorization"] = f"Bearer {self.token}"
+        return session
+
+    async def get_aiohttp_session(self) -> aiohttp.ClientSession:
+        """Return the shared aiohttp session with Bearer Token authorization"""
+        session = await super().get_aiohttp_session()
         session.headers["Authorization"] = f"Bearer {self.token}"
         return session
 
@@ -603,6 +666,58 @@ class OAuth2PasswordFlowCredentials(Credentials):
             }
             session.headers["Authorization"] = f"Bearer {self._get_token(payload)}"
         return session
+
+    async def get_aiohttp_session(self) -> aiohttp.ClientSession:
+        """Return the shared aiohttp session with OAuth2 password flow authorization"""
+        session = await super().get_aiohttp_session()
+        payload = None
+
+        if self._no_authorization_header(session):
+            payload = {
+                "grant_type": "password",
+                "username": self.username,
+                "password": self.password,
+            }
+            session.headers["Authorization"] = f"Bearer {await self._get_aiohttp_token(payload)}"
+
+        if self._token and self._token.is_expired and self._token.refresh_token is not None:
+            payload = {
+                "grant_type": "refresh_token",
+                "refresh_token": self._token.refresh_token,
+            }
+            session.headers["Authorization"] = f"Bearer {await self._get_aiohttp_token(payload)}"
+
+        return session
+
+    async def _get_aiohttp_token(self, payload: dict[str, str]) -> AccessToken:
+        """Retrieve the token asynchronously from the OAuth2 token endpoint"""
+        headers: dict[str, str] = {}
+        if self.client_id and self.client_secret:
+            client_secrets = b64encode(
+                f"{self.client_id}:{self.client_secret}".encode("utf-8")
+            ).decode("utf-8")
+            headers |= {"Authorization": f"Basic {client_secrets}"}
+
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
+            async with session.post(
+                url=self.endpoint,
+                data=payload,
+                headers=headers,
+            ) as response:
+                await self._handle_aiohttp_bad_requests_errors(response)
+                token_response = await response.json()
+
+        access_token = token_response.get("access_token")
+        refresh_token = token_response.get("refresh_token")
+        expires_in = token_response.get("expires_in")
+        kwargs = {
+            "token": access_token,
+            "refresh_token": refresh_token,
+            "expires_in": expires_in,
+        }
+        self._token = AccessToken(**kwargs)
+        return self._token
 
     def _get_token(self, payload: dict[str, str]) -> AccessToken:
         """sends a post request containing the payload to the token endpoint to retrieve
@@ -687,6 +802,47 @@ class OAuth2ClientFlowCredentials(Credentials):
 
         return session
 
+    async def get_aiohttp_session(self) -> aiohttp.ClientSession:
+        """Return the shared aiohttp session with OAuth2 client flow authorization"""
+        session = await super().get_aiohttp_session()
+
+        if "Authorization" in session.headers and (not self._token or self._token.is_expired):
+            session.headers["Authorization"] = f"Bearer {await self._get_aiohttp_token()}"
+
+        if self._no_authorization_header(session):
+            session.headers["Authorization"] = f"Bearer {await self._get_aiohttp_token()}"
+
+        return session
+
+    async def _get_aiohttp_token(self) -> AccessToken:
+        """Retrieve the token asynchronously from the OAuth2 token endpoint"""
+        payload = {
+            "grant_type": "client_credentials",
+        }
+        client_secrets = b64encode(f"{self.client_id}:{self.client_secret}".encode("utf-8")).decode(
+            "utf-8"
+        )
+        headers = {"Authorization": f"Basic {client_secrets}"}
+
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
+            async with session.post(
+                url=self.endpoint,
+                data=payload,
+                headers=headers,
+            ) as response:
+                await self._handle_aiohttp_bad_requests_errors(response)
+                token_response = await response.json()
+
+        access_token = token_response.get("access_token")
+        expires_in = token_response.get("expires_in")
+        kwargs = {
+            "token": access_token,
+            "expires_in": expires_in,
+        }
+        self._token = AccessToken(**kwargs)
+        return self._token
+
     def _get_token(self) -> AccessToken:
         """send post request to token endpoint
          to retrieve access token using the client credentials grant.
@@ -742,3 +898,18 @@ class MTLSCredentials(Credentials):
                 session.verify = self.ca_cert
 
         return session
+
+    async def get_aiohttp_session(self) -> aiohttp.ClientSession:
+        """Return the shared aiohttp session configured for mTLS authentication"""
+        if self._aiohttp_session is None or self._aiohttp_session.closed:
+            ssl_context = ssl.create_default_context(cafile=self.ca_cert)
+            ssl_context.load_cert_chain(
+                certfile=self.cert,
+                keyfile=self.client_key,
+            )
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+            self._aiohttp_session = aiohttp.ClientSession(
+                connector=connector,
+                trust_env=True,
+            )
+        return self._aiohttp_session

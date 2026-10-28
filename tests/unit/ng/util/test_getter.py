@@ -15,11 +15,11 @@ from logprep.ng.util.getter import (
     RefreshableGetterError,
 )
 from logprep.util.async_scheduler import AsyncScheduler
-from logprep.util.credentials import CredentialsEnvNotFoundError
+from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
 
 
 @pytest.fixture(autouse=True)
-def reset_refreshable_getters():
+async def reset_refreshable_getters():
     RefreshableGetter.reset()
     HttpGetter._credentials_registry.clear()
     yield
@@ -259,89 +259,27 @@ class TestHttpGetter:
 
         assert request_count == 1
 
-    def test_converts_basic_auth_to_authorization_header(self):
-        http_getter = GetterFactory.from_string("https://example.test/data")
+    async def test_reuses_aiohttp_session_between_getters(self):
+        first = GetterFactory.from_string("https://example.test/one")
+        second = GetterFactory.from_string("https://example.test/two")
 
-        session = mock.MagicMock()
-        session.auth = ("username", "password")
-        session.headers = {}
-        session.verify = True
-        session.cert = None
+        first_session = await first._get_aiohttp_session()
+        second_session = await second._get_aiohttp_session()
 
-        credentials = mock.MagicMock()
-        credentials.get_session.return_value = session
-
-        HttpGetter._credentials_registry["https://example.test"] = credentials
-
-        request_kwargs = http_getter._get_aiohttp_request_kwargs_sync()
-
-        assert request_kwargs == {
-            "headers": {
-                "Authorization": aiohttp.encode_basic_auth(
-                    "username",
-                    "password",
-                )
-            },
-        }
-
-    def test_converts_authorization_header_to_aiohttp_headers(self):
-        http_getter = GetterFactory.from_string("https://example.test/data")
-
-        session = mock.MagicMock()
-        session.auth = None
-        session.headers = {"Authorization": "Bearer token"}
-        session.verify = True
-        session.cert = None
-
-        credentials = mock.MagicMock()
-        credentials.get_session.return_value = session
-
-        HttpGetter._credentials_registry["https://example.test"] = credentials
-
-        request_kwargs = http_getter._get_aiohttp_request_kwargs_sync()
-
-        assert request_kwargs == {
-            "headers": {"Authorization": "Bearer token"},
-        }
-
-    def test_disables_ssl_verification_if_configured(self):
-        ssl_context = HttpGetter._create_ssl_context(
-            verify=False,
-            cert=None,
-        )
-
-        assert ssl_context is False
-
-    def test_creates_ssl_context_with_ca_and_client_certificate(self):
-        ssl_context = mock.MagicMock()
-
-        with mock.patch(
-            "logprep.ng.util.getter.ssl.create_default_context",
-            return_value=ssl_context,
-        ) as create_default_context:
-            result = HttpGetter._create_ssl_context(
-                verify="/path/to/ca.pem",
-                cert=("/path/to/client.pem", "/path/to/client.key"),
-            )
-
-        create_default_context.assert_called_once_with(
-            cafile="/path/to/ca.pem",
-        )
-        ssl_context.load_cert_chain.assert_called_once_with(
-            certfile="/path/to/client.pem",
-            keyfile="/path/to/client.key",
-        )
-        assert result is ssl_context
+        assert first_session is second_session
+        assert not first_session.closed
 
     def test_credentials_registry_is_shared_between_http_getters(self):
         first_getter: HttpGetter = typing.cast(
-            HttpGetter, GetterFactory.from_string("https://example.test/one")
+            HttpGetter,
+            GetterFactory.from_string("https://example.test/one"),
         )
         second_getter: HttpGetter = typing.cast(
-            HttpGetter, GetterFactory.from_string("https://example.test/two")
+            HttpGetter,
+            GetterFactory.from_string("https://example.test/two"),
         )
 
-        credentials = mock.MagicMock()
+        credentials = Credentials()
         HttpGetter._credentials_registry["https://example.test"] = credentials
 
         assert first_getter._credentials_registry is second_getter._credentials_registry
@@ -700,7 +638,7 @@ class TestRefreshableGetter:
             return client_session(*args, **kwargs)
 
         with mock.patch(
-            "logprep.ng.util.getter.aiohttp.ClientSession",
+            "logprep.util.credentials.aiohttp.ClientSession",
             side_effect=create_session,
         ):
             await getter.get()
