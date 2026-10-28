@@ -6,6 +6,15 @@
 ### Improvements
 
 ### Bugfix
+
+# 21.1.1
+### Breaking
+
+### Features
+
+### Improvements
+
+### Bugfix
 * bump version for `filelock` to address CVE
 
 ## 21.1.0

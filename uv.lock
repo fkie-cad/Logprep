@@ -1491,7 +1491,7 @@ wheels = [
 
 [[package]]
 name = "logprep"
-version = "21.1.0"
+version = "21.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
