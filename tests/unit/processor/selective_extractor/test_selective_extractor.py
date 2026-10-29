@@ -91,7 +91,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("case", parametrized_test_cases)
     def test_testcases(self, case: ProcessorTestCase, provision_context_new):
-        if getattr(case, "context", None):
+        if case.context is not None:
             provision_context_new(case.context)
         self._load_rule(case.rule)
         assert isinstance(self.object, Processor)
