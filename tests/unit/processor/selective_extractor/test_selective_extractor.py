@@ -93,7 +93,7 @@ example_test_cases = [
             "list_name": "some_list_name",
             "command_type": "WRITE_ENTRY",
             "command_arguments": {
-                "content": {"my_subset": {"my_key": 42}}
+                "content": {"my_subset": {"my_key": {"value": 42}}}
             },
         },
         id="event template creates a nested extra event and preserves value types with key substitution",
@@ -112,7 +112,7 @@ example_test_cases = [
                             "content": {
                                 "${set}": {
                                     "${key}": {
-                                        "value": "${int_value|str }",
+                                        "value": "${int_value|str}",
                                         "ttl": "${ttl}",
                                     }
                                 }
@@ -136,7 +136,7 @@ example_test_cases = [
             "list_name": "some_list_name",
             "command_type": "WRITE_ENTRY",
             "command_arguments": {
-                "content": {"my_subset": {"my_key": "42"}}
+                "content": {"my_subset": {"my_key": {"value:" "42"}}}
             },
         },
         id="event template creates a nested extra event and converts selected values to string with key substitution",
