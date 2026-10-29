@@ -70,8 +70,7 @@ example_test_cases = [
                         "content": {
                             "${set}": {
                                 "${key}": {
-                                    "value": "${int_value}",
-                                    "ttl": "${ttl}",
+                                    "value": "${value}",
                                 }
                             }
                         }
@@ -114,8 +113,12 @@ example_test_cases = [
                                     "${key}": {
                                         "value": "${int_value|str}",
                                         "ttl": "${ttl}",
+                                    },
+                                    "${key2}": {
+                                        "value": "${value|str}"
                                     }
-                                }
+                                },
+                                "ttl": "${default_ttl}"
                             }
                         }
                     },
@@ -128,7 +131,11 @@ example_test_cases = [
             "@timestamp": "2026-09-28T10:00:00Z",
             "set": "my_subset",
             "key": "my_key",
+            "key2": "my_key2",
+            "ttl": 12,
+            "value": "string_value",
             "int_value": 42,
+            "default_ttl": 12345
         },
         {
             "@timestamp": "2026-09-28T10:00:00Z",
@@ -136,7 +143,21 @@ example_test_cases = [
             "list_name": "some_list_name",
             "command_type": "WRITE_ENTRY",
             "command_arguments": {
-                "content": {"my_subset": {"my_key": {"value:" "42"}}}
+            "content": {
+                "my_subset": {
+                "my_key": {
+                    "value": "42",
+                    "ttl": 12
+                }
+                },
+                "my_subset_2": {
+                "my_key2": {
+                    "value": "string_value",
+                    "ttl": 12
+                }
+                },
+                "ttl": 12345
+            }
             },
         },
         id="event template creates a nested extra event and converts selected values to string with key substitution",
