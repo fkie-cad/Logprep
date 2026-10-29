@@ -68,9 +68,12 @@ example_test_cases = [
                     "command_type": "WRITE_ENTRY",
                     "command_arguments": {
                         "content": {
-                            "set": "${set}",
-                            "key": "${key}",
-                            "value": "${value}",
+                            "${set}": {
+                                "${key}": {
+                                    "value": "${int_value}",
+                                    "ttl": "${ttl}",
+                                }
+                            }
                         }
                     },
                 },
@@ -90,10 +93,10 @@ example_test_cases = [
             "list_name": "some_list_name",
             "command_type": "WRITE_ENTRY",
             "command_arguments": {
-                "content": {"set": "my_subset", "key": "my_key", "value": 42}
+                "content": {"my_subset": {"my_key": 42}}
             },
         },
-        id="event template creates a nested extra event and preserves value types",
+        id="event template creates a nested extra event and preserves value types with key substitution",
     ),
     pytest.param(
         {
@@ -105,10 +108,15 @@ example_test_cases = [
                     "list_name": "some_list_name",
                     "command_type": "WRITE_ENTRY",
                     "command_arguments": {
-                        "content": {
-                            "set": "${set}",
-                            "key": "${key}",
-                            "value": "${int_value|str}",
+                        "command_arguments": {
+                            "content": {
+                                "${set}": {
+                                    "${key}": {
+                                        "value": "${int_value|str }",
+                                        "ttl": "${ttl}",
+                                    }
+                                }
+                            }
                         }
                     },
                 },
@@ -128,10 +136,10 @@ example_test_cases = [
             "list_name": "some_list_name",
             "command_type": "WRITE_ENTRY",
             "command_arguments": {
-                "content": {"set": "my_subset", "key": "my_key", "value": "42"}
+                "content": {"my_subset": {"my_key": "42"}}
             },
         },
-        id="event template creates a nested extra event and converts selected values to string",
+        id="event template creates a nested extra event and converts selected values to string with key substitution",
     ),
 ]
 
