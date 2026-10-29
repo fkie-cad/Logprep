@@ -9,6 +9,7 @@ from unittest import mock
 import pytest
 import responses
 
+from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.list_comparison.processor import ListComparison
 from logprep.processor.base.exceptions import ProcessingWarning
@@ -16,7 +17,6 @@ from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
     HttpGetter,
     RefreshableGetter,
-    RefreshableGetterError,
     refresh_getters,
 )
 from tests.conftest import mock_env
@@ -276,7 +276,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 ],
             }
         )
-        with pytest.raises(ValueError, match="Content is not a list"):
+        with pytest.raises(InvalidResourcesError, match="Content is not a list"):
             await processor.setup()
 
     @responses.activate
@@ -526,9 +526,8 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert document == expected
         assert len(result.warnings) == 1
-        assert (
-            "value for list comparison field 'tenants.0:2' is not a scalar value"
-            in _warning_str(result.warnings[0])
+        assert "value for dynamic URI field 'tenants.0:2' is not a scalar value" in _warning_str(
+            result.warnings[0]
         )
         assert len(responses.calls) == 0
 
@@ -556,7 +555,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         assert document == expected
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert "value for list comparison field 'tenant' is not a scalar value" in _warning_str(
+        assert "value for dynamic URI field 'tenant' is not a scalar value" in _warning_str(
             result.warnings[0]
         )
         assert len(responses.calls) == 0
@@ -585,9 +584,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         assert document == expected
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert "missing event field 'tenant' for dynamic list comparison path" in _warning_str(
-            result.warnings[0]
-        )
+        assert "missing event field 'tenant' for dynamic URI" in _warning_str(result.warnings[0])
         assert len(responses.calls) == 0
 
     @responses.activate
@@ -610,15 +607,16 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 }
             ]
         )
-
-        with mock.patch("logprep.util.getter.time.monotonic", side_effect=[100.0, 125.0]):
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
             await processor.process(LogEvent(first_document, original=b"", input_meta=InputMeta()))
             assert HttpGetter._target_to_data_caches[url].last_called == 100.0
+            assert len(responses.calls) == 1
 
+        with mock.patch("logprep.util.getter.time.monotonic", return_value=125.0):
             await processor.process(LogEvent(second_document, original=b"", input_meta=InputMeta()))
             assert HttpGetter._target_to_data_caches[url].last_called == 125.0
+            assert len(responses.calls) == 1
 
-        assert len(responses.calls) == 1
         assert first_document["user_results"] == {"in_list": ["bad_users.list"]}
         assert second_document["user_results"] == {"in_list": ["bad_users.list"]}
 
@@ -723,8 +721,8 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert rule.data_error is None
-        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
-        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
         await processor.process(LogEvent(successful_document, original=b"", input_meta=InputMeta()))
 
@@ -852,7 +850,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         ):
             await processor.setup()
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert captured_sessions
 
         retries = captured_sessions[0].get_adapter(url).max_retries
@@ -893,7 +891,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         document = {"user": "Foo"}
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500
@@ -942,7 +940,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             document = {"user": "Foo"}
             await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-            assert isinstance(rule.data_error, RefreshableGetterError)
+            assert isinstance(rule.data_error, InvalidResourcesError)
             assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
             assert responses.calls[-1].request.url == url
             assert responses.calls[-1].response.status_code == 500

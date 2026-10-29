@@ -6,12 +6,12 @@
 import json
 from copy import deepcopy
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -61,8 +61,12 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
     ):
         provision_context(context)
 
-        with pytest.raises(InvalidConfigurationError, match=error_message):
-            await self._load_rule(rule)
+        await self._load_rule(rule)
+        await self.object.setup()
+        document = LogEvent({"to_resolve": "bla"}, original=b"", input_meta=InputMeta())
+        result = await self.object.process(document)
+        assert len(result.warnings) == 1
+        assert error_message in str(result.warnings[0])
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     async def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
@@ -80,7 +84,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         document = LogEvent(
             {"to_resolve": "something HELLO1"}, original=b"", input_meta=InputMeta()
         )
-
+        await self.object.setup()
         await self.object.process(document)
 
         assert document.data == expected
@@ -111,6 +115,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             }
         )
 
+        await self.object.setup()
         await self.object.process(document)
 
         assert document.data == expected
@@ -136,6 +141,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
         document = LogEvent({"to_resolve": "12ab34"}, original=b"", input_meta=InputMeta())
 
+        await self.object.setup()
         await self.object.process(document)
         await self.object.process(document)
 
@@ -172,7 +178,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             original=b"",
             input_meta=InputMeta(),
         )
-
+        await self.object.setup()
         await self.object.process(document)
         await self.object.process(document)
 
@@ -180,7 +186,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
     @responses.activate
     async def test_resolve_from_http(self, tmp_path):
-        target = "localhost:123"
+        target = f"{uuid4()}.dd"
         url = f"http://{target}"
 
         responses.add(responses.GET, url, json={"ab": {"new1": "1"}})

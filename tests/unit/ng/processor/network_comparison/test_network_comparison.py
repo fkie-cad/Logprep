@@ -9,12 +9,13 @@ from pathlib import Path
 import pytest
 import responses
 
+from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.network_comparison.processor import NetworkComparison
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.network_comparison.rule import NetworkComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter, RefreshableGetter, RefreshableGetterError
+from logprep.util.getter import HttpGetter, RefreshableGetter
 from tests.conftest import mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.network_comparison.test_network_comparison import (
@@ -308,8 +309,8 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert rule.data_error is None
-        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
-        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
         await processor.process(LogEvent(successful_document, original=b"", input_meta=InputMeta()))
 
@@ -350,7 +351,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
         assert len(responses.calls) == 4
         assert responses.calls[0].request.url == url
@@ -380,7 +381,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         document = {"ip": "1.2.3.4"}
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
         assert responses.calls[-1].request.url == url
         assert responses.calls[-1].response.status_code == 500
@@ -435,7 +436,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 "SECOND_LIST": {IPv4Network("127.0.0.1/32")},
             }
 
-            assert len(HttpGetter._target_to_data_caches[url].callbacks) == 2
+            assert len(HttpGetter._target_to_data_caches[url].callbacks) == 1
 
             HttpGetter(target=url, protocol="http").scheduler.run_all()
 

@@ -4,11 +4,12 @@
 # pylint: disable=wrong-import-order
 import json
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 import responses
 
-from logprep.factory_error import InvalidConfigurationError
+from logprep.factory_error import InvalidConfigurationError, InvalidResourcesError
 from logprep.processor.generic_resolver.rule import (
     GenericResolverRule,
 )
@@ -226,7 +227,7 @@ class TestGenericResolverRule:
                     },
                 },
                 InvalidConfigurationError,
-                "Additions file 'foo' not found",
+                r"'foo'.*No.*file",
                 id="no_additional_file_found",
             ),
             pytest.param(
@@ -249,7 +250,8 @@ class TestGenericResolverRule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                GenericResolverRule.create_from_dict(rule)
+                rule = GenericResolverRule.create_from_dict(rule)
+                rule.init_generic_resolver()
         else:
             rule_instance = GenericResolverRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
@@ -259,7 +261,7 @@ class TestGenericResolverRule:
 
     @responses.activate
     def test_rule_callback_updates_additions_and_preserves_original_add(self, tmp_path):
-        target = "localhost:123"
+        target = f"{uuid4()}.dd"
         url = f"http://{target}"
 
         rule_definition = {
@@ -289,14 +291,15 @@ class TestGenericResolverRule:
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
             scheduler = HttpGetter(protocol="http", target=url).scheduler
             rule = GenericResolverRule.create_from_dict(rule_definition)
-            assert rule.additions == from_http_1
+            rule.init_generic_resolver()
+            assert rule.get_additions({}) == from_http_1
             HttpGetter.refresh()
-            assert rule.additions == from_http_1
+            assert rule.get_additions({}) == from_http_1
             scheduler.run_all()
-            assert rule.additions == from_http_2
-            assert rule.additions == from_http_2
+            assert rule.get_additions({}) == from_http_2
+            assert rule.get_additions({}) == from_http_2
             scheduler.run_all()
-            assert rule.additions == from_http_3
+            assert rule.get_additions({}) == from_http_3
 
     @pytest.mark.parametrize(
         ["content_field_config", "expected"],
@@ -377,7 +380,8 @@ class TestGenericResolverRule:
                 },
             }
         )
-        assert rule.additions == {"ab": "ab_server_type", "de": "de_server_type"}
+        rule.init_generic_resolver()
+        assert rule.get_additions({}) == {"ab": "ab_server_type", "de": "de_server_type"}
 
     @responses.activate
     @pytest.mark.parametrize(
@@ -401,17 +405,19 @@ class TestGenericResolverRule:
         url = "http://localhost:12346/resolve"
         responses.add(responses.GET, url, json=body, content_type="application/json")
 
-        with pytest.raises(InvalidConfigurationError, match=match):
-            GenericResolverRule.create_from_dict(
-                {
-                    "filter": "to_resolve",
-                    "generic_resolver": {
-                        "field_mapping": {"to_resolve": "resolved"},
-                        "resolve_from_file": {
-                            "path": url,
-                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                        },
-                        "content_field": content_field,
+        rule = GenericResolverRule.create_from_dict(
+            {
+                "filter": "to_resolve",
+                "generic_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_from_file": {
+                        "path": url,
+                        "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                     },
-                }
-            )
+                    "content_field": content_field,
+                },
+            }
+        )
+
+        rule.init_generic_resolver()
+        assert isinstance(rule.data_error, InvalidResourcesError)

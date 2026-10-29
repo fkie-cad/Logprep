@@ -118,7 +118,7 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
         to_resolve: resolved
       resolve_from_file:
         path: path/to/resolve_mapping.yml
-        pattern: \d*(?P<mapping>[a-z]+)\d*
+        pattern: \\d*(?P<mapping>[a-z]+)\\d*
 
 ..  code-block:: yaml
     :linenos:
@@ -143,16 +143,17 @@ Examples for generic_resolver:
 
 import re
 import typing
-from functools import cached_property, partial
-from pathlib import Path
+from functools import cached_property
 
 from attrs import define, field, validators
 
+from logprep.abc.getter import Getter
 from logprep.factory_error import InvalidConfigurationError
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_ordered_mapping_or_keep_mapping
-from logprep.util.getter import GetterFactory, RefreshableGetter
-from logprep.util.helper import FieldValue
+from logprep.util.helper import FieldValue, JsonObject
+from logprep.util.resource_cache import CacheItem, ResourceCache
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -207,6 +208,16 @@ class GenericResolverRule(FieldManagerRule):
         a regex pattern which can be used to resolve values.
         The resolve list in the file at :code:`path` is then used in conjunction with
         the regex pattern in :code:`pattern`.
+        Environment variables and dotted event fields can be inserted with placeholders such as
+        :code:`${LOGPREP_DATA_API}` and :code:`${tenant.id}` on the `path`.
+
+        .. security-best-practice::
+            :title: |PROCESSOR| - Dynamic URI destinations
+
+            Event fields used in dynamic URIs may be attacker-controlled. Keep the URI
+            scheme, host, and port static and use dynamic values only in path components.
+            Avoid interpolating event fields into the URI authority, especially the host,
+            so an attacker cannot influence where Logprep sends requests.
 
         .. security-best-practice::
            :title: |PROCESSOR| - Resolve From File Memory Consumption
@@ -268,57 +279,82 @@ class GenericResolverRule(FieldManagerRule):
         ignore_case: bool = field(validator=validators.instance_of(bool), default=False)
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
-        additions: dict[str, FieldValue] = field(default={}, eq=False, init=False)
+        additions: JsonObject = field(default={}, eq=False, init=False)
         """Contains a dictionary of field names and values that should be added."""
 
         deduplicate: bool = field(init=False, default=False)
         """Not active for this processor"""
 
         @property
-        def _file_path(self) -> None | str:
+        def file_path(self) -> None | str:
             """Returns the file path"""
             return self.resolve_from_file.get("path")
 
-        def __attrs_post_init__(self):
-            if self._file_path:
-                getter = GetterFactory.from_string(self._file_path)
-                if isinstance(getter, RefreshableGetter):
-                    getter.add_callback(
-                        f"generic_resolver:{self.id}:{self._file_path}",
-                        partial(self._add_from_path, self._file_path),
-                    )
-                self._add_from_path(self._file_path)
+    def __init__(
+        self,
+        filter_rule: FilterExpression,
+        config: "GenericResolverRule.Config",
+        processor_name: str,
+    ) -> None:
+        super().__init__(filter_rule, config, processor_name)
+        self._resource_cache = ResourceCache[JsonObject](
+            on_data=self._read_from_getter, on_update=self._update_error_state
+        )
+        self._static_additions: JsonObject = {}
 
-        def _add_from_path(self, path: str):
+    def init_generic_resolver(self) -> None:
+        """Initialize the additions for this rule.
+
+        Local lists are loaded eagerly. Static HTTP(S) lists are loaded eagerly and
+        registered for refresh and cleanup callbacks. Dynamic HTTP(S) templates that
+        require event fields are loaded lazily during processing.
+
+        Raises
+        ------
+        InvalidResourcesError
+            If additions fail to load.
+        """
+
+        if self.config.file_path:
             self._raise_if_pattern_is_invalid()
-            self._raise_if_file_does_not_exist(path)
-            additions = self._get_additions_from_path(path)
-            if self.ignore_case:
-                additions = {key.upper(): value for key, value in additions.items()}
-            self.additions = additions
 
-        def _get_additions_from_path(self, path: str) -> dict[str, FieldValue]:
-            try:
-                additions = GetterFactory.from_string(path).get_collection(
-                    content_field=self.content_field
-                )
-                return convert_ordered_mapping_or_keep_mapping(additions)
-            except (ValueError, KeyError) as error:
-                raise InvalidConfigurationError(
-                    f"Error loading additions from '{path}': {error}"
-                ) from error
+            self._resource_cache.preload(self.config.file_path)
+        else:
+            self._static_additions = self._convert_additions(self.config.additions)
 
-        def _raise_if_pattern_is_invalid(self):
-            if "?P<mapping>" not in self.resolve_from_file["pattern"]:
-                raise InvalidConfigurationError(
-                    f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
-                )
+    def _read_from_getter(self, getter: Getter) -> JsonObject:
+        content = getter.get_collection(content_field=self.config.content_field)
+        if isinstance(content, list) and all(isinstance(item, dict) for item in content):
+            merged_content = {}
+            for item in content:
+                merged_content.update(item)
+            content = merged_content
 
-        def _raise_if_file_does_not_exist(self, path: str):
-            if not (path.startswith("http") or Path(path).is_file()):
-                raise InvalidConfigurationError(
-                    f"Additions file '{path}' not found! (Rule ID: '{self.id}')",
-                )
+        if not isinstance(content, dict):
+            raise InvalidConfigurationError(
+                f"Expected an object or list of objects at {self.config.content_field!r}"
+                f" got {type(content).__name__} instead"
+            )
+        return self._convert_additions(content)
+
+    def _update_error_state(self, _cache_item: CacheItem[JsonObject]) -> None:
+        resource_error = self._resource_cache.get_static_resource_error_state()
+        if resource_error is None:
+            self.clear_failed()
+        else:
+            self.mark_failed(resource_error)
+
+    def _convert_additions(self, additions: JsonObject) -> JsonObject:
+        additions = convert_ordered_mapping_or_keep_mapping(additions)
+        if self.ignore_case:
+            additions = {key.upper(): value for key, value in additions.items()}
+        return additions
+
+    def _raise_if_pattern_is_invalid(self) -> None:
+        if "?P<mapping>" not in self.resolve_from_file["pattern"]:
+            raise InvalidConfigurationError(
+                f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
+            )
 
     @property
     def config(self) -> Config:
@@ -360,7 +396,11 @@ class GenericResolverRule(FieldManagerRule):
         """Pattern used to resolve from file"""
         return re.compile(f'^{self.resolve_from_file["pattern"]}$', re.I if self.ignore_case else 0)
 
-    @property
-    def additions(self) -> dict[str, FieldValue]:
+    def get_additions(self, event: JsonObject) -> JsonObject:
         """Returns additions from the resolve file"""
-        return self.config.additions
+        if self.config.file_path is not None:
+            return self._resource_cache.get_value(self.config.file_path, event)
+        return self._static_additions
+
+    def shut_down(self) -> None:
+        self._resource_cache.clear()
