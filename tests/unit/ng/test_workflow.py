@@ -1,5 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=line-too-long
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=too-many-arguments
+
 
 import asyncio
 import typing
@@ -15,6 +19,7 @@ from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
 from logprep.ng.connector.dummy.input import DummyInput
 from logprep.ng.connector.dummy.output import DummyOutput
+from logprep.ng.util.async_helpers import raise_from_gather
 from logprep.ng.util.workflow.config import WorkflowConfig
 from logprep.ng.util.workflow.workflow import create_orchestrator
 from logprep.util.typing import is_sequence_of
@@ -203,7 +208,12 @@ class TestWorkflow:
                 config=WorkflowConfig.from_dict_or_default(),
             )
 
-            await asyncio.gather(*(component.setup() for component in components))
+            raise_from_gather(
+                await asyncio.gather(
+                    *(component.setup() for component in components), return_exceptions=True
+                ),
+                message="failed to set up one or more workflow components",
+            )
 
             await asyncio.wait_for(
                 # start graceful shutdown when input is exhausted
