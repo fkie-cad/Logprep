@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+# pylint: disable=R0801
 
 from copy import deepcopy
 
@@ -11,6 +12,7 @@ from logprep.ng.processor.domain_label_extractor.processor import DomainLabelExt
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
+    ProcessingWarning,
 )
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.domain_label_extractor.test_domain_label_extractor import (
@@ -45,6 +47,18 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
 
         result = await self.object.process(event)
         assert result.data == expected_output
+
+    def test_raises_on_missing_fields(self):
+        self._load_rule(
+            {
+                "filter": "url",
+                "domain_label_extractor": {"source_fields": ["url.domain"], "target_field": "url"},
+                "description": "",
+            }
+        )
+        self.object.setup()
+        with pytest.raises(ProcessingWarning):
+            self.object.process(LogEvent({"url": {}}, original=b"", input_meta=InputMeta()))
 
     async def test_new_non_default_tagging_field(self):
         config = {

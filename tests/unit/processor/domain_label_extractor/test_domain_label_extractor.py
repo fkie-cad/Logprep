@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+# pylint: disable=R0801
 
 
 from copy import deepcopy
@@ -10,6 +11,7 @@ from logprep.factory import Factory
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
+    ProcessingWarning,
 )
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -78,6 +80,22 @@ example_test_cases = [
         {"url": {"domain": "123.123.123.123"}},
         {"url": {"domain": "123.123.123.123"}, "tags": ["ip_in_url_domain"]},
         id="with_ipv4_target",
+    ),
+    pytest.param(
+        {
+            "filter": "url",
+            "domain_label_extractor": {
+                "source_fields": ["url.domain"],
+                "target_field": "url",
+                "ignore_missing_fields": True,
+            },
+            "description": "",
+        },
+        {"url": {}},
+        {
+            "url": {},
+        },
+        id="The ignore_missing_fields flag is respected.",
     ),
     pytest.param(
         TEST_RULE,
@@ -179,6 +197,17 @@ test_cases = [
             }
         },
         id="extraction without subdomain",
+    ),
+    pytest.param(
+        TEST_RULE,
+        {"url": {"domain": "http://["}, "tags": None},
+        {
+            "url": {
+                "domain": "http://[",
+            },
+            "tags": ["invalid_domain_in_url_domain"],
+        },
+        id="invalid with existing none as tag field",
     ),
     pytest.param(
         TEST_RULE,
@@ -404,6 +433,18 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
 
         self.object.process(used_document)
         assert used_document == expected_output
+
+    def test_raises_on_missing_fields(self):
+        self._load_rule(
+            {
+                "filter": "url",
+                "domain_label_extractor": {"source_fields": ["url.domain"], "target_field": "url"},
+                "description": "",
+            }
+        )
+        self.object.setup()
+        with pytest.raises(ProcessingWarning):
+            self.object.process({"url": {}})
 
     def test_new_non_default_tagging_field(self):
         config = {
