@@ -35,7 +35,7 @@ example_test_cases = [
     ),
     # context=[
     #    MockedUrl(url="http://example.com", body='{"whatever":"json"}'),
-    #    MockedFile(refpath="blabla"),
+    #    MockedFile(source_path="/tests/testdata/blabla"),
     # ],
 ]
 test_cases = [
