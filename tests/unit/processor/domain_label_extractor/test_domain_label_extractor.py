@@ -82,22 +82,6 @@ example_test_cases = [
         id="with_ipv4_target",
     ),
     pytest.param(
-        {
-            "filter": "url",
-            "domain_label_extractor": {
-                "source_fields": ["url.domain"],
-                "target_field": "url",
-                "ignore_missing_fields": True,
-            },
-            "description": "",
-        },
-        {"url": {}},
-        {
-            "url": {},
-        },
-        id="The ignore_missing_fields flag is respected.",
-    ),
-    pytest.param(
         TEST_RULE,
         {"url": {"domain": "http://["}},
         {
@@ -309,7 +293,7 @@ test_cases = [
         {"url": {"domain": "test.domain.de", "subdomain": "exists already"}},
         {
             "url": {"domain": "test.domain.de", "subdomain": "exists already"},
-            "tags": ["_domain_label_extractor_missing_field_warning"],
+            "tags": ["_domain_label_extractor_failure"],
         },
         id="does nothing if source field not exits",
     ),
@@ -434,7 +418,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         self.object.process(used_document)
         assert used_document == expected_output
 
-    def test_raises_on_missing_fields(self):
+    def test_error_on_missing_fields(self):
         self._load_rule(
             {
                 "filter": "url",
@@ -443,8 +427,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         )
         self.object.setup()
-        with pytest.raises(ProcessingWarning):
-            self.object.process({"url": {}})
+        result = self.object.process({"url": {"other": 23}})
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
 
     def test_new_non_default_tagging_field(self):
         config = {

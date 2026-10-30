@@ -48,17 +48,20 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         result = await self.object.process(event)
         assert result.data == expected_output
 
-    def test_raises_on_missing_fields(self):
-        self._load_rule(
+    async def test_raises_on_missing_fields(self):
+        await self._load_rule(
             {
                 "filter": "url",
                 "domain_label_extractor": {"source_fields": ["url.domain"], "target_field": "url"},
                 "description": "",
             }
         )
-        self.object.setup()
-        with pytest.raises(ProcessingWarning):
-            self.object.process(LogEvent({"url": {}}, original=b"", input_meta=InputMeta()))
+        await self.object.setup()
+        result = await self.object.process(
+            LogEvent({"url": {"other": 23}}, original=b"", input_meta=InputMeta())
+        )
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
 
     async def test_new_non_default_tagging_field(self):
         config = {

@@ -38,7 +38,7 @@ from urllib.parse import urlsplit
 
 from attrs import define, field, validators
 
-from logprep.processor.base.exceptions import ProcessingCriticalError
+from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -48,6 +48,7 @@ from logprep.util.helper import (
     add_and_overwrite,
     add_fields_to,
     get_dotted_field_list,
+    get_dotted_field_value,
     get_dotted_field_value_with_missing,
     join_dotted_fields,
 )
@@ -94,11 +95,9 @@ class DomainLabelExtractor(FieldManager):
         """
 
         def _fail(fail_tag: str) -> None:
-            tagging_field = get_dotted_field_value_with_missing(
-                event, self.config.tagging_field_name
-            )
+            tagging_field = get_dotted_field_value(event, self.config.tagging_field_name)
 
-            if tagging_field is MISSING:
+            if tagging_field is None:
                 tagging_field = []
 
             if isinstance(tagging_field, str):
@@ -132,8 +131,7 @@ class DomainLabelExtractor(FieldManager):
         domain = get_dotted_field_value_with_missing(event, source_field)
 
         if domain is MISSING:
-            _fail(f"_{rule.rule_type}_missing_field_warning")
-            return
+            raise ProcessingWarning(f"Missing source field {source_field!r}", rule, event)
 
         if not isinstance(domain, str):
             _fail_on_source("invalid_type")
