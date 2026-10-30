@@ -182,7 +182,7 @@ class ProcessorTestCase:
     id: str
     rule: dict[str, Any]
     event: JsonObject
-    expected: JsonObject
+    expected: Any  # JsonObject failed for string_splitter
     expected_extras: list[tuple[JsonObject, list[tuple[str, str]]]] = field(factory=list)
     context: MockContext | None = field(default=None)
 

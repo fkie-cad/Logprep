@@ -5,177 +5,289 @@ import re
 
 import pytest
 
-from tests.conftest import normalize_test_cases
+from logprep.abc.processor import Processor
+from tests.conftest import ProcessorFailureTestCase, ProcessorTestCase
 from tests.unit.processor.base import BaseProcessorTestCase
 
 example_test_cases = [
-    pytest.param(
-        {
+    ProcessorTestCase(
+        id="split on whitespaces if delimiter not explicitly defined",
+        rule={
             "filter": "message",
             "string_splitter": {
-                "source_fields": ["message"],
+                "source_fields": [
+                    "message",
+                ],
                 "target_field": "result",
                 "drop_empty": True,
             },
         },
-        {"message": "this is the message"},
-        ["this", "is", "the", "message"],
-        id="split on whitespaces if delimiter not explicitly defined",
+        event={
+            "message": "this is the message",
+        },
+        expected=[
+            "this",
+            "is",
+            "the",
+            "message",
+        ],
     ),
-    pytest.param(
-        {
+    ProcessorTestCase(
+        id="split one item containing the delimiter multiple times then keep any resulting empty sections",
+        rule={
             "filter": "message",
             "string_splitter": {
-                "source_fields": ["message"],
+                "source_fields": [
+                    "message",
+                ],
                 "target_field": "result",
                 "delimiter": ",",
                 "drop_empty": False,
             },
         },
-        {"message": ",,this,,"},
-        ["", "", "this", "", ""],
-        id="split one item containing the delimiter multiple times then keep any resulting empty sections",
+        event={
+            "message": ",,this,,",
+        },
+        expected=[
+            "",
+            "",
+            "this",
+            "",
+            "",
+        ],
     ),
-    pytest.param(
-        {
+    ProcessorTestCase(
+        id="split one item containing the delimiter multiple times then drop any resulting empty sections",
+        rule={
             "filter": "message",
             "string_splitter": {
-                "source_fields": ["message"],
+                "source_fields": [
+                    "message",
+                ],
                 "target_field": "result",
                 "delimiter": ",",
                 "drop_empty": True,
             },
         },
-        {"message": " , ,this, ,"},
-        ["this"],
-        id="split one item containing the delimiter multiple times then drop any resulting empty sections",
+        event={
+            "message": " , ,this, ,",
+        },
+        expected=[
+            "this",
+        ],
     ),
 ]
 
-test_cases = normalize_test_cases(
-    *example_test_cases,
-    pytest.param(
-        {
+test_cases = [
+    ProcessorTestCase(
+        id="split on explicitly defined delimiter",
+        rule={
             "filter": "message",
             "string_splitter": {
-                "source_fields": ["message"],
+                "source_fields": [
+                    "message",
+                ],
                 "target_field": "result",
                 "delimiter": ", ",
                 "drop_empty": True,
             },
         },
-        {"message": "this, is, the, message"},
-        ["this", "is", "the", "message"],
-        id="split on explicitly defined delimiter",
-    ),
-    pytest.param(
-        {
-            "filter": "message",
-            "string_splitter": {
-                "source_fields": ["message"],
-                "target_field": "result",
-                "delimiter": ",",
-                "drop_empty": True,
-            },
+        event={
+            "message": "this, is, the, message",
         },
-        {"message": "this,"},
-        ["this"],
+        expected=[
+            "this",
+            "is",
+            "the",
+            "message",
+        ],
+    ),
+    ProcessorTestCase(
         id="split one item on explicitly defined delimiter",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
-                "source_fields": ["message"],
+                "source_fields": [
+                    "message",
+                ],
                 "target_field": "result",
                 "delimiter": ",",
                 "drop_empty": True,
             },
         },
-        {"message": ",,this,,"},
-        ["this"],
+        event={
+            "message": "this,",
+        },
+        expected=[
+            "this",
+        ],
+    ),
+    ProcessorTestCase(
         id="split one item containing the delimiter multiple times then drop any resulting empty sections 2",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
-                "source_fields": ["message"],
+                "source_fields": [
+                    "message",
+                ],
                 "target_field": "result",
                 "delimiter": ",",
                 "drop_empty": True,
             },
         },
-        {"message": ",, this , , "},
-        [" this "],
+        event={
+            "message": ",,this,,",
+        },
+        expected=[
+            "this",
+        ],
+    ),
+    ProcessorTestCase(
         id="split one item containing the delimiter multiple times then drop any resulting empty sections 3",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
-                "source_fields": ["message"],
+                "source_fields": [
+                    "message",
+                ],
                 "target_field": "result",
                 "delimiter": ",",
                 "drop_empty": True,
             },
         },
-        {"message": "\n,,this,\t, "},
-        ["this"],
+        event={
+            "message": ",, this , , ",
+        },
+        expected=[
+            " this ",
+        ],
+    ),
+    ProcessorTestCase(
         id="split one item containing the delimiter multiple times and containing newlines",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
-                "source_fields": ["message"],
+                "source_fields": [
+                    "message",
+                ],
                 "target_field": "result",
                 "delimiter": ",",
                 "drop_empty": True,
             },
         },
-        {"message": ",, this, , "},
-        [" this"],
+        event={
+            "message": "\n,,this,\t, ",
+        },
+        expected=[
+            "this",
+        ],
+    ),
+    ProcessorTestCase(
         id="split one item containing the delimiter multiple times and containing whitespaces only in front",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
-                "source_fields": ["message"],
+                "source_fields": [
+                    "message",
+                ],
                 "target_field": "result",
                 "delimiter": ",",
                 "drop_empty": True,
             },
         },
-        {"message": "hello , world,this, is a very complex,\n , and even multiline, text,,, "},
-        ["hello ", " world", "this", " is a very complex", " and even multiline", " text"],
+        event={
+            "message": ",, this, , ",
+        },
+        expected=[
+            " this",
+        ],
+    ),
+    ProcessorTestCase(
         id="split containing the delimiter multiple times and whitespaces only in front",
+        rule={
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": [
+                    "message",
+                ],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        event={
+            "message": "hello , world,this, is a very complex,\n , and even multiline, text,,, ",
+        },
+        expected=[
+            "hello ",
+            " world",
+            "this",
+            " is a very complex",
+            " and even multiline",
+            " text",
+        ],
     ),
-)
+]
 
-failure_test_cases = normalize_test_cases(
-    pytest.param(
-        {
-            "filter": "message",
-            "string_splitter": {"source_fields": ["message"], "target_field": "result"},
-        },
-        {"message": ["this", "is", "the", "message"]},
-        {"message": ["this", "is", "the", "message"], "tags": ["_string_splitter_failure"]},
-        ".*ProcessingWarning.*",
+failure_test_cases = [
+    ProcessorFailureTestCase(
         id="split something that isn't a string on not explicitly defined delimiter (whitespace)",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
-            "string_splitter": {"source_fields": ["message"], "target_field": "message"},
+            "string_splitter": {
+                "source_fields": [
+                    "message",
+                ],
+                "target_field": "result",
+            },
         },
-        {"message": "this is the message"},
-        {"message": "this is the message", "tags": ["_string_splitter_failure"]},
-        ".*FieldExistsWarning.*",
-        id="split on not explicitly defined delimiter (whitespace) and try to write to existing field",
+        event={
+            "message": [
+                "this",
+                "is",
+                "the",
+                "message",
+            ],
+        },
+        expected={
+            "message": [
+                "this",
+                "is",
+                "the",
+                "message",
+            ],
+            "tags": [
+                "_string_splitter_failure",
+            ],
+        },
+        error_message=".*ProcessingWarning.*",
     ),
-)
+    ProcessorFailureTestCase(
+        id="split on not explicitly defined delimiter (whitespace) and try to write to existing field",
+        rule={
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": [
+                    "message",
+                ],
+                "target_field": "message",
+            },
+        },
+        event={
+            "message": "this is the message",
+        },
+        expected={
+            "message": "this is the message",
+            "tags": [
+                "_string_splitter_failure",
+            ],
+        },
+        error_message=".*FieldExistsWarning.*",
+    ),
+]
+
+parametrized_test_cases = [c.case_to_param() for c in test_cases]
+parametrized_failure_test_cases = [c.case_to_param() for c in failure_test_cases]
 
 
 class TestStringSplitter(BaseProcessorTestCase):
@@ -184,17 +296,25 @@ class TestStringSplitter(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/string_splitter/rules"],
     }
 
-    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
-    def test_testcases(self, rule, event, expected, context, provision_context):
-        provision_context(context)
-        self._load_rule(rule)
-        self.object.process(event)
-        assert event["result"] == expected
+    @pytest.mark.parametrize("case", parametrized_test_cases)
+    def test_testcases(self, case: ProcessorTestCase, provision_context_new):
+        if case.context is not None:
+            provision_context_new(case.context)
+        self._load_rule(case.rule)
+        assert isinstance(self.object, Processor)
+        result = self.object.process(case.event)
+        assert result.event is not None
+        assert result.event["result"] == case.expected
 
-    @pytest.mark.parametrize(["rule", "event", "expected", "error_message"], failure_test_cases)
-    def test_testcases_failure_handling(self, rule, event, expected, error_message):
-        self._load_rule(rule)
-        result = self.object.process(event)
+    @pytest.mark.parametrize(["case"], parametrized_failure_test_cases)
+    def test_testcases_failure_handling(
+        self, case: ProcessorFailureTestCase, provision_context_new
+    ):
+        if case.context is not None:
+            provision_context_new(case.context)
+        self._load_rule(case.rule)
+        assert isinstance(self.object, Processor)
+        result = self.object.process(case.event)
         assert len(result.warnings) == 1
-        assert re.match(error_message, str(result.warnings[0]))
-        assert event == expected
+        assert re.match(case.error_message, str(result.warnings[0]))
+        assert result.event == case.expected
