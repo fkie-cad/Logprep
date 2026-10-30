@@ -164,7 +164,7 @@ class DomainLabelExtractor(FieldManager):
         )
 
     @staticmethod
-    def _is_valid_ip(domain) -> bool:
+    def _is_valid_ip(domain: str) -> bool:
         try:
             ipaddress.ip_address(domain)
             return True
