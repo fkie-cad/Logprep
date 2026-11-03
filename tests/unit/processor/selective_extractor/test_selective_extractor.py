@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import re
 import uuid
 from unittest import mock
 
@@ -46,8 +47,8 @@ example_test_cases = [
             "selective_extractor": {
                 "event_template": {
                     "content": {
-                        "message": "${message}",
-                        "other_message": "${other.message}",
+                        "message": "${source_event.message}",
+                        "other_message": "${source_event.other.message}",
                     }
                 },
                 "outputs": [{"opensearch": "index"}],
@@ -62,15 +63,15 @@ example_test_cases = [
             "filter": "list_update",
             "selective_extractor": {
                 "event_template": {
-                    "@timestamp": "${@timestamp}",
+                    "@timestamp": "${source_event.@timestamp}",
                     "status": "NEW",
                     "list_name": "some_list_name",
                     "command_type": "WRITE_ENTRY",
                     "command_arguments": {
                         "content": {
-                            "${set}": {
-                                "${key}": {
-                                    "value": "${value}",
+                            "${source_event.set}": {
+                                "${source_event.key}": {
+                                    "value": "${source_event.value}",
                                 }
                             }
                         }
@@ -91,9 +92,7 @@ example_test_cases = [
             "status": "NEW",
             "list_name": "some_list_name",
             "command_type": "WRITE_ENTRY",
-            "command_arguments": {
-                "content": {"my_subset": {"my_key": {"value": 42}}}
-            },
+            "command_arguments": {"content": {"my_subset": {"my_key": {"value": 42}}}},
         },
         id="event template creates a nested extra event and preserves value types with key substitution",
     ),
@@ -102,24 +101,25 @@ example_test_cases = [
             "filter": "list_update",
             "selective_extractor": {
                 "event_template": {
-                    "@timestamp": "${@timestamp}",
+                    "@timestamp": "${source_event.@timestamp}",
                     "status": "NEW",
                     "list_name": "some_list_name",
                     "command_type": "WRITE_ENTRY",
                     "command_arguments": {
-                        "command_arguments": {
-                            "content": {
-                                "${set}": {
-                                    "${key}": {
-                                        "value": "${int_value|str}",
-                                        "ttl": "${ttl}",
-                                    },
-                                    "${key2}": {
-                                        "value": "${value|str}"
-                                    }
-                                },
-                                "ttl": "${default_ttl}"
-                            }
+                        "content": {
+                            "${source_event.set}": {
+                                "${source_event.key}": {
+                                    "value": "${source_event.int_value|str}",
+                                    "ttl": "${source_event.ttl}",
+                                }
+                            },
+                            "${source_event.set2}": {
+                                "${source_event.key2}": {
+                                    "value": "${source_event.value|str}",
+                                    "ttl": "${source_event.ttl}",
+                                }
+                            },
+                            "ttl": "${source_event.default_ttl}",
                         }
                     },
                 },
@@ -130,12 +130,13 @@ example_test_cases = [
             "list_update": True,
             "@timestamp": "2026-09-28T10:00:00Z",
             "set": "my_subset",
+            "set2": "my_subset_2",
             "key": "my_key",
             "key2": "my_key2",
             "ttl": 12,
             "value": "string_value",
             "int_value": 42,
-            "default_ttl": 12345
+            "default_ttl": 12345,
         },
         {
             "@timestamp": "2026-09-28T10:00:00Z",
@@ -143,21 +144,11 @@ example_test_cases = [
             "list_name": "some_list_name",
             "command_type": "WRITE_ENTRY",
             "command_arguments": {
-            "content": {
-                "my_subset": {
-                "my_key": {
-                    "value": "42",
-                    "ttl": 12
+                "content": {
+                    "my_subset": {"my_key": {"value": "42", "ttl": 12}},
+                    "my_subset_2": {"my_key2": {"value": "string_value", "ttl": 12}},
+                    "ttl": 12345,
                 }
-                },
-                "my_subset_2": {
-                "my_key2": {
-                    "value": "string_value",
-                    "ttl": 12
-                }
-                },
-                "ttl": 12345
-            }
             },
         },
         id="event template creates a nested extra event and converts selected values to string with key substitution",
@@ -184,12 +175,12 @@ test_cases = normalize_test_cases(
             "filter": "condition",
             "selective_extractor": {
                 "event_template": {
-                    "integer": "${integer}",
-                    "float": "${float}",
-                    "boolean": "${boolean}",
-                    "string": "${string}",
-                    "mapping": "${mapping}",
-                    "list": "${list}",
+                    "integer": "${source_event.integer}",
+                    "float": "${source_event.float}",
+                    "boolean": "${source_event.boolean}",
+                    "string": "${source_event.string}",
+                    "mapping": "${source_event.mapping}",
+                    "list": "${source_event.list}",
                 },
                 "outputs": [{"opensearch": "index"}],
             },
@@ -218,10 +209,10 @@ test_cases = normalize_test_cases(
             "filter": "condition",
             "selective_extractor": {
                 "event_template": {
-                    "integer": "${integer|str}",
-                    "float": "${float|str}",
-                    "string": "${string|str}",
-                    "boolean": "${boolean}",
+                    "integer": "${source_event.integer|str}",
+                    "float": "${source_event.float|str}",
+                    "string": "${source_event.string|str}",
+                    "boolean": "${source_event.boolean}",
                 },
                 "outputs": [{"opensearch": "index"}],
             },
@@ -235,8 +226,8 @@ test_cases = normalize_test_cases(
             "filter": "condition",
             "selective_extractor": {
                 "event_template": {
-                    "original": "${value}",
-                    "converted": "${value|str}",
+                    "original": "${source_event.value}",
+                    "converted": "${source_event.value|str}",
                 },
                 "outputs": [{"opensearch": "index"}],
             },
@@ -256,18 +247,18 @@ test_cases = normalize_test_cases(
             "filter": "condition",
             "selective_extractor": {
                 "event_template": {
-                    "escaped_placeholder": r"\${value}",
-                    "escaped_modifier": r"\${value|unknown}", # should be used as normal string value?
+                    "escaped_placeholder": r"\${source_event.value}",
+                    "escaped_modifier": r"\${source_event.value|unknown}",
                     "escaped_dollar": r"\$",
-                    "resolved": "${value}",
+                    "resolved": "${source_event.value}",
                 },
                 "outputs": [{"opensearch": "index"}],
             },
         },
         {"condition": True, "value": 42},
         {
-            "escaped_placeholder": "${value}",
-            "escaped_modifier": "${value|unknown}",
+            "escaped_placeholder": "${source_event.value}",
+            "escaped_modifier": "${source_event.value|unknown}",
             "escaped_dollar": "$",
             "resolved": 42,
         },
@@ -277,7 +268,7 @@ test_cases = normalize_test_cases(
         {
             "filter": "condition",
             "selective_extractor": {
-                "event_template": {"value": "${value}"},
+                "event_template": {"value": "${source_event.value}"},
                 "outputs": [{"opensearch": "index"}],
             },
         },
@@ -289,31 +280,58 @@ test_cases = normalize_test_cases(
         {
             "filter": "condition",
             "selective_extractor": {
-                "event_template": {"value": "${field"},
+                "event_template": {"mapping": "${source_event.mapping|str}"},
                 "outputs": [{"opensearch": "index"}],
             },
         },
-        {"condition": True, "field": "foo"},
-        {"value": "${field"},
-        id="malformed placeholder syntax is treated as string",
+        {"condition": True, "mapping": {"key": "value"}},
+        {"mapping": "{'key': 'value'}"},
+        id="event template converts mappings to strings",
     ),
     pytest.param(
         {
             "filter": "condition",
             "selective_extractor": {
-                "event_template": {"value": "${}"},
+                "event_template": {"values": "${source_event.values|str}"},
                 "outputs": [{"opensearch": "index"}],
             },
         },
-        {"condition": True, "field": "foo"},
-        {"value": "${}"},
-        id="empty placeholder is treated as string",
+        {"condition": True, "values": [1, 2, 3]},
+        {"values": "[1, 2, 3]"},
+        id="event template converts lists to strings",
     ),
     pytest.param(
         {
             "filter": "condition",
             "selective_extractor": {
-                "event_template": {"first": "${value}", "second": "${value}"},
+                "event_template": {"value": "${source_event.value|str}"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "value": None},
+        {"value": "None"},
+        id="event template converts None to string",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True},
+        {},
+        id="empty event template emits no extra event",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {
+                    "first": "${source_event.value}",
+                    "second": "${source_event.value}",
+                },
                 "outputs": [{"opensearch": "index"}],
             },
         },
@@ -325,7 +343,13 @@ test_cases = normalize_test_cases(
         {
             "filter": "condition",
             "selective_extractor": {
-                "event_template": {"values": ["static_value", "${value}", "${other.value}"]},
+                "event_template": {
+                    "values": [
+                        "static_value",
+                        "${source_event.value}",
+                        "${source_event.other.value}",
+                    ]
+                },
                 "outputs": [{"opensearch": "index"}],
             },
         },
@@ -333,17 +357,6 @@ test_cases = normalize_test_cases(
         {"values": ["static_value", 42, True]},
         id="event template preserves substituted list value types",
     ),
-#     pytest.param(
-#         {
-#             "filter": "condition",
-#             "selective_extractor": {
-#                 "event_template": {"value": "${value}"},
-#             },
-#         },
-#         {"condition": True, "value": "foo"},
-#         {"value": "foo"},
-#         id="event template uses processor outputs as fallback",
-#     ) if this is the place to test this??
 )
 
 failure_test_cases = [
@@ -351,7 +364,7 @@ failure_test_cases = [
         {
             "filter": "condition",
             "selective_extractor": {
-                "event_template": {"value": "${not.exists}"},
+                "event_template": {"value": "${source_event.not.exists}"},
                 "outputs": [{"opensearch": "index"}],
             },
         },
@@ -362,57 +375,6 @@ failure_test_cases = [
         },
         ".*ProcessingWarning.*",
         id="missing field in template causes processing warning and no extra event",
-    ),
-    pytest.param(
-        {
-            "filter": "condition",
-            "selective_extractor": {
-                "event_template": {"mapping": "${mapping|str}"},
-                "outputs": [{"opensearch": "index"}],
-            },
-        },
-        {"condition": True, "mapping": {"key": "value"}},
-        {
-            "condition": True,
-            "mapping": {"key": "value"},
-            "tags": ["_selective_extractor_failure"],
-        },
-        ".*ProcessingWarning.*",
-        id="string conversion on mapping causes processing warning",
-    ),
-    pytest.param(
-        {
-            "filter": "condition",
-            "selective_extractor": {
-                "event_template": {"values": "${values|str}"},
-                "outputs": [{"opensearch": "index"}],
-            },
-        },
-        {"condition": True, "values": [1, 2, 3]},
-        {
-            "condition": True,
-            "values": [1, 2, 3],
-            "tags": ["_selective_extractor_failure"],
-        },
-        ".*ProcessingWarning.*",
-        id="string conversion on list causes processing warning",
-    ),
-    pytest.param(
-        {
-            "filter": "condition",
-            "selective_extractor": {
-                "event_template": {"value": "${value|str}"},
-                "outputs": [{"opensearch": "index"}],
-            },
-        },
-        {"condition": True, "value": None},
-        {
-            "condition": True,
-            "value": None,
-            "tags": ["_selective_extractor_failure"],
-        },
-        ".*ProcessingWarning.*",
-        id="string conversion on None causes processing warning",
     ),
 ]
 
@@ -427,8 +389,24 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
     def test_testcases(self, rule, event, expected, context, provision_context):
         provision_context(context)
         self._load_rule(rule)
-        self.object.process(event)
+        result = self.object.process(event)
+        if "event_template" in rule["selective_extractor"]:
+            expected_data = (
+                [(expected, tuple(rule["selective_extractor"]["outputs"]))] if expected else []
+            )
+            assert result.data == expected_data
+            assert result.errors == []
+        else:
+            assert event == expected
+
+    @pytest.mark.parametrize("rule, event, expected, message", failure_test_cases)
+    def test_template_failures(self, rule, event, expected, message):
+        self._load_rule(rule)
+        result = self.object.process(event)
         assert event == expected
+        assert result.data == []
+        assert result.errors == []
+        assert any(re.search(message, str(warning)) for warning in result.warnings)
 
     def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
