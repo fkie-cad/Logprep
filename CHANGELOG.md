@@ -2,6 +2,15 @@
 ### Breaking
 
 ### Features
+
+### Improvements
+
+### Bugfix
+
+## 21.2.0
+### Breaking
+
+### Features
 * generic_resolver: enable use of dynamic templating for resource URIs
 
 ### Improvements
