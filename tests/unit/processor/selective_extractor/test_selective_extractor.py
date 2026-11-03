@@ -89,8 +89,8 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         self.object._rule_tree.add_rule(rule)
         document = {field_name: "the value"}
         tuple_list = self.object.process(document)
-        for filtered_event, _ in tuple_list.data:
-            if field_name in filtered_event:
+        for extracted_event, _ in tuple_list.data:
+            if field_name in extracted_event:
                 break
         else:
             assert False
@@ -136,8 +136,8 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         }
         self._load_rule(rule)
         result = self.object.process(document)
-        for filtered_event, *_ in result.data:
-            if filtered_event == {"message": "test_message"}:
+        for extracted_event, *_ in result.data:
+            if extracted_event == {"message": "test_message"}:
                 break
         else:
             assert False
@@ -180,8 +180,8 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         else:
             assert False, f"other.message not in {result}"
 
-    def test_process_clears_internal_filtered_events_list_before_every_event(self):
-        document = {"message": "test_message", "other": {"message": "my message value"}}
+    def test_process_clears_internal_extracted_events_list_before_every_event(self):
+        document = {"message": "test_message", "field1": 1, "field2": 2}
         _ = self.object.process(document)
         assert len(self.object.result.data) == 1
         _ = self.object.process(document)

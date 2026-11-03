@@ -35,13 +35,11 @@ class TestSelectiveExtractor:
         config_path.write_text(config.as_yaml())
         test_output, test_custom, _ = get_test_output(str(config_path))
         assert test_output, "should not be empty"
-        assert test_custom, "should not be empty"
-        assert len(test_custom) == 2, "2 events extracted"
-        assert {"test_topic_2": {"event": {"action": "less_evil_action"}}} in test_custom
-        assert {"test_topic_1": {"user": {"agent": "ok_admin"}}} in test_custom
+        assert test_custom == [], "missing selected fields prevent partial extra events"
         assert {
             "user": {"agent": "ok_admin", "other": "field"},
             "event": {"action": "less_evil_action"},
+            "tags": ["_selective_extractor_missing_field_warning"],
         } in test_output
 
     def test_extraction_field_not_in_event(self, tmp_path, config: Configuration):
@@ -53,7 +51,9 @@ class TestSelectiveExtractor:
         config_path.write_text(config.as_yaml())
         test_output, test_custom, _ = get_test_output(str(config_path))
         assert test_output, "should not be empty"
-        assert test_custom, "should not be empty"
-        assert len(test_custom) == 1, "one extracted event"
-        assert {"test_topic_2": {"event": {"action": "less_evil_action"}}} in test_custom
-        assert {"user": {"other": "field"}, "event": {"action": "less_evil_action"}} in test_output
+        assert test_custom == [], "missing selected fields prevent partial extra events"
+        assert {
+            "user": {"other": "field"},
+            "event": {"action": "less_evil_action"},
+            "tags": ["_selective_extractor_missing_field_warning"],
+        } in test_output

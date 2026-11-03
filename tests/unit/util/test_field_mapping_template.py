@@ -928,4 +928,4 @@ def test_function_errors(
         elif phase == "compilation":
             field_mapping_template._compile_operation(Call(Function(str), (), {}), {}, {})
         else:
-            field_mapping_template._evaluate_operation(ParsedCall("str", (), {}), {})
+            field_mapping_template._evaluate_operation(ParsedCall("str", (), {}), {}, False)
