@@ -37,38 +37,11 @@ from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.util.field_mapping_template import (
     FieldMappingTemplateLookupError,
+)
+from logprep.util.field_mapping_template_helpers import (
+    SOURCE_EVENT_CONTEXT,
     LazyContext,
 )
-from logprep.util.helper import FieldValue, get_dotted_field_list
-
-
-def cleanup_missing_selection_parents(
-    filtered_event: dict[str, FieldValue],
-    source_fields: list[str],
-) -> None:
-    """Remove empty generated parents from a legacy field selection in place.
-
-    Use after evaluating a template built by ``source_fields_to_fmt`` with
-    missing fields skipped. ``source_fields`` contains the same dotted paths
-    used to build that template. Explicitly selected values are preserved,
-    including empty dictionaries and their contents; only their generated
-    parent dictionaries are traversed and removed when empty.
-    """
-    selected_paths = {tuple(get_dotted_field_list(field)) for field in source_fields}
-
-    def remove_empty_parents(mapping, parent_path=()):
-        for name, value in list(mapping.items()):
-            path = (*parent_path, name)
-
-            if path in selected_paths:
-                continue
-
-            if isinstance(value, dict):
-                remove_empty_parents(value, path)
-                if not value:
-                    del mapping[name]
-
-    remove_empty_parents(filtered_event)
 
 
 class SelectiveExtractor(FieldManager):
@@ -89,7 +62,7 @@ class SelectiveExtractor(FieldManager):
         try:
             extracted_event = rule.compiled_template.evaluate(
                 runtime_context={
-                    "source_event": event,
+                    SOURCE_EVENT_CONTEXT: event,
                     "context": LazyContext(
                         {
                             "now": lambda: datetime.now(timezone.utc).isoformat(),

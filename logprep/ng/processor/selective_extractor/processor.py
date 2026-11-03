@@ -36,8 +36,9 @@ from logprep.ng.processor.selective_extractor.extracted_event import ExtractedEv
 from logprep.ng.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.processor.base.rule import Rule
-from logprep.util.field_mapping_template import (
-    FieldMappingTemplateLookupError,
+from logprep.util.field_mapping_template import FieldMappingTemplateLookupError
+from logprep.util.field_mapping_template_helpers import (
+    SOURCE_EVENT_CONTEXT,
     LazyContext,
 )
 from logprep.util.helper import FieldValue
@@ -69,7 +70,7 @@ class SelectiveExtractor(FieldManager):
         try:
             extracted_event = rule.compiled_template.evaluate(
                 runtime_context={
-                    "source_event": event,
+                    SOURCE_EVENT_CONTEXT: event,
                     "context": LazyContext(
                         {
                             "now": lambda: datetime.now(timezone.utc).isoformat(),
