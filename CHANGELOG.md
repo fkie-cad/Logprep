@@ -4,6 +4,7 @@
 ### Features
 
 ### Improvements
+* util: add field mapping template utility
 
 ### Bugfix
 
