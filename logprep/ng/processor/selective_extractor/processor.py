@@ -28,12 +28,21 @@ Processor Configuration
 """
 
 import typing
+from datetime import datetime, timezone
+from uuid import uuid4
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
 from logprep.ng.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.processor.base.rule import Rule
-from logprep.util.helper import FieldValue, add_fields_to, get_source_fields_dict
+from logprep.processor.selective_extractor.processor import (
+    cleanup_missing_selection_parents,
+)
+from logprep.util.field_mapping_template import (
+    FieldMappingTemplateLookupError,
+    LazyContext,
+)
+from logprep.util.helper import FieldValue
 
 
 class SelectiveExtractor(FieldManager):
@@ -57,21 +66,44 @@ class SelectiveExtractor(FieldManager):
 
         """
         rule = typing.cast(SelectiveExtractorRule, rule)
-        flattened_fields = get_source_fields_dict(event, rule)
-        if self._handle_missing_fields(event, rule, rule.source_fields, flattened_fields.values()):
+        config = rule.config
+
+        # Preserve legacy missing-field behavior for source_fields and extract_from_file.
+        compat_skip_missing = bool(config.source_fields) and config.ignore_missing_fields
+
+        if config.source_fields and not config.ignore_missing_fields:
+            field_values = self._get_field_values(event, config.source_fields)
+            if self._handle_missing_fields(event, rule, config.source_fields, field_values):
+                return
+
+        try:
+            filtered_event = rule.compiled_template.evaluate(
+                runtime_context={
+                    "source_event": event,
+                    "context": LazyContext(
+                        {
+                            "now": lambda: datetime.now(timezone.utc).isoformat(),
+                            "id": lambda: str(uuid4()),
+                        }
+                    ),
+                },
+                skip_missing_fields=compat_skip_missing,
+            )
+        except FieldMappingTemplateLookupError as error:
+            self._handle_warning_error(
+                event, rule, error, failure_tags=["_selective_extractor_missing_field_warning"]
+            )
             return
-        flattened_fields = {
-            dotted_field: content
-            for dotted_field, content in flattened_fields.items()
-            if content is not None
-        }
-        if flattened_fields:
-            filtered_event_data: dict = {}
-            add_fields_to(filtered_event_data, flattened_fields, rule)
+
+        if compat_skip_missing:
+            cleanup_missing_selection_parents(filtered_event, config.source_fields)
+
+        if filtered_event:
             for spec in rule.outputs:
-                filtered_event = FilteredEvent(
-                    filtered_event_data,
-                    output_name=spec.output_name,
-                    output_target=spec.output_target,
+                self._event.extra_data.append(
+                    FilteredEvent(
+                        filtered_event,
+                        output_name=spec.output_name,
+                        output_target=spec.output_target,
+                    )
                 )
-                self._event.extra_data.append(filtered_event)

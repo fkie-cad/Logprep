@@ -2,9 +2,10 @@
 
 import inspect
 import re
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Callable, Collection, ItemsView, Mapping, ValuesView
 from copy import deepcopy
 from enum import Enum, auto
+from types import MappingProxyType
 from typing import Final, TypeAlias, TypeVar, assert_never
 
 from attr import field
@@ -15,6 +16,7 @@ from logprep.util.helper import (
     MISSING,
     FieldValue,
     JsonObject,
+    Missing,
     get_field_value,
 )
 
@@ -42,6 +44,53 @@ _NUMBER_PATTERN: Final[re.Pattern[str]] = re.compile(
 )
 
 
+@define(frozen=True)
+class Function:
+    """A template function returning a ``FieldValue``.
+
+    ``fn`` must expose a signature supported by ``inspect.signature``. Wrap
+    built-ins without signature metadata in a Python function before registering
+    them. Argument binding checks calling conventions, not argument or result
+    types; implementations must honor the ``FieldValue`` result contract.
+
+    ``foldable`` permits execution during compilation when all positional and
+    keyword arguments are constant. Only deterministic functions without external
+    side effects should opt in. Other functions run on every evaluation.
+
+    ``can_borrow_input`` promises that the function neither mutates nor retains
+    nor returns mutable references from any argument, including kwargs. It lets
+    direct runtime lookup arguments skip copying. Both options default to false.
+    """
+
+    fn: Callable[
+        ..., FieldValue
+    ]  # We wanted intermediate "object"s but that is actually way harder
+    # to validate than we previously thought because type hints mean nothing
+    can_borrow_input: bool = field(default=False)
+    foldable: bool = field(default=False)
+
+
+def concat(*values: str) -> str:
+    """Concatenate string arguments without a separator; other types raise ``TypeError``."""
+    return "".join(values)
+
+
+DEFAULT_FUNCTIONS: Final[Mapping[str, Function]] = MappingProxyType(
+    {
+        "str": Function(lambda x: str(x), can_borrow_input=True, foldable=True),
+        "int": Function(lambda x: int(x), can_borrow_input=True, foldable=True),
+        "float": Function(lambda x: float(x), can_borrow_input=True, foldable=True),
+        "lower": Function(lambda x: str.lower(x), can_borrow_input=True, foldable=True),
+        "upper": Function(lambda x: str.upper(x), can_borrow_input=True, foldable=True),
+        "strip": Function(lambda x: str.strip(x), can_borrow_input=True, foldable=True),
+        "join": Function(
+            lambda values, seperator: seperator.join(values), can_borrow_input=True, foldable=True
+        ),
+        "concat": Function(concat, can_borrow_input=True, foldable=True),
+    }
+)
+
+
 class FieldMappingTemplateConfigError(LogprepException):
     """Invalid configuration with an optional zero-based template source position.
 
@@ -58,6 +107,14 @@ class FieldMappingTemplateConfigError(LogprepException):
 
 class FieldMappingTemplateEvaluationError(LogprepException):
     """A compiled field mapping template could not be evaluated."""
+
+
+class FieldMappingTemplateLookupError(FieldMappingTemplateEvaluationError):
+    """A required runtime context root or field path could not be resolved.
+
+    Missing fields are skipped when ``skip_missing_fields`` is true; missing
+    context roots still raise this error. An explicit ``None`` is a valid value.
+    """
 
 
 class TokenKind(Enum):
@@ -283,32 +340,6 @@ class Lexer:
             self.tokens.append(token)
 
         return tuple(self.tokens)
-
-
-@define(frozen=True)
-class Function:
-    """A template function returning a ``FieldValue``.
-
-    ``fn`` must expose a signature supported by ``inspect.signature``. Wrap
-    built-ins without signature metadata in a Python function before registering
-    them. Argument binding checks calling conventions, not argument or result
-    types; implementations must honor the ``FieldValue`` result contract.
-
-    ``foldable`` permits execution during compilation when all positional and
-    keyword arguments are constant. Only deterministic functions without external
-    side effects should opt in. Other functions run on every evaluation.
-
-    ``can_borrow_input`` promises that the function neither mutates nor retains
-    nor returns mutable references from any argument, including kwargs. It lets
-    direct runtime lookup arguments skip copying. Both options default to false.
-    """
-
-    fn: Callable[
-        ..., FieldValue
-    ]  # We wanted intermediate "object"s but that is actually way harder
-    # to validate than we previously thought because type hints mean nothing
-    can_borrow_input: bool = field(default=False)
-    foldable: bool = field(default=False)
 
 
 @define(frozen=True)
@@ -680,7 +711,7 @@ def _validate_operation(
     op: Operation,
     static_context: dict[str, dict[str, FieldValue]],
     runtime_roots: Collection[str],
-    functions: dict[str, Function],
+    functions: Mapping[str, Function],
 ) -> None:
     """Check lookup paths, function names and signatures in a parsed tree.
 
@@ -759,7 +790,7 @@ def _validate_operation(
 def _compile_operation(
     op: Operation,
     static_context: dict[str, dict[str, FieldValue]],
-    functions: dict[str, Function],
+    functions: Mapping[str, Function],
 ) -> Operation:
     """Resolve functions and fold static operations in a validated parsed tree.
 
@@ -897,8 +928,8 @@ def _compile_operation(
 
 
 def _evaluate_operation(
-    op: Operation, runtime_context: dict[str, dict[str, FieldValue]]
-) -> FieldValue:
+    op: Operation, runtime_context: dict[str, dict[str, FieldValue]], skip_missing_fields: bool
+) -> FieldValue | Missing:
     """Evaluate a prepared operation tree using the supplied runtime context.
 
     Constant and runtime lookup dictionaries and lists are deep-copied, except
@@ -908,9 +939,10 @@ def _evaluate_operation(
 
     Raises
     ------
+    FieldMappingTemplateLookupError
+        If a runtime root is missing or a required field path cannot be resolved.
     FieldMappingTemplateEvaluationError
-        If a runtime context root or lookup path is missing, a resolved key is
-        not a string, or two keys in the same mapping resolve to the same string.
+        If a resolved key is not a string or two keys resolve to the same string.
     RuntimeError
         If an unresolved ``ParsedCall`` reaches this phase.
 
@@ -925,16 +957,18 @@ def _evaluate_operation(
 
         case Lookup():
             if op.context not in runtime_context:
-                raise FieldMappingTemplateEvaluationError(
-                    f"Missing runtime context root {op.context!r} " f"for lookup path {op.path!r}"
+                raise FieldMappingTemplateLookupError(
+                    f"Missing runtime context root {op.context!r} for lookup path {op.path!r}"
                 )
 
             value = get_field_value(runtime_context[op.context], op.path)
-            if value is MISSING:
-                raise FieldMappingTemplateEvaluationError(
+            if value is MISSING and not skip_missing_fields:
+                raise FieldMappingTemplateLookupError(
                     f"Cannot resolve lookup path {op.path!r} "
                     f"in runtime context root {op.context!r}"
                 )
+            elif value is MISSING and skip_missing_fields:
+                return MISSING
 
             if op.copy_result and isinstance(value, (dict, list)):
                 return deepcopy(value)
@@ -946,31 +980,51 @@ def _evaluate_operation(
             kwargs = {}
 
             for arg in op.args:
-                args.append(_evaluate_operation(arg, runtime_context))
+                evaluated_arg = _evaluate_operation(arg, runtime_context, skip_missing_fields)
+                if evaluated_arg is MISSING:
+                    return MISSING
+
+                args.append(evaluated_arg)
 
             for kwarg_key, kwarg_value in op.kwargs.items():
-                kwargs[kwarg_key] = _evaluate_operation(kwarg_value, runtime_context)
+                evaluated_kwarg = _evaluate_operation(
+                    kwarg_value, runtime_context, skip_missing_fields
+                )
 
+                if evaluated_kwarg is MISSING:
+                    return MISSING
+
+                kwargs[kwarg_key] = evaluated_kwarg
             return op.function.fn(*args, **kwargs)
 
         case MappingOperation():
             result: JsonObject = {}
 
             for key_op, value_op in op.entries:
-                key = _evaluate_operation(key_op, runtime_context)
+                key = _evaluate_operation(key_op, runtime_context, skip_missing_fields)
                 if not isinstance(key, str):
                     raise FieldMappingTemplateEvaluationError(
                         f"Mapping keys must resolve to strings, got {type(key).__name__}"
                     )
+                val = _evaluate_operation(value_op, runtime_context, skip_missing_fields)
+                if val is MISSING:
+                    continue
+
                 if key in result:
                     raise FieldMappingTemplateEvaluationError(
                         f"Duplicate resolved mapping key {key!r}"
                     )
-                result[key] = _evaluate_operation(value_op, runtime_context)
+                result[key] = val
 
             return result
         case ListOperation():
-            return [_evaluate_operation(child, runtime_context) for child in op.entries]
+            res: list[FieldValue] = []
+            for child in op.entries:
+                list_entry = _evaluate_operation(child, runtime_context, skip_missing_fields)
+                if list_entry is MISSING:
+                    return MISSING
+                res.append(list_entry)
+            return res
         case ParsedCall():
             raise RuntimeError(
                 f"Internal error: unresolved ParsedCall {op.name!r} encountered during evaluation; "
@@ -991,8 +1045,17 @@ class FieldMappingTemplate:
     Pipes chain left to right; ``${source_event.id | add(20) | str}`` means
     ``str(add(source_event.id, 20))`` when both functions are registered.
 
-    Only ``str`` is provided by default. Passing ``functions`` to ``compile``
-    supplies the complete registry instead. Standalone calls require parentheses;
+    Default functions are ``str``, ``int``, ``float``, ``lower``, ``upper``,
+    ``strip``, ``join``, and ``concat``. ``str`` accepts any field value, including
+    mappings, lists, and ``None``. ``int`` and ``float`` use Python conversion
+    rules. ``lower``, ``upper``, and ``strip`` operate on strings. ``join`` takes
+    a sequence of strings followed by a separator (the keyword is ``seperator``),
+    and ``concat`` takes any number of string arguments. Conversion and type
+    errors propagate from these functions, during compilation if folded or
+    during evaluation otherwise.
+
+    Passing ``functions`` to ``compile`` supplies the complete registry instead.
+    Standalone calls require parentheses;
     pipe calls with no explicit arguments can omit them. A function name must
     immediately precede ``(``. Keyword names are identifiers, duplicates are
     invalid, and positional arguments must precede kwargs. Trailing commas are
@@ -1033,7 +1096,7 @@ class FieldMappingTemplate:
         *,
         static_context: dict[str, JsonObject],
         runtime_roots: Collection[str],
-        functions: dict[str, Function] | None = None,
+        functions: Mapping[str, Function] | None = None,
     ) -> "FieldMappingTemplate":
         """Validate and prepare a mapping, folding expressions known at configuration time.
 
@@ -1050,9 +1113,9 @@ class FieldMappingTemplate:
         runtime_roots : Collection[str]
             Names of roots supplied during evaluation. Their fields are checked
             only when evaluated. Names must not overlap with static roots.
-        functions : dict[str, Function] | None
-            Complete function registry, replacing the default ``str`` function
-            when supplied. An empty mapping disables all functions. Callables
+        functions : Mapping[str, Function] | None
+            Complete function registry, replacing ``DEFAULT_FUNCTIONS`` when
+            supplied. An empty mapping disables all functions. Callables
             must expose inspectable signatures and return ``FieldValue`` values.
             Functions opting into folding may execute during compilation;
             others execute on every evaluation, even with constant arguments.
@@ -1072,7 +1135,7 @@ class FieldMappingTemplate:
         folding propagate unchanged.
         """
         if functions is None:
-            functions = {"str": Function(lambda x: str(x), can_borrow_input=True, foldable=True)}
+            functions = DEFAULT_FUNCTIONS
 
         overlapping_roots = static_context.keys() & set(runtime_roots)
         if overlapping_roots:
@@ -1095,7 +1158,10 @@ class FieldMappingTemplate:
         return cls(compiled_root)
 
     def evaluate(
-        self, *, runtime_context: dict[str, dict[str, FieldValue]]
+        self,
+        *,
+        runtime_context: dict[str, dict[str, FieldValue]],
+        skip_missing_fields: bool = False,
     ) -> dict[str, FieldValue]:
         """Resolve the compiled template against runtime context and return its mapping.
 
@@ -1104,6 +1170,13 @@ class FieldMappingTemplate:
         runtime_context : dict[str, dict[str, FieldValue]]
             Named runtime roots. Each root referenced by the template must be
             present and contain the requested fields; explicit ``None`` is valid.
+        skip_missing_fields : bool
+            If true, omit mapping entries whose values depend on a missing field.
+            A missing function argument skips the call; a missing list element
+            skips the whole list rather than changing its length. Nested mappings
+            can remain empty after omissions. Missing roots still raise a lookup
+            error, and missing mapping keys fail the string-key check. Defaults
+            to false, which raises a lookup error for any missing field.
 
         Returns
         -------
@@ -1117,18 +1190,99 @@ class FieldMappingTemplate:
 
         Raises
         ------
+        FieldMappingTemplateLookupError
+            If a runtime root is missing or a field is missing while
+            ``skip_missing_fields`` is false.
         FieldMappingTemplateEvaluationError
-            If a runtime root or field path is missing, a key resolves to a
-            non-string value, or resolved keys collide within the same mapping.
+            If a key resolves to a non-string value or resolved keys collide
+            within the same mapping.
         TypeError
             If the compiled root does not produce a dictionary.
 
         Exceptions from runtime functions propagate unchanged. Function result
         types are the responsibility of registered implementations.
         """
-        result = _evaluate_operation(self.root_operation, runtime_context)
+        result = _evaluate_operation(self.root_operation, runtime_context, skip_missing_fields)
 
         if not isinstance(result, dict):
             raise TypeError("Compiled template root did not produce a mapping")
 
         return result
+
+
+ContextEntry: TypeAlias = FieldValue | Callable[[], FieldValue]
+
+
+class LazyContext(dict[str, FieldValue]):
+    """Expose fixed context keys whose values can be computed on first access.
+
+    ``entries`` maps names to field values or zero-argument factories. Literal
+    values are stored immediately. Accessing a factory-backed key through
+    ``context[key]`` or ``get`` invokes its factory and caches the returned value
+    for this instance, including ``None``. If a factory raises, the exception
+    propagates and a later access retries it.
+
+    Membership, length, key iteration, and ``keys()`` include unresolved keys
+    without invoking their factories. ``items()`` and ``values()`` resolve values
+    as their views are iterated. ``materialize()`` resolves all remaining values
+    and returns a plain dictionary; mutable values are shared, not copied.
+
+    For example, ``LazyContext({"id": lambda: str(uuid4())})`` generates an ID
+    only when read and returns the same ID on subsequent reads. Create a new
+    instance for each evaluation to refresh generated values.
+
+    Use this object through its read methods. Inherited dictionary mutation and
+    copying operations are not synchronized with the declared lazy keys; use
+    ``materialize()`` to obtain a complete plain dictionary.
+    """
+
+    def __init__(self, entries: Mapping[str, ContextEntry]):
+        """Register fixed entries and deferred factories without invoking them."""
+        super().__init__()
+
+        self._keys = dict.fromkeys(entries)
+        self._factories: dict[str, Callable[[], FieldValue]] = {}
+
+        for key, value in entries.items():
+            if callable(value):
+                self._factories[key] = value
+            else:
+                dict.__setitem__(self, key, value)
+
+    def __missing__(self, key: str) -> FieldValue:
+        factory = self._factories[key]
+        value = factory()
+        dict.__setitem__(self, key, value)
+        del self._factories[key]
+        return value
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._keys
+
+    def __iter__(self):
+        return iter(self._keys)
+
+    def __len__(self) -> int:
+        return len(self._keys)
+
+    def get(self, key, default=None):
+        """Resolve a declared key, or return ``default`` for an unknown key."""
+        if key in self:
+            return self[key]
+        return default
+
+    def keys(self):
+        """Return a view of declared keys without computing their values."""
+        return self._keys.keys()
+
+    def items(self):
+        """Return an items view that resolves lazy values as it is iterated."""
+        return ItemsView(self)
+
+    def values(self):
+        """Return a values view that resolves lazy values as it is iterated."""
+        return ValuesView(self)
+
+    def materialize(self) -> dict[str, FieldValue]:
+        """Resolve all keys and return a plain dictionary without copying its values."""
+        return {key: self[key] for key in self}

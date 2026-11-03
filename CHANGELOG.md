@@ -2,6 +2,7 @@
 ### Breaking
 
 ### Features
+* selective_extractor: add fmt as event_template to configuration
 
 ### Improvements
 * util: add field mapping template utility
