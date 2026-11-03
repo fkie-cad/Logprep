@@ -117,6 +117,10 @@ from logprep.util.field_mapping_template import (
     FieldMappingTemplate,
     FieldMappingTemplateConfigError,
 )
+from logprep.util.field_mapping_template_helpers import (
+    rule_to_fmt_context,
+    source_fields_to_fmt,
+)
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import FieldValue, field_value_validator
 

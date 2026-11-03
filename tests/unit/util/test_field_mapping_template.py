@@ -65,6 +65,16 @@ def _assert_value_types(actual: FieldValue, expected: FieldValue) -> None:
         ),
         pytest.param({}, {}, id="empty_root"),
         pytest.param(
+            {"value": '${join(source_event.items, separator=", ")}'},
+            {"value": "first, second"},
+            id="join_separator_keyword",
+        ),
+        pytest.param(
+            {"value": '${source_event.items | join(separator=", ")}'},
+            {"value": "first, second"},
+            id="join_separator_keyword_in_pipe",
+        ),
+        pytest.param(
             {"${rule.description}": "${rule.id}"},
             {"Example rule": 42},
             id="static_key_and_value",

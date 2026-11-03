@@ -152,14 +152,18 @@ from typing import List
 from attrs import define, field, validators
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
+from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.field_mapping_template import (
     FieldMappingTemplate,
     FieldMappingTemplateConfigError,
 )
+from logprep.util.field_mapping_template_helpers import (
+    rule_to_fmt_context,
+    source_fields_to_fmt,
+)
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import FieldValue, add_fields_to, field_value_validator
+from logprep.util.helper import FieldValue, field_value_validator
 
 
 class SelectiveExtractorRuleError(InvalidRuleDefinitionError):
@@ -167,26 +171,6 @@ class SelectiveExtractorRuleError(InvalidRuleDefinitionError):
 
     def __init__(self, message: str):
         super().__init__(f"SelectiveExtractor rule ({message})")
-
-
-def source_fields_to_fmt(source_fields: list[str]) -> dict[str, FieldValue]:
-    """Build a nested template selecting each dotted path from ``source_event``."""
-    result: dict[str, FieldValue] = {}
-    for field in source_fields:
-        fmt = f"${{source_event.{field}}}"
-
-        add_fields_to(result, {field: fmt})
-
-    return result
-
-
-def rule_to_fmt_context(rule: Rule) -> dict[str, FieldValue]:
-    """Expose a rule's string ID, description, and normalized filter to templates."""
-    return {
-        "description": rule.description,
-        "id": rule.id,
-        "filter": rule.filter_str,
-    }
 
 
 class SelectiveExtractorRule(FieldManagerRule):
