@@ -9,6 +9,7 @@ import pytest
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.selective_extractor.extracted_event import ExtractedEvent
 from logprep.ng.processor.selective_extractor.processor import SelectiveExtractor
+from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.selective_extractor.test_selective_extractor import (
     test_cases as non_ng_test_cases,
@@ -30,6 +31,20 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         original_data = deepcopy(event)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
+        if expected == {} and rule["selective_extractor"].get("ignore_missing_fields") is False:
+            assert event.data == original_data
+            assert event.extra_data == []
+            assert event.warnings == []
+            assert len(event.errors) == 1
+            assert isinstance(event.errors[0], ProcessingCriticalError)
+            return
+        if "_selective_extractor_missing_field_warning" in expected.get("tags", []):
+            assert event.data == expected
+            assert event.extra_data == []
+            assert event.errors == []
+            assert len(event.warnings) == 1
+            assert isinstance(event.warnings[0], ProcessingWarning)
+            return
         if "event_template" in rule["selective_extractor"]:
             expected_events = [
                 ExtractedEvent(expected, output_name=output_name, output_target=output_target)

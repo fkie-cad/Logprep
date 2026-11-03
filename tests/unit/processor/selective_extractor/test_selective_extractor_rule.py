@@ -24,16 +24,22 @@ def fixture_rule_definition():
         },
         "description": "my reference rule",
     }
+
+
 @pytest.fixture(name="template_rule_definition")
 def fixture_template_rule_definition():
     return {
         "filter": "test",
         "selective_extractor": {
-            "event_template": {"field1": "${field1}", "field2": "${field2}"},
+            "event_template": {
+                "field1": "${source_event.field1}",
+                "field2": "${source_event.field2}",
+            },
             "outputs": [{"kafka": "topic"}],
         },
         "description": "my reference rule",
     }
+
 
 class TestSelectiveExtractorRule:
     @mock.patch("pathlib.Path.is_file", return_value=True)
@@ -185,7 +191,7 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"value": "${field1}"},
+                        "event_template": {"value": "${source_event.field1}"},
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
@@ -203,6 +209,7 @@ class TestSelectiveExtractorRule:
                 rule1 = SelectiveExtractorRule.create_from_dict(rule_definition)
                 rule2 = SelectiveExtractorRule.create_from_dict(other_rule_definition)
                 assert (rule1 == rule2) == is_equal, testcase
+
     # Same equality test as above for template feature
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
@@ -212,7 +219,10 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"field1": "${field1}", "field2": "${field2}"},
+                        "event_template": {
+                            "field1": "${source_event.field1}",
+                            "field2": "${source_event.field2}",
+                        },
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
@@ -223,7 +233,10 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "other_filter",
                     "selective_extractor": {
-                        "event_template": {"field1": "${field1}", "field2": "${field2}"},
+                        "event_template": {
+                            "field1": "${source_event.field1}",
+                            "field2": "${source_event.field2}",
+                        },
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
@@ -234,7 +247,7 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"field1": "${field1}"},
+                        "event_template": {"field1": "${source_event.field1}"},
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
@@ -245,7 +258,10 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"field1": "${other_field}", "field2": "${field2}"},
+                        "event_template": {
+                            "field1": "${source_event.other_field}",
+                            "field2": "${source_event.field2}",
+                        },
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
@@ -256,7 +272,10 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"field1": "${field1}", "field2": "${field2}"},
+                        "event_template": {
+                            "field1": "${source_event.field1}",
+                            "field2": "${source_event.field2}",
+                        },
                         "outputs": [{"kafka": "other"}],
                     },
                 },
@@ -267,7 +286,10 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"field1": "${field1}", "field2": "${field2}"},
+                        "event_template": {
+                            "field1": "${source_event.field1}",
+                            "field2": "${source_event.field2}",
+                        },
                         "outputs": [{"opensearch": "topic"}],
                     },
                 },
@@ -278,33 +300,29 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"field1": "${field1}", "field2": "${field2}"},
+                        "event_template": {
+                            "field1": "${source_event.field1}",
+                            "field2": "${source_event.field2}",
+                        },
                         "outputs": [{"opensearch": "_other"}],
                     },
                 },
                 False,
             ),
             (
-                "Should be not equal cause outputs are missing",
+                "Should not be equal cause string conversion of different fields",
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"field1": "${field1}", "field2": "${field2}"},
+                        "event_template": {
+                            "field1": "${source_event.field1|str}",
+                            "field2": "${source_event.field2}",
+                        },
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
                 False,
             ),
-            (
-            "Should not be equal cause string conversion of different fields",
-            {
-                "filter": "test",
-                "selective_extractor": {
-                    "event_template": {"field1": "${field1|str}", "field2": "${field2}"},
-                    "outputs": [{"kafka": "topic"}],
-                },
-            },
-            False,
-        ),
         ],
     )
     def test_template_rules_equality(
@@ -317,9 +335,36 @@ class TestSelectiveExtractorRule:
         rule1 = SelectiveExtractorRule.create_from_dict(template_rule_definition)
         rule2 = SelectiveExtractorRule.create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
+
     @pytest.mark.parametrize(
         "rule_definition, read_lines, raised, message",
         [
+            pytest.param(
+                {
+                    "filter": "test",
+                    "selective_extractor": {
+                        "event_template": {"value": "${source_event.field"},
+                        "outputs": [{"kafka": "topic"}],
+                    },
+                },
+                b"",
+                InvalidRuleDefinitionError,
+                "Invalid event_template: Unexpected end of template",
+                id="unclosed placeholder is rejected",
+            ),
+            pytest.param(
+                {
+                    "filter": "test",
+                    "selective_extractor": {
+                        "event_template": {"value": "${}"},
+                        "outputs": [{"kafka": "topic"}],
+                    },
+                },
+                b"",
+                InvalidRuleDefinitionError,
+                "Invalid event_template: Expected a lookup or function call",
+                id="empty placeholder is rejected",
+            ),
             (
                 {
                     "filter": "test",
@@ -366,8 +411,8 @@ class TestSelectiveExtractorRule:
                     },
                 },
                 b"",
-                TypeError, # with optional output None,
-                "missing 1 required keyword-only argument: 'outputs'", # with optional output None,
+                TypeError,  # with optional output None,
+                "missing 1 required keyword-only argument: 'outputs'",  # with optional output None,
             ),
             (
                 {
@@ -424,7 +469,10 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"field1": "${field1}","field2": "${field2}"},
+                        "event_template": {
+                            "field1": "${source_event.field1}",
+                            "field2": "${source_event.field2}",
+                        },
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
@@ -436,38 +484,41 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"field1": "${field1}","field2": "${field2}"},
+                        "event_template": {
+                            "field1": "${source_event.field1}",
+                            "field2": "${source_event.field2}",
+                        },
                     },
                 },
                 b"",
-                None, # If output stays non optional TypeError,
-                None,# If output stays non optional "missing 1 required keyword-only argument: 'outputs'"
+                TypeError,
+                "missing 1 required keyword-only argument: 'outputs'",
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
                         "source_fields": ["field1"],
-                        "event_template": {"field1": "${field1}"},
+                        "event_template": {"field1": "${source_event.field1}"},
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
                 b"",
                 InvalidRuleDefinitionError,
-                "event_template cannot be combined with source_fields or extract_from_file",
+                "one of event_template, extract_from_file or source_fields only allowed",
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
                         "extract_from_file": "my/path/",
-                        "event_template": {"field1": "${field1}"},
+                        "event_template": {"field1": "${source_event.field1}"},
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
                 b"field1",
                 InvalidRuleDefinitionError,
-                "event_template cannot be combined with source_fields or extract_from_file",
+                "one of event_template, extract_from_file or source_fields only allowed",
             ),
             (
                 {
@@ -478,32 +529,32 @@ class TestSelectiveExtractorRule:
                     },
                 },
                 b"",
-                InvalidRuleDefinitionError,
-                "event_template must not be empty",
+                None,
+                None,
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": ["${field1}", "${field2}"],
+                        "event_template": ["${source_event.field1}", "${source_event.field2}"],
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
                 b"",
-                InvalidRuleDefinitionError,
-                "event_template must be a mapping",
+                TypeError,
+                "'event_template' must be <class 'dict'>",
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "event_template": {"value": "${field1|unknown}"},
+                        "event_template": {"value": "${source_event.field1|unknown}"},
                         "outputs": [{"kafka": "topic"}],
                     },
                 },
                 b"",
                 InvalidRuleDefinitionError,
-                "types can only be converted to strings",
+                "Invalid event_template: Unknown function 'unknown'",
             ),
             (
                 {
@@ -513,8 +564,8 @@ class TestSelectiveExtractorRule:
                     },
                 },
                 b"",
-                InvalidRuleDefinitionError,
-                "no field to extract",
+                None,
+                None,
             ),
             (
                 {
@@ -522,8 +573,8 @@ class TestSelectiveExtractorRule:
                     "selective_extractor": {
                         "event_template": {
                             "content": {
-                                "value": "${raw_value|str}",
-                                "ttl": "${ttl}",
+                                "value": "${source_event.raw_value|str}",
+                                "ttl": "${source_event.ttl}",
                             }
                         },
                         "outputs": [{"kafka": "topic"}],
@@ -532,7 +583,7 @@ class TestSelectiveExtractorRule:
                 b"",
                 None,
                 None,
-        ),
+            ),
         ],
     )
     def test_rule_create_from_dict(self, rule_definition, read_lines, raised, message):
