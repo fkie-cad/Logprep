@@ -6,6 +6,7 @@
 * domain_resolver: `source_fields` must be a list with exactly one element
 
 ### Features
+* selective_extractor: add fmt as event_template to configuration
 
 ### Improvements
 * util: add field mapping template utility
