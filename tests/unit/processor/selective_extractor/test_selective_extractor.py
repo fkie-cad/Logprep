@@ -27,7 +27,141 @@ example_test_cases = [
             "tags": ["_selective_extractor_missing_field_warning"],
         },
         id="test process extracts dotted fields and complains on missing fields",
-    )
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "selective_extractor": {
+                "event_template": {"value": "foo", "status": "SUCCESS"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"message": "test_message"},
+        {"value": "foo", "status": "SUCCESS"},
+        id="event template creates an extra event from constant values",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "selective_extractor": {
+                "event_template": {
+                    "content": {
+                        "message": "${message}",
+                        "other_message": "${other.message}",
+                    }
+                },
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"message": "test_message", "other": {"message": "my message value"}},
+        {"content": {"message": "test_message", "other_message": "my message value"}},
+        id="event template substitutes field values and dotted field values",
+    ),
+    pytest.param(
+        {
+            "filter": "list_update",
+            "selective_extractor": {
+                "event_template": {
+                    "@timestamp": "${@timestamp}",
+                    "status": "NEW",
+                    "list_name": "some_list_name",
+                    "command_type": "WRITE_ENTRY",
+                    "command_arguments": {
+                        "content": {
+                            "${set}": {
+                                "${key}": {
+                                    "value": "${value}",
+                                }
+                            }
+                        }
+                    },
+                },
+                "outputs": [{"opensearch": "list-updates"}],
+            },
+        },
+        {
+            "list_update": True,
+            "@timestamp": "2026-09-28T10:00:00Z",
+            "set": "my_subset",
+            "key": "my_key",
+            "value": 42,
+        },
+        {
+            "@timestamp": "2026-09-28T10:00:00Z",
+            "status": "NEW",
+            "list_name": "some_list_name",
+            "command_type": "WRITE_ENTRY",
+            "command_arguments": {
+                "content": {"my_subset": {"my_key": {"value": 42}}}
+            },
+        },
+        id="event template creates a nested extra event and preserves value types with key substitution",
+    ),
+    pytest.param(
+        {
+            "filter": "list_update",
+            "selective_extractor": {
+                "event_template": {
+                    "@timestamp": "${@timestamp}",
+                    "status": "NEW",
+                    "list_name": "some_list_name",
+                    "command_type": "WRITE_ENTRY",
+                    "command_arguments": {
+                        "command_arguments": {
+                            "content": {
+                                "${set}": {
+                                    "${key}": {
+                                        "value": "${int_value|str}",
+                                        "ttl": "${ttl}",
+                                    },
+                                    "${key2}": {
+                                        "value": "${value|str}"
+                                    }
+                                },
+                                "ttl": "${default_ttl}"
+                            }
+                        }
+                    },
+                },
+                "outputs": [{"opensearch": "list-updates"}],
+            },
+        },
+        {
+            "list_update": True,
+            "@timestamp": "2026-09-28T10:00:00Z",
+            "set": "my_subset",
+            "key": "my_key",
+            "key2": "my_key2",
+            "ttl": 12,
+            "value": "string_value",
+            "int_value": 42,
+            "default_ttl": 12345
+        },
+        {
+            "@timestamp": "2026-09-28T10:00:00Z",
+            "status": "NEW",
+            "list_name": "some_list_name",
+            "command_type": "WRITE_ENTRY",
+            "command_arguments": {
+            "content": {
+                "my_subset": {
+                "my_key": {
+                    "value": "42",
+                    "ttl": 12
+                }
+                },
+                "my_subset_2": {
+                "my_key2": {
+                    "value": "string_value",
+                    "ttl": 12
+                }
+                },
+                "ttl": 12345
+            }
+            },
+        },
+        id="event template creates a nested extra event and converts selected values to string with key substitution",
+    ),
 ]
 
 test_cases = normalize_test_cases(
@@ -45,7 +179,242 @@ test_cases = normalize_test_cases(
         {"message": "test_message", "other": {"message": "my message value"}},
         id="test process extracts dotted fields and ignores missing fields",
     ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {
+                    "integer": "${integer}",
+                    "float": "${float}",
+                    "boolean": "${boolean}",
+                    "string": "${string}",
+                    "mapping": "${mapping}",
+                    "list": "${list}",
+                },
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {
+            "condition": True,
+            "integer": 42,
+            "float": 3.5,
+            "boolean": True,
+            "string": "foo",
+            "mapping": {"key": "value"},
+            "list": [1, 2, 3],
+        },
+        {
+            "integer": 42,
+            "float": 3.5,
+            "boolean": True,
+            "string": "foo",
+            "mapping": {"key": "value"},
+            "list": [1, 2, 3],
+        },
+        id="event template preserves substituted field value types",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {
+                    "integer": "${integer|str}",
+                    "float": "${float|str}",
+                    "string": "${string|str}",
+                    "boolean": "${boolean}",
+                },
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "integer": 42, "float": 3.5, "string": "foo", "boolean": True},
+        {"integer": "42", "float": "3.5", "string": "foo", "boolean": True},
+        id="event template converts explicitly selected values to strings",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {
+                    "original": "${value}",
+                    "converted": "${value|str}",
+                },
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {
+            "condition": True,
+            "value": 42,
+        },
+        {
+            "original": 42,
+            "converted": "42",
+        },
+        id="event template converts individual placeholders using str modifier",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {
+                    "escaped_placeholder": r"\${value}",
+                    "escaped_modifier": r"\${value|unknown}", # should be used as normal string value?
+                    "escaped_dollar": r"\$",
+                    "resolved": "${value}",
+                },
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "value": 42},
+        {
+            "escaped_placeholder": "${value}",
+            "escaped_modifier": "${value|unknown}",
+            "escaped_dollar": "$",
+            "resolved": 42,
+        },
+        id="event template supports escaping",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"value": "${value}"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "value": None},
+        {"value": None},
+        id="event template preserves None/null values",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"value": "${field"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "field": "foo"},
+        {"value": "${field"},
+        id="malformed placeholder syntax is treated as string",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"value": "${}"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "field": "foo"},
+        {"value": "${}"},
+        id="empty placeholder is treated as string",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"first": "${value}", "second": "${value}"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "value": "foo"},
+        {"first": "foo", "second": "foo"},
+        id="event template can substitute the same source field multiple times",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"values": ["static_value", "${value}", "${other.value}"]},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "value": 42, "other": {"value": True}},
+        {"values": ["static_value", 42, True]},
+        id="event template preserves substituted list value types",
+    ),
+#     pytest.param(
+#         {
+#             "filter": "condition",
+#             "selective_extractor": {
+#                 "event_template": {"value": "${value}"},
+#             },
+#         },
+#         {"condition": True, "value": "foo"},
+#         {"value": "foo"},
+#         id="event template uses processor outputs as fallback",
+#     ) if this is the place to test this??
 )
+
+failure_test_cases = [
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"value": "${not.exists}"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True},
+        {
+            "condition": True,
+            "tags": ["_selective_extractor_missing_field_warning"],
+        },
+        ".*ProcessingWarning.*",
+        id="missing field in template causes processing warning and no extra event",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"mapping": "${mapping|str}"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "mapping": {"key": "value"}},
+        {
+            "condition": True,
+            "mapping": {"key": "value"},
+            "tags": ["_selective_extractor_failure"],
+        },
+        ".*ProcessingWarning.*",
+        id="string conversion on mapping causes processing warning",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"values": "${values|str}"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "values": [1, 2, 3]},
+        {
+            "condition": True,
+            "values": [1, 2, 3],
+            "tags": ["_selective_extractor_failure"],
+        },
+        ".*ProcessingWarning.*",
+        id="string conversion on list causes processing warning",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "event_template": {"value": "${value|str}"},
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "value": None},
+        {
+            "condition": True,
+            "value": None,
+            "tags": ["_selective_extractor_failure"],
+        },
+        ".*ProcessingWarning.*",
+        id="string conversion on None causes processing warning",
+    ),
+]
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
