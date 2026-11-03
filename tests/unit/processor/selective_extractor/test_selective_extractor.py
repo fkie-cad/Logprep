@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 import re
 import uuid
+from datetime import datetime, timezone
 from unittest import mock
 
 import pytest
@@ -157,6 +158,50 @@ example_test_cases = [
 
 test_cases = normalize_test_cases(
     *example_test_cases,
+    pytest.param(
+        {
+            "filter": "condition",
+            "description": "Literal ${source_event.value}",
+            "selective_extractor": {
+                "id": "audit",
+                "event_template": {
+                    "${rule.id}": {
+                        "description": "${rule.description}",
+                        "filter": "${rule.filter}",
+                        "value": "${source_event.value}",
+                        "source_rule": "${source_event.rule.id}",
+                    }
+                },
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True, "value": 7, "rule": {"id": "source-rule"}},
+        {
+            "audit": {
+                "description": "Literal ${source_event.value}",
+                "filter": "condition: *",
+                "value": 7,
+                "source_rule": "source-rule",
+            }
+        },
+        id="event template combines rule metadata and source values without reinterpreting metadata",
+    ),
+    pytest.param(
+        {
+            "filter": "condition",
+            "selective_extractor": {
+                "id": 42,
+                "event_template": {
+                    "rule_id": "${rule.id}",
+                    "description": "${rule.description}",
+                },
+                "outputs": [{"opensearch": "index"}],
+            },
+        },
+        {"condition": True},
+        {"rule_id": "42", "description": ""},
+        id="event template exposes numeric rule id as string and default description",
+    ),
     pytest.param(
         {
             "filter": "message",
@@ -407,6 +452,116 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         assert result.data == []
         assert result.errors == []
         assert any(re.search(message, str(warning)) for warning in result.warnings)
+
+    @pytest.mark.parametrize(
+        "template, expected_events, expected_calls",
+        [
+            pytest.param(
+                {"rule_id": "${rule.id}", "value": "${source_event.value}"},
+                [{"rule_id": "audit", "value": 1}, {"rule_id": "audit", "value": 2}],
+                (0, 0),
+                id="unused context values are not generated",
+            ),
+            pytest.param(
+                {"now": "${context.now}", "same_now": "${context.now}"},
+                [
+                    {
+                        "now": "2026-11-03T12:00:00+00:00",
+                        "same_now": "2026-11-03T12:00:00+00:00",
+                    },
+                    {
+                        "now": "2026-11-03T12:00:01+00:00",
+                        "same_now": "2026-11-03T12:00:01+00:00",
+                    },
+                ],
+                (2, 0),
+                id="context timestamp is cached per event and refreshed for next event",
+            ),
+            pytest.param(
+                {"id": "${context.id}", "same_id": "${context.id}"},
+                [
+                    {
+                        "id": "00000000-0000-4000-8000-000000000001",
+                        "same_id": "00000000-0000-4000-8000-000000000001",
+                    },
+                    {
+                        "id": "00000000-0000-4000-8000-000000000002",
+                        "same_id": "00000000-0000-4000-8000-000000000002",
+                    },
+                ],
+                (0, 2),
+                id="context id is cached per event and refreshed for next event",
+            ),
+            pytest.param(
+                {
+                    "${rule.id}": {
+                        "generated_id": "${context.id}",
+                        "created_at": "${context.now}",
+                        "value": "${source_event.value}",
+                        "source_id": "${source_event.context.id}",
+                    }
+                },
+                [
+                    {
+                        "audit": {
+                            "generated_id": "00000000-0000-4000-8000-000000000001",
+                            "created_at": "2026-11-03T12:00:00+00:00",
+                            "value": 1,
+                            "source_id": "source-id",
+                        }
+                    },
+                    {
+                        "audit": {
+                            "generated_id": "00000000-0000-4000-8000-000000000002",
+                            "created_at": "2026-11-03T12:00:01+00:00",
+                            "value": 2,
+                            "source_id": "source-id",
+                        }
+                    },
+                ],
+                (2, 2),
+                id="rule context and source event combine without shadowing context",
+            ),
+        ],
+    )
+    def test_template_runtime_context(self, template, expected_events, expected_calls):
+        processor_module = "logprep.processor.selective_extractor.processor"
+        with (
+            mock.patch(f"{processor_module}.datetime") as clock,
+            mock.patch(f"{processor_module}.uuid4") as generate_id,
+        ):
+            clock.now.side_effect = [
+                datetime(2026, 11, 3, 12, 0, 0, tzinfo=timezone.utc),
+                datetime(2026, 11, 3, 12, 0, 1, tzinfo=timezone.utc),
+            ]
+            generate_id.side_effect = [
+                uuid.UUID("00000000-0000-4000-8000-000000000001"),
+                uuid.UUID("00000000-0000-4000-8000-000000000002"),
+            ]
+            self._load_rule(
+                {
+                    "filter": "condition",
+                    "selective_extractor": {
+                        "id": "audit",
+                        "event_template": template,
+                        "outputs": [{"opensearch": "index"}],
+                    },
+                }
+            )
+            for value, expected in enumerate(expected_events, start=1):
+                event = {"condition": True, "value": value, "context": {"id": "source-id"}}
+                result = self.object.process(event)
+                assert result.errors == []
+                assert result.data == [(expected, ({"opensearch": "index"},))]
+                assert event == {
+                    "condition": True,
+                    "value": value,
+                    "context": {"id": "source-id"},
+                }
+
+            now_calls, id_calls = expected_calls
+            assert clock.now.call_args_list == [mock.call(timezone.utc)] * now_calls
+            assert generate_id.call_args_list == [mock.call()] * id_calls
 
     def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
