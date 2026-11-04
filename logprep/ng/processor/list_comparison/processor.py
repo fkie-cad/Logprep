@@ -25,7 +25,7 @@ Processor Configuration
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.ng.processor.list_comparison.rule
+.. automodule:: logprep.processor.list_comparison.rule
 """
 
 import typing
@@ -34,10 +34,9 @@ from collections.abc import Sequence
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
-from logprep.ng.processor.list_comparison.rule import ListComparisonRule
-from logprep.ng.util.getter import RefreshableGetter
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
+from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import (
     FieldValue,
     add_fields_to,
@@ -90,9 +89,7 @@ class ListComparison(Processor):
     async def setup(self) -> None:
         await super().setup()
         for rule in self.rules:
-            await rule.init_list_comparison(
-                self._job_tag_for_cleanup, self.config.list_search_base_path
-            )
+            rule.init_list_comparison(self.config.list_search_base_path)
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """
@@ -110,12 +107,12 @@ class ListComparison(Processor):
 
         """
         rule = typing.cast(ListComparisonRule, rule)
-        comparison_result, comparison_key = await self._list_comparison(rule, event)
+        comparison_result, comparison_key = self._list_comparison(rule, event)
         if comparison_result is not None:
             fields = {join_dotted_fields((rule.target_field, comparison_key)): comparison_result}
             add_fields_to(event, fields, rule=rule, merge_with_target=True)
 
-    async def _list_comparison(
+    def _list_comparison(
         self, rule: ListComparisonRule, event: dict[str, FieldValue]
     ) -> tuple[Sequence[str], str]:
         """Check if field value violates block or allow list.
@@ -135,14 +132,12 @@ class ListComparison(Processor):
             else [field_value_to_be_checked]
         )
 
-        matching_keys, all_keys = await self._get_lists_matching_with_values(
-            rule, value_list, event
-        )
+        matching_keys, all_keys = self._get_lists_matching_with_values(rule, value_list, event)
         if not matching_keys:
             return list(all_keys), "not_in_list"
         return matching_keys, "in_list"
 
-    async def _get_lists_matching_with_values(
+    def _get_lists_matching_with_values(
         self, rule: ListComparisonRule, values: Sequence[FieldValue], event: dict[str, FieldValue]
     ) -> tuple[Sequence[str], Sequence[str]]:
         """Return matching comparison-list identifiers and the evaluated compare set names.
@@ -156,7 +151,7 @@ class ListComparison(Processor):
         try:
             matches = [
                 set_name
-                async for set_name, set_values in rule.iter_compare_sets(event)
+                for set_name, set_values in rule.iter_compare_sets(event)
                 if self._matches_compare_set(prepared_values, set_values)
             ]
         except Exception as error:
@@ -178,10 +173,6 @@ class ListComparison(Processor):
     def _matches_compare_set(prepared_values: set[FieldValue], set_values: set[str]) -> bool:
         """Return whether any prepared event value matches the given compare set."""
         return not prepared_values.isdisjoint(set_values)
-
-    def _shut_down(self) -> None:
-        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
-        return super()._shut_down()
 
     async def has_asyncio(self) -> bool:
         """Return whether the processor performs asynchronous I/O operations."""

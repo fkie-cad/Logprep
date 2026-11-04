@@ -1,12 +1,29 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+# pylint: disable=R0801
+
 from copy import deepcopy
+
+import pytest
 
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.domain_label_extractor.processor import DomainLabelExtractor
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+    ProcessingWarning,
+)
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+from tests.unit.processor.domain_label_extractor.test_domain_label_extractor import (
+    multi_rule_test_cases as non_ng_multi_rule_test_cases,
+)
+from tests.unit.processor.domain_label_extractor.test_domain_label_extractor import (
+    test_cases as non_ng_test_cases,
+)
+
+test_cases = deepcopy(non_ng_test_cases)
+multi_rule_test_cases = deepcopy(non_ng_multi_rule_test_cases)
 
 
 class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
@@ -16,162 +33,35 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    async def test_domain_extraction_from_full_url(self):
-        document = {"url": {"domain": "https://url.full.domain.de/path/file?param=1"}}
-        expected_output = {
-            "url": {
-                "domain": "https://url.full.domain.de/path/file?param=1",
-                "registered_domain": "domain.de",
-                "top_level_domain": "de",
-                "subdomain": "url.full",
+    @pytest.mark.parametrize(["rule", "document", "expected_output"], test_cases)
+    async def test_domain_extractor(self, rule, document, expected_output):
+        await self._load_rule(rule)
+        await self.object.setup()
+        event = LogEvent(deepcopy(document), original=b"", input_meta=InputMeta())
+        result = await self.object.process(event)
+        assert result.data == expected_output
+
+    @pytest.mark.parametrize(["document", "expected_output"], multi_rule_test_cases)
+    async def test_domain_extractor_multi_rule(self, document, expected_output):
+        event = LogEvent(deepcopy(document), original=b"test_message", input_meta=InputMeta())
+
+        result = await self.object.process(event)
+        assert result.data == expected_output
+
+    async def test_raises_on_missing_fields(self):
+        await self._load_rule(
+            {
+                "filter": "url",
+                "domain_label_extractor": {"source_fields": ["url.domain"], "target_field": "url"},
+                "description": "",
             }
-        }
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
+        )
         await self.object.setup()
-        await self.object.process(log_event)
-
-        assert log_event.data == expected_output
-
-    async def test_domain_extraction_to_existing_field(self):
-        document = {"url": {"domain": "www.test.domain.de"}}
-        expected_output = {
-            "url": {
-                "domain": "www.test.domain.de",
-                "registered_domain": "domain.de",
-                "top_level_domain": "de",
-                "subdomain": "www.test",
-            }
-        }
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-
-        assert log_event.data == expected_output
-
-    async def test_domain_extraction_to_new_dotted_subfield(self):
-        document = {"url2": {"domain": "www.test.domain.de"}}
-        expected_output = {
-            "url2": {"domain": "www.test.domain.de"},
-            "extracted": {
-                "domain": {
-                    "info": {
-                        "registered_domain": "domain.de",
-                        "top_level_domain": "de",
-                        "subdomain": "www.test",
-                    }
-                }
-            },
-        }
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-
-        assert log_event.data == expected_output
-
-    async def test_domain_extraction_without_subdomain(self):
-        document = {"url": {"domain": "domain.de"}}
-        expected_output = {
-            "url": {
-                "domain": "domain.de",
-                "registered_domain": "domain.de",
-                "top_level_domain": "de",
-                "subdomain": "",
-            }
-        }
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-
-        assert log_event.data == expected_output
-
-    async def test_domain_extraction_without_recognized_tld(self):
-        document = {"url": {"domain": "domain.fubarbo"}}
-        expected_output = {
-            "url": {"domain": "domain.fubarbo"},
-            "tags": ["invalid_domain_in_url_domain"],
-        }
-
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-        assert log_event.data == expected_output
-
-    async def test_domain_extraction_without_recognized_tld_with_existing_tag_field(self):
-        document = {"url": {"domain": "domain.fubarbo"}, "tags": ["source"]}
-        expected_output = {
-            "url": {"domain": "domain.fubarbo"},
-            "tags": ["source", "invalid_domain_in_url_domain"],
-        }
-
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-        assert log_event.data == expected_output
-
-    async def test_two_invalid_domains(self):
-        document = {
-            "url": {"domain": "domain.fubarbo"},
-            "source": {"domain": "domain.invalid"},
-            "tags": ["source"],
-        }
-        expected_output = {
-            "url": {"domain": "domain.fubarbo"},
-            "source": {"domain": "domain.invalid"},
-        }
-        expected_tags = [
-            "source",
-            "invalid_domain_in_url_domain",
-            "invalid_domain_in_source_domain",
-        ]
-
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-        tags = log_event.data.pop("tags")
-
-        assert log_event.data == expected_output
-        assert set(tags) == set(expected_tags)
-
-    async def test_two_domains_one_is_invalid(self):
-        document = {
-            "url": {"domain": "domain.de"},
-            "source": {"domain": "domain.invalid"},
-            "tags": ["source"],
-        }
-        expected_output = {
-            "url": {
-                "domain": "domain.de",
-                "registered_domain": "domain.de",
-                "subdomain": "",
-                "top_level_domain": "de",
-            },
-            "source": {"domain": "domain.invalid"},
-            "tags": ["source", "invalid_domain_in_source_domain"],
-        }
-
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-        assert log_event.data == expected_output
-
-    async def test_two_domains_one_is_invalid_one_has_ip(self):
-        document = {
-            "url": {"domain": "domain.fubarbo"},
-            "source": {"domain": "123.123.123.123"},
-            "tags": ["source"],
-        }
-        expected_output = {
-            "url": {"domain": "domain.fubarbo"},
-            "source": {"domain": "123.123.123.123"},
-        }
-        expected_tags = ["source", "invalid_domain_in_url_domain", "ip_in_source_domain"]
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-        tags = log_event.data.pop("tags")
-
-        assert log_event.data == expected_output
-        assert set(tags) == set(expected_tags)
+        result = await self.object.process(
+            LogEvent({"url": {"other": 23}}, original=b"", input_meta=InputMeta())
+        )
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], ProcessingWarning)
 
     async def test_new_non_default_tagging_field(self):
         config = {
@@ -183,16 +73,14 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             }
         }
 
-        processor = Factory.create(configuration=config)
-        document = {"url": {"domain": "domain.fubarbo"}}
+        domain_label_extractor = Factory.create(configuration=config)
+        document = {"url": {"domain": "http://["}}
         expected_output = {
-            "url": {"domain": "domain.fubarbo"},
+            "url": {"domain": "http://["},
             "special_tags": ["invalid_domain_in_url_domain"],
         }
-
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await processor.setup()
-        await processor.process(log_event)
+        await domain_label_extractor.process(log_event)
         assert log_event.data == expected_output
 
     async def test_append_to_non_default_tagging_field(self):
@@ -205,142 +93,44 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
             }
         }
 
-        processor = Factory.create(config)
-        document = {"url": {"domain": "domain.fubarbo"}, "special_tags": ["source"]}
+        domain_label_extractor = Factory.create(config)
+        document = {"url": {"domain": "http://["}, "special_tags": ["source"]}
+
         expected_output = {
-            "url": {"domain": "domain.fubarbo"},
+            "url": {"domain": "http://["},
             "special_tags": ["source", "invalid_domain_in_url_domain"],
         }
-
         log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await processor.setup()
-        await processor.process(log_event)
+
+        await domain_label_extractor.process(log_event)
         assert log_event.data == expected_output
-
-    async def test_domain_extraction_with_separated_tld(self):
-        document = {"url": {"domain": "domain.co.uk"}}
-        expected_output = {
-            "url": {
-                "domain": "domain.co.uk",
-                "registered_domain": "domain.co.uk",
-                "top_level_domain": "co.uk",
-                "subdomain": "",
-            }
-        }
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-
-        assert log_event.data == expected_output
-
-    async def test_domain_extraction_with_ipv4_target(self):
-        document = {"url": {"domain": "123.123.123.123"}}
-        expected_output = {"url": {"domain": "123.123.123.123"}, "tags": ["ip_in_url_domain"]}
-
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(log_event)
-        assert log_event.data == expected_output
-
-    async def test_domain_extraction_with_ipv6_target(self):
-        document = {"url": {"domain": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}}
-        expected_output = {
-            "url": {"domain": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
-            "tags": ["ip_in_url_domain"],
-        }
-        event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
-        await self.object.process(event)
-        assert document == expected_output
 
     async def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
         event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-        await self.object.setup()
+
         result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
 
-    async def test_domain_extraction_overwrites_target_field(self):
-        document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-        expected = {
-            "url": {
-                "domain": "test.domain.de",
-                "registered_domain": "domain.de",
-                "subdomain": "test",
-                "top_level_domain": "de",
+    async def test_raises_on_invalid_tagging_field(self):
+        config = {
+            "Test DomainLabelExtractor Name": {
+                "type": "domain_label_extractor",
+                "rules": ["tests/testdata/unit/domain_label_extractor/rules"],
+                "tagging_field_name": "special_tags",
+                "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
             }
         }
-        rule = {
-            "filter": "url",
-            "domain_label_extractor": {
-                "source_fields": ["url.domain"],
-                "target_field": "url",
-                "overwrite_target": True,
-            },
-            "description": "",
-        }
-        config = deepcopy(self.CONFIG)
-        config["rules"] = [rule]
-        event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
 
-        async with self.create_and_setup_processor(config_patch=config) as instance:
-            await instance.process(event)
+        domain_label_extractor = Factory.create(config)
+        await domain_label_extractor.setup()
+        document = {"url": {"domain": "http://["}, "special_tags": False}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        assert document == expected
-
-    async def test_domain_extraction_delete_source_fields(self):
-        document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-        expected = {
-            "url": {
-                "registered_domain": "domain.de",
-                "subdomain": "test",
-                "top_level_domain": "de",
-            }
-        }
-        rule = {
-            "filter": "url",
-            "domain_label_extractor": {
-                "source_fields": ["url.domain"],
-                "target_field": "url",
-                "overwrite_target": True,
-                "delete_source_fields": True,
-            },
-            "description": "",
-        }
-        config = deepcopy(self.CONFIG)
-        config["rules"] = [rule]
-        event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-
-        async with self.create_and_setup_processor(config_patch=config) as instance:
-            await instance.process(event)
-
-        assert document == expected
-
-    async def test_does_nothing_if_source_field_not_exits(self):
-        document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-        expected = {
-            "url": {"domain": "test.domain.de", "subdomain": "exists already"},
-            "tags": ["_domain_label_extractor_missing_field_warning"],
-        }
-        rule = {
-            "filter": "url",
-            "domain_label_extractor": {
-                "source_fields": ["url.not_existing"],
-                "target_field": "url",
-                "overwrite_target": True,
-                "delete_source_fields": True,
-            },
-            "description": "",
-        }
-        config = deepcopy(self.CONFIG)
-        config["rules"] = [rule]
-        event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-
-        async with self.create_and_setup_processor(config_patch=config) as instance:
-            await instance.process(event)
-
-        assert document == expected
+        result = await domain_label_extractor.process(event)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], ProcessingCriticalError)
 
     async def test_raises_field_exists_warning_if_target_field_exits(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
@@ -353,88 +143,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
                 "top_level_domain": "de",
             },
         }
-
-        rule = {
-            "filter": "url",
-            "domain_label_extractor": {
-                "source_fields": ["url.domain"],
-                "target_field": "url",
-            },
-            "description": "",
-        }
-        config = deepcopy(self.CONFIG)
-        config["rules"] = [rule]
         event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
 
-        async with self.create_and_setup_processor(config_patch=config) as instance:
-            result = await instance.process(event)
-
+        result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
-
-    async def test_invalid_domain_with_escaped_dot_notation(self):
-        document = {
-            "url": {"comp\\lex.domain": "domain.fubarbo"},
-            "tags": ["url"],
-        }
-        expected_output = {
-            "url": {"comp\\lex.domain": "domain.fubarbo"},
-        }
-        expected_tags = [
-            "url",
-            "invalid_domain_in_url_comp\\lex.domain",
-        ]
-
-        rule = {
-            "filter": "url",
-            "domain_label_extractor": {
-                "source_fields": ["url.comp\\\\lex\\.domain"],
-                "target_field": "url",
-            },
-            "description": "",
-        }
-        config = deepcopy(self.CONFIG)
-        config["rules"] = [rule]
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-
-        async with self.create_and_setup_processor(config_patch=config) as instance:
-            await instance.process(log_event)
-
-        tags = log_event.data.pop("tags")
-
-        assert log_event.data == expected_output
-        assert set(tags) == set(expected_tags)
-
-    async def test_ip_in_with_escaped_dot_notation(self):
-        document = {
-            "source": {"comp\\lex.ip": "123.123.123.123"},
-            "tags": ["source"],
-        }
-        expected_output = {
-            "source": {"comp\\lex.ip": "123.123.123.123"},
-        }
-        expected_tags = [
-            "source",
-            "ip_in_source_comp\\lex.ip",
-        ]
-
-        rule = {
-            "filter": "source",
-            "domain_label_extractor": {
-                "source_fields": ["source.comp\\\\lex\\.ip"],
-                "target_field": "source",
-            },
-            "description": "",
-        }
-        config = deepcopy(self.CONFIG)
-        config["rules"] = [rule]
-        log_event = LogEvent(document, original=b"test_message", input_meta=InputMeta())
-
-        async with self.create_and_setup_processor(config_patch=config) as instance:
-            await instance.process(log_event)
-
-        tags = log_event.data.pop("tags")
-
-        assert log_event.data == expected_output
-        assert set(tags) == set(expected_tags)

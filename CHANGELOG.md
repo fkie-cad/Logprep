@@ -2,6 +2,37 @@
 ### Breaking
 
 ### Features
+
+### Improvements
+* util: add field mapping template utility
+
+### Bugfix
+
+## 21.2.0
+### Breaking
+
+### Features
+* generic_resolver: enable use of dynamic templating for resource URIs
+
+### Improvements
+
+### Bugfix
+* domain_label_extractor: fix error-handling on invalid input types and partial urls
+
+# 21.1.1
+### Breaking
+
+### Features
+
+### Improvements
+
+### Bugfix
+* bump version for `filelock` to address CVE
+
+## 21.1.0
+### Breaking
+
+### Features
 * timestamper: support generating timestamps from the current time when no `source_fields` are configured
 * field_manager: add flag for deactivating deduplication
 * calculator: extended expression functionality

@@ -30,7 +30,6 @@ from collections.abc import Sequence
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.util.getter import RefreshableGetter
 from logprep.util.helper import FieldValue, add_fields_to
 
 
@@ -44,14 +43,14 @@ class GenericAdder(Processor):
         """Returns all rules"""
         return typing.cast(Sequence[GenericAdderRule], super().rules)
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         for rule in self.rules:
-            rule.init_generic_adder(self._job_tag_for_cleanup)
+            rule.init_generic_adder()
 
-    def _apply_rules(self, event: dict[str, FieldValue], rule: GenericAdderRule):
+    def _apply_rules(self, event: dict[str, FieldValue], rule: GenericAdderRule) -> None:
         try:
-            for items_to_add in rule.additions(event):
+            for items_to_add in rule.get_additions(event):
                 if items_to_add:
                     add_fields_to(
                         event,
@@ -63,7 +62,3 @@ class GenericAdder(Processor):
                     )
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error
-
-    def _shut_down(self) -> None:
-        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
-        return super()._shut_down()

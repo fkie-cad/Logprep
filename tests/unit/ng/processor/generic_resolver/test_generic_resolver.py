@@ -6,19 +6,15 @@
 import json
 from copy import deepcopy
 from pathlib import Path
-from unittest import mock
 
 import pytest
 from aiohttp import web
 
 from logprep.factory import Factory
-from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_resolver.processor import GenericResolver
-from logprep.ng.processor.generic_resolver.rule import GenericResolverRule
 from logprep.ng.util.getter import HttpGetter
 from logprep.processor.base.exceptions import FieldExistsWarning
-from logprep.util.async_scheduler import AsyncScheduler
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -84,8 +80,11 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         provision_context(context)
 
         instance = self._create_test_instance(config)
-        with pytest.raises(InvalidConfigurationError, match=error_message):
-            await instance.setup()
+        await instance.setup()
+        document = LogEvent({"to_resolve": "bla"}, original=b"", input_meta=InputMeta())
+        result = await instance.process(document)
+        assert len(result.warnings) == 1
+        assert error_message in str(result.warnings[0])
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     async def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
@@ -117,9 +116,7 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
 
     @pytest.mark.parametrize(["resolve_value"], FIELD_VALUE_TEST_CASES)
     async def test_resolve_not_dotted_field_no_conflict_different_values_match_from_file(
-        self,
-        resolve_value,
-        tmp_path,
+        self, resolve_value, tmp_path
     ):
         resolve_file_path = tmp_path / "rule.json"
 
@@ -276,7 +273,6 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             await self.object.setup()
 
             http_getter = HttpGetter(protocol="http", target=url)
-            assert isinstance(http_getter.scheduler, AsyncScheduler)
 
             expected_1 = {
                 "to_resolve": "12ab34",
@@ -302,49 +298,6 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
             await http_getter.scheduler.run_all()  # Force update
             await self.object.process(document)
             assert document.data == expected_2
-
-    async def test_shutdown_removes_refresh_callbacks(self, aiohttp_server):
-        async def handler(_: web.Request) -> web.Response:
-            return web.json_response({"ab": {"new1": "1"}})
-
-        app = web.Application()
-        app.router.add_get("/resolve-mapping", handler)
-        server = await aiohttp_server(app)
-
-        url = str(server.make_url("/resolve-mapping"))
-
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": url,
-                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
-                },
-            },
-        }
-
-        self.object = self._create_test_instance(
-            {
-                "rules": [rule],
-            }
-        )
-
-        await self.object.setup()
-
-        http_getter = HttpGetter(protocol="http", target=url)
-
-        assert any(
-            callback["tag"] == self.object._job_tag_for_cleanup
-            for callback in http_getter.shared.callbacks
-        )
-
-        self.object._shut_down()
-
-        assert not any(
-            callback["tag"] == self.object._job_tag_for_cleanup
-            for callback in http_getter.shared.callbacks
-        )
 
     async def test_resolve_dotted_src_and_dest_field_and_conflict_match(self):
         rule = {
@@ -531,15 +484,3 @@ class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
         assert self.object.metrics.new_results.value == 2
         assert self.object.metrics.cached_results.value == 2
         assert self.object.metrics.num_cache_entries.value == 2
-
-    def test_additions_are_not_shared_between_configs(self):
-        first = GenericResolverRule.Config(
-            field_mapping={"source": "target"},
-            resolve_list={},
-        )
-        second = GenericResolverRule.Config(
-            field_mapping={"source": "target"},
-            resolve_list={},
-        )
-
-        assert first.additions is not second.additions

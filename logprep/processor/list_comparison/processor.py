@@ -38,7 +38,6 @@ from attrs import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.list_comparison.rule import ListComparisonRule
-from logprep.util.getter import RefreshableGetter
 from logprep.util.helper import (
     FieldValue,
     add_fields_to,
@@ -78,13 +77,12 @@ class ListComparison(Processor):
 
     rule_class = ListComparisonRule
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         for rule in self.rules:
             rule = typing.cast(ListComparisonRule, rule)
             config = typing.cast(ListComparison.Config, self._config)
             rule.init_list_comparison(
-                self._job_tag_for_cleanup,
                 config.list_search_base_path,
             )
 
@@ -169,7 +167,3 @@ class ListComparison(Processor):
     def _matches_compare_set(prepared_values: set[FieldValue], set_values: set[str]) -> bool:
         """Return whether any prepared event value matches the given compare set."""
         return not prepared_values.isdisjoint(set_values)
-
-    def _shut_down(self) -> None:
-        RefreshableGetter.remove_callbacks_for_tag(self._job_tag_for_cleanup)
-        return super()._shut_down()

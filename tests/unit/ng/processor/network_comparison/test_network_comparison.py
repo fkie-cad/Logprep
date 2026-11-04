@@ -9,12 +9,13 @@ from pathlib import Path
 import pytest
 from aiohttp import web
 
+from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.network_comparison.processor import NetworkComparison
-from logprep.ng.processor.network_comparison.rule import NetworkComparisonRule
-from logprep.ng.util.getter import HttpGetter, RefreshableGetter, RefreshableGetterError
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.network_comparison.rule import NetworkComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.getter import HttpGetter, RefreshableGetter
 from tests.conftest import mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.network_comparison.test_network_comparison import (
@@ -33,14 +34,13 @@ DUMMY_HTTP_LIST = "# a comment\n127.0.0.1\n127.0.0.0/24\n"
 """Body returned for every HTTP list in ``test_cases`` so matches are deterministic."""
 
 
-async def _compare_sets(rule: NetworkComparisonRule, event: dict | None = None) -> dict[str, set]:
+def _compare_sets(rule: NetworkComparisonRule, event: dict | None = None) -> dict[str, set]:
     """Materialize a rule's compare sets via its public ``iter_compare_sets`` API.
 
     Local and static lists are available with an empty event; dynamic lists
     require the event fields that resolve their target URI.
     """
-
-    return {name: content async for name, content in rule.iter_compare_sets(event or {})}
+    return dict(rule.iter_compare_sets(event or {}))
 
 
 def _warning_str(warning) -> str:
@@ -94,12 +94,9 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 base_url,
                 list_search_base_path,
             )
-
-        processor = await self._create_lister([rule])
-        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
-
-        await processor.process(log_event)
-
+            processor = await self._create_lister([rule])
+            log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+            await processor.process(log_event)
         assert log_event.data == expected
 
     @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
@@ -209,7 +206,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 }
             ]
         )
-        assert await _compare_sets(processor.rules[0]) == {
+        assert _compare_sets(processor.rules[0]) == {
             "network_list.txt": {IPv4Network("127.0.0.1/32"), IPv4Network("127.0.0.0/24")}
         }
 
@@ -244,7 +241,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 }
             ]
         )
-        assert await _compare_sets(processor.rules[0]) == {
+        assert _compare_sets(processor.rules[0]) == {
             "bad_ips.list": {
                 IPv4Network("127.0.0.1/32"),
                 IPv4Network("127.0.0.2/32"),
@@ -304,7 +301,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 ]
             )
             rule = processor.rules[0]
-            assert await _compare_sets(rule) == {
+            assert _compare_sets(rule) == {
                 "bad_ips.list": {
                     IPv4Network("1.1.1.1/32"),
                     IPv4Network("2.2.2.2/32"),
@@ -312,8 +309,8 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 }
             }
 
-            await HttpGetter(target=url, protocol="http").scheduler.run_all()
-            assert await _compare_sets(rule) == {
+            HttpGetter(target=url, protocol="http").scheduler.run_all()
+            assert _compare_sets(rule) == {
                 "bad_ips.list": {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
             }
 
@@ -390,13 +387,13 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 ]
             )
             rule = processor.rules[0]
-            assert await _compare_sets(rule) == {
+            assert _compare_sets(rule) == {
                 "bad_ips_1.list": {IPv4Network("127.0.0.1/32")},
                 "bad_ips_2.list": {IPv4Network("2.2.2.2/32")},
             }
 
-            await HttpGetter(target=url1, protocol="http").scheduler.run_all()
-            assert await _compare_sets(rule) == {
+            HttpGetter(target=url1, protocol="http").scheduler.run_all()
+            assert _compare_sets(rule) == {
                 "bad_ips_1.list": {IPv4Network("1.1.1.1/32")},
                 "bad_ips_2.list": {IPv4Network("2.2.2.2/32")},
             }
@@ -521,7 +518,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         )
         rule = processor.rules[0]
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert "NetworkComparisonRule failed" in caplog.text
         assert "500" in caplog.text
         assert request_count == 4
@@ -576,7 +573,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         document = {"ip": "1.2.3.4"}
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        assert isinstance(rule.data_error, RefreshableGetterError)
+        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
         assert response_statuses[-1] == 500
 
@@ -641,7 +638,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                                 "SECOND_LIST": "shared_ips.list",
                             },
                             "list_search_base_path": (
-                                f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
+                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
                             ),
                         },
                     }
@@ -649,16 +646,16 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             )
             rule = processor.rules[0]
 
-            assert await _compare_sets(rule) == {
+            assert _compare_sets(rule) == {
                 "FIRST_LIST": {IPv4Network("127.0.0.1/32")},
                 "SECOND_LIST": {IPv4Network("127.0.0.1/32")},
             }
 
             assert len(HttpGetter._target_to_data_caches[url].callbacks) == 2
 
-            await HttpGetter(target=url, protocol="http").scheduler.run_all()
+            HttpGetter(target=url, protocol="http").scheduler.run_all()
 
-            assert await _compare_sets(rule) == {
+            assert _compare_sets(rule) == {
                 "FIRST_LIST": {IPv4Network("1.1.1.1/32")},
                 "SECOND_LIST": {IPv4Network("1.1.1.1/32")},
             }
