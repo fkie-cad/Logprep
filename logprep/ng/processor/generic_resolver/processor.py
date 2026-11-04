@@ -33,9 +33,9 @@ from attrs import define, field, validators
 from logprep.metrics.metrics import GaugeMetric
 from logprep.ng.abc.processor import Processor
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.ng.processor.generic_resolver.rule import GenericResolverRule
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.base.rule import Rule
-from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.helper import (
     MISSING,
     FieldValue,
@@ -147,7 +147,7 @@ class GenericResolver(FieldManager):
         conflicting_fields = []
         for source_field, target_field in rule.field_mapping.items():
             source_field_value = str(get_dotted_field_value(event, source_field))
-            resolved_content = self._find_content_of_first_matching_pattern(
+            resolved_content = await self._find_content_of_first_matching_pattern(
                 rule, source_field_value, event
             )
             if resolved_content is MISSING:
@@ -180,7 +180,7 @@ class GenericResolver(FieldManager):
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
-    def _find_content_of_first_matching_pattern(
+    async def _find_content_of_first_matching_pattern(
         self, rule: GenericResolverRule, source_field_value: str, event: JsonObject
     ) -> FieldValue | Missing:
         if rule.resolve_from_file:
@@ -189,7 +189,7 @@ class GenericResolver(FieldManager):
                 mapping = matches.group("mapping")
                 if rule.ignore_case:
                     mapping = mapping.upper()
-                content = rule.get_additions(event).get(mapping, MISSING)
+                content = await rule.get_additions(event).get(mapping, MISSING)
                 if content is not MISSING:
                     return content
         return self._get_lru_cached_value_from_list(rule, source_field_value)
@@ -221,6 +221,6 @@ class GenericResolver(FieldManager):
         await super().setup()
         for rule in self.rules:
             rule = typing.cast(GenericResolverRule, rule)
-            rule.init_generic_resolver()
+            await rule.init_generic_resolver()
 
         self._cache_metrics_skip_count = 0

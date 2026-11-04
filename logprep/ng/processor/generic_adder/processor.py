@@ -30,7 +30,7 @@ from collections.abc import Sequence
 from logprep.ng.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
-from logprep.processor.generic_adder.rule import GenericAdderRule
+from logprep.ng.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.helper import FieldValue, add_fields_to
 
 
@@ -47,13 +47,13 @@ class GenericAdder(Processor):
     async def setup(self):
         await super().setup()
         for rule in self.rules:
-            rule.init_generic_adder()
+            await rule.init_generic_adder()
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(GenericAdderRule, rule)
 
         try:
-            for items_to_add in rule.get_additions(event):
+            async for items_to_add in rule.get_additions(event):
                 if items_to_add:
                     add_fields_to(
                         event,
