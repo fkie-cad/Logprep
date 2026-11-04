@@ -92,6 +92,18 @@ It is possible to mix both extraction sources. They will be merged to one list w
     field2
     field3
 
+Event templates
+---------------
+
+``event_template`` supports :ref:`field_mapping_template`. See
+:ref:`selective_extractor_event_template` for the configuration, available data,
+examples, and missing-field behavior, which also apply to this processor.
+
+The available functions are the complete
+:ref:`default function set <field_mapping_template_default_functions>`.
+See the shared reference for accepted inputs, keyword arguments, and examples.
+There are currently no additional functions specific to this processor.
+
 .. autoclass:: logprep.processor.selective_extractor.rule.SelectiveExtractorRule.Config
    :members:
    :undoc-members:
@@ -181,7 +193,7 @@ class SelectiveExtractorRule(FieldManagerRule):
 
         Keys and values support field mapping template expressions. An empty mapping
         emits no extra event. ``None`` builds a template from legacy source fields.
-        Nonempty legacy field selection cannot be combined with an explicit template.
+        Non-empty legacy field selection cannot be combined with an explicit template.
         """
 
         deduplicate: bool = field(init=False, default=False)
