@@ -92,11 +92,15 @@ It is possible to mix both extraction sources. They will be merged to one list w
     field2
     field3
 
+.. _selective_extractor_event_template:
+
 Event templates
 ---------------
 
-Use ``event_template`` to build nested extra events from literal values and
-whole-value expressions. It cannot be combined with nonempty ``source_fields``
+Use ``event_template`` to build extra events with
+:ref:`field_mapping_template`. The shared reference describes syntax, output
+paths, escaping, function calls, limitations, and examples.
+It cannot be combined with nonempty ``source_fields``
 or field names loaded through ``extract_from_file``. ``outputs`` remains required.
 
 .. code-block:: yaml
@@ -112,25 +116,43 @@ or field names loaded through ``extract_from_file``. ``outputs`` remains require
       outputs:
         - kafka: audit_events
 
-``source_event`` exposes the incoming event. ``rule`` exposes its ``id`` as a
-string, its ``description``, and the normalized ``filter`` expression. ``context``
-provides ``now`` as a UTC ISO 8601 timestamp and ``id`` as a UUID4 string. Context
-values are computed only when referenced, reused within one rule evaluation,
-and refreshed for the next evaluation.
+Available data
+~~~~~~~~~~~~~~
 
-Expressions can appear in mapping keys, nested mappings, and lists. Resolved
-keys must be strings; for example, ``${source_event.id | str}`` converts an ID
-to a string. A standalone expression preserves its value's type, including
-``None``. Interpolation into surrounding literal text is unsupported. See
-:class:`logprep.util.field_mapping_template.FieldMappingTemplate` for function
-calls, escaping, and the full template syntax.
+* ``source_event``: fields of the incoming event, such as
+  ``${source_event.message}``.
+* ``rule.id``: the rule ID as a string.
+* ``rule.description``: the rule description.
+* ``rule.filter``: the rule's normalized filter expression.
+* ``context.now``: the current UTC timestamp in ISO 8601 format.
+* ``context.id``: a generated UUID4 string.
 
-Invalid template syntax or functions raise ``InvalidRuleDefinitionError`` when
-the rule is created. Incorrect configuration types retain attrs validation
-errors. A missing runtime lookup records a warning and adds
+Repeated references to ``context.now`` or ``context.id`` within the same extra
+event have the same value. Each subsequent application of the rule obtains fresh
+values.
+
+Available functions
+~~~~~~~~~~~~~~~~~~~
+
+The selective extractor supports the complete
+:ref:`default function set <field_mapping_template_default_functions>`.
+See the shared reference for accepted inputs, keyword arguments, and examples.
+There are currently no additional functions specific to this processor.
+
+Missing fields and invalid templates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Invalid syntax, unknown functions, and incorrect argument names or counts are
+configuration errors. Functions also require suitable input values; for example,
+``int`` cannot convert ``"unknown"`` and ``lower`` requires a string. Such errors
+are not handled as missing fields.
+
+A missing source field records a warning and adds
 ``_selective_extractor_missing_field_warning`` to the source event; no extra
-event is emitted. ``ignore_missing_fields`` applies to legacy field selection,
-not explicit templates. Empty templates are accepted and emit no extra event.
+event is emitted. This also applies to missing fields used as function arguments
+or output keys. ``ignore_missing_fields`` applies to ``source_fields`` and
+``extract_from_file``, not explicit templates. A present null value is not a
+missing field. Empty templates are accepted and emit no extra event.
 
 .. autoclass:: logprep.processor.selective_extractor.rule.SelectiveExtractorRule.Config
    :members:
@@ -232,8 +254,10 @@ class SelectiveExtractorRule(FieldManagerRule):
         )
         """Mapping used to create an extra event from source, rule, and runtime context.
 
-        Keys and values support field mapping template expressions. An empty mapping
-        emits no extra event. ``None`` builds a template from legacy source fields.
+        See :ref:`selective_extractor_event_template` for available data and functions,
+        and :ref:`field_mapping_template` for the shared syntax.
+        An empty mapping emits no extra event. ``None`` builds a template from
+        legacy source fields.
         Nonempty legacy field selection cannot be combined with an explicit template.
         """
 
