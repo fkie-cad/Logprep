@@ -3,29 +3,30 @@ resources. It supports static and event-dynamic handling of resources and
 implements caching and reloading (via the getter system).
 """
 
+from asyncio import iscoroutinefunction
 from enum import StrEnum, auto
 from typing import (
+    Awaitable,
     Callable,
     Generic,
     Sequence,
     TypeAlias,
     TypeVar,
-    Awaitable,
 )
 from uuid import uuid4
 
 from attrs import define
 
 from logprep.abc.exceptions import LogprepException
-from logprep.ng.abc.getter import Getter
 from logprep.factory_error import InvalidResourcesError
-from logprep.util.environ import ENV_VARS
+from logprep.ng.abc.getter import Getter
 from logprep.ng.util.getter import (
     GetterFactory,
     GetterNotFoundError,
     RefreshableGetter,
     RefreshableGetterError,
 )
+from logprep.util.environ import ENV_VARS
 from logprep.util.helper import (
     MISSING,
     DottedTemplate,
@@ -169,8 +170,8 @@ class ResourceCache(Generic[T]):
             return None
         return InvalidResourcesError(static_errors)
 
-    def _getter_fetch_callback(self, getter: Getter, uri: ResolvedUri) -> None:
-        new_item = self._get_updated_cache_item(getter, uri)
+    async def _getter_fetch_callback_getter_fetch_callback(self, getter: Getter, uri: ResolvedUri) -> None:
+        new_item = await self._get_updated_cache_item(getter, uri)
         self._content_cache[uri] = new_item
 
         if self._on_update is not None:
@@ -281,7 +282,11 @@ class ResourceCache(Generic[T]):
             )
             self._content_cache[resolved_uri] = new_item
             if self._on_update is not None:
-                self._on_update(new_item)
+                if iscoroutinefunction(self._on_update):
+                    await self._on_update(new_item)
+                else:
+                    self._on_update(new_item)
+
         cache_item = self._content_cache[resolved_uri]
         if cache_item.is_dynamic and cache_item.will_refresh:
             # NOTE: keep_alive_for_target must not be called for static resources.

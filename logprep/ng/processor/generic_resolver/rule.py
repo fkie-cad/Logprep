@@ -150,8 +150,8 @@ from attrs import define, field, validators
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.ng.abc.getter import Getter
-from logprep.ng.processor.field_manager.rule import FieldManagerRule
 from logprep.ng.util.resource_cache import CacheItem, ResourceCache
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_ordered_mapping_or_keep_mapping
 from logprep.util.helper import FieldValue, JsonObject
 

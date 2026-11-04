@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring,too-many-lines,protected-access,duplicate-code
 import json
 import re
-import time
 from copy import deepcopy
 from pathlib import Path
 from unittest import mock
@@ -14,6 +13,7 @@ from aiohttp.pytest_plugin import aiohttp_server
 from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.list_comparison.processor import ListComparison
+from logprep.ng.processor.list_comparison.rule import ListComparisonRule
 from logprep.ng.util.getter import (
     HttpGetter,
     RefreshableGetter,
@@ -27,7 +27,6 @@ from tests.unit.processor.list_comparison.test_list_comparison import (
     HTTP_DYNAMIC_BASE_PATH,
     LOCAL_BASE_PATH,
     NOT_SET,
-    _compare_sets,
 )
 from tests.unit.processor.list_comparison.test_list_comparison import (
     failure_test_cases as non_ng_failure_test_cases,
@@ -35,6 +34,11 @@ from tests.unit.processor.list_comparison.test_list_comparison import (
 from tests.unit.processor.list_comparison.test_list_comparison import (
     test_cases as non_ng_test_cases,
 )
+
+
+async def _compare_sets(rule: ListComparisonRule, event: dict | None = None) -> dict[str, set]:
+    """Materialize a rule's compare sets via its public ``iter_compare_sets`` API."""
+    return {name: content async for name, content in rule.iter_compare_sets(event or {})}
 
 
 def _warning_str(warning) -> str:
@@ -174,7 +178,9 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 }
             ]
         )
-        assert _compare_sets(processor.rules[0]) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {
+            "bad_users.list": {"Franz", "Heinz", "Hans"}
+        }
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -226,7 +232,9 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 }
             ]
         )
-        assert _compare_sets(processor.rules[0]) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {
+            "bad_users.list": {"Franz", "Heinz", "Hans"}
+        }
 
     @pytest.mark.parametrize(
         ("yaml_content", "content_field"),
@@ -279,7 +287,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 }
             ]
         )
-        assert _compare_sets(processor.rules[0]) == {"hosts.yml": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {"hosts.yml": {"Franz", "Heinz", "Hans"}}
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -308,7 +316,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         processor = await self._create_lister(
             [{"filter": "user", "list_comparison": list_comparison}]
         )
-        assert _compare_sets(processor.rules[0]) == {"file.json": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {"file.json": {"Franz", "Heinz", "Hans"}}
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -396,7 +404,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                 ]
             )
             rule = processor.rules[0]
-            assert _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+            assert await _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
             getter = HttpGetter(target=url, protocol="http")
             await getter._refresh()
@@ -510,7 +518,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
             assert request_count == 1
 
-            assert _compare_sets(
+            assert await _compare_sets(
                 rule,
                 {"tenant": {"id": "acme"}},
             ) == {
@@ -558,7 +566,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert request_count == 1
 
-        assert _compare_sets(processor.rules[0]) == {
+        assert await _compare_sets(processor.rules[0]) == {
             "${LIST_TENANT}/bad_users.list": {"Foo", "Bar"}
         }
 
@@ -613,7 +621,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert requested_paths == ["/common.list"]
 
-        assert _compare_sets(
+        assert await _compare_sets(
             rule,
             {"tenant": {"id": "acme"}},
         ) == {
@@ -921,7 +929,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         assert first_document["user_results"] == {"in_list": [list_name]}
         assert second_document["user_results"] == {"not_in_list": [list_name]}
 
-        assert _compare_sets(
+        assert await _compare_sets(
             rule,
             {"tenant": "acme"},
         ) == {
@@ -973,7 +981,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             "user_results": {"not_in_list": [list_name]},
         }
 
-        assert _compare_sets(
+        assert await _compare_sets(
             rule,
             {"tenant": "acme"},
         ) == {
@@ -1148,7 +1156,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert document == {"user": "Foo", "user_results": {"not_in_list": [list_name]}}
         assert request_count == 1
-        assert _compare_sets(rule) == {list_name: expected_content}
+        assert await _compare_sets(rule) == {list_name: expected_content}
 
     async def test_process_adds_failure_tag_if_http_list_returns_500(
         self,
@@ -1267,7 +1275,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert rule.data_error is None
         assert document == {"user": "Foo", "user_results": {"in_list": [list_name]}}
-        assert _compare_sets(rule) == {list_name: {"Foo"}}
+        assert await _compare_sets(rule) == {list_name: {"Foo"}}
         assert request_statuses == [500, 500, 500, 500, 200]
 
     async def test_recovers_after_failed_http_getter_while_processing(
@@ -1334,7 +1342,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             await getter._refresh()
 
             assert rule.data_error is None
-            assert _compare_sets(rule) == {list_name: {"Foo"}}
+            assert await _compare_sets(rule) == {list_name: {"Foo"}}
             assert request_statuses == [500, 500, 500, 500, 200]
 
     async def test_has_async_io(self):

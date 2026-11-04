@@ -1,14 +1,12 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import typing
-from unittest import mock
 
 import pytest
 
-from logprep.factory_error import InvalidConfigurationError
+from logprep.factory_error import InvalidResourcesError
 from logprep.ng.processor.list_comparison.rule import (
     ListComparisonRule,
-    _StaticCompareSet,
 )
 from logprep.ng.util.getter import RefreshableGetter
 
@@ -111,10 +109,7 @@ class TestListComparisonRule:
         rule = ListComparisonRule.create_from_dict(rule_definition)
         rule = typing.cast(ListComparisonRule, rule)
 
-        await rule.init_list_comparison(
-            "test_owner",
-            "tests/testdata/unit/list_comparison/rules",
-        )
+        await rule.init_list_comparison("tests/testdata/unit/list_comparison/rules")
 
         compare_sets = {name: content async for name, content in rule.iter_compare_sets({})}
 
@@ -134,82 +129,10 @@ class TestListComparisonRule:
         rule = ListComparisonRule.create_from_dict(rule_definition)
 
         with pytest.raises(
-            InvalidConfigurationError,
-            match="list_search_base_path must be set either in the processor config or in the rule",
+            InvalidResourcesError,
+            match="Failed to load static resources",
         ):
             await rule.init_list_comparison("test_owner")
-
-    @pytest.mark.parametrize(
-        ("url", "will_fail"),
-        [
-            pytest.param("something", True),
-            pytest.param("https://something", False),
-        ],
-    )
-    async def test_expects_refreshable_getter(self, url, will_fail):
-        rule_definition = {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-            },
-        }
-        rule = typing.cast(
-            ListComparisonRule,
-            ListComparisonRule.create_from_dict(rule_definition),
-        )
-        compare_set = _StaticCompareSet(
-            name="user_list.txt",
-            content=set(),
-        )
-
-        with mock.patch(
-            "logprep.ng.processor.list_comparison.rule."
-            "ListComparisonRule._update_compare_sets_via_http",
-            new=mock.AsyncMock(),
-        ):
-            if will_fail:
-                with pytest.raises(
-                    TypeError,
-                    match=f"The target {url} must be a url",
-                ):
-                    await rule._load_and_refresh_uri(compare_set, url)
-            else:
-                await rule._load_and_refresh_uri(compare_set, url)
-
-    def test_rule_remains_failed_until_all_static_compare_sets_recover(self):
-        rule_definition = {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["../lists/user_list.txt"],
-            },
-        }
-        rule = typing.cast(
-            ListComparisonRule,
-            ListComparisonRule.create_from_dict(rule_definition),
-        )
-
-        compare_set_a = _StaticCompareSet(name="LIST_A", content=set())
-        compare_set_b = _StaticCompareSet(name="LIST_B", content=set())
-        rule._static_sets = [compare_set_a, compare_set_b]
-
-        error_a = RuntimeError("LIST_A failed")
-        error_b = RuntimeError("LIST_B failed")
-
-        rule._mark_failed(compare_set_a, error_a)
-        rule._mark_failed(compare_set_b, error_b)
-
-        assert isinstance(rule.data_error, ExceptionGroup)
-        assert rule.data_error.exceptions == (error_a, error_b)
-
-        rule._clear_failed(compare_set_a)
-        assert rule.data_error is error_b
-
-        rule._clear_failed(compare_set_b)
-        assert rule.data_error is None
 
     @pytest.mark.parametrize(
         "list_comparison_config, error_message",
@@ -271,7 +194,4 @@ class TestListComparisonRule:
                 ListComparisonRule,
                 ListComparisonRule.create_from_dict(rule_dict),
             )
-            await rule.init_list_comparison(
-                "irrelevant_tag",
-                "/base/path",
-            )
+            await rule.init_list_comparison("/base/path")

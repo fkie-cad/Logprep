@@ -5,6 +5,7 @@ from ipaddress import IPv4Network
 
 import pytest
 
+from logprep.factory_error import InvalidResourcesError
 from logprep.ng.processor.network_comparison.rule import NetworkComparisonRule
 
 
@@ -98,10 +99,7 @@ class TestNetworkComparisonRule:
     ):
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
 
-        await rule.init_list_comparison(
-            "test_owner",
-            "tests/testdata/unit/network_comparison/rules",
-        )
+        await rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")
 
         compare_sets = {name: content async for name, content in rule.iter_compare_sets({})}
 
@@ -191,10 +189,7 @@ class TestNetworkComparisonRule:
         }
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
 
-        await rule.init_list_comparison(
-            "test_owner",
-            "tests/testdata/unit/network_comparison/rules",
-        )
+        await rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")
 
         compare_sets = {name: content async for name, content in rule.iter_compare_sets({})}
 
@@ -215,10 +210,7 @@ class TestNetworkComparisonRule:
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
 
         with pytest.raises(
-            ValueError,
+            InvalidResourcesError,
             match="'invalid_network' does not appear to be an IPv4 or IPv6 network",
         ):
-            await rule.init_list_comparison(
-                "test_owner",
-                "tests/testdata/unit/network_comparison/rules",
-            )
+            await rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")

@@ -105,19 +105,19 @@ Examples for list_comparison:
 import logging
 import os.path
 from collections.abc import Sequence
-from typing import AsyncGenerator, TypeAlias
+from typing import AsyncIterator, TypeAlias
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.getter import Getter
 from logprep.factory_error import InvalidConfigurationError
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import DottedTemplate
+from logprep.ng.abc.getter import Getter
 from logprep.ng.util.resource_cache import (
     CacheItem,
     ResourceCache,
 )
+from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.util.helper import DottedTemplate
 
 logger = logging.getLogger("ListComparison")
 
@@ -397,7 +397,7 @@ class ListComparisonRule(FieldManagerRule):
             if elem is not None
         }
 
-    async def iter_compare_sets(self, event: dict) -> AsyncGenerator[tuple[ListName, ListContent]]:
+    async def iter_compare_sets(self, event: dict) -> AsyncIterator[tuple[ListName, ListContent]]:
         """Return the compare sets relevant for the current event.
 
         For local and static lists, this returns the already initialized compare sets.
