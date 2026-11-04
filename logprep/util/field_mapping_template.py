@@ -7,6 +7,7 @@ from copy import deepcopy
 from enum import Enum, auto
 from typing import Final, TypeAlias, TypeVar, assert_never
 
+from attr import field
 from attrs import define
 
 from logprep.abc.exceptions import LogprepException
@@ -16,6 +17,7 @@ from logprep.util.helper import (
     FieldValue,
     JsonObject,
     Missing,
+    get_dotted_field_list,
     get_field_value,
 )
 
@@ -111,11 +113,12 @@ class Token:
 class Lexer:
     """Scan template strings into tokens for the parser."""
 
-    def __init__(self, template: str) -> None:
-        """Start a lexer at the beginning of the supplied template string."""
+    def __init__(self, template: str, *, key_mode: bool = False) -> None:
+        """Start scanning a template; key mode also tokenizes unescaped literal dots."""
         self.template = template
         self.position = 0
         self.tokens: list[Token] = []
+        self._key_mode = key_mode
 
     def _at_value_start(self) -> bool:
         for token in reversed(self.tokens):
@@ -147,6 +150,9 @@ class Lexer:
                 characters.append(self.template[self.position + 1])
                 self.position += 2
                 continue
+
+            if self._key_mode and not in_expression and character == _PATH_SEPARATOR:
+                break
 
             if self.template.startswith(_EXPRESSION_START, self.position):
                 break
@@ -282,10 +288,12 @@ class Lexer:
                 token = Token(TokenKind.EXPRESSION_START, _EXPRESSION_START, self.position)
                 in_expression = True
                 self.position += len(_EXPRESSION_START)
-
             elif in_expression:
                 token = self._scan_expression_token()
                 in_expression = token.kind is not TokenKind.EXPRESSION_END
+            elif self._key_mode and self.template[self.position] == _PATH_SEPARATOR:
+                token = Token(TokenKind.DOT, _PATH_SEPARATOR, self.position)
+                self.position += 1
             else:
                 token = self._scan_text(in_expression=False, at_value_start=False)
 
@@ -300,6 +308,20 @@ class Constant:
 
     value: FieldValue
 
+    def compile(
+        self, _static_context: dict[str, JsonObject], _functions: Mapping[str, Function]
+    ) -> "Constant":
+        """Return this already prepared constant unchanged."""
+        return self
+
+    def evaluate(
+        self, _runtime_context: dict[str, JsonObject], _skip_missing_fields: bool = False
+    ) -> FieldValue:
+        """Return the prepared value, deep-copying mutable dictionaries and lists."""
+        if isinstance(self.value, (dict, list)):
+            return deepcopy(self.value)
+        return self.value
+
 
 @define(frozen=True)
 class Lookup:
@@ -312,6 +334,52 @@ class Lookup:
     context: str
     path: tuple[str, ...]
     copy_result: bool = True
+
+    def compile(
+        self, static_context: dict[str, JsonObject], _functions: Mapping[str, Function]
+    ) -> "Constant | Lookup":
+        """Resolve static lookups, copying mutable values; retain runtime lookups.
+
+        Raise ``FieldMappingTemplateConfigError`` if a static path is missing.
+        """
+        if self.context in static_context:
+            value = get_field_value(static_context[self.context], self.path)
+            if value is MISSING:
+                raise FieldMappingTemplateConfigError(
+                    f"Cannot resolve lookup path {self.path!r} "
+                    f"in static context root {self.context!r} during constant folding"
+                )
+            if isinstance(value, (dict, list)):
+                value = deepcopy(value)
+            return Constant(value)
+        return self
+
+    def evaluate(
+        self, runtime_context: dict[str, JsonObject], skip_missing_fields: bool = False
+    ) -> FieldValue | Missing:
+        """Resolve a runtime field and copy mutable values unless borrowing is enabled.
+
+        Missing roots raise ``FieldMappingTemplateLookupError``. Missing fields
+        return ``MISSING`` when skipping is enabled, and otherwise raise that error.
+        """
+        if self.context not in runtime_context:
+            raise FieldMappingTemplateLookupError(
+                f"Missing runtime context root {self.context!r} for lookup path {self.path!r}"
+            )
+
+        value = get_field_value(runtime_context[self.context], self.path)
+        if value is MISSING and not skip_missing_fields:
+            raise FieldMappingTemplateLookupError(
+                f"Cannot resolve lookup path {self.path!r} "
+                f"in runtime context root {self.context!r}"
+            )
+        elif value is MISSING and skip_missing_fields:
+            return MISSING
+
+        if self.copy_result and isinstance(value, (dict, list)):
+            return deepcopy(value)
+
+        return value
 
 
 @define(frozen=True)
@@ -326,6 +394,63 @@ class ParsedCall:
     args: tuple["Operation", ...]
     kwargs: Mapping[str, "Operation"]
 
+    def compile(
+        self, static_context: dict[str, JsonObject], functions: Mapping[str, Function]
+    ) -> "Call | Constant":
+        """Prepare a validated call and apply its argument borrowing policy.
+
+        Fold calls only when the function opts in and all arguments are constant.
+        Exceptions from functions executed during folding propagate unchanged.
+        """
+        function = functions[self.name]
+
+        compiled_args: list[Operation] = []
+        compiled_kwargs: dict[str, Operation] = {}
+
+        for arg in self.args:
+            compiled_arg = arg.compile(static_context, functions)
+
+            if isinstance(compiled_arg, Lookup):
+                compiled_arg = Lookup(
+                    context=compiled_arg.context,
+                    path=compiled_arg.path,
+                    copy_result=not function.can_borrow_input,
+                )
+
+            compiled_args.append(compiled_arg)
+
+        for key, kwarg in self.kwargs.items():
+            compiled_kwarg = kwarg.compile(static_context, functions)
+
+            if isinstance(compiled_kwarg, Lookup):
+                compiled_kwarg = Lookup(
+                    context=compiled_kwarg.context,
+                    path=compiled_kwarg.path,
+                    copy_result=not function.can_borrow_input,
+                )
+
+            compiled_kwargs[key] = compiled_kwarg
+
+        if function.foldable:
+            arg_values = [arg.value for arg in compiled_args if isinstance(arg, Constant)]
+            kwarg_values = {
+                key: arg.value for key, arg in compiled_kwargs.items() if isinstance(arg, Constant)
+            }
+
+            if len(arg_values) == len(compiled_args) and len(kwarg_values) == len(compiled_kwargs):
+                return Constant(function.fn(*arg_values, **kwarg_values))
+
+        return Call(function, tuple(compiled_args), compiled_kwargs)
+
+    def evaluate(
+        self, _runtime_context: dict[str, JsonObject], _skip_missing_fields: bool = False
+    ) -> FieldValue:
+        """Raise ``RuntimeError`` because unresolved calls must be compiled first."""
+        raise RuntimeError(
+            f"Internal error: unresolved ParsedCall {self.name!r} encountered during evaluation; "
+            "compile the operation before evaluating"
+        )
+
 
 @define(frozen=True)
 class Call:
@@ -335,12 +460,298 @@ class Call:
     args: tuple["Operation", ...]
     kwargs: Mapping[str, "Operation"]
 
+    def compile(
+        self, _static_context: dict[str, JsonObject], _functions: Mapping[str, Function]
+    ) -> "Operation":
+        """Raise ``RuntimeError`` because resolved calls must not be compiled again."""
+        raise RuntimeError(
+            "Internal error: resolved Call encountered during compilation; expected ParsedCall"
+        )
+
+    def evaluate(
+        self, runtime_context: dict[str, JsonObject], skip_missing_fields: bool = False
+    ) -> FieldValue | Missing:
+        """Evaluate positional arguments, then kwargs, and invoke the function.
+
+        A missing argument returns ``MISSING`` without invoking the function.
+        Exceptions raised by the function propagate unchanged.
+        """
+        args = []
+        kwargs = {}
+
+        for arg in self.args:
+            evaluated_arg = arg.evaluate(runtime_context, skip_missing_fields)
+            if evaluated_arg is MISSING:
+                return MISSING
+
+            args.append(evaluated_arg)
+
+        for kwarg_key, kwarg_value in self.kwargs.items():
+            evaluated_kwarg = kwarg_value.evaluate(runtime_context, skip_missing_fields)
+
+            if evaluated_kwarg is MISSING:
+                return MISSING
+
+            kwargs[kwarg_key] = evaluated_kwarg
+        return self.function.fn(*args, **kwargs)
+
 
 @define(frozen=True)
 class MappingOperation:
     """Build a dictionary from evaluated key and value operations."""
 
-    entries: tuple[tuple["Operation", "Operation"], ...]
+    entries: tuple[tuple["KeyPath | Operation", "Operation"], ...]
+    generated_paths: frozenset[ReadonlyList[str]] = field(factory=frozenset)
+
+    def compile(
+        self, static_context: dict[str, JsonObject], functions: Mapping[str, Function]
+    ) -> "Constant | MappingOperation":
+        """Compile entries, combine known path prefixes and fold static branches.
+
+        Constant template keys become paths, respecting backslash-escaped dots.
+        Dynamic keys remain operations. Duplicate or overlapping known paths
+        raise ``FieldMappingTemplateConfigError``, regardless of value types.
+        Numeric names are allowed only as standalone keys, not as path segments.
+        """
+        entries = self._compile_entries(static_context, functions)
+        return self._prepare_entries(entries)
+
+    @classmethod
+    def _prepare_entries(
+        cls,
+        entries: list[tuple["KeyPath | Operation", "Operation"]],
+        *,
+        prefix: ReadonlyList[str] = (),
+    ) -> "Constant | MappingOperation":
+        """Group known path segments recursively, rejecting overlapping destinations."""
+        groups: dict[str, list[tuple[ReadonlyList[str], Operation]]] = {}
+
+        for key, value in entries:
+            if isinstance(key, KeyPath):
+                name = key.segments[0]
+                remaining = key.segments[1:]
+                groups.setdefault(name, []).append((remaining, value))
+
+        prepared_entries: list[tuple[Operation, Operation]] = []
+        emitted_names: set[str] = set()
+
+        # Preserve generated prefixes even when their children fold into constants.
+        generated_paths = frozenset(
+            key.segments[:length]
+            for key, _ in entries
+            if isinstance(key, KeyPath)
+            for length in range(1, len(key.segments))
+        )
+
+        for key, value in entries:
+            if not isinstance(key, KeyPath):
+                prepared_entries.append((key, value))
+                continue
+
+            name = key.segments[0]
+            if name in emitted_names:
+                continue
+
+            emitted_names.add(name)
+            group = groups[name]
+            full_path = (*prefix, name)
+
+            direct_values = [child_value for remaining, child_value in group if not remaining]
+
+            prepared_value: Operation
+            if direct_values:
+                # An explicit assignment owns its entire path.
+                if len(group) != 1:
+                    raise FieldMappingTemplateConfigError(f"Conflicting mapping path {full_path!r}")
+
+                prepared_value = direct_values[0]
+            else:
+                child_entries: list[tuple[KeyPath | Operation, Operation]] = [
+                    (KeyPath(remaining), child_value) for remaining, child_value in group
+                ]
+                prepared_value = cls._prepare_entries(child_entries, prefix=full_path)
+
+            prepared_entries.append((Constant(name), prepared_value))
+
+        return cls._fold_entries(prepared_entries, generated_paths=generated_paths)
+
+    @classmethod
+    def _fold_entries(
+        cls,
+        entries: list[tuple["Operation", "Operation"]],
+        *,
+        generated_paths: frozenset[ReadonlyList[str]],
+    ) -> "Constant | MappingOperation":
+        """Fold a mapping only when every prepared key and value is constant."""
+        constant_values: JsonObject = {}
+
+        for key, value in entries:
+            if not isinstance(key, Constant) or not isinstance(value, Constant):
+                return cls(entries=tuple(entries), generated_paths=generated_paths)
+
+            if not isinstance(key.value, str):
+                raise RuntimeError("Internal error: prepared mapping key must be a string")
+
+            constant_values[key.value] = value.value
+
+        return Constant(constant_values)
+
+    def _compile_entries(
+        self, static_context: dict[str, JsonObject], functions: Mapping[str, Function]
+    ) -> list[tuple["KeyPath | Operation", "Operation"]]:
+        """Compile keys and values, converting constant string keys to parsed paths."""
+        compiled_mapping_entries: list[tuple[Operation | KeyPath, Operation]] = []
+
+        for key, value in self.entries:
+            compiled_key: KeyPath | Operation
+            if not isinstance(key, KeyPath):
+                compiled_key = key.compile(static_context, functions)
+            else:
+                compiled_key = key
+
+            if isinstance(compiled_key, Constant) and not isinstance(compiled_key.value, str):
+                raise FieldMappingTemplateConfigError(
+                    f"Mapping keys must resolve to strings, got {type(compiled_key.value).__name__}"
+                )
+            elif isinstance(compiled_key, Constant):
+                assert isinstance(compiled_key.value, str)
+                compiled_key = KeyPath(tuple(get_dotted_field_list(compiled_key.value)))
+
+            if isinstance(compiled_key, KeyPath) and (
+                any(segment.isnumeric() for segment in compiled_key.segments[1:])
+                or (compiled_key.segments[0].isnumeric() and len(compiled_key.segments) > 1)
+            ):
+                raise FieldMappingTemplateConfigError(
+                    "Numeric mapping path segment is not supported in a multi-segment path: "
+                    f"{compiled_key.segments!r}; use an explicit nested mapping instead"
+                )
+
+            compiled_mapping_entries.append(
+                (
+                    compiled_key,
+                    value.compile(static_context, functions),
+                )
+            )
+
+        return compiled_mapping_entries
+
+    def evaluate(
+        self, runtime_context: dict[str, JsonObject], skip_missing_fields: bool = False
+    ) -> FieldValue:
+        """Build a fresh mapping, expanding runtime paths and skipping missing values.
+
+        Only generated containers may be shared. Non-string keys, numeric names
+        in multi-segment paths and conflicting destinations raise
+        ``FieldMappingTemplateEvaluationError``.
+        """
+        result: JsonObject = {}
+        # Explicit dictionary values are never registered as shared containers.
+        containers: set[ReadonlyList[str]] = set()
+
+        for key_op, value_op in self.entries:
+            if isinstance(key_op, KeyPath):
+                raise RuntimeError(
+                    "Internal error: uncompiled key path encountered during evaluation"
+                )
+
+            key = key_op.evaluate(runtime_context, skip_missing_fields)
+            if not isinstance(key, str):
+                raise FieldMappingTemplateEvaluationError(
+                    f"Mapping keys must resolve to strings, got {type(key).__name__}"
+                )
+
+            path: ReadonlyList[str]
+            if isinstance(key_op, Constant):
+                # Compiled names are already parsed, preserve literal dots.
+                path = (key,)
+            else:
+                path = tuple(get_dotted_field_list(key))
+
+                if len(path) > 1 and any(segment.isnumeric() for segment in path):
+                    raise FieldMappingTemplateEvaluationError(
+                        f"Numeric mapping path segment is not supported "
+                        f"in a multi-segment path: {path!r}"
+                    )
+
+            value = value_op.evaluate(runtime_context, skip_missing_fields)
+            if value is MISSING:
+                continue
+
+            self._insert_value(
+                result,
+                containers,
+                path,
+                value,
+                generated=isinstance(key_op, Constant) and path in self.generated_paths,
+            )
+
+        return result
+
+    def _insert_value(
+        self,
+        result: JsonObject,
+        containers: set[ReadonlyList[str]],
+        path: ReadonlyList[str],
+        value: FieldValue,
+        *,
+        generated: bool,
+    ) -> None:
+        """Insert values through generated containers without merging explicit mappings."""
+        pending: list[tuple[ReadonlyList[str], FieldValue, bool]] = [
+            (
+                path,
+                value,
+                generated,
+            )
+        ]
+
+        while pending:
+            destination, value, generated = pending.pop()
+            target = result
+
+            # Generated branches open their destination, values stop at the parent.
+            container_path = destination if generated else destination[:-1]
+
+            for length, segment in enumerate(container_path, start=1):
+                prefix = destination[:length]
+
+                if segment not in target:
+                    target[segment] = {}
+                    containers.add(prefix)
+                elif prefix not in containers:
+                    raise FieldMappingTemplateEvaluationError(
+                        f"Duplicate resolved mapping key or conflicting path " f"{destination!r}"
+                    )
+
+                child = target[segment]
+                if not isinstance(child, dict):
+                    raise RuntimeError("Internal error: generated container must be a mapping")
+                target = child
+
+            name = destination[-1]
+
+            if generated:
+                if not isinstance(value, dict):
+                    raise RuntimeError("Internal error: generated branch must contain a mapping")
+
+                # The stack pops last first, so reverse to preserve field order.
+                for child_name, child_value in reversed(tuple(value.items())):
+                    child_path = (*destination, child_name)
+                    pending.append(
+                        (
+                            child_path,
+                            child_value,
+                            child_path in self.generated_paths,
+                        )
+                    )
+            else:
+                name = destination[-1]
+                if name in target:
+                    raise FieldMappingTemplateEvaluationError(
+                        f"Duplicate resolved mapping key or conflicting path " f"{destination!r}"
+                    )
+
+                target[name] = value
 
 
 @define(frozen=True)
@@ -349,8 +760,44 @@ class ListOperation:
 
     entries: tuple["Operation", ...]
 
+    def compile(
+        self, static_context: dict[str, JsonObject], functions: Mapping[str, Function]
+    ) -> "Constant | ListOperation":
+        """Compile each element and fold the list when every element is constant."""
+        compiled_list_entries: list[Operation] = []
+        for list_entry in self.entries:
+            compiled_list_entries.append(list_entry.compile(static_context, functions))
+
+        constant_values = [
+            entry.value for entry in compiled_list_entries if isinstance(entry, Constant)
+        ]
+
+        if len(constant_values) == len(compiled_list_entries):
+            return Constant(constant_values)
+
+        return ListOperation(tuple(compiled_list_entries))
+
+    def evaluate(
+        self, runtime_context: dict[str, JsonObject], skip_missing_fields: bool = False
+    ) -> FieldValue | Missing:
+        """Build a fresh list, returning ``MISSING`` if any element is missing."""
+        res: list[FieldValue] = []
+        for child in self.entries:
+            list_entry = child.evaluate(runtime_context, skip_missing_fields)
+            if list_entry is MISSING:
+                return MISSING
+            res.append(list_entry)
+        return res
+
 
 Operation: TypeAlias = Constant | Lookup | ParsedCall | Call | MappingOperation | ListOperation
+
+
+@define(frozen=True)
+class KeyPath:
+    """A mapping key whose path separators have already been parsed."""
+
+    segments: ReadonlyList[str]
 
 
 class Parser:
@@ -432,6 +879,34 @@ class Parser:
 
             if kind_index >= len(kinds):
                 return True
+
+    def parse_key(self) -> KeyPath | Operation:
+        """Parse a literal dotted key path or a whole-value template expression.
+
+        Tokens must come from a lexer in key mode. Escaped dots remain inside
+        their segment. Mixing literal path segments with expressions is rejected.
+        """
+        if self.index < len(self.tokens) and self.peek().kind is TokenKind.EXPRESSION_START:
+            return self.parse_template()
+
+        path_segments: list[str] = [""]
+
+        while self.index < len(self.tokens):
+            token = self.advance()
+
+            match token.kind:
+                case TokenKind.TEXT:
+                    path_segments[-1] += token.value
+                case TokenKind.DOT:
+                    path_segments.append("")
+                case _:
+
+                    raise FieldMappingTemplateConfigError(
+                        f"Unexpected token {token.value!r} in mapping key; "
+                        "expected literal text or a dot",
+                        position=token.position,
+                    )
+        return KeyPath(tuple(path_segments))
 
     def parse_lookup(self, context: str) -> Lookup:
         """Read one or more adjacent ``.field`` segments after a consumed root.
@@ -645,13 +1120,14 @@ def _parse_recursive(value: FieldValue) -> Operation:
         case int() | float() | bool() | None:
             return Constant(value)
         case Mapping():
-            mapping_operations: list[tuple[Operation, Operation]] = []
+            mapping_operations: list[tuple[Operation | KeyPath, Operation]] = []
             for k, v in value.items():
                 if not isinstance(k, str):
                     raise FieldMappingTemplateConfigError(
                         f"Mapping keys must be strings, got {type(k).__name__}"
                     )
-                mapping_operations.append((_parse_recursive(k), _parse_recursive(v)))
+                key = Parser(Lexer(k, key_mode=True).scan()).parse_key()
+                mapping_operations.append((key, _parse_recursive(v)))
             return MappingOperation(entries=tuple(mapping_operations))
         case list():
             return ListOperation(tuple(_parse_recursive(v) for v in value))
@@ -725,262 +1201,16 @@ def _validate_operation(
             return
 
         case MappingOperation():
-            for entry in op.entries:
-                _validate_operation(entry[0], static_context, runtime_roots, functions)
-                _validate_operation(entry[1], static_context, runtime_roots, functions)
+            for key, value in op.entries:
+                if not isinstance(key, KeyPath):
+                    _validate_operation(key, static_context, runtime_roots, functions)
+                _validate_operation(value, static_context, runtime_roots, functions)
         case ListOperation():
             for operation in op.entries:
                 _validate_operation(operation, static_context, runtime_roots, functions)
         case Call():
             raise RuntimeError(
                 "Internal error: resolved Call encountered during validation; expected ParsedCall"
-            )
-        case _:
-            assert_never(op)
-
-
-def _compile_operation(
-    op: Operation,
-    static_context: dict[str, dict[str, FieldValue]],
-    functions: Mapping[str, Function],
-) -> Operation:
-    """Resolve functions and fold static operations in a validated parsed tree.
-
-    Static dictionaries and lists are deep-copied when resolved from context.
-    Containers become constants when all their children are constant. Runtime
-    lookups and operations depending on them remain for evaluation. Runtime
-    lookup arguments skip copying only when their function can borrow input;
-    static lookup values are copied regardless of the function's capability.
-    Calls fold only when their function opts in and all positional and keyword
-    arguments compile to constants. Other calls become resolved ``Call`` nodes.
-
-    Raises
-    ------
-    FieldMappingTemplateConfigError
-        If a static path cannot be resolved or a constant key is not a string.
-    RuntimeError
-        If an already compiled ``Call`` reaches this phase.
-
-    Exceptions from functions executed during folding propagate unchanged.
-    """
-    # Each operation kind returns its prepared form directly.
-    # pylint: disable=too-many-return-statements,too-many-branches
-    match op:
-        case Constant():
-            return op
-
-        case Lookup():
-            if op.context in static_context:
-                value = get_field_value(static_context[op.context], op.path)
-                if value is MISSING:
-                    raise FieldMappingTemplateConfigError(
-                        f"Cannot resolve lookup path {op.path!r} "
-                        f"in static context root {op.context!r} during constant folding"
-                    )
-                if isinstance(value, (dict, list)):
-                    value = deepcopy(value)
-                return Constant(value)
-            return op
-
-        case ParsedCall():
-            function = functions[op.name]
-
-            compiled_args: list[Operation] = []
-            compiled_kwargs: dict[str, Operation] = {}
-
-            for arg in op.args:
-                compiled_arg = _compile_operation(arg, static_context, functions)
-
-                if isinstance(compiled_arg, Lookup):
-                    compiled_arg = Lookup(
-                        context=compiled_arg.context,
-                        path=compiled_arg.path,
-                        copy_result=not function.can_borrow_input,
-                    )
-
-                compiled_args.append(compiled_arg)
-
-            for key, kwarg in op.kwargs.items():
-                compiled_kwarg = _compile_operation(kwarg, static_context, functions)
-
-                if isinstance(compiled_kwarg, Lookup):
-                    compiled_kwarg = Lookup(
-                        context=compiled_kwarg.context,
-                        path=compiled_kwarg.path,
-                        copy_result=not function.can_borrow_input,
-                    )
-
-                compiled_kwargs[key] = compiled_kwarg
-
-            if function.foldable:
-                arg_values = [arg.value for arg in compiled_args if isinstance(arg, Constant)]
-                kwarg_values = {
-                    key: arg.value
-                    for key, arg in compiled_kwargs.items()
-                    if isinstance(arg, Constant)
-                }
-
-                if len(arg_values) == len(compiled_args) and len(kwarg_values) == len(
-                    compiled_kwargs
-                ):
-                    return Constant(function.fn(*arg_values, **kwarg_values))
-
-            return Call(function, tuple(compiled_args), compiled_kwargs)
-
-        case MappingOperation():
-            compiled_mapping_entries: list[tuple[Operation, Operation]] = []
-            for mapping_entry in op.entries:
-                compiled_key = _compile_operation(mapping_entry[0], static_context, functions)
-                if isinstance(compiled_key, Constant) and not isinstance(compiled_key.value, str):
-                    raise FieldMappingTemplateConfigError(
-                        f"Mapping keys must resolve to strings, got {type(compiled_key.value).__name__}"
-                    )
-
-                compiled_mapping_entries.append(
-                    (
-                        compiled_key,
-                        _compile_operation(mapping_entry[1], static_context, functions),
-                    )
-                )
-
-            constant_mapping_values: dict[str, FieldValue] = {
-                key.value: operation.value
-                for key, operation in compiled_mapping_entries
-                if isinstance(operation, Constant)
-                and isinstance(key, Constant)
-                and isinstance(key.value, str)
-            }
-
-            if len(constant_mapping_values) == len(compiled_mapping_entries):
-                return Constant(constant_mapping_values)
-
-            return MappingOperation(entries=tuple(compiled_mapping_entries))
-
-        case ListOperation():
-            compiled_list_entries: list[Operation] = []
-            for list_entry in op.entries:
-                compiled_list_entries.append(
-                    _compile_operation(list_entry, static_context, functions)
-                )
-
-            constant_values = [
-                entry.value for entry in compiled_list_entries if isinstance(entry, Constant)
-            ]
-
-            if len(constant_values) == len(compiled_list_entries):
-                return Constant(constant_values)
-
-            return ListOperation(tuple(compiled_list_entries))
-        case Call():
-            raise RuntimeError(
-                "Internal error: resolved Call encountered during compilation; expected ParsedCall"
-            )
-        case _:
-            assert_never(op)
-
-
-def _evaluate_operation(
-    op: Operation, runtime_context: dict[str, dict[str, FieldValue]], skip_missing_fields: bool
-) -> FieldValue | Missing:
-    """Evaluate a prepared operation tree using the supplied runtime context.
-
-    Constant and runtime lookup dictionaries and lists are deep-copied, except
-    runtime arguments of functions that can borrow input. Such functions must
-    neither mutate nor retain or return mutable input references. Mapping/list
-    operations build fresh containers.
-
-    Raises
-    ------
-    FieldMappingTemplateLookupError
-        If a runtime root is missing or a required field path cannot be resolved.
-    FieldMappingTemplateEvaluationError
-        If a resolved key is not a string or two keys resolve to the same string.
-    RuntimeError
-        If an unresolved ``ParsedCall`` reaches this phase.
-
-    Positional arguments are evaluated in order, followed by keyword arguments
-    in insertion order. Exceptions from functions propagate unchanged.
-    """
-    match op:
-        case Constant():
-            if isinstance(op.value, (dict, list)):
-                return deepcopy(op.value)
-            return op.value
-
-        case Lookup():
-            if op.context not in runtime_context:
-                raise FieldMappingTemplateLookupError(
-                    f"Missing runtime context root {op.context!r} for lookup path {op.path!r}"
-                )
-
-            value = get_field_value(runtime_context[op.context], op.path)
-            if value is MISSING and not skip_missing_fields:
-                raise FieldMappingTemplateLookupError(
-                    f"Cannot resolve lookup path {op.path!r} "
-                    f"in runtime context root {op.context!r}"
-                )
-            elif value is MISSING and skip_missing_fields:
-                return MISSING
-
-            if op.copy_result and isinstance(value, (dict, list)):
-                return deepcopy(value)
-
-            return value
-
-        case Call():
-            args = []
-            kwargs = {}
-
-            for arg in op.args:
-                evaluated_arg = _evaluate_operation(arg, runtime_context, skip_missing_fields)
-                if evaluated_arg is MISSING:
-                    return MISSING
-
-                args.append(evaluated_arg)
-
-            for kwarg_key, kwarg_value in op.kwargs.items():
-                evaluated_kwarg = _evaluate_operation(
-                    kwarg_value, runtime_context, skip_missing_fields
-                )
-
-                if evaluated_kwarg is MISSING:
-                    return MISSING
-
-                kwargs[kwarg_key] = evaluated_kwarg
-            return op.function.fn(*args, **kwargs)
-
-        case MappingOperation():
-            result: JsonObject = {}
-
-            for key_op, value_op in op.entries:
-                key = _evaluate_operation(key_op, runtime_context, skip_missing_fields)
-                if not isinstance(key, str):
-                    raise FieldMappingTemplateEvaluationError(
-                        f"Mapping keys must resolve to strings, got {type(key).__name__}"
-                    )
-                val = _evaluate_operation(value_op, runtime_context, skip_missing_fields)
-                if val is MISSING:
-                    continue
-
-                if key in result:
-                    raise FieldMappingTemplateEvaluationError(
-                        f"Duplicate resolved mapping key {key!r}"
-                    )
-                result[key] = val
-
-            return result
-        case ListOperation():
-            res: list[FieldValue] = []
-            for child in op.entries:
-                list_entry = _evaluate_operation(child, runtime_context, skip_missing_fields)
-                if list_entry is MISSING:
-                    return MISSING
-                res.append(list_entry)
-            return res
-        case ParsedCall():
-            raise RuntimeError(
-                f"Internal error: unresolved ParsedCall {op.name!r} encountered during evaluation; "
-                "compile the operation before evaluating"
             )
         case _:
             assert_never(op)
@@ -1026,13 +1256,22 @@ class FieldMappingTemplate:
     Mapping keys use the same template syntax as string values, including in
     nested mappings and mappings inside lists. Keys must resolve to strings;
     use an explicit conversion such as ``${source_event.id | str}`` for other
-    types. Resolved keys are literal dictionary keys: dots do not create nested
-    mappings, and resolved strings are not parsed again as templates. Escape
-    the dollar sign to use expression syntax as literal key text.
+    types. Literal dotted keys and keys resolved from expressions create nested
+    mappings: ``{"event.test": "test"}`` produces ``{"event": {"test": "test"}}``.
+    Shared path prefixes are combined, and fully static branches are folded.
+    Numeric names are allowed as standalone mapping keys, including in explicit
+    nested mappings. Multi-segment output paths containing numeric names, such
+    as ``event.0`` or ``0.test``, are rejected even when the number is escaped.
+    Escape a dot with a backslash to keep it within a literal field name; escape
+    the dollar sign to use expression syntax as literal key text. Resolved
+    strings are not parsed again as templates. Runtime paths may share generated
+    containers, but cannot descend into or overwrite explicitly assigned values.
 
-    Static non-string keys fail during compilation. Runtime non-string keys
-    and duplicate resolved keys within a mapping fail during evaluation.
-    This includes duplicate keys whose expressions are entirely static.
+    Static non-string keys and duplicate or overlapping known paths fail during
+    compilation, including when values require runtime evaluation. For example,
+    ``event`` and ``event.test`` conflict even if ``event`` contains a mapping.
+    Runtime non-string keys, numeric names in multi-segment paths and conflicting
+    destinations fail during evaluation.
 
     For example, ``{"${source_event.name}": "${source_event.value}"}`` evaluated
     with ``{"source_event": {"name": "status", "value": 200}}`` produces
@@ -1081,7 +1320,8 @@ class FieldMappingTemplate:
         ------
         FieldMappingTemplateConfigError
             If the configuration, root declarations, static references or function
-            calls are invalid, or a static key resolves to a non-string value.
+            calls are invalid, a static key resolves to a non-string value, or
+            known mapping paths duplicate or overlap one another.
 
         Exceptions from signature introspection and functions executed during
         folding propagate unchanged.
@@ -1105,7 +1345,7 @@ class FieldMappingTemplate:
 
         _validate_operation(root_operation, static_context, runtime_roots, functions)
 
-        compiled_root = _compile_operation(root_operation, static_context, functions)
+        compiled_root = root_operation.compile(static_context, functions)
 
         return cls(compiled_root)
 
@@ -1146,15 +1386,15 @@ class FieldMappingTemplate:
             If a runtime root is missing or a field is missing while
             ``skip_missing_fields`` is false.
         FieldMappingTemplateEvaluationError
-            If a key resolves to a non-string value or resolved keys collide
-            within the same mapping.
+            If a key resolves to a non-string value, a runtime multi-segment path
+            contains a numeric name, or resolved paths collide or overlap.
         TypeError
             If the compiled root does not produce a dictionary.
 
         Exceptions from runtime functions propagate unchanged. Function result
         types are the responsibility of registered implementations.
         """
-        result = _evaluate_operation(self.root_operation, runtime_context, skip_missing_fields)
+        result = self.root_operation.evaluate(runtime_context, skip_missing_fields)
 
         if not isinstance(result, dict):
             raise TypeError("Compiled template root did not produce a mapping")
