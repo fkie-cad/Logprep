@@ -307,7 +307,7 @@ class DomainResolver(Processor):
             case FailedResult(_, error) if error:
                 logger.info(error)
 
-    def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult | None:
+    def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
 
         cached_resolved = self._domain_cache.get(hash_string)
