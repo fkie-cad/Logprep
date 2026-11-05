@@ -10,6 +10,9 @@
 
 ### Improvements
 * util: add field mapping template utility
+* domain_resolver: add metrics for cached timed-out domains and successfully resolved domains
+* cache: hold a payload in addition to timestamps
+* domain_resolver: adapt `domain_resolver` to changes of `cache`
 
 ### Bugfix
 
@@ -50,10 +53,6 @@
 * calculator: optimized runtime expression evaluation
 * docs: improve documentation around dynamic templating for `generic_adder`
 * docs: improve documentation around dynamic templating in `list_comparison` and `network_comparison` processors
-* domain_resolver: add metrics for cached timed-out domains and successfully resolved domains
-* cache: hold a payload in addition to timestamps
-* domain_resolver: adapt `domain_resolver` to changes of `cache`
-* vuln: bump aiohttp to at least 3.14.4 in order to fix CVE-2026-111064 and GHSA-2g87-pp6c-29x5
 
 ### Bugfix
 * decoder: corrected rfc 5324 in docs to 5424
