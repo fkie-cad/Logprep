@@ -11,6 +11,17 @@ class InvalidConfigurationError(FactoryError):
     """Raise if configuration is invalid."""
 
 
+class InvalidResourcesError(InvalidConfigurationError):
+    """Raise if static resources fail to load with no chance of recovery"""
+
+    def __init__(self, errors: dict[str, Exception]) -> None:
+        self.errors = errors
+        super().__init__(
+            "Failed to load static resources:\n"
+            + "\n".join(f"\t{url!r}: {exc!r} " for url, exc in self.errors.items())
+        )
+
+
 class InvalidConfigSpecificationError(InvalidConfigurationError):
     """Raise if the configuration was not specified as an object."""
 

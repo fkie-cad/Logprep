@@ -281,3 +281,8 @@ class Processor(Component):
 
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup
+
+    def _shut_down(self):
+        super()._shut_down()
+        for rule in self.rules:
+            rule.shut_down()
