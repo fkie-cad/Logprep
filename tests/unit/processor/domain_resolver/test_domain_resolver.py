@@ -1,6 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import re
+import logging
 from copy import deepcopy
 from typing import cast
 from unittest import mock
@@ -408,7 +408,14 @@ class TestDomainResolver(BaseProcessorTestCase):
             result = self.object._resolve_ip(domain)
         assert result.failure_type == FailureType.NO_ANSWER
 
-    def test_resole_domain_no_nameservers(self):
+    async def test_resole_domain_no_nameservers(self):
+        domain = "https://google.de"
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            mock_resolve.side_effect = NoNameservers
+            result = self.object._resolve_ip(domain)
+        assert result.failure_type == FailureType.NO_NAMESERVERS
+
+    def test_resole_domain_no_nameservers_emits_warning(self, caplog):
         rule = {
             "filter": "fqdn",
             "domain_resolver": {"source_fields": ["fqdn"]},
@@ -419,9 +426,6 @@ class TestDomainResolver(BaseProcessorTestCase):
         with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = NoNameservers
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            result = self.object.process(document)
-            assert len(result.warnings) == 1
-            assert isinstance(result.warnings[0], ProcessingWarning)
-            assert re.match(
-                ".*All nameservers failed to answer the query*", str(result.warnings[0])
-            )
+            with caplog.at_level(logging.INFO):
+                self.object.process(document)
+                assert "All nameservers failed to answer the query" in caplog.text

@@ -298,8 +298,15 @@ class DomainResolver(Processor):
         match result:
             case SuccessResult(resolved_ip) if resolved_ip:
                 self._add_resolve_infos_to_event(event, rule, resolved_ip)
+            # Do not log, since this has no meaningful error message and metrics suffice here
+            case FailedResult(FailureType.TIMEOUT):
+                pass
+            # Log as warning, since this could stem from a configuration error
+            case FailedResult(FailureType.NO_NAMESERVERS, error) if error:
+                logger.warning(error)
+            # Log every other event driven errors as info and adjust processor log level if needed
             case FailedResult(_, error) if error:
-                self._handle_warning_error(event, rule, error)
+                logger.info(error)
 
     def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult | None:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
@@ -336,18 +343,18 @@ class DomainResolver(Processor):
             result = self._dns_resolver.resolve(domain, "A")
             self.metrics.resolved_domains.inc(1)
             return SuccessResult(result[0].address)
-        except (FormError, DNSSyntaxError, TooBig):
+        except (FormError, DNSSyntaxError, TooBig) as error:
             self.metrics.invalid_domains.inc(1)
-            return FailedResult(FailureType.INVALID)
-        except (Timeout, LifetimeTimeout):
+            return FailedResult(FailureType.INVALID, error)
+        except (Timeout, LifetimeTimeout) as error:
             self.metrics.timeouts.inc(1)
             return FailedResult(FailureType.TIMEOUT)
-        except NXDOMAIN:
+        except NXDOMAIN as error:
             self.metrics.unknown_domains.inc(1)
-            return FailedResult(FailureType.UNKNOWN)
-        except NoAnswer:
+            return FailedResult(FailureType.UNKNOWN, error)
+        except NoAnswer as error:
             self.metrics.no_answer_domains.inc(1)
-            return FailedResult(FailureType.NO_ANSWER)
+            return FailedResult(FailureType.NO_ANSWER, error)
         except NoNameservers as error:
             self.metrics.no_nameserver.inc(1)
             return FailedResult(FailureType.NO_NAMESERVERS, error)
