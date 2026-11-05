@@ -297,14 +297,14 @@ class DomainResolver(Processor):
         match result:
             case SuccessResult(resolved_ip) if resolved_ip:
                 self._add_resolve_infos_to_event(event, rule, resolved_ip)
-            # Do not log, since this has no meaningful error message and metrics suffice here
-            case FailedResult(FailureType.TIMEOUT):
-                pass
+            # Log as debug, since this has no meaningful error message and metrics suffice here
+            case FailedResult(FailureType.TIMEOUT, error):
+                logger.debug("Failed to resolve %s: %s", domain, error)
             # Log as warning, since this could stem from a configuration error
-            case FailedResult(FailureType.NO_NAMESERVERS, error) if error:
+            case FailedResult(FailureType.NO_NAMESERVERS, error):
                 logger.warning("Failed to resolve %s: %s", domain, error)
             # Log every other event driven errors as info and adjust processor log level if needed
-            case FailedResult(_, error) if error:
+            case FailedResult(_, error):
                 logger.info("Failed to resolve %s: %s", domain, error)
 
     def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
@@ -347,7 +347,7 @@ class DomainResolver(Processor):
             return FailedResult(FailureType.INVALID, error)
         except (Timeout, LifetimeTimeout) as error:
             self.metrics.timeouts.inc(1)
-            return FailedResult(FailureType.TIMEOUT)
+            return FailedResult(FailureType.TIMEOUT, error)
         except NXDOMAIN as error:
             self.metrics.unknown_domains.inc(1)
             return FailedResult(FailureType.UNKNOWN, error)
