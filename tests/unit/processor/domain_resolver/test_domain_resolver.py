@@ -77,6 +77,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         "logprep_domain_resolver_unknown_domains",
         "logprep_domain_resolver_no_answer_domains",
         "logprep_domain_resolver_timeouts_cached",
+        "logprep_domain_resolver_no_nameserver",
     ]
 
     @pytest.mark.parametrize("rule, event, expected,", example_test_cases)

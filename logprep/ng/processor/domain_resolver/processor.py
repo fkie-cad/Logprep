@@ -215,6 +215,14 @@ class DomainResolver(Processor):
         )
         """Number of domains for which no answer was given"""
 
+        no_nameserver: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of resolve attempts for which no nameserver was found",
+                name="domain_resolver_no_nameserver",
+            )
+        )
+        """Number of domains for which no answer was given"""
+
     __slots__ = [
         "_dns_resolver",
         "_timeout_cache",
@@ -341,4 +349,5 @@ class DomainResolver(Processor):
             self.metrics.no_answer_domains.inc(1)
             return FailedResult(FailureType.NO_ANSWER)
         except NoNameservers as error:
+            self.metrics.no_nameserver.inc(1)
             return FailedResult(FailureType.NO_NAMESERVERS, error)
