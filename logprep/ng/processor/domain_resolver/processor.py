@@ -280,9 +280,9 @@ class DomainResolver(Processor):
             )
 
         url = urlsplit(domain_or_url_str)
+        if url.scheme == "" and not url.netloc:
+            url = urlsplit(f"//{domain_or_url_str}")
         domain = url.hostname
-        if url.scheme == "":
-            domain = url.path
         if not domain:
             self.metrics.invalid_domains.inc(1)
             raise ProcessingWarning(

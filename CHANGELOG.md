@@ -58,6 +58,7 @@
 * decoder: corrected rfc 5324 in docs to 5424
 * field_manager: allow for copying fields only containing `false` and `0`
 * key_checker: remove configuration fields that were inherited but didnt do anything
+* domain_resolver: Fix resolving domains that have no schema
 
 ## 21.0.0
 ### Breaking
