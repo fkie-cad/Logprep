@@ -8,21 +8,23 @@ import shutil
 from collections.abc import Generator, Sequence
 from multiprocessing import active_children, set_start_method
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable, Literal
 from unittest import mock
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import aiohttp
 import pytest
 import responses
 from _pytest.mark.structures import ParameterSet
 from aioresponses import aioresponses
+from attrs import define
 from prometheus_client import REGISTRY
 
 from logprep.registry import Registry
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.environ import _ENV_SNAPSHOT
 from logprep.util.getter import RefreshableGetter
+from logprep.util.helper import MISSING, FieldValue, Missing
 
 
 @pytest.fixture(autouse=True)
@@ -161,10 +163,42 @@ class MockClientResponse(aiohttp.ClientResponse):
         super().__init__(*args, **kwargs)
 
 
+@define(kw_only=True)
+class Endpoint:
+    url: str
+    method: Literal["HEAD", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"] = "GET"
+    status: int = 200
+    reason: str | None = None
+    body: str | bytes | None = None
+    json: FieldValue | Missing = MISSING
+    content_type: str | None = None
+
+    _call_count: int = 0
+
+    @property
+    def call_count(self) -> int:
+        return self._call_count
+
+    def on_call(self, *_args, **_kwargs) -> None:
+        self._call_count += 1
+
+    def get_body(self) -> str | bytes | None:
+        if self.json is not MISSING:
+            return json.dumps(self.json)
+        return self.body
+
+    def get_content_type(self) -> str:
+        if self.content_type is not None:
+            return self.content_type
+        if self.json is not MISSING:
+            return "application/json"
+        return "text/plain"
+
+
 @pytest.fixture
 def provision_context(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
-) -> Generator[Callable[[dict], None], None]:
+) -> Generator[Callable[[dict | list], None], None]:
     project_root = pytestconfig.rootpath
 
     with (
@@ -172,37 +206,56 @@ def provision_context(
         aioresponses(passthrough=["http://127.0.0.1:", "http://localhost:"]) as mocked_aiohttp,
     ):
 
-        def _provision(context: dict) -> None:
-            for path, spec in context.items():
-                if path.startswith(("http://", "https://")):
-                    body = json.dumps(spec["body"])
-                    content_type = spec.get("content_type", "application/json")
-
-                    mocked_responses.add(
-                        responses.GET,
-                        path,
-                        body=body,
-                        content_type=content_type,
-                    )
-
-                    mocked_aiohttp.get(
-                        path,
-                        body=body,
-                        content_type=content_type,
+        def _provision(context: dict | list) -> None:
+            if isinstance(context, list):
+                for spec in context:
+                    assert isinstance(spec, Endpoint)
+                    mocked_aiohttp.add(
+                        spec.url,
+                        method=spec.method,
+                        status=spec.status,
+                        reason=spec.reason,
+                        body=spec.get_body(),
+                        content_type=spec.get_content_type(),
                         response_class=MockClientResponse,
                         repeat=True,
+                        callback=spec.on_call,
                     )
+            else:
+                assert isinstance(context, dict)
+                for path, spec in context.items():
+                    if path.startswith(("http://", "https://")):
 
-                else:
-                    file_path = tmp_path / path.removeprefix("file://")
-                    file_path.parent.mkdir(parents=True, exist_ok=True)
+                        body = json.dumps(spec["body"])
+                        content_type = spec.get("content_type", "application/json")
 
-                    if "source" in spec:
-                        ref_path = Path(spec["source"])
-                        src_path = ref_path if ref_path.is_absolute() else project_root / ref_path
-                        shutil.copy(src_path, file_path)
+                        mocked_responses.add(
+                            responses.GET,
+                            path,
+                            body=body,
+                            content_type=content_type,
+                        )
+
+                        mocked_aiohttp.get(
+                            path,
+                            body=body,
+                            content_type=content_type,
+                            response_class=MockClientResponse,
+                            repeat=True,
+                        )
+
                     else:
-                        file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
+                        file_path = tmp_path / path.removeprefix("file://")
+                        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+                        if "source" in spec:
+                            ref_path = Path(spec["source"])
+                            src_path = (
+                                ref_path if ref_path.is_absolute() else project_root / ref_path
+                            )
+                            shutil.copy(src_path, file_path)
+                        else:
+                            file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
 
             monkeypatch.chdir(tmp_path)
 

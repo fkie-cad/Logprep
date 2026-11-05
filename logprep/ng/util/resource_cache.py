@@ -170,7 +170,7 @@ class ResourceCache(Generic[T]):
             return None
         return InvalidResourcesError(static_errors)
 
-    async def _getter_fetch_callback_getter_fetch_callback(self, getter: Getter, uri: ResolvedUri) -> None:
+    async def _getter_fetch_callback(self, getter: Getter, uri: ResolvedUri) -> None:
         new_item = await self._get_updated_cache_item(getter, uri)
         self._content_cache[uri] = new_item
 

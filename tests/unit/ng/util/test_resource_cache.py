@@ -4,7 +4,6 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from aiohttp import web
 
 from logprep.ng.abc.getter import Getter
 from logprep.ng.util.getter import (
@@ -16,29 +15,23 @@ from logprep.ng.util.resource_cache import (
     ResourceCache,
     RetrievalContextError,
 )
-from tests.conftest import mock_env
+from tests.conftest import Endpoint, mock_env
 
 
 class TestResourceCache:
 
-    async def test_get_resource_simple_happy_path(self, aiohttp_server):
+    async def test_get_resource_simple_happy_path(self, provision_context):
 
         resource_content = str(uuid4())
-
-        async def handler(_: web.Request) -> web.Response:
-            return web.Response(text=resource_content)
-
-        app = web.Application()
-        app.router.add_get("/", handler)
-        server = await aiohttp_server(app)
-        uri = server.make_url("/")
+        uri = "https://example.dd/foo"
+        endpoint = Endpoint(url=uri, body=resource_content)
+        provision_context([endpoint])
 
         async def data_callback(getter: Getter):
             return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        uri = "https://example.dd/foo"
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -48,7 +41,7 @@ class TestResourceCache:
 
         result = await cache.get_cache_item(uri)
 
-        # assert endpoint.call_count == 1
+        assert endpoint.call_count == 1
         assert result.content == resource_content
         assert result.raw_uri == uri
         assert result.resolved_uri == uri
@@ -60,18 +53,18 @@ class TestResourceCache:
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
-    # @responses.activate
-    def test_get_value_gives_same_content(self):
+    async def test_get_value_gives_same_content(self, provision_context):
 
         resource_content = str(uuid4())
 
-        def data_callback(getter: Getter):
-            return str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
-        # endpoint = responses.add(responses.GET, uri, body=resource_content)
+        endpoint = Endpoint(url=uri, body=resource_content)
+        provision_context([endpoint])
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -79,22 +72,22 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_cache_item(uri)
-        assert id(cache.get_value(uri, {})) == id(result.content)
-        # assert endpoint.call_count == 1
+        result = await cache.get_cache_item(uri)
+        assert id(await cache.get_value(uri, {})) == id(result.content)
+        assert endpoint.call_count == 1
 
-    # @responses.activate
-    def test_clear_removes_cached(self):
+    async def test_clear_removes_cached(self, provision_context):
 
         resource_content = str(uuid4())
 
-        def data_callback(getter: Getter):
-            return str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
-        # endpoint = responses.add(responses.GET, uri, body=resource_content)
+        endpoint = Endpoint(url=uri, body=resource_content)
+        provision_context([endpoint])
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -102,24 +95,24 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        old_content = cache.get_value(uri, {})
+        old_content = await cache.get_value(uri, {})
         cache.clear()
-        new_content = cache.get_value(uri, {})
+        new_content = await cache.get_value(uri, {})
         assert id(old_content) != id(new_content)
-        # assert endpoint.call_count == 2
+        assert endpoint.call_count == 2
 
-    # @responses.activate
-    def test_get_resource_idempotent_trough_caching(self):
+    async def test_get_resource_idempotent_trough_caching(self, provision_context):
 
         resource_content = str(uuid4())
 
-        def data_callback(getter: Getter):
-            return str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
-        # endpoint = responses.add(responses.GET, uri, body=resource_content)
+        endpoint = Endpoint(url=uri, body=resource_content)
+        provision_context([endpoint])
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -127,27 +120,27 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result1 = cache.get_cache_item(uri)
-        result2 = cache.get_cache_item(uri)
+        result1 = await cache.get_cache_item(uri)
+        result2 = await cache.get_cache_item(uri)
 
-        # assert endpoint.call_count == 1
+        assert endpoint.call_count == 1
         assert id(result1) == id(result2)
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
-    # @responses.activate
-    def test_get_resource_resolved_from_env(self):
+    async def test_get_resource_resolved_from_env(self, provision_context):
 
         resource_content = str(uuid4())
 
-        def data_callback(getter: Getter):
-            return str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         raw_uri = "https://example.dd/${MY_ENV}"
         resolved_uri = "https://example.dd/foo"
-        # endpoint = responses.add(responses.GET, resolved_uri, body=resource_content)
+        endpoint = Endpoint(url=resolved_uri, body=resource_content)
+        provision_context([endpoint])
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -156,9 +149,9 @@ class TestResourceCache:
         )
 
         with mock_env({"MY_ENV": "foo"}):
-            result = cache.get_cache_item(raw_uri)
+            result = await cache.get_cache_item(raw_uri)
 
-        # assert endpoint.call_count == 1
+        assert endpoint.call_count == 1
         assert result.content == resource_content
         assert result.raw_uri == raw_uri
         assert result.resolved_uri == resolved_uri
@@ -170,7 +163,7 @@ class TestResourceCache:
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
-    def test_dynamic_file_is_not_allowed_by_default(self):
+    async def test_dynamic_file_is_not_allowed_by_default(self):
 
         data_callback = Mock()
         update_callback = Mock()
@@ -183,7 +176,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_cache_item(raw_uri, {"nested": {"value": "foo"}})
+        result = await cache.get_cache_item(raw_uri, {"nested": {"value": "foo"}})
 
         assert result.content is None
         assert result.raw_uri == raw_uri
@@ -200,19 +193,19 @@ class TestResourceCache:
         assert update_callback.call_count == 0
         assert cleanup_callback.call_count == 0
 
-    # @responses.activate
-    def test_get_resource_resolved_from_event(self):
+    async def test_get_resource_resolved_from_event(self, provision_context):
 
         resource_content = str(uuid4())
 
-        def data_callback(getter: Getter):
-            return str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         raw_uri = "https://example.dd/${nested.value}"
         resolved_uri = "https://example.dd/foo"
-        # endpoint = responses.add(responses.GET, resolved_uri, body=resource_content)
+        endpoint = Endpoint(url=resolved_uri, body=resource_content)
+        provision_context([endpoint])
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -220,9 +213,9 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_cache_item(raw_uri, {"nested": {"value": "foo"}})
+        result = await cache.get_cache_item(raw_uri, {"nested": {"value": "foo"}})
 
-        # assert endpoint.call_count == 1
+        assert endpoint.call_count == 1
         assert result.content == resource_content
         assert result.raw_uri == raw_uri
         assert result.resolved_uri == resolved_uri
@@ -234,19 +227,19 @@ class TestResourceCache:
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
-    # @responses.activate
-    def test_dynamic_resource_is_cached(self):
+    async def test_dynamic_resource_is_cached(self, provision_context):
 
         resource_content = str(uuid4())
 
-        def data_callback(getter: Getter):
-            return str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         raw_uri = "https://example.dd/${nested.value}"
         resolved_uri = "https://example.dd/foo"
-        # endpoint = responses.add(responses.GET, resolved_uri, body=resource_content)
+        endpoint = Endpoint(url=resolved_uri, body=resource_content)
+        provision_context([endpoint])
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -254,13 +247,12 @@ class TestResourceCache:
             on_update=update_callback,
         )
         event_data = {"nested": {"value": "foo"}}
-        result = cache.get_cache_item(raw_uri, event_data)
+        result = await cache.get_cache_item(raw_uri, event_data)
 
-        assert id(cache.get_value(raw_uri, event_data)) == id(result.content)
-        # assert endpoint.call_count == 1
+        assert id(await cache.get_value(raw_uri, event_data)) == id(result.content)
+        assert endpoint.call_count == 1
 
-    # @responses.activate
-    def test_get_resource_error_on_resolve_uri_no_event(self):
+    async def test_get_resource_error_on_resolve_uri_no_event(self):
 
         data_callback = Mock()
         update_callback = Mock()
@@ -273,7 +265,7 @@ class TestResourceCache:
         )
 
         unresolved_uri = "http://example.dd/${foo}"
-        result = cache.get_cache_item(unresolved_uri)
+        result = await cache.get_cache_item(unresolved_uri)
 
         assert result.content is None
         assert result.raw_uri == unresolved_uri
@@ -289,8 +281,7 @@ class TestResourceCache:
         assert update_callback.call_count == 0
         assert cleanup_callback.call_count == 0
 
-    # @responses.activate
-    def test_get_resource_error_on_resolve_uri_event_missing_key(self):
+    async def test_get_resource_error_on_resolve_uri_event_missing_key(self):
 
         data_callback = Mock()
         update_callback = Mock()
@@ -303,7 +294,7 @@ class TestResourceCache:
         )
 
         unresolved_uri = "http://example.dd/${foo}"
-        result = cache.get_cache_item(unresolved_uri, {"bar": "nope"})
+        result = await cache.get_cache_item(unresolved_uri, {"bar": "nope"})
 
         assert result.content is None
         assert result.raw_uri == unresolved_uri
@@ -319,7 +310,6 @@ class TestResourceCache:
         assert update_callback.call_count == 0
         assert cleanup_callback.call_count == 0
 
-    # @responses.activate
     @pytest.mark.parametrize(
         ["value"],
         [
@@ -337,7 +327,7 @@ class TestResourceCache:
             ),
         ],
     )
-    def test_get_resource_error_on_resolve_uri_with_invalid_type(self, value):
+    async def test_get_resource_error_on_resolve_uri_with_invalid_type(self, value):
 
         data_callback = Mock()
         update_callback = Mock()
@@ -350,7 +340,7 @@ class TestResourceCache:
         )
 
         unresolved_uri = "http://example.dd/${foo}"
-        result = cache.get_cache_item(unresolved_uri, {"foo": value})
+        result = await cache.get_cache_item(unresolved_uri, {"foo": value})
 
         assert result.content is None
         assert result.raw_uri == unresolved_uri
@@ -366,8 +356,7 @@ class TestResourceCache:
         assert update_callback.call_count == 0
         assert cleanup_callback.call_count == 0
 
-    # @responses.activate
-    def test_get_resource_error_on_retrieve_uri_with_unknown_scheme(self):
+    async def test_get_resource_error_on_retrieve_uri_with_unknown_scheme(self):
 
         data_callback = Mock()
         update_callback = Mock()
@@ -380,7 +369,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_cache_item(uri)
+        result = await cache.get_cache_item(uri)
 
         assert result.content is None
         assert result.raw_uri == uri
@@ -395,26 +384,25 @@ class TestResourceCache:
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
-    # @responses.activate
-    def test_get_resource_error_on_retrieve_uri(self):
+    async def test_get_resource_error_on_retrieve_uri(self, provision_context):
 
-        def data_callback(getter: Getter):
-            return str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
-        # endpoint = responses.add(responses.GET, uri, status=404)
-
+        endpoint = Endpoint(url=uri, status=404, reason="NOT FOUND")
+        provision_context([endpoint])
         cache = ResourceCache[str](
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
         )
 
-        result = cache.get_cache_item(uri)
+        result = await cache.get_cache_item(uri)
 
-        # assert endpoint.call_count == 1
+        assert endpoint.call_count == 1
 
         assert result.content is None
         assert result.raw_uri == uri
@@ -429,39 +417,37 @@ class TestResourceCache:
         assert update_callback.call_count == 1
         assert cleanup_callback.call_count == 0
 
-    # @responses.activate
-    def test_get_error_items(self):
+    async def test_get_error_items(self, provision_context):
 
-        def data_callback(getter: Getter):
-            return str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
-        # responses.add(responses.GET, uri, status=404)
-
+        endpoint = Endpoint(url=uri, status=404)
+        provision_context([endpoint])
         cache = ResourceCache[str](
             on_data=data_callback,
             on_cleanup=cleanup_callback,
             on_update=update_callback,
         )
 
-        result = cache.get_cache_item(uri)
+        result = await cache.get_cache_item(uri)
 
         error_items = cache.get_error_items()
         assert len(error_items) == 1
         assert error_items[0] == result
 
-    # @responses.activate
-    def test_clear_error_items(self):
+    async def test_clear_error_items(self, provision_context):
 
-        def data_callback(getter: Getter):
-            return str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            return str(await getter.get_raw(), encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
-        # responses.add(responses.GET, uri, status=404)
+        provision_context([Endpoint(url=uri, status=404)])
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -469,7 +455,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        cache.get_cache_item(uri)
+        await cache.get_cache_item(uri)
 
         error_items_before_clear = cache.get_error_items()
         assert len(error_items_before_clear) == 1
@@ -477,19 +463,19 @@ class TestResourceCache:
         error_items_after_clear = cache.get_error_items()
         assert len(error_items_after_clear) == 0
 
-    # @responses.activate
-    def test_get_resource_error_on_handle_content(self):
+    async def test_get_resource_error_on_handle_content(self, provision_context):
 
         class MyErrorType(Exception): ...
 
-        def data_callback(getter: Getter):
-            value = str(getter.get_raw(), encoding="utf-8")
+        async def data_callback(getter: Getter):
+            value = str(await getter.get_raw(), encoding="utf-8")
             raise MyErrorType(value)
 
         update_callback = Mock()
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
-        # endpoint = responses.add(responses.GET, uri, body="NOPE")
+        endpoint = Endpoint(url=uri, body="NOPE")
+        provision_context([endpoint])
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -497,9 +483,9 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        result = cache.get_cache_item(uri)
+        result = await cache.get_cache_item(uri)
 
-        # assert endpoint.call_count == 1
+        assert endpoint.call_count == 1
 
         assert result.content is None
         assert result.raw_uri == uri
