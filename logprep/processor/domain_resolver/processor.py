@@ -302,10 +302,10 @@ class DomainResolver(Processor):
                 pass
             # Log as warning, since this could stem from a configuration error
             case FailedResult(FailureType.NO_NAMESERVERS, error) if error:
-                logger.warning(error)
+                logger.warning("Failed to resolve %s: %s", domain, error)
             # Log every other event driven errors as info and adjust processor log level if needed
             case FailedResult(_, error) if error:
-                logger.info(error)
+                logger.info("Failed to resolve %s: %s", domain, error)
 
     def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)

@@ -422,10 +422,11 @@ class TestDomainResolver(BaseProcessorTestCase):
             "description": "",
         }
         self._load_rule(rule)
-        document = {"fqdn": "https://www.google.de"}
+        domain = "www.google.de"
+        document = {"fqdn": f"https://{domain}"}
         with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = NoNameservers
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
             with caplog.at_level(logging.INFO):
                 self.object.process(document)
-                assert "All nameservers failed to answer the query" in caplog.text
+                assert f"Failed to resolve {domain}: All nameservers failed to answer the query." in caplog.text
