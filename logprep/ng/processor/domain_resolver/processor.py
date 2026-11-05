@@ -222,7 +222,7 @@ class DomainResolver(Processor):
                 name="domain_resolver_no_nameserver",
             )
         )
-        """Number of domains for which no answer was given"""
+        """Number of resolve attempts for which no nameserver was found"""
 
     __slots__ = [
         "_dns_resolver",
