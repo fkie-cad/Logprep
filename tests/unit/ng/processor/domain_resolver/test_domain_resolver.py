@@ -422,4 +422,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
             with caplog.at_level(logging.INFO):
                 await self.object.process(event)
-                assert f"Failed to resolve {domain}: All nameservers failed to answer the query." in caplog.text
+                assert (
+                    f"Failed to resolve {domain}: All nameservers failed to answer the query."
+                    in caplog.text
+                )
