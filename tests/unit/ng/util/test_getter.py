@@ -38,17 +38,19 @@ class TestHttpGetter:
 
         assert isinstance(http_getter, HttpGetter)
 
-    async def test_get_json_returns_json_content(self, aiohttp_server):
-        async def handler(_: web.Request) -> web.Response:
-            return web.json_response({"key": "value"})
+    async def test_get_json_returns_json_content(self, provision_context):
+        url = "https://example.com/data.json"
+        expected = {"key": "value"}
 
-        app = web.Application()
-        app.router.add_get("/data.json", handler)
-        server = await aiohttp_server(app)
+        provision_context(
+            {
+                url: {"body": expected},
+            }
+        )
 
-        http_getter = GetterFactory.from_string(str(server.make_url("/data.json")))
+        http_getter = GetterFactory.from_string(url)
 
-        assert await http_getter.get_json() == {"key": "value"}
+        assert await http_getter.get_json() == expected
 
     async def test_sends_logprep_version_in_user_agent(self, aiohttp_server):
         received_user_agent = None

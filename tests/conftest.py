@@ -16,6 +16,7 @@ import aiohttp
 import pytest
 import responses
 from _pytest.mark.structures import ParameterSet
+from aioresponses import aioresponses
 from prometheus_client import REGISTRY
 
 from logprep.registry import Registry
@@ -145,52 +146,52 @@ def mock_env(env_dict: dict) -> _MockEnv:
     return _MockEnv(env_dict)
 
 
+class MockClientResponse(aiohttp.ClientResponse):
+    """
+    Workaround for aioresponses compatibility with aiohttp >= 3.14.
+
+    aiohttp requires the 'stream_writer' argument, which aioresponses
+    does not yet provide. Remove once upstream support is released.
+
+    See: https://github.com/pnuckowski/aioresponses/pull/288
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("stream_writer", MagicMock(output_size=0))
+        super().__init__(*args, **kwargs)
+
+
 @pytest.fixture
 def provision_context(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
-) -> Generator[Callable[[dict], None]]:
+) -> Generator[Callable[[dict], None], None]:
     project_root = pytestconfig.rootpath
-    aiohttp_responses: dict[str, Any] = {}
 
-    async def mock_aiohttp_request(self, method, url, **kwargs):
-        url = str(url)
-
-        if method.upper() != "GET" or url not in aiohttp_responses:
-            raise AssertionError(f"Unexpected aiohttp request: {method} {url}")
-
-        spec = aiohttp_responses[url]
-        body = json.dumps(spec["body"])
-
-        response = MagicMock()
-        response.status = 200
-        response.headers = {"Content-Type": spec.get("content_type", "application/json")}
-        response.json = AsyncMock(return_value=spec["body"])
-        response.text = AsyncMock(return_value=body)
-        response.read = AsyncMock(return_value=body.encode())
-        response.__aenter__.return_value = response
-
-        return response
-
-    monkeypatch.setattr(
-        aiohttp.ClientSession,
-        "_request",
-        mock_aiohttp_request,
-    )
-
-    with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses:
+    with (
+        responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses,
+        aioresponses(passthrough=["http://127.0.0.1:", "http://localhost:"]) as mocked_aiohttp,
+    ):
 
         def _provision(context: dict) -> None:
             for path, spec in context.items():
                 if path.startswith(("http://", "https://")):
+                    body = json.dumps(spec["body"])
+                    content_type = spec.get("content_type", "application/json")
+
                     mocked_responses.add(
                         responses.GET,
                         path,
-                        body=json.dumps(spec["body"]),
-                        content_type=spec.get("content_type", "application/json"),
+                        body=body,
+                        content_type=content_type,
                     )
 
-                    # Additionally mock aiohttp requests
-                    aiohttp_responses[path] = spec
+                    mocked_aiohttp.get(
+                        path,
+                        body=body,
+                        content_type=content_type,
+                        response_class=MockClientResponse,
+                        repeat=True,
+                    )
 
                 else:
                     file_path = tmp_path / path.removeprefix("file://")

@@ -84,6 +84,7 @@ dev = [
   "pytest-aiohttp",
   "pytest-timeout",
   "responses",
+  "aioresponses",
   "jinja2",
   "cibuildwheel",
   "asgiref",
