@@ -331,7 +331,7 @@ class DomainResolver(Processor):
         self.metrics.resolved_new.inc(1)
         return result
 
-    def _add_resolve_infos_to_event(self, event: dict, rule, resolved_ip: str):
+    def _add_resolve_infos_to_event(self, event: dict, rule: DomainResolverRule, resolved_ip: str):
         if resolved_ip:
             self._write_target_field(event, rule, resolved_ip)
 
