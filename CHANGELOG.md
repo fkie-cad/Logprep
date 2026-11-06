@@ -25,6 +25,7 @@
 * examples/k8s: run Kafka 4.3.1 on the official `apache/kafka` image instead of the archived bitnami chart
 * examples/k8s: use the official opensearch helm charts and images (3.9.0) instead of the archived bitnami chart
 * ci: remove deprecated GHA dependency for doc preview links; do it ourselves
+* util: rename field mapping template to field template
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema

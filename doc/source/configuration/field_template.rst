@@ -1,9 +1,9 @@
-.. _field_mapping_template:
+.. _field_template:
 
-Field mapping templates
-=======================
+Field templates
+===============
 
-Field mapping templates build a mapping from literal values and expressions.
+Field templates build a mapping from literal values and expressions.
 Use them in processor options that explicitly support templates, such as the
 selective extractor's :ref:`event_template <selective_extractor_event_template>`.
 They are not (yet) expanded in other configuration options.
@@ -42,7 +42,7 @@ For example, if ``source_event.retries`` is the number ``3``,
 ``'${source_event.retries}'`` produces a number, not the string ``"3"``.
 A referenced list or mapping remains a list or mapping.
 To produce a string, use ``'${source_event.retries | str}'``.
-See :ref:`field_mapping_template_errors` for missing-field and failure behavior.
+See :ref:`field_template_errors` for missing-field and failure behavior.
 
 Expression results are used as values, without interpreting them as further
 templates. Keys inside a mapping obtained by a lookup are also preserved as they
@@ -67,7 +67,7 @@ must be no whitespace around the dots. A bare context name such as
 Escape special characters in field names with a backslash. For example,
 ``'${source_event.host\.name}'`` reads the single field named ``host.name``,
 whereas ``'${source_event.host.name}'`` reads ``name`` inside ``host``.
-See :ref:`field_mapping_template_escaping` for more examples.
+See :ref:`field_template_escaping` for more examples.
 
 Output keys and nested paths
 ----------------------------
@@ -125,7 +125,7 @@ name, use an explicit nested mapping with quoted string keys:
     codes:
       '0': success
 
-.. _field_mapping_template_calls:
+.. _field_template_calls:
 
 Function calls and pipes
 ------------------------
@@ -177,7 +177,7 @@ Arguments can be lookups, nested calls, piped expressions, or these literals:
 Use ordinary YAML values for standalone literals. Expressions such as ``${42}``
 and ``${"hello"}`` are unsupported; literals are supported as function arguments.
 
-.. _field_mapping_template_default_functions:
+.. _field_template_default_functions:
 
 Default functions
 -----------------
@@ -237,7 +237,7 @@ as keyword names; ``concat`` accepts positional arguments only.
 
 Convert explicitly when needed: ``'${source_event.id | str | lower}'``.
 
-.. _field_mapping_template_errors:
+.. _field_template_errors:
 
 Missing fields and invalid templates
 -----------------------------------
@@ -258,7 +258,7 @@ If evaluation fails, no partial mapping is returned.
 
 Each processor documents how it handles these errors.
 
-.. _field_mapping_template_escaping:
+.. _field_template_escaping:
 
 Quoting and escaping
 --------------------

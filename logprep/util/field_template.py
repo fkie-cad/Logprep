@@ -1,4 +1,4 @@
-"""Compile field mapping templates against static context and evaluate runtime context."""
+"""Compile field templates against static context and evaluate runtime context."""
 
 import inspect
 import re
@@ -11,7 +11,7 @@ from attr import field
 from attrs import define
 
 from logprep.abc.exceptions import LogprepException
-from logprep.util.field_mapping_template_helpers import DEFAULT_FUNCTIONS, Function
+from logprep.util.field_template_helpers import DEFAULT_FUNCTIONS, Function
 from logprep.util.helper import (
     MISSING,
     FieldValue,
@@ -44,7 +44,7 @@ _NUMBER_PATTERN: Final[re.Pattern[str]] = re.compile(
 )
 
 
-class FieldMappingTemplateConfigError(LogprepException):
+class FieldTemplateConfigError(LogprepException):
     """Invalid configuration with an optional zero-based template source position.
 
     ``position`` is relative to the complete string being scanned or parsed.
@@ -58,11 +58,11 @@ class FieldMappingTemplateConfigError(LogprepException):
         self.position = position
 
 
-class FieldMappingTemplateEvaluationError(LogprepException):
-    """A compiled field mapping template could not be evaluated."""
+class FieldTemplateEvaluationError(LogprepException):
+    """A compiled field template could not be evaluated."""
 
 
-class FieldMappingTemplateLookupError(FieldMappingTemplateEvaluationError):
+class FieldTemplateLookupError(FieldTemplateEvaluationError):
     """A required runtime context root or field path could not be resolved.
 
     Missing fields and context roots raise this error. An explicit ``None``
@@ -142,9 +142,7 @@ class Lexer:
 
             if character == _ESCAPE_CHARACTER:
                 if self.position + 1 == len(self.template):
-                    raise FieldMappingTemplateConfigError(
-                        "Trailing backslash", position=self.position
-                    )
+                    raise FieldTemplateConfigError("Trailing backslash", position=self.position)
 
                 characters.append(self.template[self.position + 1])
                 self.position += 2
@@ -198,9 +196,7 @@ class Lexer:
 
             if character == _ESCAPE_CHARACTER:
                 if self.position + 1 == len(self.template):
-                    raise FieldMappingTemplateConfigError(
-                        "Trailing backslash", position=self.position
-                    )
+                    raise FieldTemplateConfigError("Trailing backslash", position=self.position)
 
                 self.position += 1
                 character = self.template[self.position]
@@ -208,7 +204,7 @@ class Lexer:
             characters.append(character)
             self.position += 1
 
-        raise FieldMappingTemplateConfigError("Unclosed string", position=start)
+        raise FieldTemplateConfigError("Unclosed string", position=start)
 
     def _scan_number(self) -> Token | None:
         number = _NUMBER_PATTERN.match(self.template, self.position)
@@ -276,7 +272,7 @@ class Lexer:
         own token kinds; token values remain strings.
 
         Incomplete escapes and unclosed strings raise
-        ``FieldMappingTemplateConfigError``. Expression structure is validated
+        ``FieldTemplateConfigError``. Expression structure is validated
         by the parser.
         """
 
@@ -337,12 +333,12 @@ class Lookup:
     ) -> "Constant | Lookup":
         """Resolve static lookups, copying mutable values; retain runtime lookups.
 
-        Raise ``FieldMappingTemplateConfigError`` if a static path is missing.
+        Raise ``FieldTemplateConfigError`` if a static path is missing.
         """
         if self.context in static_context:
             value = get_field_value(static_context[self.context], self.path)
             if value is MISSING:
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     f"Cannot resolve lookup path {self.path!r} "
                     f"in static context root {self.context!r} during constant folding"
                 )
@@ -354,16 +350,16 @@ class Lookup:
     def evaluate(self, runtime_context: dict[str, JsonObject]) -> FieldValue:
         """Resolve a runtime field and copy mutable values unless borrowing is enabled.
 
-        Missing roots and fields raise ``FieldMappingTemplateLookupError``.
+        Missing roots and fields raise ``FieldTemplateLookupError``.
         """
         if self.context not in runtime_context:
-            raise FieldMappingTemplateLookupError(
+            raise FieldTemplateLookupError(
                 f"Missing runtime context root {self.context!r} for lookup path {self.path!r}"
             )
 
         value = get_field_value(runtime_context[self.context], self.path)
         if value is MISSING:
-            raise FieldMappingTemplateLookupError(
+            raise FieldTemplateLookupError(
                 f"Cannot resolve lookup path {self.path!r} "
                 f"in runtime context root {self.context!r}"
             )
@@ -461,7 +457,7 @@ class Call:
     def evaluate(self, runtime_context: dict[str, JsonObject]) -> FieldValue:
         """Evaluate positional arguments, then kwargs, and invoke the function.
 
-        A missing argument raises ``FieldMappingTemplateLookupError`` without
+        A missing argument raises ``FieldTemplateLookupError`` without
         invoking the function.
         Exceptions raised by the function propagate unchanged.
         """
@@ -494,7 +490,7 @@ class MappingOperation:
 
         Constant template keys become paths, respecting backslash-escaped dots.
         Dynamic keys remain operations. Duplicate or overlapping known paths
-        raise ``FieldMappingTemplateConfigError``, regardless of value types.
+        raise ``FieldTemplateConfigError``, regardless of value types.
         Numeric names are allowed only as standalone keys, not as path segments.
         """
         entries = self._compile_entries(static_context, functions)
@@ -546,7 +542,7 @@ class MappingOperation:
             if direct_values:
                 # An explicit assignment owns its entire path.
                 if len(group) != 1:
-                    raise FieldMappingTemplateConfigError(f"Conflicting mapping path {full_path!r}")
+                    raise FieldTemplateConfigError(f"Conflicting mapping path {full_path!r}")
 
                 prepared_value = direct_values[0]
             else:
@@ -594,7 +590,7 @@ class MappingOperation:
                 compiled_key = key
 
             if isinstance(compiled_key, Constant) and not isinstance(compiled_key.value, str):
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     f"Mapping keys must resolve to strings, got {type(compiled_key.value).__name__}"
                 )
             elif isinstance(compiled_key, Constant):
@@ -605,7 +601,7 @@ class MappingOperation:
                 any(segment.isnumeric() for segment in compiled_key.segments[1:])
                 or (compiled_key.segments[0].isnumeric() and len(compiled_key.segments) > 1)
             ):
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     "Numeric mapping path segment is not supported in a multi-segment path: "
                     f"{compiled_key.segments!r}; use an explicit nested mapping instead"
                 )
@@ -624,7 +620,7 @@ class MappingOperation:
 
         Only generated containers may be shared. Non-string keys, numeric names
         in multi-segment paths and conflicting destinations raise
-        ``FieldMappingTemplateEvaluationError``.
+        ``FieldTemplateEvaluationError``.
         """
         result: JsonObject = {}
         # Explicit dictionary values are never registered as shared containers.
@@ -638,7 +634,7 @@ class MappingOperation:
 
             key = key_op.evaluate(runtime_context)
             if not isinstance(key, str):
-                raise FieldMappingTemplateEvaluationError(
+                raise FieldTemplateEvaluationError(
                     f"Mapping keys must resolve to strings, got {type(key).__name__}"
                 )
 
@@ -650,7 +646,7 @@ class MappingOperation:
                 path = tuple(get_dotted_field_list(key))
 
                 if len(path) > 1 and any(segment.isnumeric() for segment in path):
-                    raise FieldMappingTemplateEvaluationError(
+                    raise FieldTemplateEvaluationError(
                         f"Numeric mapping path segment is not supported "
                         f"in a multi-segment path: {path!r}"
                     )
@@ -699,7 +695,7 @@ class MappingOperation:
                     target[segment] = {}
                     containers.add(prefix)
                 elif prefix not in containers:
-                    raise FieldMappingTemplateEvaluationError(
+                    raise FieldTemplateEvaluationError(
                         f"Duplicate resolved mapping key or conflicting path " f"{destination!r}"
                     )
 
@@ -727,7 +723,7 @@ class MappingOperation:
             else:
                 name = destination[-1]
                 if name in target:
-                    raise FieldMappingTemplateEvaluationError(
+                    raise FieldTemplateEvaluationError(
                         f"Duplicate resolved mapping key or conflicting path " f"{destination!r}"
                     )
 
@@ -779,7 +775,7 @@ class KeyPath:
 class Parser:
     """Parse scanned tokens using a shared cursor and explicit whitespace rules.
 
-    Reads beyond EOF and invalid syntax raise ``FieldMappingTemplateConfigError``.
+    Reads beyond EOF and invalid syntax raise ``FieldTemplateConfigError``.
     Parsing builds unresolved calls without invoking or resolving functions.
     """
 
@@ -790,7 +786,7 @@ class Parser:
 
     def _check_eof(self) -> None:
         if self.index >= len(self.tokens):
-            raise FieldMappingTemplateConfigError("Unexpected end of template")
+            raise FieldTemplateConfigError("Unexpected end of template")
 
     def peek(self) -> Token:
         """Return the current token without consuming it or skipping whitespace."""
@@ -810,7 +806,7 @@ class Parser:
 
         if self.tokens[self.index].kind != kind:
             token = self.tokens[self.index]
-            raise FieldMappingTemplateConfigError(
+            raise FieldTemplateConfigError(
                 f"Expected {kind.name}, got {token.kind.name} ({token.value!r})",
                 position=token.position,
             )
@@ -825,7 +821,7 @@ class Parser:
     def token_at(self, index: int) -> Token:
         """Read an absolute token index without changing the parser cursor."""
         if index >= len(self.tokens):
-            raise FieldMappingTemplateConfigError("Unexpected end of template during lookahead")
+            raise FieldTemplateConfigError("Unexpected end of template during lookahead")
         return self.tokens[index]
 
     def is_sequence(self, kinds: tuple[TokenKind, ...], allow_whitespace: bool = True) -> bool:
@@ -877,7 +873,7 @@ class Parser:
                     path_segments.append("")
                 case _:
 
-                    raise FieldMappingTemplateConfigError(
+                    raise FieldTemplateConfigError(
                         f"Unexpected token {token.value!r} in mapping key; "
                         "expected literal text or a dot",
                         position=token.position,
@@ -898,7 +894,7 @@ class Parser:
 
         if not path:
             token = self.peek()
-            raise FieldMappingTemplateConfigError(
+            raise FieldTemplateConfigError(
                 f"Expected at least one field name after context root {context!r}; "
                 f"got {token.value!r}",
                 position=token.position,
@@ -933,7 +929,7 @@ class Parser:
                     return ParsedCall(name=name, args=args, kwargs=kwargs)
                 return self.parse_lookup(context=name)
             case _:
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     "Expected a literal, lookup or function call, "
                     f"got {token.kind.name} ({token.value!r})",
                     position=token.position,
@@ -993,13 +989,13 @@ class Parser:
                 self.expect(TokenKind.EQUALS)
 
                 if keyword_name in kwargs:
-                    raise FieldMappingTemplateConfigError(
+                    raise FieldTemplateConfigError(
                         f"Duplicate keyword argument {keyword_name!r}",
                         position=keyword_token.position,
                     )
 
                 if not keyword_name.isidentifier():
-                    raise FieldMappingTemplateConfigError(
+                    raise FieldTemplateConfigError(
                         f"Invalid keyword argument name {keyword_name!r}",
                         position=keyword_token.position,
                     )
@@ -1008,7 +1004,7 @@ class Parser:
             else:
                 if len(kwargs) > 0:
                     token = self.peek()
-                    raise FieldMappingTemplateConfigError(
+                    raise FieldTemplateConfigError(
                         "Positional arguments must precede keyword arguments; "
                         f"got {token.value!r}",
                         position=token.position,
@@ -1036,7 +1032,7 @@ class Parser:
             text = self.advance().value
             if self.index < len(self.tokens):
                 token = self.peek()
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     f"Unexpected token {token.value!r} "
                     "after literal text; interpolation is not supported",
                     position=token.position,
@@ -1051,7 +1047,7 @@ class Parser:
 
             token = self.peek()
             if token.kind is not TokenKind.TEXT:
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     "Expected a lookup or function call, "
                     f"got {token.kind.name} ({token.value!r})",
                     position=token.position,
@@ -1063,14 +1059,14 @@ class Parser:
 
             if self.index < len(self.tokens):
                 token = self.peek()
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     f"Unexpected token {token.value!r} after the expression",
                     position=token.position,
                 )
             return operation
 
         token = self.peek()
-        raise FieldMappingTemplateConfigError(
+        raise FieldTemplateConfigError(
             f"Expected literal text or {_EXPRESSION_START!r}, got {token.value!r}",
             position=token.position,
         )
@@ -1084,7 +1080,7 @@ def _parse_recursive(value: FieldValue) -> Operation:
 
     Raises
     ------
-    FieldMappingTemplateConfigError
+    FieldTemplateConfigError
         If a value has an unsupported type, a mapping key is not a string, or a
         string contains an invalid template.
     """
@@ -1099,7 +1095,7 @@ def _parse_recursive(value: FieldValue) -> Operation:
             mapping_operations: list[tuple[Operation | KeyPath, Operation]] = []
             for k, v in value.items():
                 if not isinstance(k, str):
-                    raise FieldMappingTemplateConfigError(
+                    raise FieldTemplateConfigError(
                         f"Mapping keys must be strings, got {type(k).__name__}"
                     )
                 key = Parser(Lexer(k, key_mode=True).scan()).parse_key()
@@ -1125,7 +1121,7 @@ def _validate_operation(
 
     Raises
     ------
-    FieldMappingTemplateConfigError
+    FieldTemplateConfigError
         If a lookup references an undeclared root or an unresolved static path,
         or a call references an unknown function or cannot bind its arguments.
     RuntimeError
@@ -1139,7 +1135,7 @@ def _validate_operation(
             return
         case Lookup():
             if op.context not in static_context and op.context not in runtime_roots:
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     f"Unknown context root {op.context!r} for lookup path {op.path!r}; "
                     "the root must be declared in static_context or runtime_roots"
                 )
@@ -1148,7 +1144,7 @@ def _validate_operation(
                 return
 
             if get_field_value(static_context[op.context], op.path) is MISSING:
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     f"Cannot resolve lookup path {op.path!r} "
                     f"in static context root {op.context!r}"
                 )
@@ -1156,7 +1152,7 @@ def _validate_operation(
             return
         case ParsedCall():
             if op.name not in functions:
-                raise FieldMappingTemplateConfigError(f"Unknown function {op.name!r}")
+                raise FieldTemplateConfigError(f"Unknown function {op.name!r}")
 
             function = functions[op.name]
 
@@ -1165,7 +1161,7 @@ def _validate_operation(
             try:
                 sig.bind(*op.args, **op.kwargs)
             except TypeError as error:
-                raise FieldMappingTemplateConfigError(
+                raise FieldTemplateConfigError(
                     f"Invalid arguments for function {op.name!r}: {error}"
                 ) from error
 
@@ -1193,7 +1189,7 @@ def _validate_operation(
 
 
 @define(frozen=True)
-class FieldMappingTemplate:
+class FieldTemplate:
     """A reusable mapping template prepared with ``compile`` and run with ``evaluate``.
 
     References use dotted context paths, such as ``${source_event.@timestamp}``
@@ -1264,7 +1260,7 @@ class FieldMappingTemplate:
         static_context: dict[str, JsonObject],
         runtime_roots: Collection[str],
         functions: Mapping[str, Function] | None = None,
-    ) -> "FieldMappingTemplate":
+    ) -> "FieldTemplate":
         """Validate and prepare a mapping, folding expressions known at configuration time.
 
         Parameters
@@ -1289,12 +1285,12 @@ class FieldMappingTemplate:
 
         Returns
         -------
-        FieldMappingTemplate
+        FieldTemplate
             A prepared template that can be evaluated repeatedly.
 
         Raises
         ------
-        FieldMappingTemplateConfigError
+        FieldTemplateConfigError
             If the configuration, root declarations, static references or function
             calls are invalid, a static key resolves to a non-string value, or
             known mapping paths duplicate or overlap one another.
@@ -1307,7 +1303,7 @@ class FieldMappingTemplate:
 
         overlapping_roots = static_context.keys() & set(runtime_roots)
         if overlapping_roots:
-            raise FieldMappingTemplateConfigError(
+            raise FieldTemplateConfigError(
                 "Context roots must not be declared as both static and runtime; "
                 f"overlapping roots: {sorted(overlapping_roots)!r}"
             )
@@ -1315,7 +1311,7 @@ class FieldMappingTemplate:
         root_operation = _parse_recursive(mapping)
 
         if not isinstance(root_operation, MappingOperation):
-            raise FieldMappingTemplateConfigError(
+            raise FieldTemplateConfigError(
                 f"Template root must be a mapping, got {type(mapping).__name__!r}"
             )
 
@@ -1350,10 +1346,10 @@ class FieldMappingTemplate:
 
         Raises
         ------
-        FieldMappingTemplateLookupError
+        FieldTemplateLookupError
             If a runtime root or field is missing, including in mapping keys,
             list elements, and function arguments. No partial result is returned.
-        FieldMappingTemplateEvaluationError
+        FieldTemplateEvaluationError
             If a key resolves to a non-string value, a runtime multi-segment path
             contains a numeric name, or resolved paths collide or overlap.
         TypeError
