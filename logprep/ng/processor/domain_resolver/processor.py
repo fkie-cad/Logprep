@@ -299,14 +299,14 @@ class DomainResolver(Processor):
         match result:
             case SuccessResult(resolved_ip) if resolved_ip:
                 self._add_resolve_infos_to_event(event, rule, resolved_ip)
-            # Log as debug, since this has no meaningful error message and metrics suffice here
             case FailedResult(FailureType.TIMEOUT, error):
+                # Log as debug, since this has no meaningful error message and metrics suffice here
                 logger.debug("Failed to resolve %s: %s", domain, error)
-            # Log as warning, since this could stem from a configuration error
             case FailedResult(FailureType.NO_NAMESERVERS, error):
+                # Log as warning, since this could stem from a configuration error
                 logger.warning("Failed to resolve %s: %s", domain, error)
-            # Log every other event driven errors as info and adjust processor log level if needed
             case FailedResult(_, error):
+                # Log other event driven errors as info and adjust processor log level if needed
                 logger.info("Failed to resolve %s: %s", domain, error)
 
     def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
