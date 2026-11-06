@@ -6,9 +6,10 @@ import inspect
 import json
 import shutil
 from collections.abc import Generator, Sequence
+from copy import deepcopy
 from multiprocessing import active_children, set_start_method
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Any, Callable, Literal, TypeAlias
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -17,14 +18,14 @@ import pytest
 import responses
 from _pytest.mark.structures import ParameterSet
 from aioresponses import aioresponses
-from attrs import define
+from attrs import define, field
 from prometheus_client import REGISTRY
 
 from logprep.registry import Registry
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.environ import _ENV_SNAPSHOT
 from logprep.util.getter import RefreshableGetter
-from logprep.util.helper import MISSING, FieldValue, Missing
+from logprep.util.helper import MISSING, FieldValue, JsonObject, Missing
 
 
 @pytest.fixture(autouse=True)
@@ -39,7 +40,7 @@ def remove_interfering_env_variables(monkeypatch):
 @pytest.fixture(autouse=True)
 def clear_prometheus_registry():
     """Clear Prometheus registry before each test to prevent state pollution"""
-    collectors = list(REGISTRY._collector_to_names.keys())
+    collectors = list(REGISTRY._collector_to_names.keys())  # pylint: disable=protected-access
     for collector in collectors:
         try:
             REGISTRY.unregister(collector)
@@ -195,6 +196,48 @@ class Endpoint:
         return "text/plain"
 
 
+@define(kw_only=True, slots=True)
+class File:
+    """Mocks a file by providing either a json-body from code or a path to copy a file from"""
+
+    path: str = ""
+    source_path: str | None = None
+    body: str | None = None
+
+    def __post_init__(self):
+        has_source = self.source_path is not None
+        has_body = self.body is not None
+        if has_source == has_body:
+            if self.source_path is None and self.body is None:
+                raise TypeError("Value needed for at least one: source_path, body")
+
+            raise ValueError("Setting both source and body is not allowed.")
+
+
+Context: TypeAlias = list[Endpoint | File]
+
+
+@define(kw_only=True, slots=True, frozen=True)
+class ProcessorTestCase:
+    id: str
+    rule: dict[str, Any]
+    event: JsonObject
+    expected: Any  # JsonObject failed for string_splitter
+    expected_extras: list[tuple[JsonObject, list[tuple[str, str]]]] = field(factory=list)
+    context: Context | None = None
+
+    def case_to_param(self) -> ParameterSet:
+        """Export a ProcessorTestCase as a Pytest-ParameterSet.
+        Uses a deepcopy to avoid problems with in-place changes on event.
+        """
+        return pytest.param(deepcopy(self), id=self.id)
+
+
+@define(kw_only=True, slots=True, frozen=True)
+class ProcessorFailureTestCase(ProcessorTestCase):
+    error_message: str
+
+
 @pytest.fixture
 def provision_context(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
@@ -207,27 +250,38 @@ def provision_context(
     ):
 
         def _provision(context: dict | list) -> None:
+            if not context:  # includes falsy values such as []
+                return
+
             if isinstance(context, list):
                 for spec in context:
-                    assert isinstance(spec, Endpoint)
-                    mocked_aiohttp.add(
-                        spec.url,
-                        method=spec.method,
-                        status=spec.status,
-                        reason=spec.reason,
-                        body=spec.get_body(),
-                        content_type=spec.get_content_type(),
-                        response_class=MockClientResponse,
-                        repeat=True,
-                        callback=spec.on_call,
-                    )
+                    match spec:
+                        case Endpoint():
+                            mocked_aiohttp.add(
+                                spec.url,
+                                method=spec.method,
+                                status=spec.status,
+                                reason=spec.reason,
+                                body=spec.get_body(),
+                                content_type=spec.get_content_type(),
+                                response_class=MockClientResponse,
+                                repeat=True,
+                                callback=spec.on_call,
+                            )
+                        case _:
+                            assert False, "Unhandled type."
             else:
                 assert isinstance(context, dict)
                 for path, spec in context.items():
                     if path.startswith(("http://", "https://")):
+                        body = spec.get("body")
+                        assert body is not None
 
-                        body = json.dumps(spec["body"])
                         content_type = spec.get("content_type", "application/json")
+                        method = spec.get("method", "GET")
+                        status = spec.get("status", 200)
+                        # TODO: map body to concreted type depending on content_type?
+                        body = json.dumps(body)
 
                         mocked_responses.add(
                             responses.GET,
@@ -236,8 +290,10 @@ def provision_context(
                             content_type=content_type,
                         )
 
-                        mocked_aiohttp.get(
+                        mocked_aiohttp.add(
                             path,
+                            method=method,
+                            status=status,
                             body=body,
                             content_type=content_type,
                             response_class=MockClientResponse,
