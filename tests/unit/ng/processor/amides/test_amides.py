@@ -38,6 +38,7 @@ class TestAmides(BaseProcessorTestCase[Amides]):
     ]
 
     async def test_process_event_malicious_process_command_line(self):
+        await self.object.setup()
         document = {
             "winlog": {
                 "event_id": 1,
@@ -46,9 +47,7 @@ class TestAmides(BaseProcessorTestCase[Amides]):
             },
         }
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-
-        async with self.create_and_setup_processor() as instance:
-            await instance.process(event)
+        await self.object.process(event)
 
         result = event.data.get("amides")
         assert result
@@ -56,10 +55,10 @@ class TestAmides(BaseProcessorTestCase[Amides]):
             "attributions"
         )
         assert len(result["attributions"]) == 10
-        assert instance.metrics.total_cmdlines.value == 1
-        assert instance.metrics.new_results.value == 1
-        assert instance.metrics.num_cache_entries.value == 1
-        assert instance.metrics.cache_load.value == 0.2
+        assert self.object.metrics.total_cmdlines.value == 1
+        assert self.object.metrics.new_results.value == 1
+        assert self.object.metrics.num_cache_entries.value == 1
+        assert self.object.metrics.cache_load.value == 0.2
 
     async def test_process_event_benign_process_command_line(self):
         await self.object.setup()
