@@ -4,6 +4,7 @@ import contextlib
 import functools
 import inspect
 import json
+import re
 import shutil
 from collections.abc import Generator, Sequence
 from copy import deepcopy
@@ -190,11 +191,12 @@ class Response:
     body: str | bytes | None = None
     json: FieldValue | Missing = MISSING
     content_type: str | None = None
+    headers: dict[str, str] | None = None
 
     def get_body(self) -> str | bytes | None:
         if self.json is not MISSING:
             return json.dumps(self.json)
-        return self.body
+        return self.body or ""
 
     def get_content_type(self) -> str:
         if self.content_type is not None:
@@ -206,10 +208,21 @@ class Response:
 
 @define(kw_only=True)
 class Endpoint(Response):
-    url: str
+    url: str | None = None
+    pattern: str | re.Pattern[str] | None = None
+
     method: Literal["HEAD", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"] = "GET"
     responses: Sequence[Response] | None = None
     _call_count: int = 0
+
+    def get_url(self) -> str | re.Pattern[str]:
+        if self.pattern is not None:
+            if isinstance(self.pattern, str):
+                return re.compile(self.pattern)
+            return self.pattern
+        if self.url is None:
+            return re.compile(r"https?:.*")
+        return self.url
 
     @property
     def call_count(self) -> int:
@@ -271,11 +284,12 @@ def provision_context(
                 elif isinstance(context, Endpoint):
                     for req, repeat in context.get_requests():
                         mocked_aiohttp.add(
-                            context.url,
+                            context.get_url(),
                             method=context.method,
                             status=req.status,
                             reason=req.reason,
                             body=req.get_body(),
+                            headers=req.headers,
                             content_type=req.get_content_type(),
                             response_class=MockClientResponse,
                             repeat=repeat,
@@ -340,7 +354,7 @@ def provision_context(
                             else:
                                 file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
 
-            monkeypatch.chdir(tmp_path)
+            # monkeypatch.chdir(tmp_path)
 
         yield _provision
 

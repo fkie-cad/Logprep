@@ -34,9 +34,9 @@ from collections.abc import Sequence
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
+from logprep.ng.processor.list_comparison.rule import ListComparisonRule
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
-from logprep.ng.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import (
     FieldValue,
     add_fields_to,

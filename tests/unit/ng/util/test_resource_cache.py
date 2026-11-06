@@ -25,7 +25,7 @@ class TestResourceCache:
         resource_content = str(uuid4())
         uri = "https://example.dd/foo"
         endpoint = Endpoint(url=uri, body=resource_content)
-        provision_context([endpoint])
+        provision_context(endpoint)
 
         async def data_callback(getter: Getter):
             return str(await getter.get_raw(), encoding="utf-8")
@@ -64,7 +64,7 @@ class TestResourceCache:
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
         endpoint = Endpoint(url=uri, body=resource_content)
-        provision_context([endpoint])
+        provision_context(endpoint)
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -87,7 +87,7 @@ class TestResourceCache:
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
         endpoint = Endpoint(url=uri, body=resource_content)
-        provision_context([endpoint])
+        provision_context(endpoint)
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -112,7 +112,7 @@ class TestResourceCache:
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
         endpoint = Endpoint(url=uri, body=resource_content)
-        provision_context([endpoint])
+        provision_context(endpoint)
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -140,7 +140,7 @@ class TestResourceCache:
         raw_uri = "https://example.dd/${MY_ENV}"
         resolved_uri = "https://example.dd/foo"
         endpoint = Endpoint(url=resolved_uri, body=resource_content)
-        provision_context([endpoint])
+        provision_context(endpoint)
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -205,7 +205,7 @@ class TestResourceCache:
         raw_uri = "https://example.dd/${nested.value}"
         resolved_uri = "https://example.dd/foo"
         endpoint = Endpoint(url=resolved_uri, body=resource_content)
-        provision_context([endpoint])
+        provision_context(endpoint)
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -239,7 +239,7 @@ class TestResourceCache:
         raw_uri = "https://example.dd/${nested.value}"
         resolved_uri = "https://example.dd/foo"
         endpoint = Endpoint(url=resolved_uri, body=resource_content)
-        provision_context([endpoint])
+        provision_context(endpoint)
 
         cache = ResourceCache[str](
             on_data=data_callback,
@@ -393,7 +393,7 @@ class TestResourceCache:
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
         endpoint = Endpoint(url=uri, status=404, reason="NOT FOUND")
-        provision_context([endpoint])
+        provision_context(endpoint)
         cache = ResourceCache[str](
             on_data=data_callback,
             on_cleanup=cleanup_callback,
@@ -426,7 +426,7 @@ class TestResourceCache:
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
         endpoint = Endpoint(url=uri, status=404)
-        provision_context([endpoint])
+        provision_context(endpoint)
         cache = ResourceCache[str](
             on_data=data_callback,
             on_cleanup=cleanup_callback,
@@ -475,7 +475,7 @@ class TestResourceCache:
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
         endpoint = Endpoint(url=uri, body="NOPE")
-        provision_context([endpoint])
+        provision_context(endpoint)
 
         cache = ResourceCache[str](
             on_data=data_callback,
