@@ -10,7 +10,6 @@
 ### Improvements
 * util: add field mapping template utility
 * cache: hold a payload in addition to timestamps
-* domain_resolver: add metrics for cached timed-out domains and successfully resolved domains
 * domain_resolver: adapt `domain_resolver` to changes of `cache`
 * domain_resolver: add `resolved_domains`, `timeouts_cached`, `no_answer_domains` and `no_nameserver` metric
 
