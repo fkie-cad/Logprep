@@ -262,85 +262,83 @@ def provision_context(
         aioresponses(passthrough=["http://127.0.0.1:", "http://localhost:"]) as mocked_aiohttp,
     ):
 
-        def _provision(context: dict | list) -> None:
-            if not context:  # includes falsy values such as []
-                return
+        def _provision(*args: Any) -> None:
+            for context in args:
+                if isinstance(context, list):
+                    for item in context:
+                        _provision(item)
 
-            if isinstance(context, list):
-                for item in context:
-                    _provision(item)
-
-            elif isinstance(context, Endpoint):
-                for req, repeat in context.get_requests():
-                    mocked_aiohttp.add(
-                        context.url,
-                        method=context.method,
-                        status=req.status,
-                        reason=req.reason,
-                        body=req.get_body(),
-                        content_type=req.get_content_type(),
-                        response_class=MockClientResponse,
-                        repeat=repeat,
-                        callback=context.on_call,
-                    )
-            elif isinstance(context, File):
-                file_path = tmp_path / context.path.removeprefix("file://")
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-
-                if context.source_path is not None:
-                    ref_path = Path(context.source_path)
-                    src_path = ref_path if ref_path.is_absolute() else project_root / ref_path
-                    shutil.copy(src_path, file_path)
-                elif context.json is not MISSING:
-                    file_path.write_text(json.dumps(context.json), encoding="utf-8")
-                elif isinstance(context.body, bytes):
-                    file_path.write_bytes(context.body)
-                else:
-                    content = context.body or ""
-                    assert isinstance(content, str)
-                    file_path.write_text(content)
-
-            elif isinstance(context, dict):
-                for path, spec in context.items():
-                    if path.startswith(("http://", "https://")):
-                        body = spec.get("body")
-                        assert body is not None
-
-                        content_type = spec.get("content_type", "application/json")
-                        method = spec.get("method", "GET")
-                        status = spec.get("status", 200)
-                        # TODO: map body to concreted type depending on content_type?
-                        body = json.dumps(body)
-
-                        mocked_responses.add(
-                            responses.GET,
-                            path,
-                            body=body,
-                            content_type=content_type,
-                        )
-
+                elif isinstance(context, Endpoint):
+                    for req, repeat in context.get_requests():
                         mocked_aiohttp.add(
-                            path,
-                            method=method,
-                            status=status,
-                            body=body,
-                            content_type=content_type,
+                            context.url,
+                            method=context.method,
+                            status=req.status,
+                            reason=req.reason,
+                            body=req.get_body(),
+                            content_type=req.get_content_type(),
                             response_class=MockClientResponse,
-                            repeat=True,
+                            repeat=repeat,
+                            callback=context.on_call,
                         )
+                elif isinstance(context, File):
+                    file_path = tmp_path / context.path.removeprefix("file://")
+                    file_path.parent.mkdir(parents=True, exist_ok=True)
 
+                    if context.source_path is not None:
+                        ref_path = Path(context.source_path)
+                        src_path = ref_path if ref_path.is_absolute() else project_root / ref_path
+                        shutil.copy(src_path, file_path)
+                    elif context.json is not MISSING:
+                        file_path.write_text(json.dumps(context.json), encoding="utf-8")
+                    elif isinstance(context.body, bytes):
+                        file_path.write_bytes(context.body)
                     else:
-                        file_path = tmp_path / path.removeprefix("file://")
-                        file_path.parent.mkdir(parents=True, exist_ok=True)
+                        content = context.body or ""
+                        assert isinstance(content, str)
+                        file_path.write_text(content)
 
-                        if "source" in spec:
-                            ref_path = Path(spec["source"])
-                            src_path = (
-                                ref_path if ref_path.is_absolute() else project_root / ref_path
+                elif isinstance(context, dict):
+                    for path, spec in context.items():
+                        if path.startswith(("http://", "https://")):
+                            body = spec.get("body")
+                            assert body is not None
+
+                            content_type = spec.get("content_type", "application/json")
+                            method = spec.get("method", "GET")
+                            status = spec.get("status", 200)
+                            # TODO: map body to concreted type depending on content_type?
+                            body = json.dumps(body)
+
+                            mocked_responses.add(
+                                responses.GET,
+                                path,
+                                body=body,
+                                content_type=content_type,
                             )
-                            shutil.copy(src_path, file_path)
+
+                            mocked_aiohttp.add(
+                                path,
+                                method=method,
+                                status=status,
+                                body=body,
+                                content_type=content_type,
+                                response_class=MockClientResponse,
+                                repeat=True,
+                            )
+
                         else:
-                            file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
+                            file_path = tmp_path / path.removeprefix("file://")
+                            file_path.parent.mkdir(parents=True, exist_ok=True)
+
+                            if "source" in spec:
+                                ref_path = Path(spec["source"])
+                                src_path = (
+                                    ref_path if ref_path.is_absolute() else project_root / ref_path
+                                )
+                                shutil.copy(src_path, file_path)
+                            else:
+                                file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
 
             monkeypatch.chdir(tmp_path)
 
