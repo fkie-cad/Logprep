@@ -24,9 +24,11 @@ class TestFieldNameReplacer(BaseProcessorTestCase[FieldNameReplacer]):
 
     @pytest.mark.parametrize("rule, event, expected, _context", test_cases)
     async def test_replaces_characters_in_field_names(self, rule, event, expected, _context):
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
 
-        result = await self.object.process(LogEvent(event, original=b"", input_meta=InputMeta()))
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(LogEvent(event, original=b"", input_meta=InputMeta()))
 
         assert not result.errors
         assert result.data == expected

@@ -46,10 +46,12 @@ class TestTimestamper(BaseProcessorTestCase[Timestamper]):
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     async def test_testcases(self, testcase, rule, event, expected):
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
 
-        await self.object.process(event)
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
 
         assert event.data == expected, testcase
 
@@ -65,10 +67,12 @@ class TestTimestamper(BaseProcessorTestCase[Timestamper]):
         expected,
         error_message,
     ):
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
 
-        result = await self.object.process(event)
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
 
         assert len(result.warnings) == 1
         assert re.match(rf".*{error_message}", str(result.warnings[0]))

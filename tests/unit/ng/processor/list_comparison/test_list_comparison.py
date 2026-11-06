@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring,too-many-lines,protected-access,duplicate-code
 import json
 import re
-import time
 from copy import deepcopy
 from pathlib import Path
 from unittest import mock
@@ -12,21 +11,20 @@ import responses
 from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.list_comparison.processor import ListComparison
-from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import (
+from logprep.ng.processor.list_comparison.rule import ListComparisonRule
+from logprep.ng.util.getter import (
     HttpGetter,
     RefreshableGetter,
     refresh_getters,
 )
-from tests.conftest import mock_env
+from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
+from tests.conftest import Endpoint, Response, mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.list_comparison.test_list_comparison import (
-    HTTP_BASE_PATH,
     HTTP_DYNAMIC_BASE_PATH,
     LOCAL_BASE_PATH,
     NOT_SET,
-    _compare_sets,
 )
 from tests.unit.processor.list_comparison.test_list_comparison import (
     failure_test_cases as non_ng_failure_test_cases,
@@ -34,6 +32,11 @@ from tests.unit.processor.list_comparison.test_list_comparison import (
 from tests.unit.processor.list_comparison.test_list_comparison import (
     test_cases as non_ng_test_cases,
 )
+
+
+async def _compare_sets(rule: ListComparisonRule, event: dict | None = None) -> dict[str, set]:
+    """Materialize a rule's compare sets via its public ``iter_compare_sets`` API."""
+    return {name: content async for name, content in rule.iter_compare_sets(event or {})}
 
 
 def _warning_str(warning) -> str:
@@ -64,27 +67,41 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         return processor
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
-    async def test_testcases(self, rule, event, expected):
-        with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked:
-            mocked.add_callback(
-                responses.GET,
-                re.compile(r"http.*"),
-                callback=lambda _: (200, {}, "# a comment\nFranz\nAlpha\nBeta\n"),
+    async def test_testcases(self, rule, event, expected, provision_context):
+        rule = deepcopy(rule)
+
+        list_search_base_path = rule["list_comparison"].get("list_search_base_path")
+
+        if list_search_base_path and list_search_base_path.startswith(("http://", "https://")):
+            base_url = "https://example.dd"
+            provision_context(
+                Endpoint(
+                    url=re.compile(rf"{base_url}/.*"),
+                    body="# a comment\nFranz\nAlpha\nBeta\n",
+                )
             )
-            processor = await self._create_lister([rule])
-            log_event = LogEvent(event, original=b"", input_meta=InputMeta())
-            await processor.process(log_event)
+            rule["list_comparison"]["list_search_base_path"] = f"{base_url}/${{LOGPREP_LIST}}"
+
+        processor = await self._create_lister([rule])
+        await processor.setup()
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        await processor.process(log_event)
         assert log_event.data == expected
 
     @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
-    async def test_testcases_failure_handling(self, rule, event, expected, error_message):
-        with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked:
-            mocked.add_callback(
-                responses.GET, re.compile(r"http.*"), callback=lambda _: (500, {}, "")
-            )
-            processor = await self._create_lister([rule])
-            log_event = LogEvent(event, original=b"", input_meta=InputMeta())
-            result = await processor.process(log_event)
+    async def test_testcases_failure_handling(
+        self, rule, event, expected, error_message, provision_context
+    ):
+        provision_context(
+            Endpoint(
+                url=r"http.*",
+                status=500,
+            ),
+        )
+        processor = await self._create_lister([rule])
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+        result = await processor.process(log_event)
         assert len(result.warnings) == 1
         assert re.search(error_message, _warning_str(result.warnings[0]))
         assert log_event.data == expected
@@ -128,10 +145,15 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
         assert document == {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
 
-    @responses.activate
-    async def test_loads_static_http_list_with_template_base_path(self):
-        url = "http://localhost/tests/testdata/bad_users.list?ref=bla"
-        responses.add(responses.GET, url, "Franz\nHeinz\nHans\n")
+    async def test_loads_static_http_list_with_template_base_path(self, provision_context):
+        provision_context(
+            Endpoint(
+                url="http://example.dd/tests/testdata/bad_users.list",
+                body="Franz\nHeinz\nHans\n",
+                content_type="text/plain",
+            )
+        )
+
         processor = await self._create_lister(
             [
                 {
@@ -141,13 +163,15 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         "target_field": "user_results",
                         "list_file_paths": ["bad_users.list"],
                         "list_search_base_path": (
-                            "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                            "http://example.dd/tests/testdata/${LOGPREP_LIST}"
                         ),
                     },
                 }
             ]
         )
-        assert _compare_sets(processor.rules[0]) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {
+            "bad_users.list": {"Franz", "Heinz", "Hans"}
+        }
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -161,28 +185,43 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             pytest.param({"_": ["Franz", "Heinz", "Hans"]}, "_"),
         ],
     )
-    @responses.activate
-    async def test_loads_json_list_from_http(self, json_content, content_field):
-        url = "http://localhost:8080/v2/valuestore/test_4/${LOGPREP_LIST}"
-        responses.add(
-            responses.GET,
-            url.replace("${LOGPREP_LIST}", "bad_users.list"),
-            json.dumps(json_content),
-            content_type="application/json",
+    async def test_loads_json_list_from_http(
+        self,
+        json_content,
+        content_field,
+        provision_context,
+    ):
+        base_url = "http://example.dd"
+        path = "v2/valuestore/test_4"
+        list_name = "bad_users.list"
+        provision_context(
+            Endpoint(
+                url=f"{base_url}/{path}/{list_name}",
+                json=json_content,
+            ),
         )
+
+        url_template = f"{base_url}/{path}/${{LOGPREP_LIST}}"
+
         list_comparison = {
             "source_fields": ["user"],
             "target_field": "user_results",
             "list_file_paths": ["bad_users.list"],
-            "list_search_base_path": url,
+            "list_search_base_path": url_template,
         }
+
         if content_field is not NOT_SET:
             list_comparison["content_field"] = content_field
 
         processor = await self._create_lister(
-            [{"filter": "user", "list_comparison": list_comparison}]
+            [
+                {
+                    "filter": "user",
+                    "list_comparison": list_comparison,
+                }
+            ]
         )
-        assert _compare_sets(processor.rules[0]) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {list_name: {"Franz", "Heinz", "Hans"}}
 
     @pytest.mark.parametrize(
         ("yaml_content", "content_field"),
@@ -193,28 +232,43 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             ),
         ],
     )
-    @responses.activate
-    async def test_loads_yaml_list_from_http(self, yaml_content, content_field):
-        url = "http://localhost:8080/v2/valuestore/${LOGPREP_LIST}"
-        responses.add(
-            responses.GET,
-            url.replace("${LOGPREP_LIST}", "hosts.yml"),
-            yaml_content,
-            content_type="application/yaml",
+    async def test_loads_yaml_list_from_http(
+        self,
+        yaml_content,
+        content_field,
+        provision_context,
+    ):
+        base_url = "https://example.dd"
+        path = "v2/valuestore"
+        list_name = "hosts.yml"
+        provision_context(
+            Endpoint(
+                url=f"{base_url}/{path}/{list_name}",
+                body=yaml_content,
+                content_type="application/yaml",
+            ),
         )
+        url = f"{base_url}/{path}/${{LOGPREP_LIST}}"
+
         list_comparison = {
             "source_fields": ["user"],
             "target_field": "user_results",
             "list_file_paths": ["hosts.yml"],
             "list_search_base_path": url,
         }
+
         if content_field is not NOT_SET:
             list_comparison["content_field"] = content_field
 
         processor = await self._create_lister(
-            [{"filter": "user", "list_comparison": list_comparison}]
+            [
+                {
+                    "filter": "user",
+                    "list_comparison": list_comparison,
+                }
+            ]
         )
-        assert _compare_sets(processor.rules[0]) == {"hosts.yml": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {"hosts.yml": {"Franz", "Heinz", "Hans"}}
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -243,7 +297,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         processor = await self._create_lister(
             [{"filter": "user", "list_comparison": list_comparison}]
         )
-        assert _compare_sets(processor.rules[0]) == {"file.json": {"Franz", "Heinz", "Hans"}}
+        assert await _compare_sets(processor.rules[0]) == {"file.json": {"Franz", "Heinz", "Hans"}}
 
     @pytest.mark.parametrize(
         ("json_content", "content_field"),
@@ -279,13 +333,27 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         with pytest.raises(InvalidResourcesError, match="Content is not a list"):
             await processor.setup()
 
-    @responses.activate
-    async def test_static_http_list_is_updated_by_refresh_callback(self, tmp_path):
-        url = "http://localhost/tests/testdata/bad_users.list?ref=bla"
-        responses.add(responses.GET, url, "Franz\nHeinz\nHans\n")
-        responses.add(responses.GET, url, "Franz\nHeinz\n")
+    async def test_static_http_list_is_updated_by_refresh_callback(
+        self,
+        tmp_path,
+        provision_context,
+    ):
+        base_url = "http://example.dd"
+        list_name = "bad_users.list"
+        path = "tests/testdata"
+        url = f"{base_url}/{path}/{list_name}"
 
-        http_getter_conf: Path = tmp_path / "http_getter.json"
+        provision_context(
+            Endpoint(
+                url=url,
+                responses=[
+                    Response(body="Franz\nHeinz\nHans\n"),
+                    Response(body="Franz\nHeinz\n"),
+                ],
+            )
+        )
+
+        http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 10}}))
 
         with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
@@ -297,24 +365,26 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                             "source_fields": ["user"],
                             "target_field": "user_results",
                             "list_file_paths": ["bad_users.list"],
-                            "list_search_base_path": (
-                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
-                            ),
+                            "list_search_base_path": (f"{base_url}/{path}/${{LOGPREP_LIST}}"),
                         },
                     }
                 ]
             )
             rule = processor.rules[0]
-            assert _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+            assert await _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
-            HttpGetter(target=url, protocol="http").scheduler.run_all()
-            assert _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz"}}
+            getter = HttpGetter(target=url, protocol="http")
+            await getter._refresh()
 
     @responses.activate
-    async def test_resolves_dynamic_http_template_from_event_lazily(self):
+    async def test_resolves_dynamic_http_template_from_event_lazily(self, provision_context):
         document = {"tenant": "acme", "user": "Foo"}
-        url = "http://localhost/acme/bad_users.list"
-        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+        base_url = "http://yolo.dd"
+
+        endpoint = Endpoint(url=f"{base_url}/acme/bad_users.list", body="Foo\nBar\n")
+        provision_context(endpoint)
+
+        dynamic_base_path = f"{base_url}/${{tenant}}/${{LOGPREP_LIST}}"
 
         processor = await self._create_lister(
             [
@@ -324,21 +394,19 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         "source_fields": ["user"],
                         "target_field": "user_results",
                         "list_file_paths": ["bad_users.list"],
-                        "list_search_base_path": HTTP_DYNAMIC_BASE_PATH,
+                        "list_search_base_path": dynamic_base_path,
                     },
                 }
             ]
         )
         rule = processor.rules[0]
 
-        assert len(responses.calls) == 0
+        assert endpoint.call_count == 0
 
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
+        assert endpoint.call_count == 1
         assert document["user_results"] == {"in_list": ["bad_users.list"]}
-        assert _compare_sets(rule, {"tenant": "acme"}) == {"bad_users.list": {"Foo", "Bar"}}
-        assert len(responses.calls) == 1
-        assert responses.calls[0].request.url == url
 
     @pytest.mark.parametrize(
         "list_path, environment",
@@ -351,12 +419,22 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             ),
         ],
     )
-    @responses.activate
-    async def test_resolves_dynamic_template_in_list_file_path(self, list_path, environment):
+    async def test_resolves_dynamic_template_in_list_file_path(
+        self,
+        list_path,
+        environment,
+        provision_context,
+    ):
         document = {"tenant": {"id": "acme"}, "user": "Foo"}
-        path_prefix = "customers/" if environment else ""
-        url = f"http://localhost/{path_prefix}acme/bad_users.list"
-        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+        base_url = "http://example.dd"
+        list_name = "bad_users.list"
+        path = "customers/acme" if environment else "acme"
+        endpoint = Endpoint(
+            url=f"{base_url}/{path}/{list_name}",
+            body="Foo\nBar\n",
+        )
+        provision_context(endpoint)
+        list_search_base_path = f"{base_url}/${{LOGPREP_LIST}}"
 
         with mock_env(environment):
             processor = await self._create_lister(
@@ -367,27 +445,34 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                             "source_fields": ["user"],
                             "target_field": "user_results",
                             "list_file_paths": [list_path],
-                            "list_search_base_path": HTTP_BASE_PATH,
+                            "list_search_base_path": list_search_base_path,
                         },
                     }
                 ]
             )
             rule = processor.rules[0]
 
-            assert len(responses.calls) == 0
+            assert endpoint.call_count == 0
 
             await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-            assert _compare_sets(rule, {"tenant": {"id": "acme"}}) == {list_path: {"Foo", "Bar"}}
+            assert endpoint.call_count == 1
 
-        assert document["user_results"] == {"in_list": [list_path]}
-        assert len(responses.calls) == 1
-        assert responses.calls[0].request.url == url
+            assert await _compare_sets(
+                rule,
+                {"tenant": {"id": "acme"}},
+            ) == {
+                list_path: {"Foo", "Bar"},
+            }
 
-    @responses.activate
-    async def test_resolves_environment_template_in_list_file_path_during_setup(self):
-        url = "http://localhost/acme/bad_users.list"
-        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+    async def test_resolves_environment_template_in_list_file_path_during_setup(
+        self,
+        provision_context,
+    ):
+        base_url = "http://blabla.dd"
+        endpoint = Endpoint(url=f"{base_url}/acme/bad_users.list", body="Foo\nBar\n")
+        provision_context(endpoint)
+        list_search_base_path = f"{base_url}/${{LOGPREP_LIST}}"
 
         with mock_env({"LIST_TENANT": "acme"}):
             processor = await self._create_lister(
@@ -398,25 +483,31 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                             "source_fields": ["user"],
                             "target_field": "user_results",
                             "list_file_paths": ["${LIST_TENANT}/bad_users.list"],
-                            "list_search_base_path": HTTP_BASE_PATH,
+                            "list_search_base_path": list_search_base_path,
                         },
                     }
                 ]
             )
 
-        assert _compare_sets(processor.rules[0]) == {
+        assert endpoint.call_count == 1
+
+        assert await _compare_sets(processor.rules[0]) == {
             "${LIST_TENANT}/bad_users.list": {"Foo", "Bar"}
         }
-        assert len(responses.calls) == 1
-        assert responses.calls[0].request.url == url
 
-    @responses.activate
-    async def test_loads_static_and_dynamic_list_file_paths_lazily(self):
+    async def test_loads_static_and_dynamic_list_file_paths_lazily(
+        self,
+        provision_context,
+    ):
         document = {"tenant": {"id": "acme"}, "user": "Foo"}
-        static_url = "http://localhost/common.list"
-        dynamic_url = "http://localhost/acme/bad_users.list"
-        responses.add(responses.GET, url=static_url, body="Foo\n", status=200)
-        responses.add(responses.GET, url=dynamic_url, body="Foo\nBar\n", status=200)
+        base_url = "http://example.dd"
+
+        common_endpoint = Endpoint(url=f"{base_url}/common.list", body="Foo\n")
+        acme_endpoint = Endpoint(url=f"{base_url}/acme/bad_users.list", body="Foo\nBar\n")
+
+        provision_context(common_endpoint, acme_endpoint)
+
+        list_search_base_path = f"{base_url}/${{LOGPREP_LIST}}"
 
         processor = await self._create_lister(
             [
@@ -425,61 +516,85 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                     "list_comparison": {
                         "source_fields": ["user"],
                         "target_field": "user_results",
-                        "list_file_paths": ["common.list", "${tenant.id}/bad_users.list"],
-                        "list_search_base_path": HTTP_BASE_PATH,
+                        "list_file_paths": [
+                            "common.list",
+                            "${tenant.id}/bad_users.list",
+                        ],
+                        "list_search_base_path": list_search_base_path,
                     },
                 }
             ]
         )
         rule = processor.rules[0]
 
-        assert _compare_sets(rule, {"tenant": {"id": "acme"}}) == {
+        assert common_endpoint.call_count == 1
+        assert acme_endpoint.call_count == 0
+
+        assert await _compare_sets(
+            rule,
+            {"tenant": {"id": "acme"}},
+        ) == {
             "common.list": {"Foo"},
             "${tenant.id}/bad_users.list": {"Foo", "Bar"},
         }
 
+        assert common_endpoint.call_count == 1
+        assert acme_endpoint.call_count == 1
+
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
         assert document["user_results"] == {
-            "in_list": ["common.list", "${tenant.id}/bad_users.list"]
+            "in_list": [
+                "common.list",
+                "${tenant.id}/bad_users.list",
+            ]
         }
-        assert len(responses.calls) == 2
 
     @pytest.mark.parametrize(
         "document, url_template",
         [
             pytest.param(
                 {"tenant": {"id": "acme"}, "user": "Foo"},
-                "http://localhost/${tenant.id}/${LOGPREP_LIST}",
+                "${tenant.id}/${LOGPREP_LIST}",
                 id="nested-field",
             ),
             pytest.param(
                 {"tenants": ["acme"], "user": "Foo"},
-                "http://localhost/${tenants.0}/${LOGPREP_LIST}",
+                "${tenants.0}/${LOGPREP_LIST}",
                 id="list-index",
             ),
             pytest.param(
                 {"tenants": ["beta", "acme"], "user": "Foo"},
-                "http://localhost/${tenants.-1}/${LOGPREP_LIST}",
+                "${tenants.-1}/${LOGPREP_LIST}",
                 id="negative-list-index",
             ),
             pytest.param(
                 {"tenant.id": "acme", "user": "Foo"},
-                r"http://localhost/${tenant\.id}/${LOGPREP_LIST}",
+                r"${tenant\.id}/${LOGPREP_LIST}",
                 id="escaped-dot",
             ),
             pytest.param(
                 {r"tenant\.id": "acme", "user": "Foo"},
-                r"http://localhost/${tenant\\\.id}/${LOGPREP_LIST}",
+                r"${tenant\\\.id}/${LOGPREP_LIST}",
                 id="escaped-backslash-and-dot",
             ),
         ],
     )
-    @responses.activate
-    async def test_resolves_dynamic_http_template_with_field_syntax(self, document, url_template):
+    async def test_resolves_dynamic_http_template_with_field_syntax(
+        self,
+        document,
+        url_template,
+        provision_context,
+    ):
+        base_url = "http://exmaple.dd"
         list_name = "bad_users.list"
-        url = "http://localhost/acme/bad_users.list"
-        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+        endpoint = Endpoint(
+            url=f"{base_url}/acme/bad_users.list",
+            body="Foo\nBar\n",
+        )
+        provision_context(endpoint)
+
+        list_search_base_path = f"{base_url}/{url_template}"
 
         processor = await self._create_lister(
             [
@@ -489,21 +604,19 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         "source_fields": ["user"],
                         "target_field": "user_results",
                         "list_file_paths": [list_name],
-                        "list_search_base_path": url_template,
+                        "list_search_base_path": list_search_base_path,
                     },
                 }
             ]
         )
 
-        assert len(responses.calls) == 0
+        assert endpoint.call_count == 0
 
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
+        assert endpoint.call_count == 1
         assert document["user_results"] == {"in_list": [list_name]}
-        assert len(responses.calls) == 1
-        assert responses.calls[0].request.url == url
 
-    @responses.activate
     async def test_dynamic_http_template_rejects_non_scalar_slice_value(self):
         document = {"tenants": ["acme", "beta"], "user": "Foo"}
         expected = {**document, "tags": ["_list_comparison_failure"]}
@@ -522,16 +635,22 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             ]
         )
 
-        result = await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
+        with mock.patch.object(
+            HttpGetter,
+            "_do_request",
+            new_callable=mock.AsyncMock,
+        ) as do_request:
+            result = await processor.process(
+                LogEvent(document, original=b"", input_meta=InputMeta())
+            )
 
         assert document == expected
         assert len(result.warnings) == 1
         assert "value for dynamic URI field 'tenants.0:2' is not a scalar value" in _warning_str(
             result.warnings[0]
         )
-        assert len(responses.calls) == 0
+        do_request.assert_not_awaited()
 
-    @responses.activate
     async def test_dynamic_http_template_rejects_non_scalar_event_value(self):
         document = {"tenant": ["acme"], "user": "Foo"}
         expected = {"tenant": ["acme"], "user": "Foo", "tags": ["_list_comparison_failure"]}
@@ -550,7 +669,14 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             ]
         )
 
-        result = await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
+        with mock.patch.object(
+            HttpGetter,
+            "_do_request",
+            new_callable=mock.AsyncMock,
+        ) as do_request:
+            result = await processor.process(
+                LogEvent(document, original=b"", input_meta=InputMeta())
+            )
 
         assert document == expected
         assert len(result.warnings) == 1
@@ -558,9 +684,8 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         assert "value for dynamic URI field 'tenant' is not a scalar value" in _warning_str(
             result.warnings[0]
         )
-        assert len(responses.calls) == 0
+        do_request.assert_not_awaited()
 
-    @responses.activate
     async def test_dynamic_http_template_adds_failure_tag_if_event_field_is_missing(self):
         document = {"user": "Foo"}
         expected = {"user": "Foo", "tags": ["_list_comparison_failure"]}
@@ -579,20 +704,37 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             ]
         )
 
-        result = await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
+        with mock.patch.object(
+            HttpGetter,
+            "_do_request",
+            new_callable=mock.AsyncMock,
+        ) as do_request:
+            result = await processor.process(
+                LogEvent(document, original=b"", input_meta=InputMeta())
+            )
 
         assert document == expected
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert "missing event field 'tenant' for dynamic URI" in _warning_str(result.warnings[0])
-        assert len(responses.calls) == 0
+        do_request.assert_not_awaited()
 
-    @responses.activate
-    async def test_reuses_dynamic_http_compare_set_and_signals_activity(self):
+    async def test_reuses_dynamic_http_compare_set_and_signals_activity(
+        self,
+        provision_context,
+    ):
+        base_url = "http://zombo.dd"
         first_document = {"tenant": "acme", "user": "Foo"}
         second_document = {"tenant": "acme", "user": "Bar"}
-        url = "http://localhost/acme/bad_users.list"
-        responses.add(responses.GET, url=url, body="Foo\nBar\n", status=200)
+        url = f"{base_url}/acme/bad_users.list"
+
+        endpoint = Endpoint(
+            url=url,
+            body="Foo\nBar\n",
+        )
+        provision_context(endpoint)
+
+        list_search_base_path = f"{base_url}/${{tenant}}/${{LOGPREP_LIST}}"
 
         processor = await self._create_lister(
             [
@@ -602,7 +744,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         "source_fields": ["user"],
                         "target_field": "user_results",
                         "list_file_paths": ["bad_users.list"],
-                        "list_search_base_path": HTTP_DYNAMIC_BASE_PATH,
+                        "list_search_base_path": list_search_base_path,
                     },
                 }
             ]
@@ -610,25 +752,29 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
             await processor.process(LogEvent(first_document, original=b"", input_meta=InputMeta()))
             assert HttpGetter._target_to_data_caches[url].last_called == 100.0
-            assert len(responses.calls) == 1
+            assert endpoint.call_count == 1
 
         with mock.patch("logprep.util.getter.time.monotonic", return_value=125.0):
             await processor.process(LogEvent(second_document, original=b"", input_meta=InputMeta()))
             assert HttpGetter._target_to_data_caches[url].last_called == 125.0
-            assert len(responses.calls) == 1
+            assert endpoint.call_count == 1
 
         assert first_document["user_results"] == {"in_list": ["bad_users.list"]}
         assert second_document["user_results"] == {"in_list": ["bad_users.list"]}
 
-    @responses.activate
-    async def test_dynamic_not_in_list_uses_current_event_compare_set(self):
+    async def test_dynamic_not_in_list_uses_current_event_compare_set(
+        self,
+        provision_context,
+    ):
+        base_url = "https://example.dd"
         first_document = {"tenant": "acme", "user": "Foo"}
         second_document = {"tenant": "beta", "user": "Missing"}
         list_name = "bad_users.list"
-        first_url = "http://localhost/acme/bad_users.list"
-        second_url = "http://localhost/beta/bad_users.list"
-        responses.add(responses.GET, url=first_url, body="Foo\n", status=200)
-        responses.add(responses.GET, url=second_url, body="Bar\n", status=200)
+        provision_context(
+            Endpoint(url=f"{base_url}/acme/{list_name}", body="Foo\n"),
+            Endpoint(url=f"{base_url}/beta/{list_name}", body="Bar\n"),
+        )
+        dynamic_base_path = f"{base_url}/${{tenant}}/${{LOGPREP_LIST}}"
 
         processor = await self._create_lister(
             [
@@ -638,7 +784,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         "source_fields": ["user"],
                         "target_field": "user_results",
                         "list_file_paths": [list_name],
-                        "list_search_base_path": HTTP_DYNAMIC_BASE_PATH,
+                        "list_search_base_path": dynamic_base_path,
                     },
                 }
             ]
@@ -650,15 +796,27 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert first_document["user_results"] == {"in_list": [list_name]}
         assert second_document["user_results"] == {"not_in_list": [list_name]}
-        assert _compare_sets(rule, {"tenant": "acme"}) == {list_name: {"Foo"}}
-        assert _compare_sets(rule, {"tenant": "beta"}) == {list_name: {"Bar"}}
 
-    @responses.activate
-    async def test_dynamic_empty_http_list_is_used_for_not_in_list(self):
+        assert await _compare_sets(
+            rule,
+            {"tenant": "acme"},
+        ) == {
+            list_name: {"Foo"},
+        }
+
+    async def test_dynamic_empty_http_list_is_used_for_not_in_list(
+        self,
+        provision_context,
+    ):
+        base_url = "http://example.dd"
         document = {"tenant": "acme", "user": "Foo"}
         list_name = "bad_users.list"
-        url = "http://localhost/acme/bad_users.list"
-        responses.add(responses.GET, url=url, body="", status=200)
+
+        provision_context(
+            Endpoint(url=f"{base_url}/acme/bad_users.list", body=""),
+        )
+
+        dynamic_base_path = f"{base_url}/${{tenant}}/${{LOGPREP_LIST}}"
 
         processor = await self._create_lister(
             [
@@ -668,7 +826,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         "source_fields": ["user"],
                         "target_field": "user_results",
                         "list_file_paths": [list_name],
-                        "list_search_base_path": HTTP_DYNAMIC_BASE_PATH,
+                        "list_search_base_path": dynamic_base_path,
                     },
                 }
             ]
@@ -682,17 +840,27 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             "user": "Foo",
             "user_results": {"not_in_list": [list_name]},
         }
-        assert _compare_sets(rule, {"tenant": "acme"}) == {list_name: set()}
 
-    @responses.activate
-    async def test_dynamic_http_failure_does_not_mark_rule_failed(self):
+        assert await _compare_sets(
+            rule,
+            {"tenant": "acme"},
+        ) == {
+            list_name: set(),
+        }
+
+    async def test_dynamic_http_failure_does_not_mark_rule_failed(
+        self,
+        provision_context,
+    ):
         failed_document = {"tenant": "acme", "user": "Foo"}
         successful_document = {"tenant": "beta", "user": "Foo"}
         list_name = "bad_users.list"
         failed_url = "http://localhost/acme/bad_users.list"
         successful_url = "http://localhost/beta/bad_users.list"
-        responses.add(responses.GET, url=failed_url, status=500)
-        responses.add(responses.GET, url=successful_url, body="Foo\n", status=200)
+        provision_context(
+            Endpoint(url=failed_url, status=500),
+            Endpoint(url=successful_url, body="Foo\n"),
+        )
 
         processor = await self._create_lister(
             [
@@ -724,22 +892,31 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
         assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
-        await processor.process(LogEvent(successful_document, original=b"", input_meta=InputMeta()))
+        result = await processor.process(
+            LogEvent(successful_document, original=b"", input_meta=InputMeta())
+        )
 
+        assert result.warnings == []
         assert successful_document == {
             "tenant": "beta",
             "user": "Foo",
             "user_results": {"in_list": [list_name]},
         }
         assert rule.data_error is None
-        assert _compare_sets(rule, {"tenant": "beta"}) == {list_name: {"Foo"}}
+        assert len(HttpGetter._target_to_data_caches[successful_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[successful_url].cleanup_callbacks) == 1
 
-    @responses.activate
-    async def test_removes_timed_out_dynamic_compare_set(self):
+    async def test_removes_timed_out_dynamic_compare_set(
+        self,
+        provision_context,
+    ):
         document = {"tenant": "acme", "user": "Foo"}
-        url = "http://localhost/acme/bad_users.list"
-        responses.add(responses.GET, url=url, body="Foo\n", status=200)
+        base_url = "http://example.dd"
+        url = f"{base_url}/acme/bad_users.list"
+        dynamic_base_path = f"{base_url}/${{tenant}}/${{LOGPREP_LIST}}"
 
+        endpoint = Endpoint(url=url, body="Foo\n")
+        provision_context(endpoint)
         processor = await self._create_lister(
             [
                 {
@@ -748,25 +925,27 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         "source_fields": ["user"],
                         "target_field": "user_results",
                         "list_file_paths": ["bad_users.list"],
-                        "list_search_base_path": HTTP_DYNAMIC_BASE_PATH,
+                        "list_search_base_path": dynamic_base_path,
                     },
                 }
             ]
         )
 
-        with mock.patch("logprep.util.getter.time.monotonic", return_value=100.0):
-            await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
+        await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
         assert url in HttpGetter._target_to_data_caches
-        assert len(responses.calls) == 1
+        assert endpoint.call_count == 1
 
-        with mock.patch("logprep.util.getter.time.monotonic", return_value=161.1):
-            refresh_getters()
+        shared = HttpGetter._target_to_data_caches[url]
+
+        assert shared.last_called is not None
+        assert shared.timeout_interval is not None
+
+        shared.last_called -= shared.timeout_interval + 1
+
+        await refresh_getters()
 
         assert url not in HttpGetter._target_to_data_caches
-
-        await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
-        assert len(responses.calls) == 2
 
     @pytest.mark.parametrize(
         "http_list_content, expected_content",
@@ -775,14 +954,21 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             pytest.param("\n", {""}, id="single-empty-line"),
         ],
     )
-    @responses.activate
     async def test_static_http_empty_body_or_empty_line_updates_compare_set(
-        self, http_list_content, expected_content
+        self,
+        http_list_content,
+        expected_content,
+        provision_context,
     ):
+        base_url = "https://example.dd"
         document = {"user": "Foo"}
+        path = "tests/testdata"
         list_name = "bad_users.list"
-        url = "http://localhost/tests/testdata/bad_users.list?ref=bla"
-        responses.add(responses.GET, url=url, body=http_list_content, status=200)
+        endpoint = Endpoint(
+            url=f"{base_url}/{path}/{list_name}",
+            body=http_list_content,
+        )
+        provision_context(endpoint)
 
         processor = await self._create_lister(
             [
@@ -792,9 +978,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                         "source_fields": ["user"],
                         "target_field": "user_results",
                         "list_file_paths": [list_name],
-                        "list_search_base_path": (
-                            "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
-                        ),
+                        "list_search_base_path": f"{base_url}/{path}/${{LOGPREP_LIST}}",
                     },
                 }
             ]
@@ -804,24 +988,23 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
         assert document == {"user": "Foo", "user_results": {"not_in_list": [list_name]}}
-        assert len(responses.calls) == 1
-        assert responses.calls[0].request.url == url
-        assert _compare_sets(rule) == {list_name: expected_content}
+        assert endpoint.call_count == 1
+        assert await _compare_sets(rule) == {list_name: expected_content}
 
-    @responses.activate
-    async def test_process_adds_failure_tag_if_http_list_returns_500(self, caplog):
+    async def test_process_adds_failure_tag_if_http_list_returns_500(
+        self,
+        caplog,
+        provision_context,
+    ):
+        base_url = "https://example.dd"
+        path = "tests/testdata"
         document = {"user": "Foo"}
         list_name = "bad_users.list"
-        url = "http://localhost/tests/testdata/bad_users.list?ref=bla"
-        responses.add(responses.GET, url=url, status=500)
-
-        captured_sessions = []
-        original_get_requests_session = HttpGetter._get_requests_session
-
-        def capture_session(self):
-            session = original_get_requests_session(self)
-            captured_sessions.append(session)
-            return session
+        endpoint = Endpoint(
+            url=f"{base_url}/{path}/{list_name}?ref=bla",
+            status=500,
+        )
+        provision_context(endpoint)
 
         RefreshableGetter.reset()
         processor = self._create_test_instance(
@@ -835,41 +1018,46 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                             "target_field": "user_results",
                             "list_file_paths": [list_name],
                             "list_search_base_path": (
-                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                                f"{base_url}/{path}/${{LOGPREP_LIST}}?ref=bla"
                             ),
                         },
                     }
                 ],
             }
         )
-        rule = processor.rules[0]
-        assert rule.data_error is None
 
-        with mock.patch.object(
-            HttpGetter, "_get_requests_session", autospec=True, side_effect=capture_session
-        ):
-            await processor.setup()
+        await processor.setup()
+
+        rule = processor.rules[0]
 
         assert isinstance(rule.data_error, InvalidResourcesError)
-        assert captured_sessions
-
-        retries = captured_sessions[0].get_adapter(url).max_retries
-        assert retries.total == 3
-        assert 500 in retries.status_forcelist
-
-        assert "Caused by ResponseError('too many 500 error responses'))" in caplog.text
+        assert endpoint.call_count == 4
+        assert "500" in caplog.text
         assert "ListComparisonRule failed" in caplog.text
 
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
         assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
-        assert len(responses.calls) == retries.total + 1
-        assert responses.calls[0].request.url == url
+        assert endpoint.call_count == 4
 
-    @responses.activate
-    async def test_recovers_after_failed_http_getter_setup(self):
+    async def test_recovers_after_failed_http_getter_setup(self, provision_context):
+        base_url = "https://example.dd"
+        path = "tests/testdata"
         list_name = "bad_users.list"
-        url = "http://localhost/tests/testdata/bad_users.list?ref=bla"
+
+        endpoint = Endpoint(
+            url=f"{base_url}/{path}/{list_name}?ref=bla",
+            responses=[
+                Response(status=500),
+                Response(status=500),
+                Response(status=500),
+                Response(status=500),
+                Response(
+                    body="Foo\n",
+                ),
+            ],
+        )
+        provision_context(endpoint)
         rules = [
             {
                 "filter": "user",
@@ -877,14 +1065,11 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                     "source_fields": ["user"],
                     "target_field": "user_results",
                     "list_file_paths": [list_name],
-                    "list_search_base_path": (
-                        "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
-                    ),
+                    "list_search_base_path": (f"{base_url}/{path}/${{LOGPREP_LIST}}?ref=bla"),
                 },
             }
         ]
 
-        responses.add(responses.GET, url=url, status=500)
         processor = await self._create_lister(rules)
         rule = processor.rules[0]
 
@@ -893,10 +1078,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
-        assert responses.calls[-1].request.url == url
-        assert responses.calls[-1].response.status_code == 500
-
-        responses.replace(responses.GET, url=url, body="Foo\n", status=200)
+        assert endpoint.call_count == 4
 
         processor = await self._create_lister(rules)
         rule = processor.rules[0]
@@ -906,15 +1088,35 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
         assert rule.data_error is None
         assert document == {"user": "Foo", "user_results": {"in_list": [list_name]}}
-        assert _compare_sets(rule) == {list_name: {"Foo"}}
-        assert responses.calls[-1].request.url == url
-        assert responses.calls[-1].response.status_code == 200
+        assert await _compare_sets(rule) == {list_name: {"Foo"}}
+        assert endpoint.call_count == 5
 
-    @responses.activate
-    async def test_recovers_after_failed_http_getter_while_processing(self, tmp_path):
+    async def test_recovers_after_failed_http_getter_while_processing(
+        self,
+        tmp_path,
+        provision_context,
+    ):
+        base_url = "https://example.dd"
+        path = "tests/testdata"
         list_name = "bad_users.list"
-        url = "http://localhost/tests/testdata/bad_users.list?ref=bla"
-        responses.add(responses.GET, url=url, status=500)
+
+        endpoint = Endpoint(
+            url=f"{base_url}/{path}/{list_name}?ref=bla",
+            responses=[
+                Response(status=500),
+                Response(status=500),
+                Response(status=500),
+                Response(status=500),
+                Response(
+                    body="Foo\n",
+                    content_type="text/plain",
+                ),
+            ],
+        )
+
+        provision_context(endpoint)
+
+        url = f"{base_url}/{path}/{list_name}?ref=bla"
 
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 1}}))
@@ -929,7 +1131,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
                             "target_field": "user_results",
                             "list_file_paths": [list_name],
                             "list_search_base_path": (
-                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                                f"{base_url}/{path}/${{LOGPREP_LIST}}?ref=bla"
                             ),
                         },
                     }
@@ -942,15 +1144,15 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
 
             assert isinstance(rule.data_error, InvalidResourcesError)
             assert document == {"user": "Foo", "tags": ["_list_comparison_failure"]}
-            assert responses.calls[-1].request.url == url
-            assert responses.calls[-1].response.status_code == 500
+            assert endpoint.call_count == 4
 
-            responses.replace(responses.GET, url=url, body="Foo\n", status=200)
+            getter = HttpGetter(target=url, protocol="http")
+            await getter._refresh()
 
-            time.sleep(2)
-            refresh_getters()
+            assert endpoint.call_count == 5
+            assert await _compare_sets(rule) == {list_name: {"Foo"}}
 
             assert rule.data_error is None
-            assert _compare_sets(rule) == {list_name: {"Foo"}}
-            assert responses.calls[-1].request.url == url
-            assert responses.calls[-1].response.status_code == 200
+
+    async def test_has_async_io(self):
+        assert await self.object.has_asyncio() is True

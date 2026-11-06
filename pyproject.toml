@@ -61,7 +61,7 @@ dependencies = [
   "requests>=2.33.0,<3", # [>=2.33.0]: CVE-2026-25645
   "ruamel.yaml<1",
   "schedule<2",
-  "urllib3>=2.8.0,<3", # [>=2.8.0]: CVE-2026-97687, CVE-2026-97689
+  "urllib3>=2.7.0,<3", # [>=2.7.0]: CVE-2026-44431, CVE-2026-44432
   "uvicorn<1",
   "msgspec<1",
   "boto3<2",
@@ -70,6 +70,7 @@ dependencies = [
   "uvloop<1",
   "httptools<1",
   "more-itertools>=11.1.0",
+  "aiofiles>=25.1.0",
 ]
 
 [project.optional-dependencies]
@@ -83,6 +84,7 @@ dev = [
   "pytest-aiohttp",
   "pytest-timeout",
   "responses",
+  "aioresponses",
   "jinja2",
   "cibuildwheel",
   "asgiref",
@@ -95,6 +97,8 @@ dev = [
   "types-PyYaml",
   "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
   "ipykernel>=7.3.0",
+  "types-python-dateutil>=2.9.0.20260807",
+  "types-aiofiles",
 ]
 
 doc = [
@@ -121,6 +125,7 @@ Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
 [project.scripts]
 logprep = "logprep.run_logprep:cli"
 logprep-ng = "logprep.run_ng:cli"
+
 
 [tool.black]
 line-length = 100

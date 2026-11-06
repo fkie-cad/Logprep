@@ -1,7 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-positional-arguments
 
 from copy import deepcopy
 
@@ -31,9 +29,13 @@ class TestIpInformer(BaseProcessorTestCase[IpInformer]):
     @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
     async def test_testcases(self, rule, event, expected, context, provision_context):
         provision_context(context)
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
         assert event.data == expected
 
     @pytest.mark.parametrize(["rule", "event", "expected", "context"], failure_test_cases)
@@ -41,9 +43,13 @@ class TestIpInformer(BaseProcessorTestCase[IpInformer]):
         self, rule, event, expected, context, provision_context
     ):
         provision_context(context)
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert event.data == expected
