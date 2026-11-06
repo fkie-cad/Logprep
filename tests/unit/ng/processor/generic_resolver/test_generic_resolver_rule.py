@@ -8,13 +8,13 @@ from pathlib import Path
 import pytest
 from aiohttp import web
 
-from logprep.factory_error import InvalidConfigurationError
+from logprep.factory_error import InvalidConfigurationError, InvalidResourcesError
 from logprep.ng.processor.generic_resolver.rule import (
     GenericResolverRule,
 )
 from logprep.ng.util.getter import HttpGetter, RefreshableGetter
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from tests.conftest import FIELD_VALUE_TEST_CASES, mock_env
+from tests.conftest import FIELD_VALUE_TEST_CASES, Endpoint, Response, mock_env
 
 
 @pytest.fixture(name="rule_definition")
@@ -226,7 +226,7 @@ class TestGenericResolverRule:
                     },
                 },
                 InvalidConfigurationError,
-                "Additions file 'foo' not found",
+                r"(?is)static.*resource.*not.*found",
                 id="no_additional_file_found",
             ),
             pytest.param(
@@ -251,9 +251,9 @@ class TestGenericResolverRule:
 
         if error:
             with pytest.raises(error, match=message):
-                await rule_instance.init("test")
+                await rule_instance.init()
         else:
-            await rule_instance.init("test")
+            await rule_instance.init()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("generic_resolver").items():
                 assert hasattr(rule_instance._config, key)
@@ -297,21 +297,21 @@ class TestGenericResolverRule:
         try:
             with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
                 rule = GenericResolverRule.create_from_dict(rule_definition)
-                await rule.init("test")
+                await rule.init()
 
                 scheduler = HttpGetter(protocol="http", target=url).scheduler
                 assert scheduler is not None
 
-                assert rule.additions == from_http_1
+                assert (await rule.get_additions({})) == from_http_1
 
                 await HttpGetter.refresh()
-                assert rule.additions == from_http_1
+                assert (await rule.get_additions({})) == from_http_1
 
                 await scheduler.run_all()
-                assert rule.additions == from_http_2
+                assert (await rule.get_additions({})) == from_http_2
 
                 await scheduler.run_all()
-                assert rule.additions == from_http_3
+                assert (await rule.get_additions({})) == from_http_3
         finally:
             RefreshableGetter.reset()
 
@@ -371,16 +371,17 @@ class TestGenericResolverRule:
                 }
             )
 
-    async def test_content_field_loads_nested_additions_from_http(self, aiohttp_server):
+    async def test_content_field_loads_nested_additions_from_http(self, provision_context):
         expected = {"ab": "ab_server_type", "de": "de_server_type"}
-
-        async def handler(_: web.Request) -> web.Response:
-            return web.json_response({"content": expected})
-
-        app = web.Application()
-        app.router.add_get("/resolve", handler)
-        server = await aiohttp_server(app)
-        url = str(server.make_url("/resolve"))
+        url = "http://example.dd/resolve"
+        provision_context(
+            [
+                Endpoint(
+                    url=url,
+                    json={"content": expected},
+                )
+            ]
+        )
 
         rule = GenericResolverRule.create_from_dict(
             {
@@ -396,9 +397,9 @@ class TestGenericResolverRule:
             }
         )
 
-        await rule.init("test")
+        await rule.init()
 
-        assert rule.additions == expected
+        assert (await rule.get_additions({})) == expected
 
     @pytest.mark.parametrize(
         ["body", "content_field", "match"],
@@ -422,15 +423,10 @@ class TestGenericResolverRule:
         body,
         content_field,
         match,
-        aiohttp_server,
+        provision_context,
     ):
-        async def handler(_: web.Request) -> web.Response:
-            return web.json_response(body)
-
-        app = web.Application()
-        app.router.add_get("/resolve", handler)
-        server = await aiohttp_server(app)
-        url = str(server.make_url("/resolve"))
+        url = "https://example.dd/resolve"
+        provision_context([Endpoint(url=url, json=body)])
 
         rule = GenericResolverRule.create_from_dict(
             {
@@ -446,41 +442,27 @@ class TestGenericResolverRule:
             }
         )
 
-        with pytest.raises(InvalidConfigurationError, match=match):
-            await rule.init("test")
-
-    def test_additions_are_not_shared_between_configs(self):
-        first = GenericResolverRule.Config(
-            field_mapping={"source": "target"},
-            resolve_list={},
-        )
-        second = GenericResolverRule.Config(
-            field_mapping={"source": "target"},
-            resolve_list={},
-        )
-
-        assert first.additions is not second.additions
+        await rule.init()
+        assert isinstance(rule.data_error, InvalidResourcesError)
 
     async def test_failed_refresh_preserves_last_valid_additions(
         self,
         tmp_path,
-        aiohttp_server,
+        provision_context,
     ):
-        responses = iter(
-            (
-                {"content": {"foo": "first"}},
-                {"invalid": {"foo": "second"}},
-                {"content": {"foo": "third"}},
-            )
+        url = "https://example.dd/resolve"
+        provision_context(
+            [
+                Endpoint(
+                    url=url,
+                    responses=[
+                        Response(json={"content": {"foo": "first"}}),
+                        Response(json={"invalid": {"foo": "second"}}),
+                        Response(json={"content": {"foo": "third"}}),
+                    ],
+                )
+            ]
         )
-
-        async def handler(_: web.Request) -> web.Response:
-            return web.json_response(next(responses))
-
-        app = web.Application()
-        app.router.add_get("/resolve", handler)
-        server = await aiohttp_server(app)
-        url = str(server.make_url("/resolve"))
 
         getter_file_content = {
             url: {
@@ -507,19 +489,19 @@ class TestGenericResolverRule:
         try:
             with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
                 rule = GenericResolverRule.create_from_dict(rule_definition)
-                await rule.init("test")
+                await rule.init()
 
                 scheduler = HttpGetter(protocol="http", target=url).scheduler
                 assert scheduler is not None
 
-                assert rule.additions == {"foo": "first"}
+                assert (await rule.get_additions({})) == {"foo": "first"}
 
                 await scheduler.run_all()
 
-                assert rule.additions == {"foo": "first"}
+                assert (await rule.get_additions({})) == {"foo": "first"}
 
                 await scheduler.run_all()
 
-                assert rule.additions == {"foo": "third"}
+                assert (await rule.get_additions({})) == {"foo": "third"}
         finally:
             RefreshableGetter.reset()

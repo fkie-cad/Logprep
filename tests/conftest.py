@@ -164,24 +164,32 @@ class MockClientResponse(aiohttp.ClientResponse):
         super().__init__(*args, **kwargs)
 
 
+@define(kw_only=True, slots=True)
+class File:
+    """Mocks a file by providing either a json-body from code or a path to copy a file from"""
+
+    path: str = ""
+    source_path: str | None = None
+    body: str | bytes | None = None
+    json: FieldValue | Missing = MISSING
+
+    def __post_init__(self):
+        has_source = self.source_path is not None
+        has_body = self.body is not None
+        if has_source == has_body:
+            if self.source_path is None and self.body is None:
+                raise TypeError("Value needed for at least one: source_path, body")
+
+            raise ValueError("Setting both source and body is not allowed.")
+
+
 @define(kw_only=True)
-class Endpoint:
-    url: str
-    method: Literal["HEAD", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"] = "GET"
+class Response:
     status: int = 200
     reason: str | None = None
     body: str | bytes | None = None
     json: FieldValue | Missing = MISSING
     content_type: str | None = None
-
-    _call_count: int = 0
-
-    @property
-    def call_count(self) -> int:
-        return self._call_count
-
-    def on_call(self, *_args, **_kwargs) -> None:
-        self._call_count += 1
 
     def get_body(self) -> str | bytes | None:
         if self.json is not MISSING:
@@ -196,22 +204,27 @@ class Endpoint:
         return "text/plain"
 
 
-@define(kw_only=True, slots=True)
-class File:
-    """Mocks a file by providing either a json-body from code or a path to copy a file from"""
+@define(kw_only=True)
+class Endpoint(Response):
+    url: str
+    method: Literal["HEAD", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"] = "GET"
+    responses: Sequence[Response] | None = None
+    _call_count: int = 0
 
-    path: str = ""
-    source_path: str | None = None
-    body: str | None = None
+    @property
+    def call_count(self) -> int:
+        return self._call_count
 
-    def __post_init__(self):
-        has_source = self.source_path is not None
-        has_body = self.body is not None
-        if has_source == has_body:
-            if self.source_path is None and self.body is None:
-                raise TypeError("Value needed for at least one: source_path, body")
+    def on_call(self, *_args, **_kwargs) -> None:
+        self._call_count += 1
 
-            raise ValueError("Setting both source and body is not allowed.")
+    def get_requests(self) -> Generator[tuple[Response, bool]]:
+        if self.responses is None:
+            yield self, True
+        else:
+            for index, res in enumerate(self.responses):
+
+                yield res, index == (len(self.responses) - 1)
 
 
 Context: TypeAlias = list[Endpoint | File]
@@ -241,7 +254,7 @@ class ProcessorFailureTestCase(ProcessorTestCase):
 @pytest.fixture
 def provision_context(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
-) -> Generator[Callable[[dict | list], None], None]:
+) -> Generator[Callable[[Any], None], None]:
     project_root = pytestconfig.rootpath
 
     with (
@@ -254,24 +267,40 @@ def provision_context(
                 return
 
             if isinstance(context, list):
-                for spec in context:
-                    match spec:
-                        case Endpoint():
-                            mocked_aiohttp.add(
-                                spec.url,
-                                method=spec.method,
-                                status=spec.status,
-                                reason=spec.reason,
-                                body=spec.get_body(),
-                                content_type=spec.get_content_type(),
-                                response_class=MockClientResponse,
-                                repeat=True,
-                                callback=spec.on_call,
-                            )
-                        case _:
-                            assert False, "Unhandled type."
-            else:
-                assert isinstance(context, dict)
+                for item in context:
+                    _provision(item)
+
+            elif isinstance(context, Endpoint):
+                for req, repeat in context.get_requests():
+                    mocked_aiohttp.add(
+                        context.url,
+                        method=context.method,
+                        status=req.status,
+                        reason=req.reason,
+                        body=req.get_body(),
+                        content_type=req.get_content_type(),
+                        response_class=MockClientResponse,
+                        repeat=repeat,
+                        callback=context.on_call,
+                    )
+            elif isinstance(context, File):
+                file_path = tmp_path / context.path.removeprefix("file://")
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+
+                if context.source_path is not None:
+                    ref_path = Path(context.source_path)
+                    src_path = ref_path if ref_path.is_absolute() else project_root / ref_path
+                    shutil.copy(src_path, file_path)
+                elif context.json is not MISSING:
+                    file_path.write_text(json.dumps(context.json), encoding="utf-8")
+                elif isinstance(context.body, bytes):
+                    file_path.write_bytes(context.body)
+                else:
+                    content = context.body or ""
+                    assert isinstance(content, str)
+                    file_path.write_text(content)
+
+            elif isinstance(context, dict):
                 for path, spec in context.items():
                     if path.startswith(("http://", "https://")):
                         body = spec.get("body")

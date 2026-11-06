@@ -302,7 +302,7 @@ class GenericResolverRule(FieldManagerRule):
         )
         self._static_additions: JsonObject = {}
 
-    async def init_generic_resolver(self) -> None:
+    async def init(self) -> None:
         """Initialize the additions for this rule.
 
         Local lists are loaded eagerly. Static HTTP(S) lists are loaded eagerly and

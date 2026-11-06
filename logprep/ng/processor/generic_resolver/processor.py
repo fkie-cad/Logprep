@@ -189,7 +189,7 @@ class GenericResolver(FieldManager):
                 mapping = matches.group("mapping")
                 if rule.ignore_case:
                     mapping = mapping.upper()
-                content = await rule.get_additions(event).get(mapping, MISSING)
+                content = (await rule.get_additions(event)).get(mapping, MISSING)
                 if content is not MISSING:
                     return content
         return self._get_lru_cached_value_from_list(rule, source_field_value)
@@ -221,6 +221,6 @@ class GenericResolver(FieldManager):
         await super().setup()
         for rule in self.rules:
             rule = typing.cast(GenericResolverRule, rule)
-            await rule.init_generic_resolver()
+            await rule.init()
 
         self._cache_metrics_skip_count = 0
