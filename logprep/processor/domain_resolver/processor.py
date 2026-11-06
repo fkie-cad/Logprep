@@ -36,7 +36,7 @@ from enum import IntEnum, auto
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
-from dns.exception import Timeout, FormError, SyntaxError as DNSSyntaxError, TooBig
+from dns.exception import Timeout, FormError, SyntaxError as DNSSyntaxError, TooBig, DNSException
 from dns.resolver import Resolver, NXDOMAIN, LifetimeTimeout, NoAnswer, NoNameservers
 
 from logprep.abc.processor import Processor
@@ -67,6 +67,9 @@ class FailureType(IntEnum):
 
     NO_NAMESERVERS = auto()
     """Nameservers do not exist or timed out"""
+
+    DNS_EXCEPTION = auto()
+    """Generic DNS exception"""
 
 
 @define
@@ -294,18 +297,8 @@ class DomainResolver(Processor):
         else:
             result = self._resolve_ip(domain)
 
-        match result:
-            case SuccessResult(resolved_ip) if resolved_ip:
-                self._add_resolve_infos_to_event(event, rule, resolved_ip)
-            case FailedResult(FailureType.TIMEOUT, error):
-                # Log as debug, since this has no meaningful error message and metrics suffice here
-                logger.debug("Failed to resolve %s: %s", domain, error)
-            case FailedResult(FailureType.NO_NAMESERVERS, error):
-                # Log as warning, since this could stem from a configuration error
-                logger.warning("Failed to resolve %s: %s", domain, error)
-            case FailedResult(_, error):
-                # Log other event driven errors as info and adjust processor log level if needed
-                logger.info("Failed to resolve %s: %s", domain, error)
+        if isinstance(result, SuccessResult) and (resolved_ip := result.resolved_ip):
+            self._add_resolve_infos_to_event(event, rule, resolved_ip)
 
     def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
@@ -342,18 +335,33 @@ class DomainResolver(Processor):
             result = self._dns_resolver.resolve(domain, "A")
             self.metrics.resolved_domains.inc(1)
             return SuccessResult(result[0].address)
-        except (FormError, DNSSyntaxError, TooBig) as error:
-            self.metrics.invalid_domains.inc(1)
-            return FailedResult(FailureType.INVALID, error)
-        except (Timeout, LifetimeTimeout) as error:
-            self.metrics.timeouts.inc(1)
-            return FailedResult(FailureType.TIMEOUT, error)
-        except NXDOMAIN as error:
-            self.metrics.unknown_domains.inc(1)
-            return FailedResult(FailureType.UNKNOWN, error)
-        except NoAnswer as error:
-            self.metrics.no_answer_domains.inc(1)
-            return FailedResult(FailureType.NO_ANSWER, error)
         except NoNameservers as error:
+            # Log as warning, since this could stem from a configuration error
+            logger.warning("Failed to resolve %s: %s", domain, error)
             self.metrics.no_nameserver.inc(1)
             return FailedResult(FailureType.NO_NAMESERVERS, error)
+        except (Timeout, LifetimeTimeout) as error:
+            # Log as debug, since this has no meaningful error message and metrics suffice here
+            logger.debug("Failed to resolve %s: %s", domain, error)
+            self.metrics.timeouts.inc(1)
+            return FailedResult(FailureType.TIMEOUT, error)
+        except DNSException as error:
+            # Log other event driven errors as info and adjust processor log level if needed
+            match error:
+                case FormError() | DNSSyntaxError() | TooBig():
+                    self.metrics.invalid_domains.inc(1)
+                    failure_type = FailureType.INVALID
+                case NXDOMAIN():
+                    self.metrics.unknown_domains.inc(1)
+                    failure_type = FailureType.UNKNOWN
+                case NoAnswer():
+                    self.metrics.no_answer_domains.inc(1)
+                    failure_type = FailureType.NO_ANSWER
+                case _:
+                    failure_type = FailureType.DNS_EXCEPTION
+            if failure_type == FailureType.DNS_EXCEPTION:
+                # Log as warning, since this is unexpected
+                logger.warning("Failed to resolve %s: %s", domain, error)
+            else:
+                logger.info("Failed to resolve %s: %s", domain, error)
+            return FailedResult(failure_type, error)

@@ -6,6 +6,7 @@ from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
+from dns.exception import DNSException
 from dns.resolver import LifetimeTimeout, NoNameservers, NoAnswer, NXDOMAIN
 
 from logprep.ng.abc.event import LogEvent, InputMeta
@@ -399,12 +400,22 @@ class TestDomainResolver(BaseProcessorTestCase):
             result = self.object._resolve_ip("https://google.de")
         assert result.failure_type == FailureType.NO_ANSWER
 
-    async def test_resole_domain_no_nameservers(self):
+    async def test_resolve_domain_no_nameservers(self):
         await self.object.setup()
         with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = NoNameservers
             result = self.object._resolve_ip("https://google.de")
         assert result.failure_type == FailureType.NO_NAMESERVERS
+
+    async def test_resolve_domain_raises_unknown_dns_exception(self):
+        class CustomDNSException(DNSException):
+            pass
+
+        await self.object.setup()
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            mock_resolve.side_effect = CustomDNSException
+            result = self.object._resolve_ip("https://google.de")
+        assert result.failure_type == FailureType.DNS_EXCEPTION
 
     async def test_resole_domain_no_nameservers_emits_warning(self, caplog):
         await self.object.setup()
