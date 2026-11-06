@@ -1,39 +1,48 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=line-too-long
+
 import uuid
 from unittest import mock
 
 import pytest
 
-from logprep.abc.processor import ProcessorResult
+from logprep.abc.processor import Processor, ProcessorResult
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
-from tests.conftest import normalize_test_cases
+from tests.conftest import ProcessorTestCase
 from tests.unit.processor.base import BaseProcessorTestCase
 
 example_test_cases = [
-    pytest.param(
-        {
+    ProcessorTestCase(
+        id="Test process returns extracted fields",
+        rule={
             "filter": "message",
             "selective_extractor": {
-                "source_fields": ["other.message", "not.exists", "message"],
+                "source_fields": ["message", "message2"],
                 "outputs": [{"opensearch": "index"}],
-                "ignore_missing_fields": False,
             },
         },
-        {"message": "test_message", "other": {"message": "my message value"}},
-        {
-            "message": "test_message",
-            "other": {"message": "my message value"},
-            "tags": ["_selective_extractor_missing_field_warning"],
-        },
-        id="test process extracts dotted fields and complains on missing fields",
-    )
+        event={"message": "test_message", "message2": "test_message2", "other": "field"},
+        expected={"message": "test_message", "message2": "test_message2", "other": "field"},
+        expected_extras=[
+            (
+                {"message": "test_message", "message2": "test_message2"},
+                [
+                    ("opensearch", "index"),
+                ],
+            ),
+        ],
+    ),
+    # context=[
+    #    MockedUrl(url="http://example.com", body='{"whatever":"json"}'),
+    #    MockedFile(source_path="/tests/testdata/blabla"),
+    # ],
 ]
-
-test_cases = normalize_test_cases(
+test_cases = [
     *example_test_cases,
-    pytest.param(
-        {
+    ProcessorTestCase(
+        id="test process extracts dotted fields and ignores missing fields",
+        rule={
             "filter": "message",
             "selective_extractor": {
                 "source_fields": ["other.message", "message", "not.exists"],
@@ -41,11 +50,37 @@ test_cases = normalize_test_cases(
                 "ignore_missing_fields": True,
             },
         },
-        {"message": "test_message", "other": {"message": "my message value"}},
-        {"message": "test_message", "other": {"message": "my message value"}},
-        id="test process extracts dotted fields and ignores missing fields",
+        event={"message": "test_message", "other": {"message": "my message value"}},
+        expected={"message": "test_message", "other": {"message": "my message value"}},
+        expected_extras=[
+            (
+                {"message": "test_message", "other": {"message": "my message value"}},
+                [
+                    ("opensearch", "index"),
+                ],
+            ),
+        ],
     ),
-)
+    ProcessorTestCase(
+        id="test process extracts dotted fields and complains on missing fields",
+        rule={
+            "filter": "message",
+            "selective_extractor": {
+                "source_fields": ["other.message", "not.exists", "message"],
+                "outputs": [{"opensearch": "index"}],
+                "ignore_missing_fields": False,
+            },
+        },
+        event={"message": "test_message", "other": {"message": "my message value"}},
+        expected={
+            "message": "test_message",
+            "other": {"message": "my message value"},
+            "tags": ["_selective_extractor_missing_field_warning"],
+        },
+    ),
+]
+
+parametrized_test_cases = [c.case_to_param() for c in test_cases]
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
@@ -54,12 +89,33 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
 
-    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
-    def test_testcases(self, rule, event, expected, context, provision_context):
-        provision_context(context)
-        self._load_rule(rule)
-        self.object.process(event)
-        assert event == expected
+    @pytest.mark.parametrize("case", parametrized_test_cases)
+    def test_testcases(self, case: ProcessorTestCase, provision_context_new):
+        if case.context is not None:
+            provision_context_new(case.context)
+        self._load_rule(case.rule)
+        assert isinstance(self.object, Processor)
+        result = self.object.process(case.event)
+        assert result.event == case.expected
+        expected_extras = getattr(case, "expected_extras", None)
+        if not expected_extras:
+            assert not result.data
+            return
+        assert len(result.data) == len(expected_extras)
+
+        for (expected_extra_data, expected_outputs), (actual_data, actual_outputs) in zip(
+            expected_extras, result.data
+        ):
+            assert actual_data == expected_extra_data
+            if not expected_outputs:
+                continue
+            for (expected_output_name, expected_target), actual_output in zip(
+                expected_outputs, actual_outputs
+            ):
+                if isinstance(actual_output, dict):
+                    assert actual_output.get(expected_output_name) == expected_target
+                else:
+                    assert actual_output == expected_target
 
     def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
@@ -125,22 +181,23 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         output = result.data[0][1][0]
         assert "opensearch" in output.keys()
 
-    def test_process_returns_extracted_fields(self):
-        document = {"message": "test_message", "other": "field"}
-        rule = {
-            "filter": "message",
-            "selective_extractor": {
-                "source_fields": ["message"],
-                "outputs": [{"opensearch": "index"}],
-            },
-        }
-        self._load_rule(rule)
-        result = self.object.process(document)
-        for filtered_event, *_ in result.data:
-            if filtered_event == {"message": "test_message"}:
-                break
-        else:
-            assert False
+    # def test_process_returns_extracted_fields(self):
+    #     document = {"message": "test_message", "other": "field"}
+    #     rule = {
+    #         "filter": "message",
+    #         "selective_extractor": {
+    #             "source_fields": ["message"],
+    #             "outputs": [{"opensearch": "index"}],
+    #         },
+    #     }
+    #     self._load_rule(rule)
+    #     result = self.object.process(document)
+    #     assert result.event is document
+    #     for filtered_event, *_ in result.data:
+    #         if filtered_event == {"message": "test_message"}:
+    #             break
+    #     else:
+    #         assert False
 
     def test_process_returns_none_when_no_extraction_field_matches(self):
         document = {"nomessage": "test_message", "other": "field"}

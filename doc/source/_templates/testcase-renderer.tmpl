@@ -36,14 +36,27 @@
    {{ events(before, after) | indent(width=3) }}
 {% endmacro %}
 
+{#extra-safe-macro, doesn't crash on old tuple-based example_test_cases#}
 {% macro case_from_item(item, is_open) %}
-   {% if item.values %}{# handles pytest.param #}
-      {% set context = item.values[3] if (item.values | length > 3 and item.values[3] is mapping) else None %}
-      {{- render_case("Example: " ~ item.id, "light-bulb", item.values[0], item.values[1], item.values[2], context, is_open) }}
-   {% else %}{# handles legacy tuple-based style #}
-      {{- render_case("Example: " ~ item[0], "light-bulb", item[1], item[2], item[3], None, is_open) }}
-   {% endif %}
+    {# Unwrap pytest.param if present, otherwise use the item directly #}
+    {% set test_case = item.values[0] if item.values is defined and item.values else item %}
+    {% set test_id = item.id if item.id is defined else test_case.id %}
+
+    {# Safely extract context, falling back to None if undefined #}
+    {% set context = test_case.context if test_case.context is defined else None %}
+
+    {{- render_case("Example: " ~ test_id, "light-bulb", test_case.rule, test_case.event, test_case.expected, context, is_open) }}
 {% endmacro %}
+
+{#simpler macro for only new MockContext-based example_test_cases. Use this after converting all cases.
+{% macro case_from_item(item, is_open) %}
+    {% set test_case = item.values[0] if item.values is defined and item.values else item %}
+    {% set test_id = item.id if item.id is defined else test_case.id %}
+
+    {{- render_case("Example: " ~ test_id, "light-bulb", test_case.rule, test_case.event, test_case.expected, test_case.context | default(none), is_open) }}
+{% endmacro %}
+#}
+
 
 {% set primary = data.example_test_cases if data.example_test_cases is defined else data.test_cases %}
 {% set primary_ids = data.example_test_cases | map(attribute="id") | list %}

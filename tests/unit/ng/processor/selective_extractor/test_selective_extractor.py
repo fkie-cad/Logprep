@@ -7,11 +7,15 @@ from unittest import mock
 import pytest
 
 from logprep.ng.abc.event import InputMeta, LogEvent
+from logprep.ng.abc.processor import Processor
 from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
 from logprep.ng.processor.selective_extractor.processor import SelectiveExtractor
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.selective_extractor.test_selective_extractor import (
-    test_cases as non_ng_test_cases,
+    ProcessorTestCase,
+)
+from tests.unit.processor.selective_extractor.test_selective_extractor import (
+    parametrized_test_cases as non_ng_test_cases,
 )
 
 test_cases = deepcopy(non_ng_test_cases)
@@ -23,13 +27,23 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
 
-    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
-    async def test_testcases(self, rule, event, expected, context, provision_context):
-        provision_context(context)
-        await self._load_rule(rule)
-        event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data == expected
+    @pytest.mark.parametrize(["case"], test_cases)
+    async def test_testcases(self, case: ProcessorTestCase, provision_context_new):
+        provision_context_new(case.context)
+        await self._load_rule(case.rule)
+        event = LogEvent(case.event, original=b"", input_meta=InputMeta())
+        assert isinstance(self.object, Processor)
+        result: LogEvent = await self.object.process(event)
+        assert case.expected == event.data
+
+        assert len(result.extra_data) == len(case.expected_extras)
+        for extra_data, (expected_extra_data, expected_outputs) in zip(
+            result.extra_data, case.expected_extras
+        ):
+            assert extra_data.data == expected_extra_data
+            for expected_output_name, expected_target in expected_outputs:
+                assert extra_data.output_name == expected_output_name
+                assert extra_data.output_target == expected_target
 
     async def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
