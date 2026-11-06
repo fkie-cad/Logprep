@@ -4,18 +4,18 @@
 * domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
 * domain_resolver: remove `debug_cache`
 * domain_resolver: `source_fields` must be a list with exactly one element
-* domain_resolver: add `no_answer_domains` metric to domain resolver
 
 ### Features
 
 ### Improvements
 * util: add field mapping template utility
-* domain_resolver: add metrics for cached timed-out domains and successfully resolved domains
 * cache: hold a payload in addition to timestamps
+* domain_resolver: add metrics for cached timed-out domains and successfully resolved domains
 * domain_resolver: adapt `domain_resolver` to changes of `cache`
+* domain_resolver: add `resolved_domains`, `timeouts_cached`, `no_answer_domains` and `no_nameserver` metric
 
 ### Bugfix
-* domain_resolver: Fix resolving domains that have no schema
+* domain_resolver: fix resolving domains that have no schema
 
 ## 21.2.0
 ### Breaking
