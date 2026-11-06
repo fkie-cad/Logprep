@@ -137,18 +137,18 @@ class LazyContext(dict[str, FieldValue]):
 SOURCE_EVENT_CONTEXT: Final[str] = "source_event"
 
 
-def source_fields_to_fmt(source_fields: list[str]) -> dict[str, FieldValue]:
+def source_fields_to_ft(source_fields: list[str]) -> dict[str, FieldValue]:
     """Build a nested template selecting each dotted path from ``source_event``."""
     result: dict[str, FieldValue] = {}
     for field in source_fields:
-        fmt = f"${{{SOURCE_EVENT_CONTEXT}.{field}}}"
+        ft = f"${{{SOURCE_EVENT_CONTEXT}.{field}}}"
 
-        add_fields_to(result, {field: fmt})
+        add_fields_to(result, {field: ft})
 
     return result
 
 
-def rule_to_fmt_context(rule: "Rule") -> dict[str, FieldValue]:
+def rule_to_ft_context(rule: "Rule") -> dict[str, FieldValue]:
     """Expose a rule's string ID, description, and normalized filter to templates."""
     return {
         "description": rule.description,

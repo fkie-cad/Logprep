@@ -97,7 +97,7 @@ It is possible to mix both extraction sources. They will be merged to one list w
 Event templates
 ---------------
 
-Use ``event_template`` to build extra events with :ref:`field_mapping_template`.
+Use ``event_template`` to build extra events with :ref:`field_template`.
 The shared reference describes syntax, output paths, escaping, function calls,
 limitations, and examples.
 It cannot be combined with non-empty ``source_fields``
@@ -136,14 +136,14 @@ Available functions
 ~~~~~~~~~~~~~~~~~~~
 
 The selective extractor supports the complete
-:ref:`default function set <field_mapping_template_default_functions>`.
+:ref:`default function set <field_template_default_functions>`.
 See the shared reference for accepted inputs, keyword arguments, and examples.
 There are currently no additional functions specific to this processor.
 
 Missing fields and invalid templates
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-See :ref:`field_mapping_template_errors` for shared template validation and evaluation
+See :ref:`field_template_errors` for shared template validation and evaluation
 behavior.
 
 A missing source field with ``ignore_missing_fields: true`` (the default)
@@ -177,13 +177,13 @@ from attrs import define, field, validators
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.field_mapping_template import (
-    FieldMappingTemplate,
-    FieldMappingTemplateConfigError,
+from logprep.util.field_template import (
+    FieldTemplate,
+    FieldTemplateConfigError,
 )
-from logprep.util.field_mapping_template_helpers import (
-    rule_to_fmt_context,
-    source_fields_to_fmt,
+from logprep.util.field_template_helpers import (
+    rule_to_ft_context,
+    source_fields_to_ft,
 )
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import FieldValue, field_value_validator
@@ -256,7 +256,7 @@ class SelectiveExtractorRule(FieldManagerRule):
         """Mapping used to create an extra event from source, rule, and runtime context.
 
         See :ref:`selective_extractor_event_template` for available data and functions,
-        and :ref:`field_mapping_template` for the shared syntax.
+        and :ref:`field_template` for the shared syntax.
         An empty mapping emits no extra event. ``None`` builds a template from
         legacy source fields.
         Non-empty legacy field selection cannot be combined with an explicit template.
@@ -282,7 +282,7 @@ class SelectiveExtractorRule(FieldManagerRule):
                     "one of event_template, extract_from_file or source_fields only allowed"
                 )
             if self.event_template is None:
-                self.event_template = source_fields_to_fmt(self.source_fields)
+                self.event_template = source_fields_to_ft(self.source_fields)
 
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         """Compile the normalized template, translating template configuration errors.
@@ -296,12 +296,12 @@ class SelectiveExtractorRule(FieldManagerRule):
             raise RuntimeError("SelectiveExtractor configuration did not initialize event_template")
 
         try:
-            self.compiled_template = FieldMappingTemplate.compile(
+            self.compiled_template = FieldTemplate.compile(
                 self.config.event_template,
-                static_context={"rule": rule_to_fmt_context(self)},
+                static_context={"rule": rule_to_ft_context(self)},
                 runtime_roots=["source_event", "context"],
             )
-        except FieldMappingTemplateConfigError as error:
+        except FieldTemplateConfigError as error:
             raise InvalidRuleDefinitionError(f"Invalid event_template: {error}") from error
 
     @property

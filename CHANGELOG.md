@@ -28,6 +28,7 @@
 * ci: fail on warnings during doc build
 * ci: update dependabot to use `-` instead of `/`
 * docs: fix several formatting issues
+* util: rename field mapping template to field template
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema

@@ -32,4 +32,4 @@ delete it. To choose the output field for the event ID, use the output's
    metrics
    yaml_tags
    dot_notation
-   field_mapping_template
+   field_template

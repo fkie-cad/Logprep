@@ -36,8 +36,8 @@ from logprep.ng.processor.selective_extractor.extracted_event import ExtractedEv
 from logprep.ng.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.processor.base.rule import Rule
-from logprep.util.field_mapping_template import FieldMappingTemplateLookupError
-from logprep.util.field_mapping_template_helpers import (
+from logprep.util.field_template import FieldTemplateLookupError
+from logprep.util.field_template_helpers import (
     SOURCE_EVENT_CONTEXT,
     LazyContext,
 )
@@ -79,7 +79,7 @@ class SelectiveExtractor(FieldManager):
                     ),
                 },
             )
-        except FieldMappingTemplateLookupError as error:
+        except FieldTemplateLookupError as error:
             if config.ignore_missing_fields:
                 self._handle_warning_error(
                     event,
