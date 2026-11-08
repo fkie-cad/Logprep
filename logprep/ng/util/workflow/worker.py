@@ -161,24 +161,13 @@ class BatchingWorker(Worker[T], Generic[T]):
         self._batch_size = config.batch_size
 
         self._batch_buffer: deque[T] = deque()
-        self._buffer_lock = asyncio.Lock()
 
         self._flush_timer: asyncio.Task[None] | None = None
+        self._flush_lock = asyncio.Lock()
 
-    def _start_timer_locked(self) -> None:
-        """
-        Arm or re-arm the batch timer.
-
-        Must be called with _buffer_lock held. Ensures that at most one
-        timer task is active for the current batch window.
-        """
-        if self._flush_timer:
-            if self._flush_timer.done():
-                exc = self._flush_timer.exception()
-                if exc is not None:
-                    logger.error("flush timer task has failed", exc_info=exc)
-            else:
-                self._flush_timer.cancel()
+    def _start_timer(self) -> None:
+        """Arm the batch timer, replacing any previous one."""
+        self._cancel_timer_if_needed()
         self._flush_timer = asyncio.create_task(
             self._flush_after_interval(), name=f"{self.name}-flush_timer"
         )
@@ -214,23 +203,17 @@ class BatchingWorker(Worker[T], Generic[T]):
         except asyncio.CancelledError:
             return
 
-        batch: list[T] | None = None
-        async with self._buffer_lock:
-            if self._batch_buffer:
-                batch = self._drain_locked()
-            if self._flush_timer is asyncio.current_task():
-                self._flush_timer = None
-
-        if batch:
+        if self._flush_timer is asyncio.current_task():
+            self._flush_timer = None
+        if self._batch_buffer:
             logger.debug("Flushing messages based on timer")
-            await self._flush_batch(batch)
+            await self._flush_batch(self._drain())
 
-    def _drain_locked(self) -> list[T]:
+    def _drain(self) -> list[T]:
         """
         Drain the current buffer contents.
 
-        Must be called with _buffer_lock held. Cancels any active timer
-        and returns a snapshot of buffered items.
+        Cancels any active timer and returns a snapshot of buffered items.
         """
         batch = list(self._batch_buffer)
         self._batch_buffer.clear()
@@ -245,20 +228,14 @@ class BatchingWorker(Worker[T], Generic[T]):
         May trigger a flush if the size threshold is reached. Starts the
         batch timer when the first item of a new batch arrives.
         """
-        batch_to_flush: list[T] | None = None
+        self._batch_buffer.append(item)
 
-        async with self._buffer_lock:
-            self._batch_buffer.append(item)
+        if len(self._batch_buffer) == 1:
+            self._start_timer()
 
-            if len(self._batch_buffer) == 1:
-                self._start_timer_locked()
-
-            if len(self._batch_buffer) >= self._batch_size:
-                batch_to_flush = self._drain_locked()
-
-        if batch_to_flush:
+        if len(self._batch_buffer) >= self._batch_size:
             logger.debug("Flushing messages based on backlog size")
-            await self._flush_batch(batch_to_flush)
+            await self._flush_batch(self._drain())
 
     def __repr__(self):
         elements = [self.name, f"#buffer={len(self._batch_buffer)}"]
@@ -274,25 +251,13 @@ class BatchingWorker(Worker[T], Generic[T]):
         timer state.
         """
 
-        batch_to_flush: list[T] | None = None
-        async with self._buffer_lock:
-            if self._batch_buffer:
-                batch_to_flush = self._drain_locked()
-        if batch_to_flush:
+        if self._batch_buffer:
             logger.debug("Flushing messages based on manual trigger")
-            await self._flush_batch(batch_to_flush)
-
-    async def _process_batch(self, batch: list[T]) -> None:
-        await self._handler(batch)
+            await self._flush_batch(self._drain())
 
     async def _flush_batch(self, batch: list[T]) -> None:
-        """
-        Process and forward a completed batch.
-
-        Applies the optional handler and forwards the resulting items to
-        the output queue if configured.
-        """
-        await self._process_batch(batch)
+        async with self._flush_lock:
+            await self._handler(batch)
 
         await asyncio.sleep(0)
 
@@ -306,6 +271,9 @@ class BatchingWorker(Worker[T], Generic[T]):
         await super().run()
         self._cancel_timer_if_needed()
         await self._flush()
+        # a timer flush may still be running on its own task, wait for it
+        async with self._flush_lock:
+            pass
 
 
 def create_worker_graph(workers: Iterable[Worker]) -> dict[Worker, Sequence[Worker]]:
