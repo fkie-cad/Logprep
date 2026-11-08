@@ -50,7 +50,7 @@ jobs:
           event_count=$(cat $EVENT_DATA_SOURCE | jq -s length)
           echo event_count=$event_count >> $GITHUB_OUTPUT
           echo "Sending $event_count events to kafka"
-          (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) \
+          (docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) \
             < $EVENT_DATA_SOURCE
         env:
           EVENT_DATA_SOURCE: examples/exampledata/input_logdata/logclass/test_input.jsonl

@@ -144,7 +144,7 @@ Terminal 3: Continuously Produce Test Input
    KAFKA_TEST_INPUT=examples/exampledata/input_logdata/logclass/test_input.jsonl
 
    while true; do
-      docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer < $KAFKA_TEST_INPUT
+      docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer < $KAFKA_TEST_INPUT
    done
 
 .. note::
