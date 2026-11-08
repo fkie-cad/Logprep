@@ -68,9 +68,7 @@ logprep:
     kafka_config:
       bootstrap.servers: opensiem-kafka:9092
       group.id: cgroup3
-      enable.auto.commit: "true"
       auto.commit.interval.ms: "10000"
-      enable.auto.offset.store: "false"
       queued.min.messages: "100000"
       queued.max.messages.kbytes: "65536"
       statistics.interval.ms: "60000"

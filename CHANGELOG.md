@@ -4,7 +4,8 @@
 * domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
 * domain_resolver: remove `debug_cache`
 * domain_resolver: `source_fields` must be a list with exactly one element
-* ng: drop support for older consumer protocols than next-gen consumer protocol
+* ng: kafka input uses the next-gen consumer group protocol `consumer` (KIP-848); requires Kafka >=4.0 and `confluent-kafka` >=2.13
+* ng: kafka input rejects overridden or invalid `kafka_config` entries (no silent override)
 
 ### Features
 
@@ -27,13 +28,16 @@
 * ci: remove deprecated GHA dependency for doc preview links; do it ourselves
 * ci: fail on warnings during doc build
 * docs: fix several formatting issues
-* ng: implement support for next-gen consumer protocol for kafka input
-* ng: use cached sub-metrics for kafka input
-* ng: avoid duplicates on rebalance by gracefully draining revoked messages
+* ng: kafka input avoids duplicates on rebalance by gracefully draining messages to be revoked
+* ng: kafka input checks the topic before joining the consumer group, its healthcheck no longer calls the consumer afterwards
+* ng: kafka input adds the option `revoke_drain_timeout`, by default derived from `max.poll.interval.ms`
+* ng: kafka input adds the metrics `revoke_drain_seconds`, `revoke_drain_timeouts` and `orphaned_acknowledgements`
+* ci: run the kafka input rebalance tests against a real kafka broker
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
 * pipeline_manager: gc.freeze before forking pipelines in order to avoid error-prone destruction of health check clients in pipeline processes
+* ng: batching worker no longer processes batches concurrently when a timer flush overlaps a size or final flush
 * examples/compose: keycloak imports the logprep realm and the fda/ucl backends use its client secrets, the realm was never imported before
 * examples/k8s: remove config keys from `values-dev.yaml` that logprep rejects and create the `errors` topic
 
