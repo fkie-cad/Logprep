@@ -26,3 +26,30 @@ jobs:
         env:
           PYTEST_ADDOPTS: "--color=yes"
         run: uv run pytest -vv tests/${{ matrix.test-type }}
+  kafka-broker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15 # in case of deadlocked consumers
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
+      - name: Install uv and set the Python version
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # https://github.com/astral-sh/setup-uv/releases/tag/v10.3.3
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev
+      - name: Start kafka
+        working-directory: examples/compose
+        run: docker compose up -d --wait --wait-timeout 180 kafka
+      - name: Run rebalance tests against kafka
+        env:
+          PYTEST_ADDOPTS: "--color=yes"
+          LOGPREP_TEST_KAFKA_BOOTSTRAP: "127.0.0.1:9092"
+        run: uv run pytest -vv -rs tests/unit/ng/connector/test_confluent_kafka_rebalance.py
+      - name: Show kafka logs
+        if: failure()
+        working-directory: examples/compose
+        run: docker compose logs kafka
+      - name: Stop kafka
+        if: always()
+        working-directory: examples/compose
+        run: docker compose down
