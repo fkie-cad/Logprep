@@ -3,7 +3,6 @@ resources. It supports static and event-dynamic handling of resources and
 implements caching and reloading (via the getter system).
 """
 
-import inspect
 from enum import StrEnum, auto
 from typing import (
     Awaitable,
@@ -282,10 +281,7 @@ class ResourceCache(Generic[T]):
             )
             self._content_cache[resolved_uri] = new_item
             if self._on_update is not None:
-                if inspect.iscoroutinefunction(self._on_update):
-                    await self._on_update(new_item)
-                else:
-                    self._on_update(new_item)
+                await self._on_update(new_item)
 
         cache_item = self._content_cache[resolved_uri]
         if cache_item.is_dynamic and cache_item.will_refresh:
