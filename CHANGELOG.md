@@ -12,6 +12,7 @@
 * cache: hold a payload in addition to timestamps
 * domain_resolver: adapt `domain_resolver` to changes of `cache`
 * domain_resolver: add `resolved_domains`, `timeouts_cached`, `no_answer_domains` and `no_nameserver` metric
+* docs: remove outdated jupyter notebooks; relevant examples moved to unit tests
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema

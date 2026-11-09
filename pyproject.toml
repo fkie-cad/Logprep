@@ -95,7 +95,6 @@ dev = [
   "types-psutil",
   "types-PyYaml",
   "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
-  "ipykernel>=7.3.0",
 ]
 
 doc = [
@@ -105,8 +104,6 @@ doc = [
   "sphinx-design",
   "sphinxcontrib-mermaid",
   "sphinx-copybutton",
-  "nbsphinx>=0.9",
-  "ipython>=8.7",
   "openpyxl",
   "pandas<3",
   "sphinx-autobuild>=2025.8.25",
