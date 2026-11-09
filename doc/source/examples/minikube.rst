@@ -12,7 +12,7 @@ This tutorial assumes that you have `podman`, `minikube`,` `kubectl` and `helm` 
 .. code-block:: bash
     :caption: Add helm repositories
 
-    helm repo add bitnami https://charts.bitnami.com/bitnami
+    helm repo add opensearch https://opensearch-project.github.io/helm-charts/
 
 .. code-block:: bash
     :caption: Configure and start minikube
@@ -63,7 +63,7 @@ with the following commands:
 .. code-block:: bash
     :caption: Add helm repositories
 
-    helm repo add bitnami https://charts.bitnami.com/bitnami
+    helm repo add opensearch https://opensearch-project.github.io/helm-charts/
 
 .. code-block:: bash
     :caption: Configure and start minikube
@@ -92,7 +92,7 @@ At first you have to install the prometheus PodMonitor CRD:
 Then you have to update and build the helm subcharts repository:
 
 .. code-block:: bash
-    :caption: Add the bitnami helm repository
+    :caption: Fetch the subcharts
 
     helm dependencies update ./examples/k8s
     helm dependencies build ./examples/k8s
@@ -179,9 +179,11 @@ for powershell:
 Then build the logprep image with the following command:
 
 .. code-block:: bash
-    :caption: Build this image using the Dockerfile in the root of the repository
+    :caption: Build the image with nix in the root of the repository
 
-    docker buildx build -t local/logprep:latest --build-arg PYTHON_VERSION=3.11  .
+    nix build .#packages.x86_64-linux.docker.python311 -o image
+    docker load < image
+    docker tag logprep:py3.11 local/logprep:latest
 
 Then install the opensiem example using the local logprep image:
 

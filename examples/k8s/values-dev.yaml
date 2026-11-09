@@ -1,9 +1,9 @@
 connector:
   image:
-    # point your docker context to minikube and build the image
-    # `eval $(minikube docker-env)` or `(minikube docker-env).replace("export ", '$env:') | out-string | Invoke-Expression`
-    # build this image using the Dockerfile in the root of the repository
-    # `docker buildx build -t local/logprep:latest --build-arg PYTHON_VERSION=3.11 .`
+    # build the image with nix in the root of the repository and tag it
+    # `nix build .#packages.x86_64-linux.docker.python311 -o image && docker load < image`
+    # `docker tag logprep:py3.11 local/logprep:latest`
+    # then load it into the cluster: `minikube image load local/logprep:latest`
     registry: local
     repository: logprep
     tag: latest
@@ -37,7 +37,6 @@ connector:
   output:
     type: confluentkafka_output
     topic: consumer
-    error_topic: errors
     flush_timeout: 300
     send_timeout: 0
     kafka_config:
@@ -51,22 +50,15 @@ connector:
       request.required.acks: "-1"
   ingress:
     enabled: true
-## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/kafka/values.yaml`
+# see values.yaml and templates/kafka.yaml
 kafka:
-  listeners:
-    client:
-      protocol: PLAINTEXT
-  controller:
-    replicaCount: 3
-  metrics:
-    jmx:
-      enabled: true
+  replicaCount: 3
   provisioning:
-    enabled: true
     replicationFactor: 1
     numPartitions: 10
     topics:
       - name: consumer
+      - name: errors
 logprep:
   image:
     registry: local
@@ -99,10 +91,8 @@ logprep:
     hosts:
       - opensiem-opensearch:9200
     default_index: processed
-    error_index: errors
     timeout: 10000
     message_backlog_size: 2500
-    parallel_bulk: true
     flush_timeout: 60
     max_retries: 3
     chunk_size: 500
@@ -110,15 +100,3 @@ logprep:
     user: admin
     secret: admin
     desired_cluster_status: ["green", "yellow"]
-## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/opensearch/values.yaml`
-opensearch:
-  dashboards:
-    enabled: true
-  ingest:
-    replicaCount: 1
-  master:
-    replicaCount: 1
-  data:
-    replicaCount: 1
-  coordinating:
-    replicaCount: 1
