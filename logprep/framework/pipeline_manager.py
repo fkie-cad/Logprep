@@ -1,6 +1,7 @@
 """This module contains functionality to manage pipelines via multi-processing."""
 
 # pylint: disable=logging-fstring-interpolation
+import gc
 import logging
 import multiprocessing
 import multiprocessing.queues
@@ -327,7 +328,13 @@ class PipelineManager:
             target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )
         process.stop = pipeline.stop  # type: ignore
-        process.start()
+        gc.freeze()
+        try:
+            # freeze protects obsolete health check clients from being destroyed in the pipelines
+            # which can lead to segfaults and other erroneous runtime behavior
+            process.start()
+        finally:
+            gc.unfreeze()
         logger.info("Created new pipeline")
         return process
 
