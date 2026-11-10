@@ -14,6 +14,7 @@
 * domain_resolver: add `resolved_domains`, `timeouts_cached`, `no_answer_domains` and `no_nameserver` metric
 * docs: remove outdated jupyter notebooks; relevant examples moved to unit tests
 * ci: update GitHub actions to their latest release with cooldown of 1 week
+* ci: add basic dependabot config
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
