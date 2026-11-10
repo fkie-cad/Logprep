@@ -11,15 +11,15 @@ jobs:
         mode: ['ng', 'legacy']
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
         with:
           fetch-depth: 0
       - name: Set up Docker Compose
-        uses: docker/setup-compose-action@364cc21a5de5b1ee4a7f5f9d3fa374ce0ccde746 # https://github.com/docker/setup-compose-action/releases/tag/v1.2.0
+        uses: docker/setup-compose-action@54042514f505b273907334ae2b9cdbb9a0213c1a # https://github.com/docker/setup-compose-action/releases/tag/v2.4.0
         with:
           version: latest
       - name: Set up Nix
-        uses: cachix/install-nix-action@616559265b40713947b9c190a8ff4b507b5df49b # https://github.com/cachix/install-nix-action/releases/tag/v31.10.4
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # https://github.com/cachix/install-nix-action/releases/tag/v31.11.3
       - name: Build images
         working-directory: examples/compose
         run: |
