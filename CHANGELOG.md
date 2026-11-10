@@ -17,6 +17,7 @@
 * ci: add basic dependabot config
 * ci: check and run k8s examples
 * examples/compose: use `apache/kafka` and `danielqsj/kafka-exporter` instead of archived bitnamilegacy images in examples
+* examples/compose: use the official grafana, prometheus, keycloak and postgres images instead of archived bitnamilegacy images
 * examples/compose: add profile `kafka-metrics` for optional kafka prometheus metrics
 * examples/compose: add healthcheck to opensearch waiting for cluster status >= yellow
 * examples/compose: make profile `oauth2` more consistent by including fda/ucl

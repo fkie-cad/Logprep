@@ -135,7 +135,7 @@ Prometheus:            `localhost:9090`  /                         /
 Nginx Basic Auth:      `localhost:8081`  user                      password
 Nginx mTLS:            `localhost:8082`
 Keycloak:              `localhost:8080`  admin                     admin
-Keycloak Postgres:     `localhost:5432`  keycloak                  bitnami
+Keycloak Postgres:     `localhost:5432`  keycloak                  keycloak
 FDA:                   `localhost:3002`  (configure via keycloak)  (configure via keycloak)
 FDA Postgres:          `localhost:5432`  fda                       fda
 UCL:                   `localhost:3001`  (configure via keycloak)  (configure via keycloak)
