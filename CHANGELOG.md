@@ -15,6 +15,7 @@
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
+* pipeline_manager: gc.freeze before forking pipelines in order to avoid error-prone destruction of health check clients in pipeline processes
 
 ## 21.2.0
 ### Breaking
