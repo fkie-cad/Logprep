@@ -112,8 +112,8 @@ class ResourceCache(Generic[T]):
         self,
         *,
         on_data: Callable[[Getter], Awaitable[T]],
-        on_update: Callable[[CacheItem[T]], Awaitable[None]] | None = None,
-        on_cleanup: Callable[[CacheItem[T]], Awaitable[None]] | None = None,
+        on_update: Callable[[CacheItem[T]], None] | None = None,
+        on_cleanup: Callable[[CacheItem[T]], None] | None = None,
         allow_dynamic_files: bool = False,
     ) -> None:
         """
@@ -281,7 +281,7 @@ class ResourceCache(Generic[T]):
             )
             self._content_cache[resolved_uri] = new_item
             if self._on_update is not None:
-                await self._on_update(new_item)
+                self._on_update(new_item)
 
         cache_item = self._content_cache[resolved_uri]
         if cache_item.is_dynamic and cache_item.will_refresh:

@@ -276,6 +276,7 @@ def provision_context(
     ):
 
         def _provision(*args: Any) -> None:
+            has_files = False
             for context in args:
                 if isinstance(context, list):
                     for item in context:
@@ -342,6 +343,7 @@ def provision_context(
                             )
 
                         else:
+                            has_files = True
                             file_path = tmp_path / path.removeprefix("file://")
                             file_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -353,8 +355,8 @@ def provision_context(
                                 shutil.copy(src_path, file_path)
                             else:
                                 file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
-
-            # monkeypatch.chdir(tmp_path)
+            if has_files:
+                monkeypatch.chdir(tmp_path)
 
         yield _provision
 

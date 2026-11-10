@@ -358,7 +358,7 @@ class GenericAdderRule(Rule):
         raise ValueError(f"""URI source {config.uri!r} without target_field must contain a mapping,
             got {type(content).__name__}""")
 
-    async def _recompute_failure_state(self, _item: CacheItem[FieldValue]) -> None:
+    def _recompute_failure_state(self, _item: CacheItem[FieldValue]) -> None:
         static_resource_error = self._resource_cache.get_static_resource_error_state()
 
         if static_resource_error is None:

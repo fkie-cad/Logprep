@@ -34,11 +34,10 @@ class TestDomainLabelExtractor(BaseProcessorTestCase[DomainLabelExtractor]):
 
     @pytest.mark.parametrize(["rule", "document", "expected_output"], test_cases)
     async def test_domain_extractor(self, rule, document, expected_output):
-        await self._load_rule(rule)
-        await self.object.setup()
-        event = LogEvent(deepcopy(document), original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
-        assert result.data == expected_output
+        async with self.create_and_setup_processor(config_patch={"rules": [rule]}) as instance:
+            event = LogEvent(deepcopy(document), original=b"", input_meta=InputMeta())
+            result = await instance.process(event)
+            assert result.data == expected_output
 
     @pytest.mark.parametrize(["document", "expected_output"], multi_rule_test_cases)
     async def test_domain_extractor_multi_rule(self, document, expected_output):

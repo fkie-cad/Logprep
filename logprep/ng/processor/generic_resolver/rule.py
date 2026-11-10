@@ -298,7 +298,8 @@ class GenericResolverRule(FieldManagerRule):
     ) -> None:
         super().__init__(filter_rule, config, processor_name)
         self._resource_cache = ResourceCache[JsonObject](
-            on_data=self._read_from_getter, on_update=self._update_error_state
+            on_data=self._read_from_getter,
+            on_update=self._update_error_state,
         )
         self._static_additions: JsonObject = {}
 
@@ -337,7 +338,7 @@ class GenericResolverRule(FieldManagerRule):
             )
         return self._convert_additions(content)
 
-    async def _update_error_state(self, _cache_item: CacheItem[JsonObject]) -> None:
+    def _update_error_state(self, _cache_item: CacheItem[JsonObject]) -> None:
         resource_error = self._resource_cache.get_static_resource_error_state()
         if resource_error is None:
             self.clear_failed()

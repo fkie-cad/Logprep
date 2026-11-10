@@ -213,12 +213,14 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         base_url = "http://zombo.dd"
         url = f"{base_url}/tests/testdata/bad_ips.list?ref=bla"
 
-        endpoint = Endpoint(
-            url=url,
-            responses=[
-                Response(body="127.0.0.1\n1.1.1.1\n2.2.2.2\n"),
-                Response(body="127.0.0.1\n1.1.1.1\n"),
-            ],
+        provision_context(
+            Endpoint(
+                url=url,
+                responses=[
+                    Response(body="127.0.0.1\n1.1.1.1\n2.2.2.2\n"),
+                    Response(body="127.0.0.1\n1.1.1.1\n"),
+                ],
+            )
         )
 
         http_getter_conf: Path = tmp_path / "http_getter.json"

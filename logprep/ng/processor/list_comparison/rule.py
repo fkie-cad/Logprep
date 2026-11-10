@@ -342,7 +342,7 @@ class ListComparisonRule(FieldManagerRule):
         self._compare_set_names = list(self._used_uris.keys())
         await self._resource_cache.preload(*self._used_uris.values())
 
-    async def _recompute_failure_state(self, _item: CacheItem[ListContent]) -> None:
+    def _recompute_failure_state(self, _item: CacheItem[ListContent]) -> None:
         static_resource_errors = self._resource_cache.get_static_resource_error_state()
         if static_resource_errors is None:
             self.clear_failed()
