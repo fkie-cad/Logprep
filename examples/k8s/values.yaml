@@ -39,8 +39,6 @@ connector:
       bootstrap.servers: opensiem-kafka:9092
       compression.type: gzip
       statistics.interval.ms: "60000"
-  ingress:
-    enabled: true
 kafka:
   image:
     repository: apache/kafka

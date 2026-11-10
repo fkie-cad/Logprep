@@ -1,9 +1,6 @@
 connector:
   image:
-    # build the image with nix in the root of the repository and tag it
-    # `nix build .#packages.x86_64-linux.docker.python311 -o image && docker load < image`
-    # `docker tag logprep:py3.11 local/logprep:latest`
-    # then load it into the cluster: `minikube image load local/logprep:latest`
+    # build and load the image as described in doc/source/examples/minikube.rst
     registry: local
     repository: logprep
     tag: latest
@@ -48,9 +45,7 @@ connector:
       queue.buffering.max.ms: "10000"
       batch.size: "1000000"
       request.required.acks: "-1"
-  ingress:
-    enabled: true
-# see values.yaml and templates/kafka.yaml
+# see values.yaml and templates/kafka.yml
 kafka:
   replicaCount: 3
   provisioning:
