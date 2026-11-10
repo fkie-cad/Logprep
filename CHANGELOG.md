@@ -15,6 +15,14 @@
 * docs: remove outdated jupyter notebooks; relevant examples moved to unit tests
 * ci: update GitHub actions to their latest release with cooldown of 1 week
 * ci: add basic dependabot config
+* ci: check and run k8s examples
+* examples/compose: use `apache/kafka` and `danielqsj/kafka-exporter` instead of archived bitnamilegacy images in examples
+* examples/compose: add profile `kafka-metrics` for optional kafka prometheus metrics
+* examples/compose: add healthcheck to opensearch waiting for cluster status >= yellow
+* examples/compose: make profile `oauth2` more consistent by including fda/ucl
+* examples/compose: pin opensearch and opensearch-dashboards to 3.9.0
+* examples/k8s: run Kafka 4.3.1 on the official `apache/kafka` image instead of the archived bitnami chart
+* examples/k8s: use the official opensearch helm charts and images (3.9.0) instead of the archived bitnami chart
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
