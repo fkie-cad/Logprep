@@ -15,9 +15,8 @@
 * docs: remove outdated jupyter notebooks; relevant examples moved to unit tests
 * ci: update GitHub actions to their latest release with cooldown of 1 week
 * ci: add basic dependabot config
-* ci: check and run k8s examples
-* examples/compose: use `apache/kafka` and `danielqsj/kafka-exporter` instead of archived bitnamilegacy images in examples
-* examples/compose: use the official grafana, prometheus, keycloak and postgres images instead of archived bitnamilegacy images
+* ci: deploy the k8s example to a kind cluster and check that events go through to opensearch
+* examples/compose: replace archived bitnamilegacy images by `apache/kafka`, `danielqsj/kafka-exporter` and the official grafana, prometheus, keycloak and postgres images
 * examples/compose: add profile `kafka-metrics` for optional kafka prometheus metrics
 * examples/compose: add healthcheck to opensearch waiting for cluster status >= yellow
 * examples/compose: make profile `oauth2` more consistent by including fda/ucl
@@ -28,6 +27,8 @@
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
 * pipeline_manager: gc.freeze before forking pipelines in order to avoid error-prone destruction of health check clients in pipeline processes
+* examples/compose: keycloak imports the logprep realm and the fda/ucl backends use its client secrets, the realm was never imported before
+* examples/k8s: remove config keys from `values-dev.yaml` that logprep rejects and create the `errors` topic
 
 ## 21.2.0
 ### Breaking
