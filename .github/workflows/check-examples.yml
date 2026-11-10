@@ -123,7 +123,7 @@ jobs:
         env: *compose-env
   k8s-setup:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 15
     env:
       PYTHON_VERSION: "3.11"
       EVENT_DATA_SOURCE: examples/exampledata/input_logdata/logclass/test_input.jsonl
@@ -136,7 +136,6 @@ jobs:
         run: |
           nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
           docker load < image
-          # the image values-dev.yaml expects
           docker image tag logprep:py${PYTHON_VERSION} local/logprep:latest
       - name: Set up Helm
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # https://github.com/Azure/setup-helm/releases/tag/v5.0.1
@@ -151,17 +150,16 @@ jobs:
       - name: Load logprep image into the cluster
         run: kind load docker-image local/logprep:latest --name opensiem
       - name: Install the PodMonitor CRD
-        run: kubectl apply -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml
+        run: kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.94.2/example/prometheus-operator-crd/monitoring.coreos.com_podmonitors.yaml
       - name: Install the opensiem example
         run: |
           helm repo add opensearch https://opensearch-project.github.io/helm-charts/
           helm dependency build examples/k8s
           # no --wait: logprep only gets ready once the post-install hook created its topics
-          helm install opensiem examples/k8s --values examples/k8s/values-dev.yaml --timeout 15m
+          helm install opensiem examples/k8s --values examples/k8s/values-dev.yaml --timeout 5m
       - name: Wait for the opensiem example to be ready
-        timeout-minutes: 15
+        timeout-minutes: 10
         run: |
-          # one workload at a time, so the log shows which one is slow or stuck
           for workload in statefulset/opensiem-kafka statefulset/opensiem-opensearch \
               deployment/opensiem-opensearch-dashboards deployment/opensiem-connector deployment/opensiem-logprep; do
             echo "::group::$workload"
@@ -174,6 +172,8 @@ jobs:
           kubectl port-forward svc/opensiem-connector-http-input 9000:9000 > /dev/null &
           kubectl port-forward svc/opensiem-opensearch 9200:9200 > /dev/null &
           trap 'kill $(jobs -p)' EXIT
+
+          echo "Waiting for connector and opensearch to become available"
           until curl -s -o /dev/null http://localhost:9000 && curl -s -o /dev/null http://localhost:9200; do
             sleep 1
           done
@@ -182,7 +182,7 @@ jobs:
           echo "Sending $sent events to the connector"
           curl -sf --data-binary @$EVENT_DATA_SOURCE http://localhost:9000/lab/123/ABC/auditlog
 
-          # connector -> kafka -> logprep -> opensearch, the output flushes at least every flush_timeout
+          echo "Waiting for opensearch to receive the $sent events in index 'processed'"
           while true; do
             processed=$(curl -s http://localhost:9200/processed/_count | jq '.count // 0')
             echo "processed: $processed of $sent"

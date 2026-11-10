@@ -86,7 +86,7 @@ At first you have to install the prometheus PodMonitor CRD:
 .. code-block:: bash
     :caption: Install the prometheus PodMonitor CRD
 
-    kubectl apply -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml
+    kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.94.2/example/prometheus-operator-crd/monitoring.coreos.com_podmonitors.yaml
 
 
 Then you have to update and build the helm subcharts repository:
