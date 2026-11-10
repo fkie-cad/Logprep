@@ -105,8 +105,6 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinxcontrib.datatemplates",
     "sphinx_design",
-    "nbsphinx",
-    "IPython.sphinxext.ipython_console_highlighting",
     "sphinx_copybutton",
     "security_best_practices",
     "resolve_placeholders",
@@ -115,9 +113,6 @@ extensions = [
 
 extensions.append("sphinx.ext.todo")
 todo_include_todos = True
-
-nbsphinx_requirejs_path = ""
-nbsphinx_execute = "never"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -257,4 +252,3 @@ modindex_common_prefix = ["logprep."]
 html_style = "css/custom_theme.css"
 autodoc_class_signature = "separated"
 autodoc_member_order = "bysource"
-# nbsphinx_allow_errors = True
