@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -491,7 +491,7 @@ wheels = [
 
 [[package]]
 name = "cibuildwheel"
-version = "3.4.1"
+version = "4.3.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashlex" },
@@ -502,14 +502,11 @@ dependencies = [
     { name = "filelock" },
     { name = "humanize" },
     { name = "packaging" },
-    { name = "patchelf", marker = "(platform_machine == 'aarch64' and sys_platform == 'darwin') or (platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'arm64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
     { name = "platformdirs" },
-    { name = "pyelftools" },
-    { name = "wheel" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/63/b7/39dd5772a7893639e614a33c3e372eb1ca3792a536de5c5aff6d1bddc25b/cibuildwheel-3.4.1.tar.gz", hash = "sha256:c3ba783013e190849bb2d22e49359a911e368daebab8b02e3996320ab9315d34", size = 366686, upload-time = "2026-04-02T13:59:01.22Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/63/74661865683fb4253146bf5905ccaaa3d76c3859a97c17d6627f7a341c05/cibuildwheel-4.3.4.tar.gz", hash = "sha256:9dbba82e80c3e84d058a795ddac768551e3604dc3b706add1cf9b05e8b428697", size = 465082, upload-time = "2026-10-22T13:32:53.44Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/c6/b661315f571365d048e0f5ef3cc619f5ee215d17e2f880d35d919434e919/cibuildwheel-3.4.1-py3-none-any.whl", hash = "sha256:d495eb8780473029382976e86363562923401ac575c18bc52e6a9102512853ad", size = 130111, upload-time = "2026-04-02T13:58:59.644Z" },
+    { url = "https://files.pythonhosted.org/packages/53/43/1e16207d213e5109d916fdbd48c8730780e4fcb4624c48dc2b9a2a252415/cibuildwheel-4.3.4-py3-none-any.whl", hash = "sha256:5b7533ac2630d9633e69c1ecc1781d63feeb7d80fcc9aebab4e41654bc687a90", size = 170828, upload-time = "2026-10-22T13:32:51.751Z" },
 ]
 
 [[package]]
@@ -1917,17 +1914,6 @@ wheels = [
 ]
 
 [[package]]
-name = "patchelf"
-version = "0.17.2.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2c/a3/fdd3fa938c864aa2f11dd0b7f08befeda983d2dcdee44da493c6977a653f/patchelf-0.17.2.4.tar.gz", hash = "sha256:970ee5cd8af33e5ea2099510b2f9013fa1b8d5cd763bf3fd3961281c18101a09", size = 149629, upload-time = "2025-07-23T21:16:32.071Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/a7/8c4f86c78ec03db954d05fd9c57a114cc3a172a2d3e4a8b949cd5ff89471/patchelf-0.17.2.4-py3-none-macosx_10_9_universal2.whl", hash = "sha256:343bb1b94e959f9070ca9607453b04390e36bbaa33c88640b989cefad0aa049e", size = 184436, upload-time = "2025-07-23T21:16:20.578Z" },
-    { url = "https://files.pythonhosted.org/packages/7e/19/f7821ef31aab01fa7dc8ebe697ece88ec4f7a0fdd3155dab2dfee4b00e5c/patchelf-0.17.2.4-py3-none-manylinux1_x86_64.manylinux_2_5_x86_64.musllinux_1_1_x86_64.whl", hash = "sha256:d9b35ebfada70c02679ad036407d9724ffe1255122ba4ac5e4be5868618a5689", size = 482846, upload-time = "2025-07-23T21:16:23.73Z" },
-    { url = "https://files.pythonhosted.org/packages/d1/50/107fea848ecfd851d473b079cab79107487d72c4c3cdb25b9d2603a24ca2/patchelf-0.17.2.4-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.musllinux_1_1_aarch64.whl", hash = "sha256:2931a1b5b85f3549661898af7bf746afbda7903c7c9a967cfc998a3563f84fad", size = 477811, upload-time = "2025-07-23T21:16:25.145Z" },
-]
-
-[[package]]
 name = "pathspec"
 version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2170,15 +2156,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/59/fe/aae679b64363eb78326c7fdc9d06ec3de18bac68be4b612fc1fe8902693c/pycryptodome-3.23.0-cp37-abi3-win32.whl", hash = "sha256:507dbead45474b62b2bbe318eb1c4c8ee641077532067fec9c1aa82c31f84886", size = 1768484, upload-time = "2025-05-17T17:21:08.535Z" },
     { url = "https://files.pythonhosted.org/packages/54/2f/e97a1b8294db0daaa87012c24a7bb714147c7ade7656973fd6c736b484ff/pycryptodome-3.23.0-cp37-abi3-win_amd64.whl", hash = "sha256:c75b52aacc6c0c260f204cbdd834f76edc9fb0d8e0da9fbf8352ef58202564e2", size = 1799636, upload-time = "2025-05-17T17:21:10.393Z" },
     { url = "https://files.pythonhosted.org/packages/18/3d/f9441a0d798bf2b1e645adc3265e55706aead1255ccdad3856dbdcffec14/pycryptodome-3.23.0-cp37-abi3-win_arm64.whl", hash = "sha256:11eeeb6917903876f134b56ba11abe95c0b0fd5e3330def218083c7d98bbcb3c", size = 1703675, upload-time = "2025-05-17T17:21:13.146Z" },
-]
-
-[[package]]
-name = "pyelftools"
-version = "0.32"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b9/ab/33968940b2deb3d92f5b146bc6d4009a5f95d1d06c148ea2f9ee965071af/pyelftools-0.32.tar.gz", hash = "sha256:6de90ee7b8263e740c8715a925382d4099b354f29ac48ea40d840cf7aa14ace5", size = 15047199, upload-time = "2025-02-19T14:20:05.549Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/43/700932c4f0638c3421177144a2e86448c0d75dbaee2c7936bda3f9fd0878/pyelftools-0.32-py3-none-any.whl", hash = "sha256:013df952a006db5e138b1edf6d8a68ecc50630adbd0d83a2d41e7f846163d738", size = 188525, upload-time = "2025-02-19T14:19:59.919Z" },
 ]
 
 [[package]]
@@ -3236,18 +3213,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/37/c3/48e2c03d2bd79bb45948841c592d24156312dd5f58cdf8f549febe652fb6/websockets-16.1.1-pp311-pypy311_pp73-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b6b9dadbef0cccd9f4c4ee96b08898afa73e26803bbe0f6aeb5bb12b0074206d", size = 179190, upload-time = "2026-07-17T22:51:01.129Z" },
     { url = "https://files.pythonhosted.org/packages/2d/3f/73e511ecf2496ceac57dd4ed8388efe2bcf0769338a2dbf242c8366ae87e/websockets-16.1.1-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:56cd5fc4f10a9ea8aa0804bddb7b42506cf9e136046f3b4c27de8fec9e2ecba5", size = 180330, upload-time = "2026-07-17T22:51:02.603Z" },
     { url = "https://files.pythonhosted.org/packages/be/4d/2d0d67834092e354d2b0498f014a41249a89556bc406cf86f3e1557bb463/websockets-16.1.1-py3-none-any.whl", hash = "sha256:6abbd3e82c731c8e531714466acd5d87b5e88ac3243465337ba71d68e23ae7e3", size = 173814, upload-time = "2026-07-17T22:51:04.184Z" },
-]
-
-[[package]]
-name = "wheel"
-version = "0.47.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/39/62/75f18a0f03b4219c456652c7780e4d749b929eb605c098ce3a5b6b6bc081/wheel-0.47.0.tar.gz", hash = "sha256:cc72bd1009ba0cf63922e28f94d9d83b920aa2bb28f798a31d0691b02fa3c9b3", size = 63854, upload-time = "2026-04-22T15:51:27.727Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/1b/9e33c09813d65e248f7f773119148a612516a4bea93e9c6f545f78455b7c/wheel-0.47.0-py3-none-any.whl", hash = "sha256:212281cab4dff978f6cedd499cd893e1f620791ca6ff7107cf270781e587eced", size = 32218, upload-time = "2026-04-22T15:51:26.296Z" },
 ]
 
 [[package]]
