@@ -12,9 +12,9 @@ from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.network_comparison.processor import NetworkComparison
 from logprep.ng.processor.network_comparison.rule import NetworkComparisonRule
+from logprep.ng.util.getter import HttpGetter, RefreshableGetter
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter, RefreshableGetter
 from tests.conftest import Endpoint, Response, mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.network_comparison.test_network_comparison import (
@@ -213,15 +213,15 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         base_url = "http://zombo.dd"
         url = f"{base_url}/tests/testdata/bad_ips.list?ref=bla"
 
-        provision_context(
-            Endpoint(
-                url=url,
-                responses=[
-                    Response(body="127.0.0.1\n1.1.1.1\n2.2.2.2\n"),
-                    Response(body="127.0.0.1\n1.1.1.1\n"),
-                ],
-            )
+        endpoint = Endpoint(
+            url=url,
+            responses=[
+                Response(body="127.0.0.1\n1.1.1.1\n2.2.2.2\n"),
+                Response(body="127.0.0.1\n1.1.1.1\n"),
+            ],
         )
+
+        provision_context(endpoint)
 
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 10}}))
@@ -243,6 +243,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 ]
             )
             rule = processor.rules[0]
+            assert endpoint.call_count == 1
             assert await _compare_sets(rule) == {
                 "bad_ips.list": {
                     IPv4Network("1.1.1.1/32"),
@@ -251,7 +252,8 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 }
             }
 
-            HttpGetter(target=url, protocol="http").scheduler.run_all()
+            await HttpGetter(target=url, protocol="http").scheduler.run_all()
+            assert endpoint.call_count == 2
             assert await _compare_sets(rule) == {
                 "bad_ips.list": {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
             }
@@ -311,7 +313,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 "bad_ips_2.list": {IPv4Network("2.2.2.2/32")},
             }
             assert endpoint1.call_count == 1
-            HttpGetter(target=url1, protocol="http").scheduler.run_all()
+            await HttpGetter(target=url1, protocol="http").scheduler.run_all()
             assert endpoint1.call_count == 2
             assert (await _compare_sets(rule)) == {
                 "bad_ips_1.list": {IPv4Network("1.1.1.1/32")},
@@ -364,8 +366,8 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert rule.data_error is None
-        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 0
-        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 0
+        assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
         result = await processor.process(
             LogEvent(successful_document, original=b"", input_meta=InputMeta())
@@ -519,11 +521,11 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 "SECOND_LIST": {IPv4Network("127.0.0.1/32")},
             }
 
-            assert len(HttpGetter._target_to_data_caches[url].callbacks) == 2
+            assert len(HttpGetter._target_to_data_caches[url].callbacks) == 1
 
-            HttpGetter(target=url, protocol="http").scheduler.run_all()
+            await HttpGetter(target=url, protocol="http").scheduler.run_all()
 
-            assert _compare_sets(rule) == {
+            assert await _compare_sets(rule) == {
                 "FIRST_LIST": {IPv4Network("1.1.1.1/32")},
                 "SECOND_LIST": {IPv4Network("1.1.1.1/32")},
             }
