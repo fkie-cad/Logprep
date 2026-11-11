@@ -13,10 +13,10 @@ from logprep.factory import Factory
 from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.generic_adder.processor import GenericAdder
+from logprep.ng.util.getter import HttpGetter
 from logprep.processor.base.exceptions import (
     ProcessingWarning,
 )
-from logprep.util.getter import HttpGetter
 from tests.conftest import Endpoint
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.generic_adder.test_generic_adder import (
@@ -180,9 +180,8 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         base_url = "https://example.dd"
         url_template = f"{base_url}/${{tenant}}"
         resolved_url = f"{base_url}/acme"
-        provision_context(
-            Endpoint(url=resolved_url, json={"value": 1}),
-        )
+        endpoint = Endpoint(url=resolved_url, json={"value": 1})
+        provision_context(endpoint)
         config = {
             "rules": [
                 {
@@ -206,6 +205,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
                     "value": 1,
                 },
             }
+            assert endpoint.call_count == 1
             shared = HttpGetter._target_to_data_caches[resolved_url]
             assert len(shared.callbacks) == 1
             assert len(shared.cleanup_callbacks) == 1

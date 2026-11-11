@@ -387,12 +387,13 @@ class TestResourceCache:
     async def test_get_resource_error_on_retrieve_uri(self, provision_context):
 
         async def data_callback(getter: Getter):
-            return str(await getter.get_raw(), encoding="utf-8")
+            result = await getter.get_raw()
+            return str(result, encoding="utf-8")
 
         update_callback = Mock()
         cleanup_callback = Mock()
         uri = "https://example.dd/foo"
-        endpoint = Endpoint(url=uri, status=404, reason="NOT FOUND")
+        endpoint = Endpoint(url=uri, status=404)
         provision_context(endpoint)
         cache = ResourceCache[str](
             on_data=data_callback,

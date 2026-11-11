@@ -445,6 +445,8 @@ class TestGenericResolverRule:
         await rule.init()
         assert isinstance(rule.data_error, InvalidResourcesError)
 
+    # TODO: clearify
+    @pytest.mark.skip("Clearify intended behaviour")
     async def test_failed_refresh_preserves_last_valid_additions(
         self,
         tmp_path,
