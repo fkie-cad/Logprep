@@ -139,8 +139,9 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        raw_uri = f"https://{uuid4()}.dd/${MY_ENV}"
-        resolved_uri = f"https://{uuid4()}.dd/foo"
+        base = f"https://{uuid4()}.dd"
+        raw_uri = f"{base}/${{MY_ENV}}"
+        resolved_uri = f"{base}/foo"
         endpoint = responses.add(responses.GET, resolved_uri, body=resource_content)
 
         cache = ResourceCache[str](
@@ -204,8 +205,9 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        raw_uri = f"https://{uuid4()}.dd/${nested.value}"
-        resolved_uri = f"https://{uuid4()}.dd/foo"
+        base_uri = f"https://{uuid4()}"
+        raw_uri = f"{base_uri}/${{nested.value}}"
+        resolved_uri = f"{base_uri}/foo"
         endpoint = responses.add(responses.GET, resolved_uri, body=resource_content)
 
         cache = ResourceCache[str](
@@ -238,8 +240,9 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        raw_uri = f"https://{uuid4()}.dd/${nested.value}"
-        resolved_uri = f"https://{uuid4()}.dd/foo"
+        base_uri = f"https://{uuid4()}"
+        raw_uri = f"{base_uri}/${{nested.value}}"
+        resolved_uri = f"{base_uri}/foo"
         endpoint = responses.add(responses.GET, resolved_uri, body=resource_content)
 
         cache = ResourceCache[str](

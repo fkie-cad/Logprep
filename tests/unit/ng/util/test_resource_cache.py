@@ -6,10 +6,7 @@ from uuid import uuid4
 import pytest
 
 from logprep.ng.abc.getter import Getter
-from logprep.ng.util.getter import (
-    GetterNotFoundError,
-    RefreshableGetterError,
-)
+from logprep.ng.util.getter import GetterNotFoundError, RefreshableGetterError
 from logprep.ng.util.resource_cache import (
     ErrorContext,
     ResourceCache,
@@ -23,7 +20,7 @@ class TestResourceCache:
     async def test_get_resource_simple_happy_path(self, provision_context):
 
         resource_content = str(uuid4())
-        uri = "https://example.dd/foo"
+        uri = f"https://{uuid4()}.dd/foo"
         endpoint = Endpoint(url=uri, body=resource_content)
         provision_context(endpoint)
 
@@ -62,7 +59,7 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        uri = "https://example.dd/foo"
+        uri = f"https://{uuid4()}.dd/foo"
         endpoint = Endpoint(url=uri, body=resource_content)
         provision_context(endpoint)
 
@@ -85,7 +82,7 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        uri = "https://example.dd/foo"
+        uri = f"https://{uuid4()}.dd/foo"
         endpoint = Endpoint(url=uri, body=resource_content)
         provision_context(endpoint)
 
@@ -110,7 +107,7 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        uri = "https://example.dd/foo"
+        uri = f"https://{uuid4()}.dd/foo"
         endpoint = Endpoint(url=uri, body=resource_content)
         provision_context(endpoint)
 
@@ -137,8 +134,10 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        raw_uri = "https://example.dd/${MY_ENV}"
-        resolved_uri = "https://example.dd/foo"
+
+        base_uri = f"https://{uuid4()}.dd"
+        raw_uri = f"{base_uri}/${{MY_ENV}}"
+        resolved_uri = f"{base_uri}/foo"
         endpoint = Endpoint(url=resolved_uri, body=resource_content)
         provision_context(endpoint)
 
@@ -202,8 +201,9 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        raw_uri = "https://example.dd/${nested.value}"
-        resolved_uri = "https://example.dd/foo"
+        base_uri = f"https://{uuid4()}.dd"
+        raw_uri = f"{base_uri}/${{nested.value}}"
+        resolved_uri = f"{base_uri}/foo"
         endpoint = Endpoint(url=resolved_uri, body=resource_content)
         provision_context(endpoint)
 
@@ -236,8 +236,9 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        raw_uri = "https://example.dd/${nested.value}"
-        resolved_uri = "https://example.dd/foo"
+        base_uri = f"https://{uuid4()}.dd"
+        raw_uri = f"{base_uri}/${{nested.value}}"
+        resolved_uri = f"{base_uri}/foo"
         endpoint = Endpoint(url=resolved_uri, body=resource_content)
         provision_context(endpoint)
 
@@ -264,7 +265,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        unresolved_uri = "http://example.dd/${foo}"
+        unresolved_uri = f"http://{uuid4()}.dd/${{foo}}"
         result = await cache.get_cache_item(unresolved_uri)
 
         assert result.content is None
@@ -293,7 +294,7 @@ class TestResourceCache:
             on_update=update_callback,
         )
 
-        unresolved_uri = "http://example.dd/${foo}"
+        unresolved_uri = f"http://{uuid4()}.dd/${{foo}}"
         result = await cache.get_cache_item(unresolved_uri, {"bar": "nope"})
 
         assert result.content is None
@@ -392,7 +393,7 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        uri = "https://example.dd/foo"
+        uri = f"https://{uuid4()}.dd/foo"
         endpoint = Endpoint(url=uri, status=404)
         provision_context(endpoint)
         cache = ResourceCache[str](
@@ -425,7 +426,7 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        uri = "https://example.dd/foo"
+        uri = f"https://{uuid4()}.dd/foo"
         endpoint = Endpoint(url=uri, status=404)
         provision_context(endpoint)
         cache = ResourceCache[str](
@@ -447,7 +448,7 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        uri = "https://example.dd/foo"
+        uri = f"https://{uuid4()}.dd/foo"
         provision_context([Endpoint(url=uri, status=404)])
 
         cache = ResourceCache[str](
@@ -474,7 +475,7 @@ class TestResourceCache:
 
         update_callback = Mock()
         cleanup_callback = Mock()
-        uri = "https://example.dd/foo"
+        uri = f"https://{uuid4()}.dd/foo"
         endpoint = Endpoint(url=uri, body="NOPE")
         provision_context(endpoint)
 
