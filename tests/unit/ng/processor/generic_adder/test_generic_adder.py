@@ -6,6 +6,7 @@
 # pylint: disable=too-many-positional-arguments
 import re
 from copy import deepcopy
+from uuid import uuid4
 
 import pytest
 
@@ -138,7 +139,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
         assert event["some_dict_field"] is not rule_add["some_dict_field"], "only copies in events"
 
     async def test_adds_response_from_event_templated_url(self, provision_context):
-        base_url = "http://example.dd"
+        base_url = f"http://{uuid4()}.dd"
         response_content = {
             "user": {"name": "Alice"},
             "risk": {"score": 7},
@@ -215,7 +216,7 @@ class TestGenericAdder(BaseProcessorTestCase[GenericAdder]):
 
     async def test_dynamic_url_failure_is_event_scoped(self, provision_context):
 
-        base_url = "http://example.dd"
+        base_url = f"http://{uuid4()}.dd"
         failed_url = f"{base_url}/acme"
         successful_url = f"{base_url}/beta"
         url_template = f"{base_url}/${{tenant}}"
