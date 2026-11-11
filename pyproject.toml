@@ -56,7 +56,7 @@ dependencies = [
   "prometheus_client<1",
   "pycryptodome<4",
   "pyparsing<4",
-  "scikit-learn>=1.2.0,<2",
+  "scikit-learn>=1.2.0,<1.9",
   "joblib<2",
   "requests>=2.33.0,<3", # [>=2.33.0]: CVE-2026-25645
   "ruamel.yaml<1",
