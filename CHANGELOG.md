@@ -41,7 +41,7 @@
 ### Bugfix
 * domain_label_extractor: fix error-handling on invalid input types and partial urls
 
-# 21.1.1
+## 21.1.1
 ### Breaking
 
 ### Features
