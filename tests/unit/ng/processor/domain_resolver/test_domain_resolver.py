@@ -180,7 +180,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         await self._load_rule(rule)
         with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            result = domain_resolver._resolve_with_cache("domain")
+            result = await domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, SuccessResult)
             assert result.resolved_ip == "1.2.3.4"
             assert domain_resolver._timeout_cache.size() == 0
@@ -191,21 +191,21 @@ class TestDomainResolver(BaseProcessorTestCase):
         with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = LifetimeTimeout
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            result = domain_resolver._resolve_with_cache("domain")
+            result = await domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, FailedResult)
             assert result.failure_type == FailureType.TIMEOUT
             assert domain_resolver._timeout_cache.size() == 1
 
         with mock.patch.object(domain_resolver._dns_resolver, "resolve") as mock_resolve:
             self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            result = domain_resolver._resolve_with_cache("domain")
+            result = await domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, FailedResult)
             assert result.failure_type == FailureType.TIMEOUT
             assert domain_resolver._timeout_cache.size() == 1
 
             domain_resolver._timeout_cache.clear()
 
-            result = domain_resolver._resolve_with_cache("domain")
+            result = await domain_resolver._resolve_with_cache("domain")
             assert isinstance(result, SuccessResult)
             assert result.resolved_ip == "1.2.3.4"
             assert domain_resolver._timeout_cache.size() == 0
@@ -384,27 +384,27 @@ class TestDomainResolver(BaseProcessorTestCase):
     async def test_resolve_domain_syntax_error(self):
         await self.object.setup()
         domain = ".."
-        result = self.object._resolve_ip(domain)
+        result = await self.object._resolve_ip(domain)
         assert result.failure_type == FailureType.INVALID
 
     async def test_resolve_domain_too_big(self):
         await self.object.setup()
         domain = "0" * 64
-        result = self.object._resolve_ip(domain)
+        result = await self.object._resolve_ip(domain)
         assert result.failure_type == FailureType.INVALID
 
     async def test_resolve_domain_no_answer(self):
         await self.object.setup()
         with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = NoAnswer
-            result = self.object._resolve_ip("https://google.de")
+            result = await self.object._resolve_ip("https://google.de")
         assert result.failure_type == FailureType.NO_ANSWER
 
     async def test_resolve_domain_no_nameservers(self):
         await self.object.setup()
         with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = NoNameservers
-            result = self.object._resolve_ip("https://google.de")
+            result = await self.object._resolve_ip("https://google.de")
         assert result.failure_type == FailureType.NO_NAMESERVERS
 
     async def test_resolve_domain_raises_unknown_dns_exception(self):
@@ -414,7 +414,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         await self.object.setup()
         with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
             mock_resolve.side_effect = CustomDNSException
-            result = self.object._resolve_ip("https://google.de")
+            result = await self.object._resolve_ip("https://google.de")
         assert result.failure_type == FailureType.DNS_EXCEPTION
 
     async def test_resole_domain_no_nameservers_emits_warning(self, caplog):
@@ -440,4 +440,4 @@ class TestDomainResolver(BaseProcessorTestCase):
 
     # TODO(async-followup): make return True in processor and adapt test
     async def test_has_async_io(self):
-        assert await self.object.has_asyncio() is False
+        assert await self.object.has_asyncio() is True

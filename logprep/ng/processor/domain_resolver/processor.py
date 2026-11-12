@@ -36,10 +36,11 @@ from enum import IntEnum, auto
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
+from dns.asyncresolver import NXDOMAIN, NoAnswer, Resolver, get_default_resolver
 from dns.exception import DNSException, FormError
 from dns.exception import SyntaxError as DNSSyntaxError
 from dns.exception import Timeout, TooBig
-from dns.resolver import NXDOMAIN, LifetimeTimeout, NoAnswer, NoNameservers, Resolver
+from dns.resolver import LifetimeTimeout, NoNameservers
 
 from logprep.metrics.metrics import CounterMetric
 from logprep.ng.abc.processor import Processor
@@ -250,7 +251,7 @@ class DomainResolver(Processor):
 
     async def setup(self):
         await super().setup()
-        self._dns_resolver = Resolver()
+        self._dns_resolver = get_default_resolver()
         # attributes are meant to be overwritten after init
         self._dns_resolver.timeout = self.config.timeout
         self._dns_resolver.lifetime = self.config.lifetime
@@ -299,14 +300,14 @@ class DomainResolver(Processor):
             )
         self.metrics.total_urls.inc(1)
         if self.config.cache_enabled:
-            result = self._resolve_with_cache(domain)
+            result = await self._resolve_with_cache(domain)
         else:
-            result = self._resolve_ip(domain)
+            result = await self._resolve_ip(domain)
 
         if isinstance(result, SuccessResult) and (resolved_ip := result.resolved_ip):
             self._add_resolve_infos_to_event(event, rule, resolved_ip)
 
-    def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
+    async def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
 
         cached_resolved = self._domain_cache.get(hash_string)
@@ -319,7 +320,7 @@ class DomainResolver(Processor):
             self.metrics.timeouts_cached.inc(1)
             return FailedResult(FailureType.TIMEOUT)
 
-        result = self._resolve_ip(domain)
+        result = await self._resolve_ip(domain)
         match result:
             case FailedResult(FailureType.TIMEOUT | FailureType.NO_NAMESERVERS):
                 self._timeout_cache.add(hash_string, result)
@@ -332,14 +333,13 @@ class DomainResolver(Processor):
         if resolved_ip:
             self._write_target_field(event, rule, resolved_ip)
 
-    def _resolve_ip(self, domain: str) -> SuccessResult | FailedResult:
+    async def _resolve_ip(self, domain: str) -> SuccessResult | FailedResult:
         """Resolve domain with timeout.
 
         Assumes socket default timeout is None and relies on threading to create a timeout.
         """
         try:
-            # TODO(async-followup): consider https://github.com/aio-libs/aiodns?
-            result = self._dns_resolver.resolve(domain, "A")
+            result = await self._dns_resolver.resolve(domain, "A")
             self.metrics.resolved_domains.inc(1)
             return SuccessResult(result[0].address)
         except NoNameservers as error:
@@ -373,7 +373,6 @@ class DomainResolver(Processor):
                 logger.info("Failed to resolve %s: %s", domain, error)
             return FailedResult(failure_type, error)
 
-    # TODO(async-followup): make processor async (ip resolving) ans return true
     async def has_asyncio(self) -> bool:
         """Return whether the processor performs asynchronous I/O operations."""
-        return False
+        return True
