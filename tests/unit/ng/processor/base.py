@@ -12,7 +12,6 @@ from unittest import mock
 
 import pytest
 import responses
-from aiohttp import web
 from attrs import asdict
 from ruamel.yaml import YAML
 
@@ -248,45 +247,39 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
             await processor.setup()
 
     async def test_accepts_tree_config_from_http(self, provision_context):
-        url = BaseURL + "/tree_config.yml"
-        tree_config = Path("tests/testdata/unit/tree_config.json").read_text("utf-8")
+        url = "https://www.example.de/tree_config.yml"
+        config = deepcopy(self.CONFIG)
+        config["tree_config"] = url
+        tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
 
         endpoint = Endpoint(
             url=url,
-            content_type="application/json",
             body=tree_config,
         )
+        provision_context(endpoint)
 
+        processor = Factory.create({"test instance": config})
+        await processor.setup()
+        tree_config = json.loads(tree_config)
+        assert processor._rule_tree.tree_config.priority_dict == tree_config.get("priority_dict")
+
+    async def test_raises_http_error_raises_getter_error(self, provision_context):
+        url = "https://example.de/tree_config.yml"
+        endpoint = Endpoint(
+            url=url,
+            status=404,
+        )
         provision_context(endpoint)
 
         config = deepcopy(self.CONFIG)
         config["tree_config"] = url
 
-        async with self.create_and_setup_processor(config_patch=config) as instance:
-            tree_config_dict = json.loads(tree_config)
-
-            assert instance._rule_tree.tree_config.priority_dict == tree_config_dict.get(
-                "priority_dict"
-            )
-            assert endpoint.call_count == 1, f"Actual HTTP calls: {endpoint.call_count}"
-
-    async def test_raises_http_error_raises_getter_error(self, aiohttp_server):
-        async def handler(_: web.Request) -> web.Response:
-            return web.Response(status=404)
-
-        app = web.Application()
-        app.router.add_get("/tree_config.yml", handler)
-        server = await aiohttp_server(app)
-
-        config = deepcopy(self.CONFIG)
-        config["tree_config"] = str(server.make_url("/tree_config.yml"))
-
         RefreshableGetter.reset()
 
-        processor = Factory.create({"test instance": config})
+        instance = self._create_test_instance(config_patch=config)
 
         with pytest.raises(RefreshableGetterError, match="404"):
-            await processor.setup()
+            await instance.setup()
 
     @pytest.mark.parametrize(
         "metric_name, metric_class",

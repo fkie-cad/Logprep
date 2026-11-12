@@ -60,7 +60,6 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         await self.object.setup()
 
     async def _create_lister(self, rules: list[dict], **extra_config):
-        RefreshableGetter.reset()
         patch = {"rules": rules, "list_search_base_path": None, **extra_config}
         processor = self._create_test_instance(patch)
         await processor.setup()
@@ -95,7 +94,7 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
     ):
         provision_context(
             Endpoint(
-                url=r"http.*",
+                url_pattern=r"http.*",
                 status=500,
             ),
         )
@@ -343,15 +342,14 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         path = "tests/testdata"
         url = f"{base_url}/{path}/{list_name}"
 
-        provision_context(
-            Endpoint(
-                url=url,
-                responses=[
-                    Response(body="Franz\nHeinz\nHans\n"),
-                    Response(body="Franz\nHeinz\n"),
-                ],
-            )
+        endpoint = Endpoint(
+            url=url,
+            responses=[
+                Response(body="Franz\nHeinz\nHans\n"),
+                Response(body="Franz\nHeinz\n"),
+            ],
         )
+        provision_context(endpoint)
 
         http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 10}}))
@@ -372,9 +370,6 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
             )
             rule = processor.rules[0]
             assert await _compare_sets(rule) == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
-
-            getter = HttpGetter(target=url, protocol="http")
-            await getter._refresh()
 
     @responses.activate
     async def test_resolves_dynamic_http_template_from_event_lazily(self, provision_context):

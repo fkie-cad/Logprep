@@ -85,7 +85,6 @@ dev = [
   "pytest-aiohttp",
   "pytest-timeout",
   "responses",
-  "aioresponses",
   "jinja2",
   "cibuildwheel",
   "asgiref",
@@ -124,6 +123,11 @@ Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
 [project.scripts]
 logprep = "logprep.run_logprep:cli"
 logprep-ng = "logprep.run_ng:cli"
+
+[dependency-groups]
+dev = [
+    "aiointercept[pytest-asyncio]>=1.0.0",
+]
 
 [tool.black]
 line-length = 100

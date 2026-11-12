@@ -6,11 +6,12 @@ import inspect
 import json
 import re
 import shutil
+from collections import deque
 from collections.abc import Generator, Sequence
 from copy import deepcopy
 from multiprocessing import active_children, set_start_method
 from pathlib import Path
-from typing import Any, Callable, Literal, TypeAlias
+from typing import Any, AsyncGenerator, Callable, Literal, TypeAlias
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -18,14 +19,16 @@ import aiohttp
 import pytest
 import responses
 from _pytest.mark.structures import ParameterSet
-from aioresponses import aioresponses
+from aiointercept import CallbackResult, aiointercept
 from attrs import define, field
 from prometheus_client import REGISTRY
 
+from logprep.ng.util.getter import HttpGetter as NGHttpGetter
+from logprep.ng.util.getter import RefreshableGetter as NGRefreshableGetter
 from logprep.registry import Registry
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.environ import _ENV_SNAPSHOT
-from logprep.util.getter import RefreshableGetter
+from logprep.util.getter import HttpGetter, RefreshableGetter
 from logprep.util.helper import MISSING, FieldValue, JsonObject, Missing
 
 
@@ -51,9 +54,16 @@ def clear_prometheus_registry():
 
 
 @pytest.fixture(autouse=True)
-def clear_getter_cache():
-    """Clear getter cache after each test"""
+async def clear_getter_cache():
+    """Clear legacy and NG getter caches and close shared HTTP sessions."""
     RefreshableGetter.reset()
+    NGRefreshableGetter.reset()
+
+    yield
+
+    NGRefreshableGetter.reset()
+    await NGHttpGetter.close_sessions()
+    NGHttpGetter._credentials_registry.clear()  # pylint: disable=protected-access
 
 
 def pytest_sessionstart(session):  # pylint: disable=unused-argument
@@ -209,17 +219,17 @@ class Response:
 @define(kw_only=True)
 class Endpoint(Response):
     url: str | None = None
-    pattern: str | re.Pattern[str] | None = None
-
+    url_pattern: str | re.Pattern[str] | None = None
     method: Literal["HEAD", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"] = "GET"
     responses: Sequence[Response] | None = None
+    repeat: bool | int = True
     _call_count: int = 0
 
     def get_url(self) -> str | re.Pattern[str]:
-        if self.pattern is not None:
-            if isinstance(self.pattern, str):
-                return re.compile(self.pattern)
-            return self.pattern
+        if self.url_pattern is not None:
+            if isinstance(self.url_pattern, str):
+                return re.compile(self.url_pattern)
+            return self.url_pattern
         if self.url is None:
             return re.compile(r"https?:.*")
         return self.url
@@ -241,7 +251,7 @@ class Endpoint(Response):
 
 
 Context: TypeAlias = list[Endpoint | File]
-BaseIP: str = "http://127.0.0.1"
+BaseIP: str = "http://fdh"
 BaseURL: str = "http://localhost"
 
 
@@ -267,15 +277,35 @@ class ProcessorFailureTestCase(ProcessorTestCase):
 
 
 @pytest.fixture
-def provision_context(
+async def provision_context(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pytestconfig: pytest.Config
-) -> Generator[Callable[[Any], None], None]:
+) -> AsyncGenerator[Callable[[Any], None], None]:
+    """Provision file and HTTP mocks for sync requests and async aiohttp clients."""
     project_root = pytestconfig.rootpath
 
-    with (
-        responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses,
-        aioresponses(passthrough=[f"{BaseIP}:", f"{BaseURL}:"]) as mocked_aiohttp,
-    ):
+    def _endpoint_callback(
+        _url: Any,
+        *,
+        endpoint: Endpoint,
+        responses: deque[Response],
+        **_kwargs: Any,
+    ) -> CallbackResult:
+        endpoint.on_call()
+        response = responses.popleft() if len(responses) > 1 else responses[0]
+
+        return CallbackResult(
+            status=response.status,
+            reason=response.reason,
+            body=response.get_body() or "",
+            headers=response.headers,
+            content_type=response.get_content_type(),
+        )
+
+    async with contextlib.AsyncExitStack() as stack:
+        mocked_responses = stack.enter_context(
+            responses.RequestsMock(assert_all_requests_are_fired=False)
+        )
+        mocked_aiohttp = await stack.enter_async_context(aiointercept(mock_external_urls=True))
 
         def _apply_provision_element(item: Any) -> bool:
             has_files = False
@@ -284,19 +314,24 @@ def provision_context(
                     return _apply_provision_element(item)
 
             elif isinstance(item, Endpoint):
-                for req, repeat in item.get_requests():
+                response_queue = deque(req for req, _ in item.get_requests())
+
+                if response_queue:
+                    repeat = item.repeat
+                    if repeat is not True:
+                        repeat = len(response_queue) - 1 + max(1, int(repeat))
+
                     mocked_aiohttp.add(
                         item.get_url(),
                         method=item.method,
-                        status=req.status,
-                        reason=req.reason,
-                        body=req.get_body(),
-                        headers=req.headers,
-                        content_type=req.get_content_type(),
-                        response_class=MockClientResponse,
                         repeat=repeat,
-                        callback=item.on_call,
+                        callback=functools.partial(
+                            _endpoint_callback,
+                            endpoint=item,
+                            responses=response_queue,
+                        ),
                     )
+
             elif isinstance(item, File):
                 file_path = tmp_path / item.path.removeprefix("file://")
                 file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -323,7 +358,6 @@ def provision_context(
                         content_type = spec.get("content_type", "application/json")
                         method = spec.get("method", "GET")
                         status = spec.get("status", 200)
-                        # TODO: map body to concreted type depending on content_type?
                         body = json.dumps(body)
 
                         mocked_responses.add(
@@ -339,7 +373,6 @@ def provision_context(
                             status=status,
                             body=body,
                             content_type=content_type,
-                            response_class=MockClientResponse,
                             repeat=True,
                         )
 
@@ -356,11 +389,10 @@ def provision_context(
                             shutil.copy(src_path, file_path)
                         else:
                             file_path.write_text(json.dumps(spec["body"]), encoding="utf-8")
+
             return has_files
 
         def _provision(*args: Any) -> None:
-            RefreshableGetter.reset()
-            mocked_aiohttp.clear()
             has_files = False
             for item in args:
                 has_files |= _apply_provision_element(item)
