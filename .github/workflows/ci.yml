@@ -104,7 +104,7 @@ jobs:
       - name: Build docs and fail on warnings
         run: |
           cd doc
-          uv run make clean html SPHINXOPTS="-W --keep-going"
+          uv run make clean html SPHINXOPTS="--fail-on-warning"
   documentation-preview:
     runs-on: ubuntu-24.04
     permissions:
