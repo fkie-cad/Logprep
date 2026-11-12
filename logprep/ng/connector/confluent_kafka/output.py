@@ -36,10 +36,10 @@ from confluent_kafka.aio import AIOProducer
 
 from logprep.metrics.metrics import GaugeMetric, Metric
 from logprep.ng.abc.event import OutputEvent
-from logprep.ng.abc.output import FatalOutputError, Output, OutputEvent
+from logprep.ng.abc.output import FatalOutputError, Output
 from logprep.util.validators import keys_in_validator
 
-DEFAULTS = {
+DEFAULT_CONFIG = {
     "request.required.acks": "-1",
     "linger.ms": "0.5",
     "compression.codec": "none",
@@ -48,7 +48,7 @@ DEFAULTS = {
     "statistics.interval.ms": "1000",
 }
 
-DEFAULT_RETURN = 0
+MISSING_STATISTIC = 0
 
 logger = logging.getLogger("KafkaOutput")
 
@@ -208,20 +208,14 @@ class ConfluentKafkaOutput(Output):
 
     @property
     def _kafka_config(self) -> dict:
-        """Get the kafka configuration.
-
-        Returns
-        -------
-        dict
-            The kafka configuration.
-        """
+        """Get the kafka configuration"""
         injected_config = {
             "logger": logger,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
-        DEFAULTS.update({"client.id": getfqdn()})
-        return DEFAULTS | self.config.kafka_config | injected_config
+        DEFAULT_CONFIG.update({"client.id": getfqdn()})
+        return DEFAULT_CONFIG | self.config.kafka_config | injected_config
 
     def _create_producer(self) -> AIOProducer:
         """
@@ -260,17 +254,17 @@ class ConfluentKafkaOutput(Output):
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
         stats = self._decoder.decode(stats_raw)
-        self.metrics.librdkafka_age.set(stats.get("age", DEFAULT_RETURN))
-        self.metrics.librdkafka_msg_cnt.set(stats.get("msg_cnt", DEFAULT_RETURN))
-        self.metrics.librdkafka_msg_size.set(stats.get("msg_size", DEFAULT_RETURN))
-        self.metrics.librdkafka_msg_max.set(stats.get("msg_max", DEFAULT_RETURN))
-        self.metrics.librdkafka_msg_size_max.set(stats.get("msg_size_max", DEFAULT_RETURN))
-        self.metrics.librdkafka_tx.set(stats.get("tx", DEFAULT_RETURN))
-        self.metrics.librdkafka_tx_bytes.set(stats.get("tx_bytes", DEFAULT_RETURN))
-        self.metrics.librdkafka_rx.set(stats.get("rx", DEFAULT_RETURN))
-        self.metrics.librdkafka_rx_bytes.set(stats.get("rx_bytes", DEFAULT_RETURN))
-        self.metrics.librdkafka_txmsgs.set(stats.get("txmsgs", DEFAULT_RETURN))
-        self.metrics.librdkafka_txmsg_bytes.set(stats.get("txmsg_bytes", DEFAULT_RETURN))
+        self.metrics.librdkafka_age.set(stats.get("age", MISSING_STATISTIC))
+        self.metrics.librdkafka_msg_cnt.set(stats.get("msg_cnt", MISSING_STATISTIC))
+        self.metrics.librdkafka_msg_size.set(stats.get("msg_size", MISSING_STATISTIC))
+        self.metrics.librdkafka_msg_max.set(stats.get("msg_max", MISSING_STATISTIC))
+        self.metrics.librdkafka_msg_size_max.set(stats.get("msg_size_max", MISSING_STATISTIC))
+        self.metrics.librdkafka_tx.set(stats.get("tx", MISSING_STATISTIC))
+        self.metrics.librdkafka_tx_bytes.set(stats.get("tx_bytes", MISSING_STATISTIC))
+        self.metrics.librdkafka_rx.set(stats.get("rx", MISSING_STATISTIC))
+        self.metrics.librdkafka_rx_bytes.set(stats.get("rx_bytes", MISSING_STATISTIC))
+        self.metrics.librdkafka_txmsgs.set(stats.get("txmsgs", MISSING_STATISTIC))
+        self.metrics.librdkafka_txmsg_bytes.set(stats.get("txmsg_bytes", MISSING_STATISTIC))
 
     def _describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server."""

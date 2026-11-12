@@ -61,7 +61,7 @@ from logprep.abc.input import (
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util.validators import keys_in_validator
 
-DEFAULTS = {
+DEFAULT_CONFIG = {
     "enable.auto.offset.store": "false",
     "enable.auto.commit": "true",
     "client.id": "<<hostname>>",
@@ -77,7 +77,7 @@ SPECIAL_OFFSETS = {
     OFFSET_STORED,
 }
 
-DEFAULT_RETURN = 0
+MISSING_STATISTIC = 0
 
 logger = logging.getLogger("KafkaInput")
 
@@ -298,14 +298,14 @@ class ConfluentKafkaInput(Input):
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
-        DEFAULTS.update({"client.id": getfqdn()})
-        DEFAULTS.update(
+        DEFAULT_CONFIG.update({"client.id": getfqdn()})
+        DEFAULT_CONFIG.update(
             {
                 "group.instance.id": f"{getfqdn().strip('.')}-"
                 f"Pipeline{self.pipeline_index}-pid{os.getpid()}"
             }
         )
-        return DEFAULTS | self.config.kafka_config | injected_config
+        return DEFAULT_CONFIG | self.config.kafka_config | injected_config
 
     @cached_property
     def _admin(self) -> AdminClient:
@@ -359,25 +359,25 @@ class ConfluentKafkaInput(Input):
         """
 
         stats = self._decoder.decode(stats_raw)
-        self.metrics.librdkafka_age.set(stats.get("age", DEFAULT_RETURN))
-        self.metrics.librdkafka_rx.set(stats.get("rx", DEFAULT_RETURN))
-        self.metrics.librdkafka_tx.set(stats.get("tx", DEFAULT_RETURN))
-        self.metrics.librdkafka_rx_bytes.set(stats.get("rx_bytes", DEFAULT_RETURN))
-        self.metrics.librdkafka_tx_bytes.set(stats.get("tx_bytes", DEFAULT_RETURN))
-        self.metrics.librdkafka_rxmsgs.set(stats.get("rxmsgs", DEFAULT_RETURN))
-        self.metrics.librdkafka_rxmsg_bytes.set(stats.get("rxmsg_bytes", DEFAULT_RETURN))
+        self.metrics.librdkafka_age.set(stats.get("age", MISSING_STATISTIC))
+        self.metrics.librdkafka_rx.set(stats.get("rx", MISSING_STATISTIC))
+        self.metrics.librdkafka_tx.set(stats.get("tx", MISSING_STATISTIC))
+        self.metrics.librdkafka_rx_bytes.set(stats.get("rx_bytes", MISSING_STATISTIC))
+        self.metrics.librdkafka_tx_bytes.set(stats.get("tx_bytes", MISSING_STATISTIC))
+        self.metrics.librdkafka_rxmsgs.set(stats.get("rxmsgs", MISSING_STATISTIC))
+        self.metrics.librdkafka_rxmsg_bytes.set(stats.get("rxmsg_bytes", MISSING_STATISTIC))
 
         self.metrics.librdkafka_cgrp_stateage.set(
-            stats.get("cgrp", {}).get("stateage", DEFAULT_RETURN)
+            stats.get("cgrp", {}).get("stateage", MISSING_STATISTIC)
         )
         self.metrics.librdkafka_cgrp_rebalance_age.set(
-            stats.get("cgrp", {}).get("rebalance_age", DEFAULT_RETURN)
+            stats.get("cgrp", {}).get("rebalance_age", MISSING_STATISTIC)
         )
         self.metrics.librdkafka_cgrp_rebalance_cnt.set(
-            stats.get("cgrp", {}).get("rebalance_cnt", DEFAULT_RETURN)
+            stats.get("cgrp", {}).get("rebalance_cnt", MISSING_STATISTIC)
         )
         self.metrics.librdkafka_cgrp_assignment_size.set(
-            stats.get("cgrp", {}).get("assignment_size", DEFAULT_RETURN)
+            stats.get("cgrp", {}).get("assignment_size", MISSING_STATISTIC)
         )
 
     def _commit_callback(
