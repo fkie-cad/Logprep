@@ -29,7 +29,6 @@ Processor Configuration
 .. automodule:: logprep.ng.processor.domain_resolver.rule
 """
 
-import asyncio
 import datetime
 import logging
 import typing
@@ -374,6 +373,7 @@ class DomainResolver(Processor):
                 logger.info("Failed to resolve %s: %s", domain, error)
             return FailedResult(failure_type, error)
 
+    # TODO(async-followup): make processor async (ip resolving) ans return true
     async def has_asyncio(self) -> bool:
         """Return whether the processor performs asynchronous I/O operations."""
-        return True
+        return False

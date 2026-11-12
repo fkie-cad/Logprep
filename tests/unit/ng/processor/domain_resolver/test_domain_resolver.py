@@ -247,6 +247,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         domain = "google.thisisnotavalidtld"
         document = {"url": domain}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(event)
         assert document.get("resolved_ip") is None
 
@@ -436,3 +437,7 @@ class TestDomainResolver(BaseProcessorTestCase):
                     f"Failed to resolve {domain}: All nameservers failed to answer the query."
                     in caplog.text
                 )
+
+    # TODO(async-followup): make return True in processor and adapt test
+    async def test_has_async_io(self):
+        assert await self.object.has_asyncio() is False
