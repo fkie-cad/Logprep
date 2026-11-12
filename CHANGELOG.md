@@ -25,6 +25,7 @@
 * examples/compose: pin opensearch and opensearch-dashboards to 3.9.0
 * examples/k8s: run Kafka 4.3.1 on the official `apache/kafka` image instead of the archived bitnami chart
 * examples/k8s: use the official opensearch helm charts and images (3.9.0) instead of the archived bitnami chart
+* ci: remove deprecated GHA dependency for doc preview links; do it ourselves
 * pre_detector: use faster address parsing in `ip_alerter`
 * pre_detector: split matching IPs with TTL from permanent IPs in `ip_alerter` to improve CIDR matching performance 
 * pre_detector: group CIDR matching by their prefix length in `ip_alerter` to improve matching performance  
