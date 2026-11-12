@@ -5,12 +5,13 @@ log lines into Python structures (typically dicts) for downstream
 processors. Each decoder wraps parsing logic and maps decoding errors to
 ``DecoderError`` so callers can handle failures uniformly.
 
-Notes
+Notes:
+
 - The internal ``_parse`` helper performs regex matching and supports
-    a single ``re.Pattern`` or an iterable of patterns. Avoid lookahead
-    and lookbehind in supplied regexes to prevent pathological cases.
+  a single ``re.Pattern`` or an iterable of patterns. Avoid lookahead
+  and lookbehind in supplied regexes to prevent pathological cases.
 - ``parse_json`` uses ``msgspec`` for fast, strict JSON decoding and
-    converts decode errors to ``DecoderError``.
+  converts decode errors to ``DecoderError``.
 - ``decolorize`` strips ANSI escape sequences from log lines.
 """
 
