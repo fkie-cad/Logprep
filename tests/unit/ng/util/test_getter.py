@@ -18,6 +18,7 @@ from logprep.util.async_scheduler import AsyncScheduler
 from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
 
 
+# TODO(async-followup): try use conftest.py#clear_getter_cache
 @pytest.fixture(autouse=True)
 async def reset_refreshable_getters():
     RefreshableGetter.reset()
