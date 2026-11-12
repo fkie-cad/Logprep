@@ -241,6 +241,8 @@ class Endpoint(Response):
 
 
 Context: TypeAlias = list[Endpoint | File]
+BaseIP: str = "http://127.0.0.1"
+BaseURL: str = "http://localhost"
 
 
 @define(kw_only=True, slots=True, frozen=True)
@@ -272,7 +274,7 @@ def provision_context(
 
     with (
         responses.RequestsMock(assert_all_requests_are_fired=False) as mocked_responses,
-        aioresponses(passthrough=["http://127.0.0.1:", "http://localhost:"]) as mocked_aiohttp,
+        aioresponses(passthrough=[f"{BaseIP}:", f"{BaseURL}:"]) as mocked_aiohttp,
     ):
 
         def _apply_provision_element(item: Any) -> bool:

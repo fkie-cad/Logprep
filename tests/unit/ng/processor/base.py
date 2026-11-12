@@ -28,6 +28,7 @@ from logprep.processor.base.exceptions import (
 )
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
+from tests.conftest import BaseURL, Endpoint
 from tests.unit.ng.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -246,30 +247,28 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
         with pytest.raises(FileNotFoundError):
             await processor.setup()
 
-    async def test_accepts_tree_config_from_http(self, aiohttp_server):
+    async def test_accepts_tree_config_from_http(self, provision_context):
+        url = BaseURL + "/tree_config.yml"
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text("utf-8")
 
-        async def handler(_: web.Request) -> web.Response:
-            return web.Response(
-                text=tree_config,
-                content_type="application/json",
-            )
+        endpoint = Endpoint(
+            url=url,
+            content_type="application/json",
+            body=tree_config,
+        )
 
-        app = web.Application()
-        app.router.add_get("/tree_config.yml", handler)
-        server = await aiohttp_server(app)
+        provision_context(endpoint)
 
         config = deepcopy(self.CONFIG)
-        config["tree_config"] = str(server.make_url("/tree_config.yml"))
+        config["tree_config"] = url
 
-        processor = Factory.create({"test instance": config})
-        await processor.setup()
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            tree_config_dict = json.loads(tree_config)
 
-        tree_config_dict = json.loads(tree_config)
-
-        assert processor._rule_tree.tree_config.priority_dict == tree_config_dict.get(
-            "priority_dict"
-        )
+            assert instance._rule_tree.tree_config.priority_dict == tree_config_dict.get(
+                "priority_dict"
+            )
+            assert endpoint.call_count == 1, f"Actual HTTP calls: {endpoint.call_count}"
 
     async def test_raises_http_error_raises_getter_error(self, aiohttp_server):
         async def handler(_: web.Request) -> web.Response:
