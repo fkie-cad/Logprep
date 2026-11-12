@@ -187,7 +187,9 @@ class TestIPAlerter:
         event = {"ip_field": "13.12.12.13"}
         assert ip_alerter.is_in_alerts_list(rule_with_fields, event)
 
-    def test_ip_is_in_alerts_network_without_time_limit_succeeds(self, ip_alerter, rule_with_fields):
+    def test_ip_is_in_alerts_network_without_time_limit_succeeds(
+        self, ip_alerter, rule_with_fields
+    ):
         event = {"ip_field": "14.12.12.123"}
         assert ip_alerter.is_in_alerts_list(rule_with_fields, event)
 
