@@ -106,15 +106,47 @@ jobs:
           uv run sphinx-apidoc -fT -o source/module_reference ../logprep
           uv run make clean html
   documentation-preview:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
     steps:
-      - uses: readthedocs/actions/preview@b8bba1484329bda1a3abe986df7ebc80a8950333 # https://github.com/readthedocs/actions/releases/tag/v1.5
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # https://github.com/actions/github-script/releases/tag/v9.0.0
         with:
-          project-slug: logprep
-          project-language: en
-          platform: community
-          single-version: 'true'
-          message-template: "---\n<a name=\"readthedocs-preview\"></a>The rendered docs for this PR can be found [here]({docs-pr-index-url})."
+          script: |
+            const pull_number = context.issue.number;
+            const url = `https://logprep--${pull_number}.org.readthedocs.build/`;
+            const placeholder = "(#readthedocs-preview)";
+
+            const { data: pull } = await github.rest.pulls.get({ ...context.repo, pull_number });
+            const body = pull.body ?? "";
+
+            if (body.includes(url)) {
+              core.info("Preview link already present.");
+              return;
+            }
+            let new_body;
+            if (body.includes(placeholder)) {
+              new_body = body.replace(placeholder, `(${url})`);
+            } else {
+              // fallback for no template (CLI, bots): append as footer or plain link
+              const link = `[Preview for docs](${url})`;
+              new_body = body.trim() ? `${body.trimEnd()}\n\n---\n\n${link}` : link;
+            }
+            try {
+              await github.rest.pulls.update({
+                ...context.repo,
+                pull_number,
+                body: new_body,
+              });
+              core.info(`Added preview link: ${url}`);
+            } catch (err) {
+              // exit gracefully if permissions were not given
+              if (err.status === 403) {
+                core.warning(`Could not edit PR description (read-only token). Preview: ${url}`);
+                return;
+              }
+              throw err;
+            }
   code-quality:
     uses: ./.github/workflows/code-quality.yml
     secrets: inherit
