@@ -98,7 +98,7 @@ class IPAlerter:
         ip_str, mask_str = cidr_string.split("/")
         mask_len = int(mask_str)
         ip_bit_mask_len = self._IP_MASKS[ip_version].bit_length()
-        if not (0 <= mask_len <= ip_bit_mask_len):
+        if not 0 <= mask_len <= ip_bit_mask_len:
             raise InvalidConfigurationError(
                 f"IP{ip_version.name.lower()} CIDR mask invalid for {cidr_string}"
             )
@@ -159,7 +159,7 @@ class IPAlerter:
             return False
         now = time.time()
         for net_mask, networks in permanent_cidrs_grouped_by_mask.items():
-            if (ip_int & net_mask) in networks:
+            if ip_int & net_mask in networks:
                 return True
         for net_mask, net_mapping in expiring_cidrs_grouped_by_mask.items():
             expiration_time = net_mapping.get(ip_int & net_mask)
