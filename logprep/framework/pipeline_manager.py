@@ -61,18 +61,20 @@ class OutputQueueListener:
         """
         Returns an instance of an output.
 
-        This method creates an instance of an output using the Factory and configures it with the setup method.
-        If an error occurs during setup, it logs an error message, puts a sentinel value into the queue, and raises
-        the error. The method waits until the queue is empty before returning the component instance. The '1' added to
-        the queue and the waiting for the queue being empty again is to ensure that the process are synchronized.
+        This method creates an instance of an output using the Factory and
+        configures it with the setup method.
+        If an error occurs during setup, it logs an error message,
+        puts a sentinel value into the queue, and raises
+        the error. The method waits until the queue is empty
+        before returning the component instance.
+        The '1' added to the queue and the waiting for the queue being empty again
+        is to ensure that the process are synchronized.
 
         Raises:
-        -------
-        SystemExit: If an error occurs during the setup of the output component.
+            SystemExit: If an error occurs during the setup of the output component.
 
         Returns:
-        -------
-        The configured output instance.
+            The configured output instance.
         """
         output = Factory.create(self.config)
         try:

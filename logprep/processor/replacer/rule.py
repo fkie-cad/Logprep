@@ -48,7 +48,7 @@ Additionally, there exists a colon notation :code:`MATCH_VALUE:REPLACE_VALUE` to
 specific results.
 :code:`MATCH_VALUE` is a specific value that will be replaced and :code:`REPLACE_VALUE` is the value
 it will be replaced with.
-The value :code:`:` needs to be escaped with :code:`\` if it is to be used as a character.
+The value :code:`:` needs to be escaped with ``\`` if it is to be used as a character.
 The escaping works like sigma wildcard escaping.
 
 :code:`foo {VAL1\:VAL2} bar` results in :code:`foo VAL1\:VAL2 bar` for input :code:`foo SOME bar`.
