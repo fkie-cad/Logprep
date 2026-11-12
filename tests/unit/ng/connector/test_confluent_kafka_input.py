@@ -74,7 +74,7 @@ def fixture_mock_executor():
 
 @pytest.fixture(autouse=True)
 def autouse_central_fixtures(mock_consumer, mock_executor):
-    yield mock_consumer, mock_executor  # return technically not required
+    yield mock_consumer, mock_executor
 
 
 def register_partitions(connector, *partitions, offset=0):
@@ -257,9 +257,8 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         mock_consumer.store_offsets.assert_not_called()
 
-    async def test_acknowledge_does_not_call_the_consumer(self, mock_consumer):
-        # it runs on the acknowledgement worker, and confluent-kafka >= 2.16 makes a
-        # call from there wait for any in-flight consume()
+    async def test_acknowledge_does_not_touch_the_consumer(self, mock_consumer):
+        # offsets to be committed are only stored in memory and consume path will handle them later
         await self.object.setup()
         register_partitions(self.object, 0)
         mock_consumer.reset_mock()
@@ -922,6 +921,8 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         await self.object.acknowledge([self._create_log_event({"n": 0}, partition=4, offset=0)])
         await asyncio.wait_for(revoke, timeout=1)
 
+        assert revoke.done()
+
     async def test_get_raw_event_drops_messages_of_untracked_partitions(
         self, mock_consumer, caplog
     ):
@@ -1091,7 +1092,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
     async def test_health_does_not_call_the_consumer_once_consuming(self, mock_consumer):
         # a call from the health endpoint would wait for any in-flight consume() and
-        # could take the executor thread a rebalance callback needs
+        # could block the executor thread a rebalance callback needs
         await self.object.setup()
         mock_consumer.reset_mock()
 
