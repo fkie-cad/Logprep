@@ -224,6 +224,17 @@ To be recognized as a regular expression, the filter field has to start with
 
     filter: 'ip_address: /192\.168\.0\..*/'
 
+A literal :code:`/` inside the pattern has to be escaped as ``\/``.
+In a single-quoted YAML string this is written as is.
+In a double-quoted YAML string the backslash has to be escaped again (``"path: /\\/lo.*/"``),
+otherwise YAML silently turns ``\/`` into ``/``.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example matching values starting with /lo
+
+    filter: 'path: /\/lo.*/'
+
 
 [Deprecated, but still functional] The field with the regex pattern
 must be added to the optional field

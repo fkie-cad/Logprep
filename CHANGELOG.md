@@ -1,96 +1,133 @@
 ## Upcoming Changes
+
 ### Breaking
+
+- domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
+- domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
+- domain_resolver: remove `debug_cache`
+- domain_resolver: `source_fields` must be a list with exactly one element
 
 ### Features
 
-### Improvements
-* util: add field mapping template utility
-
-### Bugfix
-
-## 21.2.0
-### Breaking
-
-### Features
-* generic_resolver: enable use of dynamic templating for resource URIs
-
-### Improvements
-
-### Bugfix
-* domain_label_extractor: fix error-handling on invalid input types and partial urls
-
-# 21.1.1
-### Breaking
-
-### Features
-
-### Improvements
-
-### Bugfix
-* bump version for `filelock` to address CVE
-
-## 21.1.0
-### Breaking
-
-### Features
-* timestamper: support generating timestamps from the current time when no `source_fields` are configured
-* field_manager: add flag for deactivating deduplication
-* calculator: extended expression functionality
-* ng: add asynchronous getter and refresh scheduling support
-* ng: load configuration, rule tree configuration, rule definitions, and processor rules asynchronously
-* ng: make getter-backed setup and processing asynchronous for:
+- ng: add asynchronous getter and refresh scheduling support
+- ng: load configuration, rule tree configuration, rule definitions, and processor rules asynchronously
+- ng: make getter-backed setup and processing asynchronous for:
   - `geoip_enricher`, `grokker`, `requester`, `amides`
   - `generic_adder`, `generic_resolver`, `list_comparison`, `network_comparison`
   - `selective_extractor`, `pseudonymizer`, `template_replacer`
-* ng: offload GeoIP database lookups from the async event loop
-* ng: make domain resolver DNS lookups non-blocking
-* ng: initialize pseudonymizer public keys asynchronously during setup
-* ng: classify processors with asynchronous I/O during event processing correctly
-* preprocessor: add unique event ids to every event when enabled
+- ng: offload GeoIP database lookups from the async event loop
+- ng: make domain resolver DNS lookups non-blocking
+- ng: initialize pseudonymizer public keys asynchronously during setup
+- ng: classify processors with asynchronous I/O during event processing correctly
 
 ### Improvements
-* bump version for `urllib` to address CVEs
-* docs: rework examples for calculator, decoder, deduplicator, dissector, field_manager, ip_informer, key_checker, replacer, selective_extractor, string_splitter
-* timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
-* calculator: optimized runtime expression evaluation
-* docs: improve documentation around dynamic templating for `generic_adder`
-* requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
-* tests: adapt NG processor and HTTP getter coverage to asynchronous setup, shutdown, rule loading, and refresh lifecycles
-* tests: add coverage for asynchronous scheduler execution and pending jobs
-* tests: wait for finite acceptance pipelines to finish before collecting their output
-* tests: ensure NG processor test helpers always shut down instances after errors
-* tests: disable unused WebSocket support in the asynchronous HTTP server
-* ng: offload credentials file validation from the asynchronous event loop
-* ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
-* ng: improve asynchronous refreshable getter scheduling and isolate refresh callback failures
-* ng: share concurrent getter cache updates and initialization across callers
-* ng: make shared getter state cleanup safe during cancellation and concurrent updates
-* ng: clean up and deduplicate GenericResolver refresh callbacks and their orphaned getter targets
-* docs: improve documentation around dynamic templating in `list_comparison` and `network_comparison` processors
+
+- util: add field mapping template utility
+- cache: hold a payload in addition to timestamps
+- domain_resolver: adapt `domain_resolver` to changes of `cache`
+- domain_resolver: add `resolved_domains`, `timeouts_cached`, `no_answer_domains` and `no_nameserver` metric
+- docs: remove outdated jupyter notebooks; relevant examples moved to unit tests
+- ci: update GitHub actions to their latest release with cooldown of 1 week
+- ci: add basic dependabot config
+- ci: deploy the k8s example to a kind cluster and check that events go through to opensearch
+- examples/compose: replace archived bitnamilegacy images by `apache/kafka`, `danielqsj/kafka-exporter` and the official grafana, prometheus, keycloak and postgres images
+- examples/compose: add profile `kafka-metrics` for optional kafka prometheus metrics
+- examples/compose: add healthcheck to opensearch waiting for cluster status >= yellow
+- examples/compose: make profile `oauth2` more consistent by including fda/ucl
+- examples/compose: pin opensearch and opensearch-dashboards to 3.9.0
+- examples/k8s: run Kafka 4.3.1 on the official `apache/kafka` image instead of the archived bitnami chart
+- examples/k8s: use the official opensearch helm charts and images (3.9.0) instead of the archived bitnami chart
+- requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
+- tests: adapt NG processor and HTTP getter coverage to asynchronous setup, shutdown, rule loading, and refresh lifecycles
+- tests: add coverage for asynchronous scheduler execution and pending jobs
+- tests: wait for finite acceptance pipelines to finish before collecting their output
+- tests: ensure NG processor test helpers always shut down instances after errors
+- tests: disable unused WebSocket support in the asynchronous HTTP server
+- ng: offload credentials file validation from the asynchronous event loop
+- ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
+- ng: improve asynchronous refreshable getter scheduling and isolate refresh callback failures
+- ng: share concurrent getter cache updates and initialization across callers
+- ng: make shared getter state cleanup safe during cancellation and concurrent updates
+- ng: clean up and deduplicate GenericResolver refresh callbacks and their orphaned getter targets
 
 ### Bugfix
-* decoder: corrected rfc 5324 in docs to 5424
-* field_manager: allow for copying fields only containing `false` and `0`
-* key_checker: remove configuration fields that were inherited but didnt do anything
-* generic_resolver: avoid sharing mutable additions between rule configurations
-* ng: fix asynchronous refreshable getter scheduling in the runner
-* ng: prevent refresh callback failures from stopping subsequent refresh processing
-* ng: avoid duplicate getter refreshes while executing refresh callbacks
-* ng: share concurrent getter cache updates to avoid duplicate requests for the same target
-* ng: make processor rule tree setup atomic and safe for repeated initialization
-* ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
-* ng: clean up and deduplicate GenericResolver refresh callbacks
-* ng: remove orphaned refreshable getter targets after callback cleanup
-* ng: make domain resolver DNS lookups non-blocking
-* ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
-* ng: harden Requester setup against repeated initialization
-* ng: shut down temporary processors after configuration validation to avoid leaking resources
-* ng: roll back initialized pipeline components when pipeline manager setup fails
-* ng: close GeoIP database readers during processor shutdown
-* ng: clean up shared getter update tasks after canceled waiters complete
-* ng: prevent running getter updates from recreating removed shared target state
+
+- domain_resolver: fix resolving domains that have no schema
+- pipeline_manager: gc.freeze before forking pipelines in order to avoid error-prone destruction of health check clients in pipeline processes
+- examples/compose: keycloak imports the logprep realm and the fda/ucl backends use its client secrets, the realm was never imported before
+- examples/k8s: remove config keys from `values-dev.yaml` that logprep rejects and create the `errors` topic
+- generic_resolver: avoid sharing mutable additions between rule configurations
+- ng: fix asynchronous refreshable getter scheduling in the runner
+- ng: prevent refresh callback failures from stopping subsequent refresh processing
+- ng: avoid duplicate getter refreshes while executing refresh callbacks
+- ng: share concurrent getter cache updates to avoid duplicate requests for the same target
+- ng: make processor rule tree setup atomic and safe for repeated initialization
+- ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
+- ng: clean up and deduplicate GenericResolver refresh callbacks
+- ng: remove orphaned refreshable getter targets after callback cleanup
+- ng: make domain resolver DNS lookups non-blocking
+- ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
+- ng: harden Requester setup against repeated initialization
+- ng: shut down temporary processors after configuration validation to avoid leaking resources
+- ng: roll back initialized pipeline components when pipeline manager setup fails
+- ng: close GeoIP database readers during processor shutdown
+- ng: clean up shared getter update tasks after canceled waiters complete
+- ng: prevent running getter updates from recreating removed shared target state
+
+## 21.2.0
+
+### Breaking
+
+### Features
+
+- generic_resolver: enable use of dynamic templating for resource URIs
+
+### Improvements
+
+### Bugfix
+
+- domain_label_extractor: fix error-handling on invalid input types and partial urls
+
+## 21.1.1
+
+### Breaking
+
+### Features
+
+### Improvements
+
+### Bugfix
+
+- bump version for `filelock` to address CVE
+
+## 21.1.0
+
+### Breaking
+
+### Features
+
+- timestamper: support generating timestamps from the current time when no `source_fields` are configured
+- field_manager: add flag for deactivating deduplication
+- calculator: extended expression functionality
+- preprocessor: add unique event ids to every event when enabled
+
+### Improvements
+
+- bump version for `urllib` to address CVEs
+- docs: rework examples for calculator, decoder, deduplicator, dissector, field_manager, ip_informer, key_checker, replacer, selective_extractor, string_splitter
+- timestamper: validate `source_format` and `source_timezone` according to the configured `source_fields`
+- calculator: optimized runtime expression evaluation
+- docs: improve documentation around dynamic templating for `generic_adder`
+- docs: improve documentation around dynamic templating in `list_comparison` and `network_comparison` processors
+
+### Bugfix
+
+- decoder: corrected rfc 5324 in docs to 5424
+- field_manager: allow for copying fields only containing `false` and `0`
+- key_checker: remove configuration fields that were inherited but didnt do anything
 
 ## 21.0.0
+
 ### Breaking
 * restrict UNIX timestamp normalization to seconds, milliseconds, microseconds, and nanoseconds.
 * handle non-string `concatenator` source fields with `ProcessingWarning` instead of `ProcessingCriticalError`

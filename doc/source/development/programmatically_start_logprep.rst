@@ -1,5 +1,5 @@
-Start Logprep programaticly
-===========================
+Start Logprep programmatically
+==============================
 
 It is possible to make use of the Logprep pipeline in plain python, without any
 input or output connectors or further configurations.

@@ -61,7 +61,7 @@ dependencies = [
   "requests>=2.33.0,<3", # [>=2.33.0]: CVE-2026-25645
   "ruamel.yaml<1",
   "schedule<2",
-  "urllib3>=2.7.0,<3", # [>=2.7.0]: CVE-2026-44431, CVE-2026-44432
+  "urllib3>=2.8.0,<3", # [>=2.8.0]: CVE-2026-97687, CVE-2026-97689
   "uvicorn<1",
   "msgspec<1",
   "boto3<2",
@@ -70,6 +70,7 @@ dependencies = [
   "uvloop<1",
   "httptools<1",
   "more-itertools>=11.1.0",
+  "dnspython>=2.9.0",
   "aiofiles>=25.1.0",
 ]
 
@@ -108,8 +109,6 @@ doc = [
   "sphinx-design",
   "sphinxcontrib-mermaid",
   "sphinx-copybutton",
-  "nbsphinx>=0.9",
-  "ipython>=8.7",
   "openpyxl",
   "pandas<3",
   "sphinx-autobuild>=2025.8.25",
@@ -125,7 +124,6 @@ Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
 [project.scripts]
 logprep = "logprep.run_logprep:cli"
 logprep-ng = "logprep.run_ng:cli"
-
 
 [tool.black]
 line-length = 100

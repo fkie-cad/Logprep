@@ -1,4 +1,3 @@
-
 Docker Compose Example Deployment
 =================================
 
@@ -50,7 +49,7 @@ Run with Logprep Container
 
       nix build .#docker.python311
       docker load < result
-    
+
     * Download the image:
     .. code-block:: bash
 
@@ -99,6 +98,21 @@ Run with getting config from http server with mTLS authentication
       logprep run https://localhost:8082/config/pipeline.yml
 
 
+Run with Kafka metrics
+----------------------
+
+The Kafka exporter is optional. Add the :code:`kafka-metrics` profile to start it, so
+Prometheus can scrape Kafka metrics for the Grafana Kafka dashboard:
+
+  * Run from within the `examples/compose` directory:
+
+    .. code-block:: bash
+
+      docker compose --profile logprep --profile kafka-metrics up -d
+
+Without it, the Prometheus target :code:`kafkaexporter:9308` is reported as down.
+
+
 Interacting with the Compose Environment
 ----------------------------------------
 
@@ -121,7 +135,7 @@ Prometheus:            `localhost:9090`  /                         /
 Nginx Basic Auth:      `localhost:8081`  user                      password
 Nginx mTLS:            `localhost:8082`
 Keycloak:              `localhost:8080`  admin                     admin
-Keycloak Postgres:     `localhost:5432`  keycloak                  bitnami
+Keycloak Postgres:     `localhost:5432`  keycloak                  keycloak
 FDA:                   `localhost:3002`  (configure via keycloak)  (configure via keycloak)
 FDA Postgres:          `localhost:5432`  fda                       fda
 UCL:                   `localhost:3001`  (configure via keycloak)  (configure via keycloak)
@@ -136,7 +150,7 @@ These events can be added to Kafka with the following command:
 
 .. code-block:: bash
 
-  (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < examples/exampledata/input_logdata/logclass/test_input.jsonl
+  (docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < examples/exampledata/input_logdata/logclass/test_input.jsonl
 
 
 Once the events have been processed for the first time, the new indices *processed*, *sre*

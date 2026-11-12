@@ -109,6 +109,31 @@ example_test_cases = [
         {"message": "this is 42 message and this is 0", "field1": 42, "field2": False},
         id="convert datatype via dissect pattern",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "%{@timestamp} %{+( )@timestamp} %{+( )@timestamp} %{hostname} "
+                    "%{process.name}[%{process.pid}]: %{?shell}: %{}: %{&shell}"
+                },
+                "convert_datatype": {"process.pid": "int"},
+            },
+        },
+        {
+            "message": "Oct 17 11:54:21 dev-machine hv_kvp_daemon[3416730]: "
+            "sh: 1: /usr/libexec/hypervkvpd/hv_get_dns_info: not found"
+        },
+        {
+            "message": "Oct 17 11:54:21 dev-machine hv_kvp_daemon[3416730]: "
+            "sh: 1: /usr/libexec/hypervkvpd/hv_get_dns_info: not found",
+            "@timestamp": "Oct 17 11:54:21",
+            "hostname": "dev-machine",
+            "process": {"name": "hv_kvp_daemon", "pid": 3416730},
+            "sh": "/usr/libexec/hypervkvpd/hv_get_dns_info: not found",
+        },
+        id="real world syslog example: append with separator, skip, indirect field, convert",
+    ),
 ]
 
 test_cases = normalize_test_cases(

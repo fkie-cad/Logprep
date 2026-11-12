@@ -11,15 +11,15 @@ jobs:
         mode: ['ng', 'legacy']
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
         with:
           fetch-depth: 0
       - name: Set up Docker Compose
-        uses: docker/setup-compose-action@364cc21a5de5b1ee4a7f5f9d3fa374ce0ccde746 # https://github.com/docker/setup-compose-action/releases/tag/v1.2.0
+        uses: docker/setup-compose-action@54042514f505b273907334ae2b9cdbb9a0213c1a # https://github.com/docker/setup-compose-action/releases/tag/v2.4.0
         with:
           version: latest
       - name: Set up Nix
-        uses: cachix/install-nix-action@616559265b40713947b9c190a8ff4b507b5df49b # https://github.com/cachix/install-nix-action/releases/tag/v31.10.4
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # https://github.com/cachix/install-nix-action/releases/tag/v31.11.3
       - name: Build images
         working-directory: examples/compose
         run: |
@@ -50,7 +50,7 @@ jobs:
           event_count=$(cat $EVENT_DATA_SOURCE | jq -s length)
           echo event_count=$event_count >> $GITHUB_OUTPUT
           echo "Sending $event_count events to kafka"
-          (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) \
+          (docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) \
             < $EVENT_DATA_SOURCE
         env:
           EVENT_DATA_SOURCE: examples/exampledata/input_logdata/logclass/test_input.jsonl
@@ -121,3 +121,94 @@ jobs:
         working-directory: examples/compose
         run: docker compose -f docker-compose.yml -f docker-compose.legacy-metrics.yml down
         env: *compose-env
+  k8s-setup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYTHON_VERSION: "3.11"
+      EVENT_DATA_SOURCE: examples/exampledata/input_logdata/logclass/test_input.jsonl
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
+      - name: Set up Nix
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # https://github.com/cachix/install-nix-action/releases/tag/v31.11.3
+      - name: Build logprep image
+        run: |
+          nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
+          docker load < image
+          docker image tag logprep:py${PYTHON_VERSION} local/logprep:latest
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # https://github.com/Azure/setup-helm/releases/tag/v5.0.1
+        with:
+          version: v3.22.1
+      - name: Create kind cluster
+        uses: helm/kind-action@ea822c7bf1874f08e5a491df991c228edffc3376 # https://github.com/helm/kind-action/releases/tag/v1.15.2
+        with:
+          version: v0.33.0
+          cluster_name: opensiem
+          wait: 120s
+      - name: Load logprep image into the cluster
+        run: kind load docker-image local/logprep:latest --name opensiem
+      - name: Install the PodMonitor CRD
+        run: kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.94.2/example/prometheus-operator-crd/monitoring.coreos.com_podmonitors.yaml
+      - name: Install the opensiem example
+        run: |
+          helm repo add opensearch https://opensearch-project.github.io/helm-charts/
+          helm dependency build examples/k8s
+          # no --wait: logprep only gets ready once the post-install hook created its topics
+          helm install opensiem examples/k8s --values examples/k8s/values-dev.yaml --timeout 5m
+      - name: Wait for the opensiem example to be ready
+        timeout-minutes: 10
+        run: |
+          for workload in statefulset/opensiem-kafka statefulset/opensiem-opensearch \
+              deployment/opensiem-opensearch-dashboards deployment/opensiem-connector deployment/opensiem-logprep; do
+            echo "::group::$workload"
+            kubectl rollout status $workload --timeout 5m
+            echo "::endgroup::"
+          done
+      - name: Send events to the connector and find them in opensearch
+        timeout-minutes: 5
+        run: |
+          kubectl port-forward svc/opensiem-connector-http-input 9000:9000 > /dev/null &
+          kubectl port-forward svc/opensiem-opensearch 9200:9200 > /dev/null &
+          trap 'kill $(jobs -p)' EXIT
+
+          echo "Waiting for connector and opensearch to become available"
+          until curl -s -o /dev/null http://localhost:9000 && curl -s -o /dev/null http://localhost:9200; do
+            sleep 1
+          done
+
+          sent=$(jq -s length < $EVENT_DATA_SOURCE)
+          echo "Sending $sent events to the connector"
+          curl -sf --data-binary @$EVENT_DATA_SOURCE http://localhost:9000/lab/123/ABC/auditlog
+
+          echo "Waiting for opensearch to receive the $sent events in index 'processed'"
+          while true; do
+            processed=$(curl -s http://localhost:9200/processed/_count | jq '.count // 0')
+            echo "processed: $processed of $sent"
+            [ "$processed" == "$sent" ] && break
+            sleep 10
+          done
+          echo "All $sent events are in opensearch"
+      - name: Debug - show cluster state and logs
+        if: failure() || cancelled()
+        run: |
+          kubectl get all,pvc,jobs -o wide
+          kubectl get events --sort-by=.lastTimestamp
+          kubectl describe pods
+          # where did the events get stuck: connector -> kafka -> logprep -> opensearch
+          kafka="kubectl exec opensiem-kafka-0 -- /opt/kafka/bin"
+          echo "::group::kafka topic offsets"
+          $kafka/kafka-get-offsets.sh --bootstrap-server localhost:9092 || true
+          echo "::endgroup::"
+          echo "::group::kafka consumer groups"
+          $kafka/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --all-groups || true
+          echo "::endgroup::"
+          echo "::group::opensearch indices"
+          kubectl exec opensiem-opensearch-0 -- curl -s "localhost:9200/_cat/indices?v" || true
+          echo "::endgroup::"
+          for pod in $(kubectl get pods -o name); do
+            echo "::group::logs $pod"
+            kubectl logs $pod --all-containers --prefix --tail 200 || true
+            echo "::endgroup::"
+          done

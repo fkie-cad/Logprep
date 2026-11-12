@@ -165,6 +165,25 @@ test_cases = normalize_test_cases(
     *example_test_cases,
     pytest.param(
         {
+            "filter": "ip_addresses",
+            "ip_informer": {
+                "source_fields": ["ip_addresses"],
+                "target_field": "ip_addresses",
+                "overwrite_target": True,
+                "properties": ["is_loopback", "version"],
+            },
+        },
+        {"ip_addresses": ["127.0.0.1", "::1"]},
+        {
+            "ip_addresses": {
+                "127.0.0.1": {"is_loopback": True, "version": 4},
+                "::1": {"is_loopback": True, "version": 6},
+            }
+        },
+        id="replace source list in place with ip information",
+    ),
+    pytest.param(
+        {
             "filter": "ip",
             "ip_informer": {
                 "source_fields": ["ip"],
