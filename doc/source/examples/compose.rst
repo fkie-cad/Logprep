@@ -45,17 +45,18 @@ Run with Logprep Container
 
     * Build the image locally:
 
-    .. code-block:: bash
+      .. code-block:: bash
 
-      nix build .#docker.python311
-      docker load < result
+        nix build .#docker.python311
+        docker load < result
 
     * Download the image:
-    .. code-block:: bash
 
-      docker pull ghcr.io/fkie-cad/logprep:py3.11-v19.0.0
-      # Here we need to retag the image so the compose file can find it correctly
-      docker image tag ghcr.io/fkie-cad/logprep:py3.11-v19.0.0 logprep:py3.11
+      .. code-block:: bash
+
+        docker pull ghcr.io/fkie-cad/logprep:py3.11-v19.0.0
+        # Here we need to retag the image so the compose file can find it correctly
+        docker image tag ghcr.io/fkie-cad/logprep:py3.11-v19.0.0 logprep:py3.11
 
   * Run from within the `examples/compose` directory:
 

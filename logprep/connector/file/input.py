@@ -115,6 +115,7 @@ class FileWatcherUtil:
     """This class provides a helper utility which creates a nested dict
     which holds information for every file that is watched in this instance.
     After a file is initiated the dict would look like:
+
     ..  code-block:: python
 
         {"/var/log/logfile1":

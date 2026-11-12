@@ -16,12 +16,14 @@ If you want to send documents to data streams, you have to set the field :code:`
 the document.
 
 Sending the data involves different layers:
+
 - Chunking: split the batch into smaller chunks and process concurrently
 - Item-level reject: send a chunk and retry rejected items until all events are stored or failed
 - Circuit breaker: retry transient connection errors and limit concurrency
 - Opensearch client: manage connection pool and retry with another connection on errors
 
 Retry behavior can be configured in the following ways:
+
 - Item-level reject:
   Retries rejected items for a configurable number of times
   (:code:`max_bulk_item_retries`, indefinitely by default).
