@@ -28,6 +28,7 @@ Processor Configuration
 """
 
 from collections.abc import Iterable
+from typing import ClassVar
 
 from logprep.abc.processor import Processor
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -42,7 +43,7 @@ from logprep.util.helper import (
 class FieldManager(Processor):
     """A processor that copies, moves or merges source fields to one target field"""
 
-    rule_class = FieldManagerRule
+    rule_class: ClassVar[type[FieldManagerRule]] = FieldManagerRule
 
     def _apply_rules(self, event: dict[str, FieldValue], rule: FieldManagerRule) -> None:
         config = rule.config

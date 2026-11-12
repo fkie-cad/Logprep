@@ -29,6 +29,7 @@ Processor Configuration
 
 import typing
 from collections.abc import Iterable
+from typing import ClassVar
 
 from logprep.ng.abc.processor import Processor
 from logprep.processor.base.rule import Rule
@@ -44,7 +45,7 @@ from logprep.util.helper import (
 class FieldManager(Processor):
     """A processor that copies, moves or merges source fields to one target field"""
 
-    rule_class = FieldManagerRule
+    rule_class: ClassVar[type[FieldManagerRule]] = FieldManagerRule
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         rule = typing.cast(FieldManagerRule, rule)

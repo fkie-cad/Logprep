@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 
+import json
+
 import pytest
 
 from logprep.ng.util.configuration import Configuration
@@ -8,7 +10,7 @@ from tests.acceptance.ng.util import get_default_logprep_config, get_test_output
 
 
 @pytest.fixture(name="config")
-def config_fixture():
+def config_fixture(tmp_path):
     pipeline = [
         {
             "dissector": {
@@ -23,7 +25,11 @@ def config_fixture():
             }
         },
     ]
-    return get_default_logprep_config(pipeline, with_hmac=False)
+    config = get_default_logprep_config(pipeline, with_hmac=False)
+    config.error_output = {
+        "error": {"type": "jsonl_output", "output_file": str(tmp_path / "errors.jsonl")}
+    }
+    return config
 
 
 class TestSelectiveExtractor:
@@ -35,15 +41,14 @@ class TestSelectiveExtractor:
         config_path.write_text(config.as_yaml())
         out = await get_test_outputs(config_path)
 
-        assert out["jsonl"], "should not be empty"
-        assert out["jsonl_custom"], "should not be empty"
-        assert len(out["jsonl_custom"]) == 2, "2 events extracted"
-        assert {"test_topic_2": {"event": {"action": "less_evil_action"}}} in out["jsonl_custom"]
-        assert {"test_topic_1": {"user": {"agent": "ok_admin"}}} in out["jsonl_custom"]
+        assert out["jsonl"] == [], "NG routes events with warnings to the error output"
+        assert len(out["error"]) == 1
+        assert out["jsonl_custom"] == [], "missing selected fields prevent partial extra events"
         assert {
             "user": {"agent": "ok_admin", "other": "field"},
             "event": {"action": "less_evil_action"},
-        } in out["jsonl"]
+            "tags": ["_selective_extractor_missing_field_warning"],
+        } == json.loads(out["error"][0]["event"])
 
     async def test_extraction_field_not_in_event(self, tmp_path, config: Configuration):
         # tests behaviour in case a field from the extraction list is not in the provided event
@@ -54,8 +59,11 @@ class TestSelectiveExtractor:
         config_path.write_text(config.as_yaml())
         out = await get_test_outputs(config_path)
 
-        assert out["jsonl"], "should not be empty"
-        assert out["jsonl_custom"], "should not be empty"
-        assert len(out["jsonl_custom"]) == 1, "one extracted event"
-        assert {"test_topic_2": {"event": {"action": "less_evil_action"}}} in out["jsonl_custom"]
-        assert {"user": {"other": "field"}, "event": {"action": "less_evil_action"}} in out["jsonl"]
+        assert out["jsonl"] == [], "NG routes events with warnings to the error output"
+        assert len(out["error"]) == 1
+        assert out["jsonl_custom"] == [], "missing selected fields prevent partial extra events"
+        assert {
+            "user": {"other": "field"},
+            "event": {"action": "less_evil_action"},
+            "tags": ["_selective_extractor_missing_field_warning"],
+        } == json.loads(out["error"][0]["event"])

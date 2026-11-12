@@ -28,12 +28,20 @@ Processor Configuration
 """
 
 import typing
+from datetime import datetime, timezone
+from uuid import uuid4
 
 from logprep.ng.processor.field_manager.processor import FieldManager
-from logprep.ng.processor.selective_extractor.filtered_event import FilteredEvent
+from logprep.ng.processor.selective_extractor.extracted_event import ExtractedEvent
 from logprep.ng.processor.selective_extractor.rule import SelectiveExtractorRule
+from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.processor.base.rule import Rule
-from logprep.util.helper import FieldValue, add_fields_to, get_source_fields_dict
+from logprep.util.field_template import FieldTemplateLookupError
+from logprep.util.field_template_helpers import (
+    SOURCE_EVENT_CONTEXT,
+    LazyContext,
+)
+from logprep.util.helper import FieldValue
 
 
 class SelectiveExtractor(FieldManager):
@@ -43,9 +51,9 @@ class SelectiveExtractor(FieldManager):
 
     async def _apply_rules(self, event: dict[str, FieldValue], rule: Rule) -> None:
         """
-        Generates a filtered event based on the incoming event and the configured
+        Generates an extracted event based on the incoming event and the configured
         extraction_fields list in processor configuration or from rule.
-        The filtered fields and the target_topic are written to `self._filtered_events` list.
+        The extracted fields and the target_topic are written to `self._extracted_events` list.
 
         Parameters
         ----------
@@ -57,21 +65,38 @@ class SelectiveExtractor(FieldManager):
 
         """
         rule = typing.cast(SelectiveExtractorRule, rule)
-        flattened_fields = get_source_fields_dict(event, rule)
-        if self._handle_missing_fields(event, rule, rule.source_fields, flattened_fields.values()):
-            return
-        flattened_fields = {
-            dotted_field: content
-            for dotted_field, content in flattened_fields.items()
-            if content is not None
-        }
-        if flattened_fields:
-            filtered_event_data: dict = {}
-            add_fields_to(filtered_event_data, flattened_fields, rule)
-            for spec in rule.outputs:
-                filtered_event = FilteredEvent(
-                    filtered_event_data,
-                    output_name=spec.output_name,
-                    output_target=spec.output_target,
+        config = rule.config
+
+        try:
+            extracted_event = rule.compiled_template.evaluate(
+                runtime_context={
+                    SOURCE_EVENT_CONTEXT: event,
+                    "context": LazyContext(
+                        {
+                            "now": lambda: datetime.now(timezone.utc).isoformat(),
+                            "id": lambda: str(uuid4()),
+                        }
+                    ),
+                },
+            )
+        except FieldTemplateLookupError as error:
+            if config.ignore_missing_fields:
+                self._handle_warning_error(
+                    event,
+                    rule,
+                    error,
+                    failure_tags=["_selective_extractor_missing_field_warning"],
                 )
-                self._event.extra_data.append(filtered_event)
+                return
+
+            raise ProcessingCriticalError(str(error), rule) from error
+
+        if extracted_event:
+            for spec in rule.outputs:
+                self._event.extra_data.append(
+                    ExtractedEvent(
+                        extracted_event,
+                        output_name=spec.output_name,
+                        output_target=spec.output_target,
+                    )
+                )
