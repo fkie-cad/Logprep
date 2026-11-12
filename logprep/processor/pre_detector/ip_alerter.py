@@ -118,8 +118,8 @@ class IPAlerter:
     def is_in_alerts_list(self, rule: PreDetectorRule, event: dict) -> bool:
         """Check if IP is in alerts list and if the alert has expired."""
         for field in rule.ip_fields:
-            ips = get_dotted_field_value(event, field)
-            ips = ips if isinstance(ips, list) else (ips,)
+            ip_or_ips = get_dotted_field_value(event, field)
+            ips = ip_or_ips if isinstance(ip_or_ips, list) else (ip_or_ips,)
             for ip_string in ips:
                 if isinstance(ip_string, str) and self._ip_is_in_alert_list(ip_string):
                     return True
