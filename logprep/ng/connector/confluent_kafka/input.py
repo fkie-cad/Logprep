@@ -767,10 +767,8 @@ class ConfluentKafkaInput(Input):
 
         try:
             await self._drain(partitions)
-            # also after a drain timeout: whatever was acknowledged is not reprocessed
             await self._store_pending_offsets()
         finally:
-            # also on cancellation, otherwise the partitions leak
             for partition in partitions:
                 self._unregister_partition(partition)
 
@@ -781,7 +779,6 @@ class ConfluentKafkaInput(Input):
         try:
             async with asyncio.timeout(self.config.revoke_drain_timeout):
                 while not self._is_drained(partitions):
-                    # no await between clear and wait, so no acknowledgement is missed
                     self._acknowledged_signal.clear()
                     await self._acknowledged_signal.wait()
 
@@ -803,7 +800,6 @@ class ConfluentKafkaInput(Input):
 
     async def _lost_callback(self, _: AIOConsumer, topic_partitions: list[TopicPartition]) -> None:
         """Drop the partitions without draining; duplicates are likely for messages affected by this"""
-        # the assignment is already gone, draining would neither commit nor help
         partitions = [tp.partition for tp in topic_partitions]
         self._metrics.number_of_warnings.inc(len(partitions))
         for partition in partitions:
