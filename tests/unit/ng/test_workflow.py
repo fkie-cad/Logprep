@@ -163,8 +163,8 @@ def get_error_output_mock() -> DummyOutput:
 class TestWorkflow:
     """Test the workflow"""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     async def run_workflow(
         dummy_input: DummyInput,
         processors: Sequence[Processor],
