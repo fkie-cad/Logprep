@@ -4,6 +4,8 @@
 * domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
 * domain_resolver: remove `debug_cache`
 * domain_resolver: `source_fields` must be a list with exactly one element
+* pre_detector: no longer silently skip missing mapping files in `ip_alerter` on initialization, but raise exception instead
+* pre_detector: less validation when parsing addresses in `ip_alerter` due to changed parsing method
 
 ### Features
 
@@ -23,12 +25,19 @@
 * examples/compose: pin opensearch and opensearch-dashboards to 3.9.0
 * examples/k8s: run Kafka 4.3.1 on the official `apache/kafka` image instead of the archived bitnami chart
 * examples/k8s: use the official opensearch helm charts and images (3.9.0) instead of the archived bitnami chart
+* pre_detector: use faster address parsing in `ip_alerter`
+* pre_detector: split matching IPs with TTL from permanent IPs in `ip_alerter` to improve CIDR matching performance 
+* pre_detector: group CIDR matching by their prefix length in `ip_alerter` to improve matching performance  
+* pre_detector: do not parse IPs in `ip_alerter` if no networks to match exist
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
 * pipeline_manager: gc.freeze before forking pipelines in order to avoid error-prone destruction of health check clients in pipeline processes
 * examples/compose: keycloak imports the logprep realm and the fda/ucl backends use its client secrets, the realm was never imported before
 * examples/k8s: remove config keys from `values-dev.yaml` that logprep rejects and create the `errors` topic
+* pre_detector: both matching of compressed and uncompressed IPv6 IPs in `ip_alerter` does now work
+* pre_detector: matching of IPv4-mapped IPv6 IPs in `ip_alerter` does now work
+* pre_detector: failed matching of a single IP does no longer cause networks to automatically not match in `ip_alerter`
 
 ## 21.2.0
 ### Breaking
