@@ -114,13 +114,13 @@ class Lexer:
 
     def __init__(self, template: str, *, key_mode: bool = False) -> None:
         """Start scanning a template; key mode also tokenizes unescaped literal dots."""
-        self.template = template
-        self.position = 0
-        self.tokens: list[Token] = []
+        self._template = template
+        self._position = 0
+        self._tokens: list[Token] = []
         self._key_mode = key_mode
 
     def _at_value_start(self) -> bool:
-        for token in reversed(self.tokens):
+        for token in reversed(self._tokens):
             if token.kind is TokenKind.WHITESPACE:
                 continue
 
@@ -134,29 +134,29 @@ class Lexer:
         return False
 
     def _scan_text(self, *, in_expression: bool, at_value_start: bool) -> Token:
-        start = self.position
+        start = self._position
         characters: list[str] = []
 
-        while self.position < len(self.template):
-            character = self.template[self.position]
+        while self._position < len(self._template):
+            character = self._template[self._position]
 
             if character == _ESCAPE_CHARACTER:
-                if self.position + 1 == len(self.template):
-                    raise FieldTemplateConfigError("Trailing backslash", position=self.position)
+                if self._position + 1 == len(self._template):
+                    raise FieldTemplateConfigError("Trailing backslash", position=self._position)
 
-                characters.append(self.template[self.position + 1])
-                self.position += 2
+                characters.append(self._template[self._position + 1])
+                self._position += 2
                 continue
 
             if self._key_mode and not in_expression and character == _PATH_SEPARATOR:
                 break
 
-            if self.template.startswith(_EXPRESSION_START, self.position):
+            if self._template.startswith(_EXPRESSION_START, self._position):
                 break
 
             if in_expression:
                 if (
-                    self.template.startswith(_EXPRESSION_END, self.position)
+                    self._template.startswith(_EXPRESSION_END, self._position)
                     or character in DELIMITER_TOKENS
                     or character.isspace()
                     or character in (_SINGLE_QUOTE_CHARACTER, _DOUBLE_QUOTE_CHARACTER)
@@ -164,13 +164,14 @@ class Lexer:
                     break
 
             characters.append(character)
-            self.position += 1
+            self._position += 1
 
         value = "".join(characters)
         kind = TokenKind.TEXT
 
         followed_by_path_separator = (
-            self.position < len(self.template) and self.template[self.position] == _PATH_SEPARATOR
+            self._position < len(self._template)
+            and self._template[self._position] == _PATH_SEPARATOR
         )
 
         if in_expression and at_value_start and not followed_by_path_separator:
@@ -182,51 +183,51 @@ class Lexer:
         return Token(kind, value, start)
 
     def _scan_quoted_string(self) -> Token:
-        start = self.position
-        quote = self.template[self.position]
+        start = self._position
+        quote = self._template[self._position]
         characters: list[str] = []
-        self.position += 1
+        self._position += 1
 
-        while self.position < len(self.template):
-            character = self.template[self.position]
+        while self._position < len(self._template):
+            character = self._template[self._position]
 
             if character == quote:
-                self.position += 1
+                self._position += 1
                 return Token(TokenKind.STRING, "".join(characters), start)
 
             if character == _ESCAPE_CHARACTER:
-                if self.position + 1 == len(self.template):
-                    raise FieldTemplateConfigError("Trailing backslash", position=self.position)
+                if self._position + 1 == len(self._template):
+                    raise FieldTemplateConfigError("Trailing backslash", position=self._position)
 
-                self.position += 1
-                character = self.template[self.position]
+                self._position += 1
+                character = self._template[self._position]
 
             characters.append(character)
-            self.position += 1
+            self._position += 1
 
         raise FieldTemplateConfigError("Unclosed string", position=start)
 
     def _scan_number(self) -> Token | None:
-        number = _NUMBER_PATTERN.match(self.template, self.position)
+        number = _NUMBER_PATTERN.match(self._template, self._position)
         if number is None:
             return None
 
         end = number.end()
 
-        if end < len(self.template):
-            following = self.template[end]
+        if end < len(self._template):
+            following = self._template[end]
             is_delimiter = following in DELIMITER_TOKENS and following != "."
 
             if not (
                 following.isspace()
                 or is_delimiter
-                or self.template.startswith(_EXPRESSION_END, end)
+                or self._template.startswith(_EXPRESSION_END, end)
             ):
                 return None
 
-        start = self.position
+        start = self._position
         value = number.group()
-        self.position = end
+        self._position = end
 
         if "." in value or "e" in value or "E" in value:
             kind = TokenKind.FLOAT
@@ -236,7 +237,7 @@ class Lexer:
         return Token(kind, value, start)
 
     def _scan_expression_token(self) -> Token:
-        character = self.template[self.position]
+        character = self._template[self._position]
 
         if character in (_SINGLE_QUOTE_CHARACTER, _DOUBLE_QUOTE_CHARACTER):
             return self._scan_quoted_string()
@@ -246,9 +247,9 @@ class Lexer:
             if number is not None:
                 return number
 
-        if self.template.startswith(_EXPRESSION_END, self.position):
-            token = Token(TokenKind.EXPRESSION_END, _EXPRESSION_END, self.position)
-            self.position += len(_EXPRESSION_END)
+        if self._template.startswith(_EXPRESSION_END, self._position):
+            token = Token(TokenKind.EXPRESSION_END, _EXPRESSION_END, self._position)
+            self._position += len(_EXPRESSION_END)
             return token
 
         kind = DELIMITER_TOKENS.get(character)
@@ -257,8 +258,8 @@ class Lexer:
             kind = TokenKind.WHITESPACE
 
         if kind is not None:
-            token = Token(kind, character, self.position)
-            self.position += 1
+            token = Token(kind, character, self._position)
+            self._position += 1
             return token
 
         return self._scan_text(in_expression=True, at_value_start=self._at_value_start())
@@ -277,24 +278,24 @@ class Lexer:
         """
 
         in_expression = False
-        while self.position < len(self.template):
-            if self.template.startswith(_EXPRESSION_START, self.position):
+        while self._position < len(self._template):
+            if self._template.startswith(_EXPRESSION_START, self._position):
 
-                token = Token(TokenKind.EXPRESSION_START, _EXPRESSION_START, self.position)
+                token = Token(TokenKind.EXPRESSION_START, _EXPRESSION_START, self._position)
                 in_expression = True
-                self.position += len(_EXPRESSION_START)
+                self._position += len(_EXPRESSION_START)
             elif in_expression:
                 token = self._scan_expression_token()
                 in_expression = token.kind is not TokenKind.EXPRESSION_END
-            elif self._key_mode and self.template[self.position] == _PATH_SEPARATOR:
-                token = Token(TokenKind.DOT, _PATH_SEPARATOR, self.position)
-                self.position += 1
+            elif self._key_mode and self._template[self._position] == _PATH_SEPARATOR:
+                token = Token(TokenKind.DOT, _PATH_SEPARATOR, self._position)
+                self._position += 1
             else:
                 token = self._scan_text(in_expression=False, at_value_start=False)
 
-            self.tokens.append(token)
+            self._tokens.append(token)
 
-        return tuple(self.tokens)
+        return tuple(self._tokens)
 
 
 @define(frozen=True)
@@ -392,32 +393,22 @@ class ParsedCall:
         """
         function = functions[self.name]
 
-        compiled_args: list[Operation] = []
-        compiled_kwargs: dict[str, Operation] = {}
+        def compile_argument(
+            argument: "Operation",
+        ) -> "Operation":
+            compiled = argument.compile(static_context, functions)
 
-        for arg in self.args:
-            compiled_arg = arg.compile(static_context, functions)
-
-            if isinstance(compiled_arg, Lookup):
-                compiled_arg = Lookup(
-                    context=compiled_arg.context,
-                    path=compiled_arg.path,
+            if isinstance(compiled, Lookup):
+                return Lookup(
+                    context=compiled.context,
+                    path=compiled.path,
                     copy_result=not function.can_borrow_input,
                 )
 
-            compiled_args.append(compiled_arg)
+            return compiled
 
-        for key, kwarg in self.kwargs.items():
-            compiled_kwarg = kwarg.compile(static_context, functions)
-
-            if isinstance(compiled_kwarg, Lookup):
-                compiled_kwarg = Lookup(
-                    context=compiled_kwarg.context,
-                    path=compiled_kwarg.path,
-                    copy_result=not function.can_borrow_input,
-                )
-
-            compiled_kwargs[key] = compiled_kwarg
+        compiled_args = [compile_argument(arg) for arg in self.args]
+        compiled_kwargs = {key: compile_argument(arg) for key, arg in self.kwargs.items()}
 
         if function.foldable:
             arg_values = [arg.value for arg in compiled_args if isinstance(arg, Constant)]
@@ -461,18 +452,9 @@ class Call:
         invoking the function.
         Exceptions raised by the function propagate unchanged.
         """
-        args = []
-        kwargs = {}
+        args = [arg.evaluate(runtime_context) for arg in self.args]
+        kwargs = {key: arg.evaluate(runtime_context) for key, arg in self.kwargs.items()}
 
-        for arg in self.args:
-            evaluated_arg = arg.evaluate(runtime_context)
-
-            args.append(evaluated_arg)
-
-        for kwarg_key, kwarg_value in self.kwargs.items():
-            evaluated_kwarg = kwarg_value.evaluate(runtime_context)
-
-            kwargs[kwarg_key] = evaluated_kwarg
         return self.function.fn(*args, **kwargs)
 
 
@@ -496,9 +478,8 @@ class MappingOperation:
         entries = self._compile_entries(static_context, functions)
         return self._prepare_entries(entries)
 
-    @classmethod
+    @staticmethod
     def _prepare_entries(
-        cls,
         entries: list[tuple["KeyPath | Operation", "Operation"]],
         *,
         prefix: ReadonlyList[str] = (),
@@ -536,45 +517,47 @@ class MappingOperation:
             group = groups[name]
             full_path = (*prefix, name)
 
-            direct_values = [child_value for remaining, child_value in group if not remaining]
-
             prepared_value: Operation
-            if direct_values:
+            if any(len(remaining) == 0 for remaining, _ in group):
                 # An explicit assignment owns its entire path.
                 if len(group) != 1:
                     raise FieldTemplateConfigError(f"Conflicting mapping path {full_path!r}")
 
-                prepared_value = direct_values[0]
+                prepared_value = group[0][1]
             else:
                 child_entries: list[tuple[KeyPath | Operation, Operation]] = [
                     (KeyPath(remaining), child_value) for remaining, child_value in group
                 ]
-                prepared_value = cls._prepare_entries(child_entries, prefix=full_path)
+                prepared_value = MappingOperation._prepare_entries(child_entries, prefix=full_path)
 
             prepared_entries.append((Constant(name), prepared_value))
 
-        return cls._fold_entries(prepared_entries, generated_paths=generated_paths)
+        return MappingOperation._fold_entries(prepared_entries, generated_paths=generated_paths)
 
-    @classmethod
+    @staticmethod
     def _fold_entries(
-        cls,
         entries: list[tuple["Operation", "Operation"]],
         *,
         generated_paths: frozenset[ReadonlyList[str]],
     ) -> "Constant | MappingOperation":
         """Fold a mapping only when every prepared key and value is constant."""
-        constant_values: JsonObject = {}
+        constant_entries: list[tuple[str, FieldValue]] = []
 
         for key, value in entries:
-            if not isinstance(key, Constant) or not isinstance(value, Constant):
-                return cls(entries=tuple(entries), generated_paths=generated_paths)
+            if isinstance(key, Constant):
+                if not isinstance(key.value, str):
+                    raise RuntimeError("Internal error: prepared mapping key must be a string")
 
-            if not isinstance(key.value, str):
-                raise RuntimeError("Internal error: prepared mapping key must be a string")
+                if isinstance(value, Constant):
+                    constant_entries.append((key.value, value.value))
 
-            constant_values[key.value] = value.value
+        if len(constant_entries) != len(entries):
+            return MappingOperation(
+                entries=tuple(entries),
+                generated_paths=generated_paths,
+            )
 
-        return Constant(constant_values)
+        return Constant(dict(constant_entries))
 
     def _compile_entries(
         self, static_context: dict[str, JsonObject], functions: Mapping[str, Function]
@@ -589,17 +572,16 @@ class MappingOperation:
             else:
                 compiled_key = key
 
-            if isinstance(compiled_key, Constant) and not isinstance(compiled_key.value, str):
-                raise FieldTemplateConfigError(
-                    f"Mapping keys must resolve to strings, got {type(compiled_key.value).__name__}"
-                )
-            elif isinstance(compiled_key, Constant):
-                assert isinstance(compiled_key.value, str)
+            if isinstance(compiled_key, Constant):
+                if not isinstance(compiled_key.value, str):
+                    raise FieldTemplateConfigError(
+                        f"Mapping keys must resolve to strings, got {type(compiled_key.value).__name__}"
+                    )
                 compiled_key = KeyPath(tuple(get_dotted_field_list(compiled_key.value)))
 
             if isinstance(compiled_key, KeyPath) and (
-                any(segment.isnumeric() for segment in compiled_key.segments[1:])
-                or (compiled_key.segments[0].isnumeric() and len(compiled_key.segments) > 1)
+                len(compiled_key.segments) > 1
+                and any(segment.isnumeric() for segment in compiled_key.segments)
             ):
                 raise FieldTemplateConfigError(
                     "Numeric mapping path segment is not supported in a multi-segment path: "
@@ -781,31 +763,31 @@ class Parser:
 
     def __init__(self, tokens: tuple[Token, ...]) -> None:
         """Start a parser at the beginning of the supplied token tuple."""
-        self.tokens = tokens
-        self.index = 0
+        self._tokens = tokens
+        self._index = 0
 
     def _check_eof(self) -> None:
-        if self.index >= len(self.tokens):
+        if self._index >= len(self._tokens):
             raise FieldTemplateConfigError("Unexpected end of template")
 
     def peek(self) -> Token:
         """Return the current token without consuming it or skipping whitespace."""
         self._check_eof()
-        return self.tokens[self.index]
+        return self._tokens[self._index]
 
     def advance(self) -> Token:
         """Consume and return exactly one token, including whitespace tokens."""
         self._check_eof()
-        token = self.tokens[self.index]
-        self.index += 1
+        token = self._tokens[self._index]
+        self._index += 1
         return token
 
     def expect(self, kind: TokenKind) -> Token:
         """Consume the required kind, raising a configuration error on mismatch."""
         self._check_eof()
 
-        if self.tokens[self.index].kind != kind:
-            token = self.tokens[self.index]
+        if self._tokens[self._index].kind != kind:
+            token = self._tokens[self._index]
             raise FieldTemplateConfigError(
                 f"Expected {kind.name}, got {token.kind.name} ({token.value!r})",
                 position=token.position,
@@ -815,14 +797,14 @@ class Parser:
 
     def skip_whitespace(self) -> None:
         """Consume whitespace only; reaching EOF is allowed."""
-        while self.index < len(self.tokens) and self.peek().kind is TokenKind.WHITESPACE:
+        while self._index < len(self._tokens) and self.peek().kind is TokenKind.WHITESPACE:
             self.advance()
 
     def token_at(self, index: int) -> Token:
         """Read an absolute token index without changing the parser cursor."""
-        if index >= len(self.tokens):
+        if index >= len(self._tokens):
             raise FieldTemplateConfigError("Unexpected end of template during lookahead")
-        return self.tokens[index]
+        return self._tokens[index]
 
     def is_sequence(self, kinds: tuple[TokenKind, ...], allow_whitespace: bool = True) -> bool:
         """Check kinds at the cursor without consuming tokens.
@@ -833,10 +815,10 @@ class Parser:
         if len(kinds) == 0:
             return True
 
-        index = self.index
+        index = self._index
         kind_index = 0
         while True:
-            if index >= len(self.tokens):
+            if index >= len(self._tokens):
                 return False
 
             if allow_whitespace and self.token_at(index).kind is TokenKind.WHITESPACE:
@@ -858,12 +840,12 @@ class Parser:
         Tokens must come from a lexer in key mode. Escaped dots remain inside
         their segment. Mixing literal path segments with expressions is rejected.
         """
-        if self.index < len(self.tokens) and self.peek().kind is TokenKind.EXPRESSION_START:
+        if self._index < len(self._tokens) and self.peek().kind is TokenKind.EXPRESSION_START:
             return self.parse_template()
 
         path_segments: list[str] = [""]
 
-        while self.index < len(self.tokens):
+        while self._index < len(self._tokens):
             token = self.advance()
 
             match token.kind:
@@ -1025,12 +1007,12 @@ class Parser:
 
         Empty input becomes an empty string. Text interpolation is unsupported.
         """
-        if len(self.tokens) <= 0:
+        if len(self._tokens) <= 0:
             return Constant("")
 
         if self.peek().kind is TokenKind.TEXT:
             text = self.advance().value
-            if self.index < len(self.tokens):
+            if self._index < len(self._tokens):
                 token = self.peek()
                 raise FieldTemplateConfigError(
                     f"Unexpected token {token.value!r} "
@@ -1057,7 +1039,7 @@ class Parser:
             self.skip_whitespace()
             self.expect(TokenKind.EXPRESSION_END)
 
-            if self.index < len(self.tokens):
+            if self._index < len(self._tokens):
                 token = self.peek()
                 raise FieldTemplateConfigError(
                     f"Unexpected token {token.value!r} after the expression",
