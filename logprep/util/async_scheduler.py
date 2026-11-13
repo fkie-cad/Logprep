@@ -88,15 +88,8 @@ class AsyncScheduler:
 
     async def run_pending(self) -> None:
         """Run all jobs that are currently due."""
-        runnable_jobs = (job for job in self.jobs if job.should_run)
+        await asyncio.gather(*(self._run_job(job) for job in self.jobs if job.should_run))
 
-        for job in sorted(runnable_jobs):
-            await self._run_job(job)
-
-    async def run_all(self, delay_seconds: int = 0) -> None:
+    async def run_all(self) -> None:
         """Run all jobs regardless of their scheduled run time."""
-        for job in self.jobs[:]:
-            await self._run_job(job)
-
-            if delay_seconds:
-                await asyncio.sleep(delay_seconds)
+        await asyncio.gather(*(self._run_job(job) for job in self.jobs[:]))
