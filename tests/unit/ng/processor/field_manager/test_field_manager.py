@@ -36,16 +36,24 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
     @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
     async def test_testcases(self, rule, event, expected, context, provision_context):
         provision_context(context)
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
         assert event.data == expected
 
     @pytest.mark.parametrize(["rule", "event", "expected", "error_message"], failure_test_cases)
     async def test_testcases_failure_handling(self, rule, event, expected, error_message):
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert len(result.warnings) == 1
         assert re.match(error_message, str(result.warnings[0]))
         assert event.data == expected
@@ -62,10 +70,14 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
                 "delete_source_fields": False,
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert "target_field" in document
         assert event.data.get("target_field") == "has already content"
@@ -79,10 +91,14 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
                 "target_field": "target_field",
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"field": {"a": "first", "b": "second"}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert len(result.warnings) == 1
         assert re.match(
             r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]",
@@ -101,7 +117,8 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
                 }
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"field": {"a": "first", "b": "second"}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
@@ -109,7 +126,10 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
             "target_field": "first",
             "tags": ["_field_manager_missing_field_warning"],
         }
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert len(result.warnings) == 1
         assert re.match(
             r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]",
@@ -130,7 +150,8 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
                 "ignore_missing_fields": True,
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"field": {"a": "first", "b": "second"}}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
@@ -138,7 +159,8 @@ class TestFieldManager(BaseProcessorTestCase[FieldManager]):
             "target_field": "first",
         }
         with caplog.at_level(logging.WARNING):
-            await self.object.process(event)
+            async with self.create_and_setup_processor(config_patch=config) as instance:
+                await instance.process(event)
         assert not re.match(
             r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]", caplog.text
         )

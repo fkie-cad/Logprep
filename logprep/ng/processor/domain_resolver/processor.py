@@ -20,33 +20,36 @@ Processor Configuration
         hash_salt: secure_salt
         cache_enabled: true
 
-.. autoclass:: logprep.processor.domain_resolver.processor.DomainResolver.Config
+.. autoclass:: logprep.ng.processor.domain_resolver.processor.DomainResolver.Config
    :members:
    :undoc-members:
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.processor.domain_resolver.rule
+.. automodule:: logprep.ng.processor.domain_resolver.rule
 """
 
+import datetime
 import logging
 import typing
-from datetime import timedelta
 from enum import IntEnum, auto
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
-from dns.exception import Timeout, FormError, SyntaxError as DNSSyntaxError, TooBig, DNSException
-from dns.resolver import Resolver, NXDOMAIN, LifetimeTimeout, NoAnswer, NoNameservers
+from dns.asyncresolver import NXDOMAIN, NoAnswer, Resolver, get_default_resolver
+from dns.exception import DNSException, FormError
+from dns.exception import SyntaxError as DNSSyntaxError
+from dns.exception import Timeout, TooBig
+from dns.resolver import LifetimeTimeout, NoNameservers
 
-from logprep.ng.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric
+from logprep.ng.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.domain_resolver.rule import DomainResolverRule
-from logprep.util.cache import Cache, NOT_CACHED
+from logprep.util.cache import NOT_CACHED, Cache
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import get_dotted_field_value, JsonObject
+from logprep.util.helper import JsonObject, get_dotted_field_value
 
 logger = logging.getLogger("DomainResolver")
 
@@ -248,18 +251,20 @@ class DomainResolver(Processor):
 
     async def setup(self):
         await super().setup()
-        self._dns_resolver = Resolver()
+        self._dns_resolver = get_default_resolver()
         # attributes are meant to be overwritten after init
         self._dns_resolver.timeout = self.config.timeout
         self._dns_resolver.lifetime = self.config.lifetime
 
-        cache_max_timedelta = timedelta(minutes=self.config.timeout_block_minutes).total_seconds()
+        cache_max_timedelta = datetime.timedelta(
+            minutes=self.config.timeout_block_minutes
+        ).total_seconds()
         self._timeout_cache = Cache(
             max_items=self.config.max_cached_domains,
             max_timedelta=cache_max_timedelta,
         )
 
-        cache_max_timedelta = timedelta(days=self.config.max_caching_days).total_seconds()
+        cache_max_timedelta = datetime.timedelta(days=self.config.max_caching_days).total_seconds()
         self._domain_cache = Cache(
             max_items=self.config.max_cached_domains,
             max_timedelta=cache_max_timedelta,
@@ -295,14 +300,14 @@ class DomainResolver(Processor):
             )
         self.metrics.total_urls.inc(1)
         if self.config.cache_enabled:
-            result = self._resolve_with_cache(domain)
+            result = await self._resolve_with_cache(domain)
         else:
-            result = self._resolve_ip(domain)
+            result = await self._resolve_ip(domain)
 
         if isinstance(result, SuccessResult) and (resolved_ip := result.resolved_ip):
             self._add_resolve_infos_to_event(event, rule, resolved_ip)
 
-    def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
+    async def _resolve_with_cache(self, domain: str) -> SuccessResult | FailedResult:
         hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
 
         cached_resolved = self._domain_cache.get(hash_string)
@@ -315,7 +320,7 @@ class DomainResolver(Processor):
             self.metrics.timeouts_cached.inc(1)
             return FailedResult(FailureType.TIMEOUT)
 
-        result = self._resolve_ip(domain)
+        result = await self._resolve_ip(domain)
         match result:
             case FailedResult(FailureType.TIMEOUT | FailureType.NO_NAMESERVERS):
                 self._timeout_cache.add(hash_string, result)
@@ -328,13 +333,13 @@ class DomainResolver(Processor):
         if resolved_ip:
             self._write_target_field(event, rule, resolved_ip)
 
-    def _resolve_ip(self, domain: str) -> SuccessResult | FailedResult:
+    async def _resolve_ip(self, domain: str) -> SuccessResult | FailedResult:
         """Resolve domain with timeout.
 
         Assumes socket default timeout is None and relies on threading to create a timeout.
         """
         try:
-            result = self._dns_resolver.resolve(domain, "A")
+            result = await self._dns_resolver.resolve(domain, "A")
             self.metrics.resolved_domains.inc(1)
             return SuccessResult(result[0].address)
         except NoNameservers as error:
@@ -367,3 +372,7 @@ class DomainResolver(Processor):
             else:
                 logger.info("Failed to resolve %s: %s", domain, error)
             return FailedResult(failure_type, error)
+
+    async def has_asyncio(self) -> bool:
+        """Return whether the processor performs asynchronous I/O operations."""
+        return True

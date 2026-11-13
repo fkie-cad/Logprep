@@ -56,7 +56,7 @@ dependencies = [
   "prometheus_client<1",
   "pycryptodome<4",
   "pyparsing<4",
-  "scikit-learn>=1.2.0,<2",
+  "scikit-learn>=1.2.0,<1.9",
   "joblib<2",
   "requests>=2.33.0,<3", # [>=2.33.0]: CVE-2026-25645
   "ruamel.yaml<1",
@@ -71,6 +71,7 @@ dependencies = [
   "httptools<1",
   "more-itertools>=11.1.0",
   "dnspython>=2.9.0",
+  "aiofiles>=25.1.0",
 ]
 
 [project.optional-dependencies]
@@ -95,6 +96,9 @@ dev = [
   "types-psutil",
   "types-PyYaml",
   "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
+  "ipykernel>=7.3.0",
+  "types-python-dateutil>=2.9.0.20260807",
+  "types-aiofiles",
 ]
 
 doc = [
@@ -119,6 +123,11 @@ Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
 [project.scripts]
 logprep = "logprep.run_logprep:cli"
 logprep-ng = "logprep.run_ng:cli"
+
+[dependency-groups]
+dev = [
+    "aiointercept[pytest-asyncio]>=1.0.0",
+]
 
 [tool.black]
 line-length = 100

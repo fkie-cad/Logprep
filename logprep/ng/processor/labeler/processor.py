@@ -15,13 +15,13 @@ Processor Configuration
         rules:
             - tests/testdata/labeler_rules/rules
 
-.. autoclass:: logprep.processor.labeler.processor.Labeler.Config
+.. autoclass:: logprep.ng.processor.labeler.processor.Labeler.Config
    :members:
    :undoc-members:
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.processor.labeler.rule
+.. automodule:: logprep.ng.processor.labeler.rule
 """
 
 import typing
@@ -30,9 +30,9 @@ from collections.abc import Iterable, Sequence
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
+from logprep.ng.processor.labeler.labeling_schema import LabelingSchema
+from logprep.ng.processor.labeler.rule import LabelerRule
 from logprep.processor.base.rule import Rule
-from logprep.processor.labeler.labeling_schema import LabelingSchema
-from logprep.processor.labeler.rule import LabelerRule
 from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 
@@ -58,8 +58,7 @@ class Labeler(Processor):
 
     rule_class = LabelerRule
 
-    def __init__(self, name: str, configuration: "Labeler.Config") -> None:
-        self._schema = LabelingSchema.create_from_file(configuration.schema)
+    def __init__(self, name: str, configuration: Config) -> None:
         super().__init__(name, configuration=configuration)
 
     @property
@@ -74,6 +73,7 @@ class Labeler(Processor):
 
     async def setup(self) -> None:
         await super().setup()
+        self._schema = await LabelingSchema.create_from_file(self.config.schema)
         for rule in self.rules:
             if self.config.include_parent_labels:
                 rule.add_parent_labels_from_schema(self._schema)

@@ -434,7 +434,7 @@ failure_test_cases = [  # rule, event, expected, error_message
         },
         {"ip": "127.0.0.1"},
         {"ip": "127.0.0.1", "tags": ["_network_comparison_failure"]},
-        r"Max retries exceeded",
+        r"(?i)failed.*load.*resource",
         id="http list is unreachable",
     ),
 ]

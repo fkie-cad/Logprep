@@ -7,16 +7,15 @@ from ipaddress import IPv4Network
 from pathlib import Path
 
 import pytest
-import responses
 
 from logprep.factory_error import InvalidResourcesError
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.network_comparison.processor import NetworkComparison
+from logprep.ng.processor.network_comparison.rule import NetworkComparisonRule
+from logprep.ng.util.getter import HttpGetter, RefreshableGetter
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.network_comparison.rule import NetworkComparisonRule
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter, RefreshableGetter
-from tests.conftest import mock_env
+from tests.conftest import Endpoint, Response, mock_env
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.network_comparison.test_network_comparison import (
     failure_test_cases as non_ng_failure_test_cases,
@@ -34,13 +33,14 @@ DUMMY_HTTP_LIST = "# a comment\n127.0.0.1\n127.0.0.0/24\n"
 """Body returned for every HTTP list in ``test_cases`` so matches are deterministic."""
 
 
-def _compare_sets(rule: NetworkComparisonRule, event: dict | None = None) -> dict[str, set]:
+async def _compare_sets(rule: NetworkComparisonRule, event: dict | None = None) -> dict[str, set]:
     """Materialize a rule's compare sets via its public ``iter_compare_sets`` API.
 
     Local and static lists are available with an empty event; dynamic lists
     require the event fields that resolve their target URI.
     """
-    return dict(rule.iter_compare_sets(event or {}))
+
+    return {key: set(value) async for key, value in rule.iter_compare_sets(event or {})}
 
 
 def _warning_str(warning) -> str:
@@ -72,29 +72,39 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         return processor
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
-    async def test_testcases(self, rule, event, expected):
-        with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked:
-            mocked.add_callback(
-                responses.GET,
-                re.compile(r"http.*"),
-                callback=lambda _: (200, {}, DUMMY_HTTP_LIST),
-            )
-            processor = await self._create_lister([rule])
-            log_event = LogEvent(event, original=b"", input_meta=InputMeta())
-            await processor.process(log_event)
+    async def test_testcases(self, rule, event, expected, provision_context):
+        rule = deepcopy(rule)
+
+        provision_context(Endpoint(body=DUMMY_HTTP_LIST))
+
+        processor = await self._create_lister([rule])
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+        await processor.process(log_event)
         assert log_event.data == expected
 
     @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
-    async def test_testcases_failure_handling(self, rule, event, expected, error_message):
-        with responses.RequestsMock(assert_all_requests_are_fired=False) as mocked:
-            mocked.add_callback(
-                responses.GET, re.compile(r"http.*"), callback=lambda _: (500, {}, "")
-            )
-            processor = await self._create_lister([rule])
-            log_event = LogEvent(event, original=b"", input_meta=InputMeta())
-            result = await processor.process(log_event)
+    async def test_testcases_failure_handling(
+        self,
+        rule,
+        event,
+        expected,
+        error_message,
+        provision_context,
+    ):
+        rule = deepcopy(rule)
+        list_search_base_path = rule["network_comparison"].get("list_search_base_path")
+
+        provision_context(Endpoint(status=500))
+
+        processor = await self._create_lister([rule])
+        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        result = await processor.process(log_event)
+
         assert len(result.warnings) == 1
+
         assert re.search(error_message, _warning_str(result.warnings[0]))
+
         assert log_event.data == expected
 
     @pytest.mark.parametrize("network_comparison_config, error_message", invalid_config_cases)
@@ -159,14 +169,21 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 }
             ]
         )
-        assert _compare_sets(processor.rules[0]) == {
+        assert await _compare_sets(processor.rules[0]) == {
             "network_list.txt": {IPv4Network("127.0.0.1/32"), IPv4Network("127.0.0.0/24")}
         }
 
-    @responses.activate
-    async def test_loads_static_http_list_with_template_base_path(self):
-        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
-        responses.add(responses.GET, url, "127.0.0.1\n127.0.0.2\n127.0.0.3\n")
+    async def test_loads_static_http_list_with_template_base_path(self, provision_context):
+        base_url = "http://example.dd"
+        path = "tests/testdata"
+        list_name = "bad_ips.list"
+        endpoint = Endpoint(
+            url=f"{base_url}/{path}/{list_name}",
+            body="127.0.0.1\n127.0.0.2\n127.0.0.3\n",
+        )
+
+        provision_context(endpoint)
+
         processor = await self._create_lister(
             [
                 {
@@ -175,14 +192,12 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                         "source_fields": ["ip"],
                         "target_field": "ip_results",
                         "list_file_paths": ["bad_ips.list"],
-                        "list_search_base_path": (
-                            "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
-                        ),
+                        "list_search_base_path": (f"{base_url}/{path}/${{LOGPREP_LIST}}"),
                     },
                 }
             ]
         )
-        assert _compare_sets(processor.rules[0]) == {
+        assert await _compare_sets(processor.rules[0]) == {
             "bad_ips.list": {
                 IPv4Network("127.0.0.1/32"),
                 IPv4Network("127.0.0.2/32"),
@@ -190,11 +205,23 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             }
         }
 
-    @responses.activate
-    async def test_static_http_list_is_updated_by_refresh_callback(self, tmp_path):
-        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
-        responses.add(responses.GET, url, "127.0.0.1\n1.1.1.1\n2.2.2.2\n")
-        responses.add(responses.GET, url, "127.0.0.1\n1.1.1.1\n")
+    async def test_static_http_list_is_updated_by_refresh_callback(
+        self,
+        tmp_path,
+        provision_context,
+    ):
+        base_url = "http://zombo.dd"
+        url = f"{base_url}/tests/testdata/bad_ips.list?ref=bla"
+
+        endpoint = Endpoint(
+            url=url,
+            responses=[
+                Response(body="127.0.0.1\n1.1.1.1\n2.2.2.2\n"),
+                Response(body="127.0.0.1\n1.1.1.1\n"),
+            ],
+        )
+
+        provision_context(endpoint)
 
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 10}}))
@@ -209,14 +236,15 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                             "target_field": "ip_results",
                             "list_file_paths": ["bad_ips.list"],
                             "list_search_base_path": (
-                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                                f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                             ),
                         },
                     }
                 ]
             )
             rule = processor.rules[0]
-            assert _compare_sets(rule) == {
+            assert endpoint.call_count == 1
+            assert await _compare_sets(rule) == {
                 "bad_ips.list": {
                     IPv4Network("1.1.1.1/32"),
                     IPv4Network("2.2.2.2/32"),
@@ -224,20 +252,39 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                 }
             }
 
-            HttpGetter(target=url, protocol="http").scheduler.run_all()
-            assert _compare_sets(rule) == {
+            await HttpGetter(target=url, protocol="http").scheduler.run_all()
+            assert endpoint.call_count == 2
+            assert await _compare_sets(rule) == {
                 "bad_ips.list": {IPv4Network("1.1.1.1/32"), IPv4Network("127.0.0.1/32")}
             }
 
-    @responses.activate
-    async def test_refresh_of_one_list_does_not_affect_unmodified_entries(self, tmp_path):
-        url1 = "http://localhost/tests/testdata/bad_ips_1.list?ref=bla"
-        responses.add(responses.GET, url1, "127.0.0.1")
-        responses.add(responses.GET, url1, "1.1.1.1")
-
-        url2 = "http://localhost/tests/testdata/bad_ips_2.list?ref=bla"
-        responses.add(responses.GET, url2, "2.2.2.2", headers={"etag": "1"})
-        responses.add(responses.GET, url2, headers={"etag": "1"}, status=304)
+    async def test_refresh_of_one_list_does_not_affect_unmodified_entries(
+        self,
+        tmp_path,
+        provision_context,
+    ):
+        request_counts = {
+            "bad_ips_1.list": 0,
+            "bad_ips_2.list": 0,
+        }
+        base_url = "http://example.dd"
+        url1 = f"{base_url}/tests/testdata/bad_ips_1.list?ref=bla"
+        url2 = f"{base_url}/tests/testdata/bad_ips_2.list?ref=bla"
+        endpoint1 = Endpoint(
+            url=url1,
+            responses=[
+                Response(body="127.0.0.1"),
+                Response(body="1.1.1.1"),
+            ],
+        )
+        endpoint2 = Endpoint(
+            url=url2,
+            responses=[
+                Response(body="2.2.2.2", headers={"ETag": "1"}),
+                Response(status=304, headers={"ETag": "1"}),
+            ],
+        )
+        provision_context(endpoint1, endpoint2)
 
         http_getter_conf = tmp_path / "http_getter.json"
         http_getter_conf.write_text(
@@ -254,33 +301,43 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                             "target_field": "ip_results",
                             "list_file_paths": ["bad_ips_1.list", "bad_ips_2.list"],
                             "list_search_base_path": (
-                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                                f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                             ),
                         },
                     }
                 ]
             )
             rule = processor.rules[0]
-            assert _compare_sets(rule) == {
+            assert (await _compare_sets(rule)) == {
                 "bad_ips_1.list": {IPv4Network("127.0.0.1/32")},
                 "bad_ips_2.list": {IPv4Network("2.2.2.2/32")},
             }
-
-            HttpGetter(target=url1, protocol="http").scheduler.run_all()
-            assert _compare_sets(rule) == {
+            assert endpoint1.call_count == 1
+            await HttpGetter(target=url1, protocol="http").scheduler.run_all()
+            assert endpoint1.call_count == 2
+            assert (await _compare_sets(rule)) == {
                 "bad_ips_1.list": {IPv4Network("1.1.1.1/32")},
                 "bad_ips_2.list": {IPv4Network("2.2.2.2/32")},
             }
 
-    @responses.activate
-    async def test_dynamic_http_failure_does_not_mark_rule_failed(self):
+    async def test_dynamic_http_failure_does_not_mark_rule_failed(
+        self,
+        provision_context,
+    ):
         failed_document = {"tenant": "acme", "ip": "1.2.3.4"}
         successful_document = {"tenant": "beta", "ip": "1.2.3.4"}
         list_name = "bad_ips.list"
-        failed_url = "http://localhost/acme/bad_ips.list"
-        successful_url = "http://localhost/beta/bad_ips.list"
-        responses.add(responses.GET, url=failed_url, status=500)
-        responses.add(responses.GET, url=successful_url, body="1.2.3.4\n", status=200)
+
+        base_url = "http://example.dd"
+        failed_url = f"{base_url}/acme/{list_name}"
+        successful_url = f"{base_url}/beta/{list_name}"
+
+        provision_context(
+            Endpoint(url=failed_url, status=500),
+            Endpoint(url=successful_url, body="1.2.3.4\n"),
+        )
+
+        dynamic_base_path = f"{base_url}/${{tenant}}/${{LOGPREP_LIST}}"
 
         processor = await self._create_lister(
             [
@@ -290,7 +347,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                         "source_fields": ["ip"],
                         "target_field": "ip_results",
                         "list_file_paths": [list_name],
-                        "list_search_base_path": "http://localhost/${tenant}/${LOGPREP_LIST}",
+                        "list_search_base_path": dynamic_base_path,
                     },
                 }
             ]
@@ -312,23 +369,35 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         assert len(HttpGetter._target_to_data_caches[failed_url].callbacks) == 1
         assert len(HttpGetter._target_to_data_caches[failed_url].cleanup_callbacks) == 1
 
-        await processor.process(LogEvent(successful_document, original=b"", input_meta=InputMeta()))
+        result = await processor.process(
+            LogEvent(successful_document, original=b"", input_meta=InputMeta())
+        )
 
+        assert result.warnings == []
         assert successful_document == {
             "tenant": "beta",
             "ip": "1.2.3.4",
             "ip_results": {"in_list": [list_name]},
         }
         assert rule.data_error is None
-        assert _compare_sets(rule, {"tenant": "beta"}) == {list_name: {IPv4Network("1.2.3.4/32")}}
+        assert await _compare_sets(rule, {"tenant": "beta"}) == {
+            list_name: {IPv4Network("1.2.3.4/32")}
+        }
+        assert len(HttpGetter._target_to_data_caches[successful_url].callbacks) == 1
+        assert len(HttpGetter._target_to_data_caches[successful_url].cleanup_callbacks) == 1
 
-    @responses.activate
-    async def test_process_adds_failure_tag_if_http_list_returns_500(self, caplog):
+    async def test_process_adds_failure_tag_if_http_list_returns_500(
+        self,
+        caplog,
+        provision_context,
+    ):
         document = {"ip": "1.2.3.4"}
         list_name = "bad_ips.list"
-        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
-        responses.add(responses.GET, url=url, status=500)
+        base_url = "http://example.dd"
 
+        url = f"{base_url}/tests/testdata/{list_name}?ref=bla"
+        endpoint = Endpoint(url=url, status=500)
+        provision_context(endpoint)
         processor = await self._create_lister(
             [
                 {
@@ -338,7 +407,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                         "target_field": "ip_results",
                         "list_file_paths": [list_name],
                         "list_search_base_path": (
-                            "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                            f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                         ),
                     },
                 }
@@ -346,20 +415,31 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         )
         rule = processor.rules[0]
 
-        assert "NetworkComparison" in caplog.text
-        assert "too many 500 error responses" in caplog.text
+        assert isinstance(rule.data_error, InvalidResourcesError)
+        assert "NetworkComparisonRule failed" in caplog.text
+        assert "500" in caplog.text
+        assert endpoint.call_count == 4
+        assert url in HttpGetter._target_to_data_caches
 
         await processor.process(LogEvent(document, original=b"", input_meta=InputMeta()))
 
-        assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
-        assert len(responses.calls) == 4
-        assert responses.calls[0].request.url == url
+        assert endpoint.call_count == 4
 
-    @responses.activate
-    async def test_recovers_after_failed_http_getter_setup(self):
+    async def test_recovers_after_failed_http_getter_setup(self, provision_context):
+        base_url = "http://example.dd"
         list_name = "bad_ips.list"
-        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
+        endpoint = Endpoint(
+            responses=[
+                Response(status=500),
+                Response(status=500),
+                Response(status=500),
+                Response(status=500),
+                Response(body="1.2.3.4\n"),
+            ]
+        )
+        provision_context(endpoint)
+
         rules = [
             {
                 "filter": "ip",
@@ -368,13 +448,12 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                     "target_field": "ip_results",
                     "list_file_paths": [list_name],
                     "list_search_base_path": (
-                        "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                        f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                     ),
                 },
             }
         ]
 
-        responses.add(responses.GET, url=url, status=500)
         processor = await self._create_lister(rules)
         rule = processor.rules[0]
 
@@ -383,10 +462,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
         assert isinstance(rule.data_error, InvalidResourcesError)
         assert document == {"ip": "1.2.3.4", "tags": ["_network_comparison_failure"]}
-        assert responses.calls[-1].request.url == url
-        assert responses.calls[-1].response.status_code == 500
-
-        responses.replace(responses.GET, url=url, body="1.2.3.4\n", status=200)
+        assert endpoint.call_count == 4
 
         processor = await self._create_lister(rules)
         rule = processor.rules[0]
@@ -396,16 +472,25 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
 
         assert rule.data_error is None
         assert document == {"ip": "1.2.3.4", "ip_results": {"in_list": [list_name]}}
-        assert _compare_sets(rule) == {list_name: {IPv4Network("1.2.3.4/32")}}
-        assert responses.calls[-1].request.url == url
-        assert responses.calls[-1].response.status_code == 200
+        assert await _compare_sets(rule) == {list_name: {IPv4Network("1.2.3.4/32")}}
+        assert endpoint.call_count == 5
 
-    @responses.activate
-    async def test_refresh_updates_all_compare_sets_resolving_to_same_uri(self, tmp_path):
-        url = "http://localhost/tests/testdata/shared_ips.list?ref=bla"
+    async def test_refresh_updates_all_compare_sets_resolving_to_same_uri(
+        self,
+        tmp_path,
+        provision_context,
+    ):
+        base_url = "http://example.dd"
+        url = f"{base_url}/tests/testdata/shared_ips.list?ref=bla"
 
-        responses.add(responses.GET, url, "127.0.0.1")
-        responses.add(responses.GET, url, "1.1.1.1")
+        endpoint = Endpoint(
+            url=url,
+            responses=[
+                Response(body="127.0.0.1"),
+                Response(body="1.1.1.1"),
+            ],
+        )
+        provision_context(endpoint)
 
         http_getter_conf: Path = tmp_path / "http_getter.json"
         http_getter_conf.write_text(json.dumps({url: {"refresh_interval": 10}}))
@@ -423,7 +508,7 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
                                 "SECOND_LIST": "shared_ips.list",
                             },
                             "list_search_base_path": (
-                                "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+                                f"{base_url}/tests/testdata/${{LOGPREP_LIST}}?ref=bla"
                             ),
                         },
                     }
@@ -431,16 +516,19 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
             )
             rule = processor.rules[0]
 
-            assert _compare_sets(rule) == {
+            assert await _compare_sets(rule) == {
                 "FIRST_LIST": {IPv4Network("127.0.0.1/32")},
                 "SECOND_LIST": {IPv4Network("127.0.0.1/32")},
             }
 
             assert len(HttpGetter._target_to_data_caches[url].callbacks) == 1
 
-            HttpGetter(target=url, protocol="http").scheduler.run_all()
+            await HttpGetter(target=url, protocol="http").scheduler.run_all()
 
-            assert _compare_sets(rule) == {
+            assert await _compare_sets(rule) == {
                 "FIRST_LIST": {IPv4Network("1.1.1.1/32")},
                 "SECOND_LIST": {IPv4Network("1.1.1.1/32")},
             }
+
+    async def test_has_async_io(self):
+        assert await self.object.has_asyncio() is True

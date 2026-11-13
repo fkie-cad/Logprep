@@ -5,6 +5,8 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 import copy
+from copy import deepcopy
+from unittest import mock
 
 import pytest
 from pytest import raises
@@ -12,9 +14,9 @@ from pytest import raises
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.labeler.processor import Labeler
+from logprep.ng.processor.labeler.rule import LabelerRule
 from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
-from logprep.processor.labeler.rule import LabelerRule
 from tests.testdata.metadata import path_to_schema, path_to_schema2
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
@@ -66,22 +68,30 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         "rules": ["tests/testdata/unit/labeler/rules"],
     }
 
-    async def _load_rule(self, rule, schema=None):  # pylint: disable=arguments-differ
+    async def _load_rule(
+        self, rule, schema=None, instance=None
+    ):  # pylint: disable=arguments-differ
         rule = LabelerRule.create_from_dict(rule)
         if schema:
             rule.add_parent_labels_from_schema(schema)
-        self.object._rule_tree.add_rule(rule)
+
+        if instance is None:
+            self.object._rule_tree.add_rule(rule)
+        else:
+            instance._rule_tree.add_rule(rule)
 
     async def test_process_adds_labels_to_event(self):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"applyrule": "yes"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
 
-        await self._load_rule(rule)
-        await self.object.process(log_event)
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
 
-        assert log_event.data == expected
+        assert event.data == expected
 
     async def test_process_adds_labels_to_event_with_umlauts(self):
         rule = {
@@ -89,135 +99,158 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
             "labeler": {"label": {"räpörter": ["windöws"]}},
             "description": "this is ä test rüle",
         }
-
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"äpplyrüle": "nö"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"äpplyrüle": "nö", "label": {"räpörter": ["windöws"]}}
 
-        await self._load_rule(rule)
-        await self.object.process(log_event)
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
+        with mock.patch(
+            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
+        ):
+            async with self.create_and_setup_processor(config_patch=config) as instance:
+                await instance.process(event)
 
-        assert log_event.data == expected
+        assert event.data == expected
 
     async def test_process_adds_labels_including_parents_when_flag_was_set(
         self, reporter_schema_expanded
     ):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
-
         document = {"applyrule": "yes"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"applyrule": "yes", "label": {"reporter": ["parentlabel", "windows"]}}
 
-        await self._load_rule(rule, reporter_schema_expanded)
-        await self.object.process(log_event)
+        async with self.create_and_setup_processor() as instance:
+            await self._load_rule(rule, schema=reporter_schema_expanded, instance=instance)
+            await instance.process(event)
 
-        assert log_event.data == expected
+        assert event.data == expected
 
     async def test_process_adds_more_than_one_label(self):
         rule = {
             "filter": "key: value",
             "labeler": {"label": {"reporter": ["client", "windows"], "object": ["file"]}},
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"key": "value"}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "key": "value",
             "label": {"reporter": ["client", "windows"], "object": ["file"]},
         }
 
-        await self._load_rule(rule)
-        await self.object.process(log_event)
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
+        with mock.patch(
+            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
+        ):
+            async with self.create_and_setup_processor(config_patch=config) as instance:
+                await instance.process(event)
 
-        assert log_event.data == expected
+        assert event.data == expected
 
     async def test_process_does_not_overwrite_existing_values(self):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
 
-        await self._load_rule(rule)
-        await self.object.process(log_event)
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
 
-        assert log_event.data == expected
+        assert event.data == expected
 
     async def test_process_returns_labels_in_alphabetical_order(self, reporter_schema_expanded):
-        event = {"applyrule": "yes"}
-        log_event = LogEvent(event, original=b"", input_meta=InputMeta())
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
 
-        await self._load_rule(rule, reporter_schema_expanded)
-        await self.object.process(log_event)
+        document = {"applyrule": "yes"}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
 
-        assert log_event.data["label"]["reporter"] == ["parentlabel", "windows"]
+        async with self.create_and_setup_processor() as instance:
+            await self._load_rule(rule, schema=reporter_schema_expanded, instance=instance)
+            await instance.process(event)
+
+        assert event.data["label"]["reporter"] == ["parentlabel", "windows"]
 
     async def test_process_matches_event_with_array_with_one_element(self):
-        document = {"field_with_array": ["im_inside_an_array"]}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {
-            "field_with_array": ["im_inside_an_array"],
-            "label": {"some_new_label": ["some_new_value"]},
-        }
-
         rule = {
             "filter": "field_with_array: im_inside_an_array",
             "labeler": {"label": {"some_new_label": ["some_new_value"]}},
             "description": "This does even match with arrays!",
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+        document = {"field_with_array": ["im_inside_an_array"]}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        expected = {
+            "field_with_array": ["im_inside_an_array"],
+            "label": {"some_new_label": ["some_new_value"]},
+        }
 
-        await self._load_rule(rule)
-        await self.object.process(log_event)
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
+        with mock.patch(
+            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
+        ):
+            async with self.create_and_setup_processor(config_patch=config) as instance:
+                await instance.process(event)
 
-        assert log_event.data == expected
+        assert event.data == expected
 
     async def test_process_matches_event_with_array_if_at_least_one_element_matches(self):
+        rule = {
+            "filter": "field_with_array: im_inside_an_array",
+            "labeler": {"label": {"some_new_label": ["some_new_value"]}},
+            "description": "This does even match with arrays!",
+        }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"]}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
             "field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"],
             "label": {"some_new_label": ["some_new_value"]},
         }
 
-        rule = {
-            "filter": "field_with_array: im_inside_an_array",
-            "labeler": {"label": {"some_new_label": ["some_new_value"]}},
-            "description": "This does even match with arrays!",
-        }
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
+        with mock.patch(
+            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
+        ):
+            async with self.create_and_setup_processor(config_patch=config) as instance:
+                await instance.process(event)
 
-        await self._load_rule(rule)
-        await self.object.process(log_event)
-
-        assert log_event.data == expected
+        assert event.data == expected
 
     async def test_process_matches_event_with_array_with_one_element_with_regex(self):
-        document = {"field_with_array": ["im_inside_an_array"]}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        expected = {
-            "field_with_array": ["im_inside_an_array"],
-            "label": {"some_new_label": ["some_new_value"]},
-        }
-
         rule = {
             "filter": "field_with_array: im_inside_an_a.*y",
             "regex_fields": ["field_with_array"],
             "labeler": {"label": {"some_new_label": ["some_new_value"]}},
             "description": "This does even match with arrays!",
         }
-
-        await self._load_rule(rule)
-        await self.object.process(log_event)
-
-        assert log_event.data == expected
-
-    async def test_process_matches_event_with_array_with_one_element_with_regex_one_without(self):
-        document = {"field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"]}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+        document = {"field_with_array": ["im_inside_an_array"]}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {
-            "field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"],
+            "field_with_array": ["im_inside_an_array"],
             "label": {"some_new_label": ["some_new_value"]},
         }
 
-        rule_dict = {
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
+        with mock.patch(
+            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
+        ):
+            async with self.create_and_setup_processor(config_patch=config) as instance:
+                await instance.process(event)
+
+        assert event.data == expected
+
+    async def test_process_matches_event_with_array_with_one_element_with_regex_one_without(self):
+        rule = {
             "filter": (
                 "field_with_array: im_inside_.*y AND "
                 "field_with_array: im_also_inside_that_array!"
@@ -226,12 +259,23 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
             "labeler": {"label": {"some_new_label": ["some_new_value"]}},
             "description": "This does even match with arrays!",
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+        document = {"field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"]}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        expected = {
+            "field_with_array": ["im_inside_an_array", "im_also_inside_that_array!"],
+            "label": {"some_new_label": ["some_new_value"]},
+        }
 
-        await self._load_rule(rule_dict)
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
+        with mock.patch(
+            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
+        ):
+            async with self.create_and_setup_processor(config_patch=config) as instance:
+                await instance.process(event)
 
-        await self.object.process(log_event)
-
-        assert log_event.data == expected
+        assert event.data == expected
 
     async def test_create_fails_when_include_parent_labels_is_not_boolean(self):
         config = copy.deepcopy(self.CONFIG)
@@ -255,15 +299,23 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = path_to_schema
         expected_schema = LabelingSchema.create_from_file(path_to_schema)
-        labeler = Factory.create({"test instance": config})
 
-        assert labeler._schema == expected_schema
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            assert instance._schema == expected_schema
 
     async def test_extend_list_of_existing_labels(self):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows", "foo"]}}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
-        log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
         expected = {"applyrule": "yes", "label": {"reporter": ["foo", "windows"]}}
-        await self._load_rule(rule)
-        await self.object.process(log_event)
-        assert log_event.data == expected
+
+        # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
+        with mock.patch(
+            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
+        ):
+            async with self.create_and_setup_processor(config_patch=config) as instance:
+                await instance.process(event)
+
+        assert event.data == expected

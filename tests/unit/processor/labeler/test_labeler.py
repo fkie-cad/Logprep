@@ -90,8 +90,10 @@ class TestLabeler(BaseProcessorTestCase):
         document = {"äpplyrüle": "nö"}
         expected = {"äpplyrüle": "nö", "label": {"räpörter": ["windöws"]}}
 
+        instance = self._create_test_instance(config={"test labeler": copy.deepcopy(self.CONFIG)})
+        self.object = instance
         self._load_rule(rule)
-        self.object.process(document)
+        instance.process(document)
 
         assert document == expected
 

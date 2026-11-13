@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+from copy import deepcopy
 from unittest import mock
 
 from logprep.ng.abc.event import InputMeta, LogEvent
@@ -23,37 +24,48 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         expected = {}
         document = {"drop_me": "something"}
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
+        await self.object.setup()
         await self.object.process(log_event)
 
         assert log_event.data == expected
 
     async def test_nested_field_gets_dropped(self):
         rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {}
         document = {"drop": {"me": "something"}}
-        await self._load_rule(rule)
+
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_nested_escaped_field_gets_dropped(self):
         rule = {"filter": "\\\\drop", "dropper": {"drop": ["\\\\drop.me\\.pls\\\\"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {}
         document = {"\\drop": {"me.pls\\": "something"}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_nested_field_with_neighbour_gets_dropped(self):
         rule = {"filter": "keep_me.drop_me", "dropper": {"drop": ["keep_me.drop_me"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {"keep_me": {"keep_me_too": "something"}}
         document = {"keep_me": {"drop_me": "something", "keep_me_too": "something"}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
@@ -62,21 +74,27 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
             "filter": "keep_me.drop.me",
             "dropper": {"drop": ["keep_me.drop.me"], "drop_full": False},
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {"keep_me": {"drop": {}}}
         document = {"keep_me": {"drop": {"me": "something"}}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_deep_nested_field_gets_dropped_fully(self):
         rule = {"filter": "please.drop.me.fully", "dropper": {"drop": ["please.drop.me.fully"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {}
         document = {"please": {"drop": {"me": {"fully": "something"}}}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
@@ -85,51 +103,66 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
             "filter": "keep_me.drop.me",
             "dropper": {"drop": ["keep_me.drop.me"], "drop_full": False},
         }
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {"keep_me": {"drop": {}, "keep_me_too": "something"}}
         document = {"keep_me": {"drop": {"me": "something"}, "keep_me_too": "something"}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_nested_field_with_child_gets_dropped(self):
         rule = {"filter": "drop.child", "dropper": {"drop": ["drop"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {}
         document = {"drop": {"child": "something"}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_deep_nested_field_with_child_gets_dropped(self):
         rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {}
         document = {"drop": {"me": {"child": "foo"}}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_deep_nested_field_with_child_and_neighbour_gets_dropped(self):
         rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"]}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {"drop": {"neighbour": "bar"}}
         document = {"drop": {"me": {"child": "foo"}, "neighbour": "bar"}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_deep_nested_field_with_child_and_not_drop_full_gets_partially_dropped(self):
         rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"], "drop_full": False}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {"drop": {}}
         document = {"drop": {"me": {"child": "foo"}}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
@@ -137,24 +170,30 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
         self,
     ):
         rule = {"filter": "drop.child", "dropper": {"drop": ["drop.child"], "drop_full": False}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         expected = {"drop": {"neighbour": "bar"}}
         document = {"drop": {"child": {"grand_child": "foo"}, "neighbour": "bar"}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
     async def test_apply_rules_is_called(self):
         rule = {"filter": "drop.child", "dropper": {"drop": ["drop.child"], "drop_full": False}}
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"drop": {"child": {"grand_child": "foo"}, "neighbour": "bar"}}
-        await self._load_rule(rule)
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        with mock.patch(
-            f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"
-        ) as mock_apply_rules:
-            await self.object.process(log_event)
-            mock_apply_rules.assert_called()
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            with mock.patch(
+                f"{instance.__module__}.{instance.__class__.__name__}._apply_rules"
+            ) as mock_apply_rules:
+                await instance.process(log_event)
+                mock_apply_rules.assert_called()
 
     async def test_subkey_not_in_event(self):
         document = {
@@ -175,9 +214,12 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
                 "drop_full": False,
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
 
@@ -195,8 +237,11 @@ class TestDropper(BaseProcessorTestCase[Dropper]):
                 "drop_full": False,
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         log_event = LogEvent(document, original=b"", input_meta=InputMeta())
-        await self.object.process(log_event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(log_event)
 
         assert log_event.data == expected
