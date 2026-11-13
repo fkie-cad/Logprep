@@ -483,4 +483,4 @@ class TestGeoipEnricher(BaseProcessorTestCase[GeoipEnricher]):
         city_db = mock.Mock()
         with mock.patch.object(instance, "_city_db", new=city_db):
             await instance.shut_down()
-        assert city_db.close.assert_called_once()
+        city_db.close.assert_called_once()
