@@ -23,6 +23,7 @@ from typing import (
     cast,
 )
 
+import msgspec
 from attrs import Attribute
 
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -65,6 +66,49 @@ JsonObject: TypeAlias = dict[str, FieldValue]
 FieldRef: TypeAlias = str
 
 T = TypeVar("T")
+
+FieldValueT = TypeVar("FieldValueT", bound=FieldValue)
+
+_SCALAR_TYPES = frozenset({str, int, float, bool, type(None)})
+_MSGPACK_ENCODER = msgspec.msgpack.Encoder()
+_MSGPACK_DECODER = msgspec.msgpack.Decoder()
+
+
+def copy_field_value(value: FieldValueT) -> FieldValueT:
+    """
+    An optimized deep copy tuned for ``FieldValue``.
+    Internally uses msgpack, a recursive approach and ``copy.deepcopy`` for high performance.
+    If msgpack is used, conversions take place and e.g. enums are converted to their values.
+    """
+    if type(value) in _SCALAR_TYPES:
+        return value
+    try:
+        try:
+            return _MSGPACK_DECODER.decode(_MSGPACK_ENCODER.encode(value))
+        except (TypeError, ValueError, OverflowError):
+            # encoding/decoding issues like: ints > 64 bits, lone surrogates, ...
+            return cast(FieldValueT, _copy_field_value(value))
+    except RecursionError:
+        # cyclic values
+        return copy.deepcopy(value)
+
+
+def _copy_field_value(value: FieldValue) -> FieldValue:
+    """
+    A python-based deep copy tuned for ``FieldValue``.
+    Recursively traverses and copies the data structure, keeping scalars the same.
+    Already checks child type one step ahead to reduce number of function calls.
+    """
+    if type(value) is dict:  # pylint: disable=unidiomatic-typecheck
+        return {
+            key: (item if type(item) in _SCALAR_TYPES else _copy_field_value(item))
+            for key, item in value.items()
+        }
+    if type(value) is list:  # pylint: disable=unidiomatic-typecheck
+        return [item if type(item) in _SCALAR_TYPES else _copy_field_value(item) for item in value]
+    if type(value) in _SCALAR_TYPES:
+        return value
+    return copy.deepcopy(value)
 
 
 class DottedTemplate(Template):
@@ -134,7 +178,7 @@ def _add_field_to(
 
     if overwrite_target:
         target_parent = reduce(_add_and_overwrite_key, field_path[:-1], event)
-        target_parent[target_key] = copy.deepcopy(content)
+        target_parent[target_key] = copy_field_value(content)
         return
     try:
         target_parent = reduce(_add_and_not_overwrite_key, field_path[:-1], event)
@@ -142,7 +186,7 @@ def _add_field_to(
         raise FieldExistsWarning(rule, event, [target_field]) from error
     existing_value = target_parent.get(target_key)
     if existing_value is None:
-        target_parent[target_key] = copy.deepcopy(content)
+        target_parent[target_key] = copy_field_value(content)
         return
     if not merge_with_target:
         raise FieldExistsWarning(rule, event, [target_field])
@@ -160,7 +204,7 @@ def _add_field_to(
         # FIXME combining ll 117 & 135, overwrite_target can never be True here
         if not overwrite_target:
             raise FieldExistsWarning(rule, event, [target_field])
-        target_parent[target_key] = [existing_value, copy.deepcopy(content)]
+        target_parent[target_key] = [existing_value, copy_field_value(content)]
 
 
 def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
