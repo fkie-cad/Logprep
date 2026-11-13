@@ -14,7 +14,7 @@ from logprep.ng.processor.generic_resolver.rule import (
 )
 from logprep.ng.util.getter import HttpGetter, RefreshableGetter
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from tests.conftest import FIELD_VALUE_TEST_CASES, Endpoint, Response, mock_env
+from tests.conftest import FIELD_VALUE_TEST_CASES, Endpoint, mock_env
 
 
 @pytest.fixture(name="rule_definition")
@@ -444,66 +444,3 @@ class TestGenericResolverRule:
 
         await rule.init()
         assert isinstance(rule.data_error, InvalidResourcesError)
-
-    # TODO: clearify
-    @pytest.mark.skip("Clearify intended behaviour")
-    async def test_failed_refresh_preserves_last_valid_additions(
-        self,
-        tmp_path,
-        provision_context,
-    ):
-        url = "https://example.dd/resolve"
-        provision_context(
-            [
-                Endpoint(
-                    url=url,
-                    responses=[
-                        Response(json={"content": {"foo": "first"}}),
-                        Response(json={"invalid": {"foo": "second"}}),
-                        Response(json={"content": {"foo": "third"}}),
-                    ],
-                )
-            ]
-        )
-
-        getter_file_content = {
-            url: {
-                "refresh_interval": 10,
-            }
-        }
-        http_getter_conf: Path = tmp_path / "http_getter.json"
-        http_getter_conf.write_text(json.dumps(getter_file_content))
-
-        rule_definition = {
-            "filter": "something",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": url,
-                    "pattern": r"something_\d*(?P<mapping>[a-z]+)\d*",
-                },
-                "content_field": "content",
-            },
-        }
-
-        RefreshableGetter.reset()
-
-        try:
-            with mock_env({ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}):
-                rule = GenericResolverRule.create_from_dict(rule_definition)
-                await rule.init()
-
-                scheduler = HttpGetter(protocol="http", target=url).scheduler
-                assert scheduler is not None
-
-                assert (await rule.get_additions({})) == {"foo": "first"}
-
-                await scheduler.run_all()
-
-                assert (await rule.get_additions({})) == {"foo": "first"}
-
-                await scheduler.run_all()
-
-                assert (await rule.get_additions({})) == {"foo": "third"}
-        finally:
-            RefreshableGetter.reset()
