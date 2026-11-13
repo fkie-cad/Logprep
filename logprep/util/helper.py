@@ -178,7 +178,7 @@ def _add_field_to(
 
     if overwrite_target:
         target_parent = reduce(_add_and_overwrite_key, field_path[:-1], event)
-        target_parent[target_key] = copy.deepcopy(content)
+        target_parent[target_key] = copy_field_value(content)
         return
     try:
         target_parent = reduce(_add_and_not_overwrite_key, field_path[:-1], event)
@@ -186,7 +186,7 @@ def _add_field_to(
         raise FieldExistsWarning(rule, event, [target_field]) from error
     existing_value = target_parent.get(target_key)
     if existing_value is None:
-        target_parent[target_key] = copy.deepcopy(content)
+        target_parent[target_key] = copy_field_value(content)
         return
     if not merge_with_target:
         raise FieldExistsWarning(rule, event, [target_field])
@@ -204,7 +204,7 @@ def _add_field_to(
         # FIXME combining ll 117 & 135, overwrite_target can never be True here
         if not overwrite_target:
             raise FieldExistsWarning(rule, event, [target_field])
-        target_parent[target_key] = [existing_value, copy.deepcopy(content)]
+        target_parent[target_key] = [existing_value, copy_field_value(content)]
 
 
 def _add_field_to_silent_fail(*args, **kwargs) -> None | str:

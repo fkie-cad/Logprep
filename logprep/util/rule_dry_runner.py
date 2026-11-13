@@ -38,7 +38,6 @@ import json
 import logging
 import shutil
 import tempfile
-from copy import deepcopy
 from difflib import ndiff
 from functools import cached_property
 from typing import Dict, List
@@ -54,7 +53,7 @@ from logprep.util.ansi import (
 )
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import recursive_compare
+from logprep.util.helper import copy_field_value, recursive_compare
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -131,8 +130,8 @@ class DryRunner:
         shutil.rmtree(self._tmp_path)
 
     def _print_output_results(self, input_document, test_output, test_output_custom):
-        test_copy = deepcopy(test_output)
-        input_copy = deepcopy(input_document)
+        test_copy = copy_field_value(test_output)
+        input_copy = copy_field_value(input_document)
         difference = recursive_compare(test_copy, input_copy)
         if difference:
             test_json = json.dumps(test_output, sort_keys=True, indent=4)

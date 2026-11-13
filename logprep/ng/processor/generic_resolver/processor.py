@@ -24,7 +24,6 @@ Processor Configuration
 """
 
 import typing
-from copy import deepcopy
 from functools import cached_property, lru_cache
 from typing import Callable
 
@@ -42,6 +41,7 @@ from logprep.util.helper import (
     JsonObject,
     Missing,
     add_fields_to,
+    copy_field_value,
     get_dotted_field_value,
 )
 from logprep.util.typing import is_lru_cached
@@ -155,8 +155,7 @@ class GenericResolver(FieldManager):
             current_content = get_dotted_field_value(event, target_field)
             if isinstance(current_content, list) and resolved_content in current_content:
                 continue
-            if isinstance(resolved_content, (list, dict)):
-                resolved_content = deepcopy(resolved_content)
+            resolved_content = copy_field_value(resolved_content)
             try:
                 add_fields_to(
                     event,
