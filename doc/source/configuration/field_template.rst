@@ -15,9 +15,11 @@ functions, and error handling.
 Building a template
 -------------------
 
-A template is a YAML mapping. It can contain nested mappings, lists, strings,
-numbers, booleans, and null values. An expression occupies an entire string and
-is enclosed in ``${...}``:
+A field template is a JSON value which may contain expressions evaluated at runtime.
+The value can be (nested) mappings, lists, strings, int, float, bool and null.
+An expression is enclosed in ``${...}`` and must occupy the entire string value.
+Interpolation within literal text, such as ``'Hello ${source_event.name}'``, is not supported.
+Mapping keys are also allowed to be expressions as well:
 
 .. code-block:: yaml
 
@@ -251,6 +253,9 @@ A present null value is not a missing field.
 Functions also require suitable input values.
 For example, ``int("unknown")`` and ``lower(42)`` fail.
 Such failures are not handled as missing fields.
+Function failures during constant folding are configuration errors and reject
+the rule. During evaluation, they raise ``FieldTemplateFunctionError`` with
+the original exception preserved as the cause.
 See `Output keys and nested paths`_ for constraints on output keys and paths.
 Functions do not provide automatic fallback values for missing fields or failed
 conversions.

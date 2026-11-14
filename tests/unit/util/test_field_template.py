@@ -11,9 +11,12 @@ from logprep.util.field_template import (
     FieldTemplate,
     FieldTemplateConfigError,
     FieldTemplateEvaluationError,
+    FieldTemplateFunctionError,
+    FieldTemplateLookupError,
     Function,
     ParsedCall,
 )
+from logprep.util.field_template_helpers import source_fields_to_ft
 from logprep.util.helper import FieldValue, JsonObject
 
 STATIC_CONTEXT: dict[str, JsonObject] = {
@@ -45,6 +48,9 @@ RUNTIME_CONTEXT: dict[str, JsonObject] = {
         "numeric_key": "0",
         "back\\slash": "backslash field",
         "closing}": "closing brace field",
+        "a\tb": "tab field",
+        "back\\|slash": "backslash and pipe field",
+        "a(b,c='d')}": "delimiter field",
     }
 }
 RUNTIME_ROOTS: Collection[str] = {"source_event", "target_event"}
@@ -65,6 +71,46 @@ def _assert_value_types(actual: FieldValue, expected: FieldValue) -> None:
 @pytest.mark.parametrize(
     ["mapping", "expected"],
     [
+        pytest.param(
+            source_fields_to_ft(["event.id "]),
+            {"event": {"id ": 456}},
+            id="source_field_space",
+        ),
+        pytest.param(
+            source_fields_to_ft(["event.id|"]),
+            {"event": {"id|": 789}},
+            id="source_field_pipe",
+        ),
+        pytest.param(
+            source_fields_to_ft(["a\tb"]),
+            {"a\tb": "tab field"},
+            id="source_field_tab",
+        ),
+        pytest.param(
+            source_fields_to_ft([r"event.a\.b"]),
+            {"event": {"a.b": "literal dot"}},
+            id="source_field_escaped_dot",
+        ),
+        pytest.param(
+            source_fields_to_ft([r"event.id\|"]),
+            {"event": {"id|": 789}},
+            id="source_field_escaped_pipe",
+        ),
+        pytest.param(
+            source_fields_to_ft(["event.id\\ "]),
+            {"event": {"id ": 456}},
+            id="source_field_escaped_space",
+        ),
+        pytest.param(
+            source_fields_to_ft([r"back\\|slash"]),
+            {"back\\|slash": "backslash and pipe field"},
+            id="source_field_escaped_backslash_before_pipe",
+        ),
+        pytest.param(
+            source_fields_to_ft(["a(b,c='d')}"]),
+            {"a(b,c='d')}": "delimiter field"},
+            id="source_field_expression_delimiters",
+        ),
         pytest.param(
             {"text": "hello", "empty": "", "space": "  \t "},
             {"text": "hello", "empty": "", "space": "  \t "},
@@ -1177,6 +1223,48 @@ def test_function_calls(
     ["expression", "phase", "expected_exception", "match"],
     [
         pytest.param(
+            '${int("invalid")}',
+            "compile",
+            FieldTemplateConfigError,
+            "Function 'int' failed during constant folding: ValueError:",
+            id="folded_conversion_failure",
+        ),
+        pytest.param(
+            "${lower(42)}",
+            "compile",
+            FieldTemplateConfigError,
+            "Function 'lower' failed during constant folding: TypeError:",
+            id="folded_type_failure",
+        ),
+        pytest.param(
+            "${int(source_event.optional)}",
+            "runtime",
+            FieldTemplateFunctionError,
+            "Function 'int' failed during evaluation: TypeError:",
+            id="runtime_type_failure",
+        ),
+        pytest.param(
+            "${int(source_event.event.id | str | concat('invalid'))}",
+            "runtime",
+            FieldTemplateFunctionError,
+            "Function 'int' failed during evaluation: ValueError:",
+            id="runtime_conversion_failure",
+        ),
+        pytest.param(
+            "${str(int(source_event.optional))}",
+            "runtime",
+            FieldTemplateFunctionError,
+            "Function 'int' failed during evaluation: TypeError:",
+            id="nested_failure_retains_inner_function",
+        ),
+        pytest.param(
+            "${str(source_event.missing)}",
+            "runtime",
+            FieldTemplateLookupError,
+            "Cannot resolve",
+            id="missing_argument_remains_lookup_error",
+        ),
+        pytest.param(
             "${str()}",
             "compile",
             FieldTemplateConfigError,
@@ -1321,7 +1409,7 @@ def test_function_calls(
 def test_function_errors(
     expression: str, phase: str, expected_exception: type[Exception], match: str
 ) -> None:
-    with pytest.raises(expected_exception, match=match):
+    with pytest.raises(expected_exception, match=match) as caught:
         if phase == "compile":
             FieldTemplate.compile(
                 {"value": expression}, static_context=STATIC_CONTEXT, runtime_roots=RUNTIME_ROOTS
@@ -1330,5 +1418,12 @@ def test_function_errors(
             field_template._validate_operation(Call(Function(str), (), {}), {}, (), {})
         elif phase == "compilation":
             Call(Function(str), (), {}).compile({}, {})
+        elif phase == "runtime":
+            template = FieldTemplate.compile(
+                {"value": expression}, static_context=STATIC_CONTEXT, runtime_roots=RUNTIME_ROOTS
+            )
+            template.evaluate(runtime_context=RUNTIME_CONTEXT)
         else:
             ParsedCall("str", (), {}).evaluate({})
+    if "failed during" in match:
+        assert isinstance(caught.value.__cause__, (ValueError, TypeError))

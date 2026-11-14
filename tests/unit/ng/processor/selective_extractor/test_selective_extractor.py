@@ -10,7 +10,11 @@ from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.selective_extractor.extracted_event import ExtractedEvent
 from logprep.ng.processor.selective_extractor.processor import SelectiveExtractor
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.util.field_template import FieldTemplateFunctionError
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+from tests.unit.processor.selective_extractor.test_selective_extractor import (
+    failure_test_cases,
+)
 from tests.unit.processor.selective_extractor.test_selective_extractor import (
     test_cases as non_ng_test_cases,
 )
@@ -24,13 +28,45 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         "rules": ["tests/testdata/unit/selective_extractor/rules"],
     }
 
-    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
-    async def test_testcases(self, rule, event, expected, context, provision_context):
+    @pytest.mark.parametrize(
+        ["rule", "event", "expected", "context", "expected_error", "message"],
+        [
+            pytest.param(*case.values, None, None, id=case.id, marks=case.marks)
+            for case in test_cases
+        ]
+        + [
+            pytest.param(
+                case.values[0],
+                case.values[1],
+                case.values[2],
+                {},
+                case.values[4],
+                case.values[3],
+                id=case.id,
+                marks=case.marks,
+            )
+            for case in deepcopy(failure_test_cases)
+        ],
+    )
+    async def test_testcases(
+        self, rule, event, expected, context, expected_error, message, provision_context
+    ):
         provision_context(context)
         await self._load_rule(rule)
         original_data = deepcopy(event)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
         await self.object.process(event)
+        if expected_error is ProcessingCriticalError:
+            assert event.data == original_data
+            assert event.extra_data == []
+            assert event.warnings == []
+            assert len(event.errors) == 1
+            error = event.errors[0]
+            assert isinstance(error, ProcessingCriticalError)
+            assert message in str(error)
+            assert isinstance(error.__cause__, FieldTemplateFunctionError)
+            assert isinstance(error.__cause__.__cause__, (ValueError, TypeError))
+            return
         if expected == {} and rule["selective_extractor"].get("ignore_missing_fields") is False:
             assert event.data == original_data
             assert event.extra_data == []

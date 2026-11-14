@@ -153,6 +153,9 @@ No extra event is emitted.
 With ``ignore_missing_fields: false``, a missing field causes a critical
 processing error instead.
 This policy also applies to ``source_fields`` and ``extract_from_file``.
+Other template evaluation failures, including failed function calls, cause a
+critical processing error regardless of ``ignore_missing_fields`` and emit no
+extra event.
 Empty templates are accepted and emit no extra event.
 
 .. autoclass:: logprep.processor.selective_extractor.rule.SelectiveExtractorRule.Config
@@ -288,7 +291,8 @@ class SelectiveExtractorRule(FieldManagerRule):
         """Compile the normalized template, translating template configuration errors.
 
         Raises ``InvalidRuleDefinitionError`` for invalid template syntax, references,
-        or function signatures. Exceptions from functions run during folding propagate.
+        function signatures, or function failures during constant folding.
+        The original function exception is preserved in the exception chain.
         """
         super().__init__(filter_rule, config, processor_name)
 

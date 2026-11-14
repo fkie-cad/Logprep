@@ -36,6 +36,7 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.util.field_template import (
+    FieldTemplateEvaluationError,
     FieldTemplateLookupError,
 )
 from logprep.util.field_template_helpers import (
@@ -55,6 +56,7 @@ class SelectiveExtractor(FieldManager):
         Runtime context provides the source event and lazy timestamp/UUID values.
         Missing lookups skip the extra event, recording a warning when
         ``ignore_missing_fields`` is true, or raising a critical error otherwise.
+        Other template evaluation failures always raise a critical error.
         """
         rule = typing.cast(SelectiveExtractorRule, rule)
         config = rule.config
@@ -77,6 +79,8 @@ class SelectiveExtractor(FieldManager):
                     event, rule, error, failure_tags=["_selective_extractor_missing_field_warning"]
                 )
                 return
+            raise ProcessingCriticalError(str(error), rule) from error
+        except FieldTemplateEvaluationError as error:
             raise ProcessingCriticalError(str(error), rule) from error
 
         if extracted_event:

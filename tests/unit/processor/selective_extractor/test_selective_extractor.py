@@ -11,6 +11,7 @@ import pytest
 from logprep.abc.processor import ProcessorResult
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
+from logprep.util.field_template import FieldTemplateFunctionError
 from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -474,8 +475,31 @@ failure_test_cases = [
             "tags": ["_selective_extractor_missing_field_warning"],
         },
         ".*ProcessingWarning.*",
+        ProcessingWarning,
         id="missing field in template causes processing warning and no extra event",
     ),
+    *[
+        pytest.param(
+            {
+                "filter": "condition",
+                "selective_extractor": {
+                    "event_template": {"value": expression},
+                    "ignore_missing_fields": ignore_missing_fields,
+                    "outputs": [{"opensearch": "index"}],
+                },
+            },
+            {"condition": True, "value": value},
+            {},
+            f"Function '{function}' failed during evaluation: {error_type.__name__}:",
+            ProcessingCriticalError,
+            id=f"{function} failure is critical with ignore_missing_fields={ignore_missing_fields}",
+        )
+        for expression, value, function, error_type in [
+            ("${int(source_event.value)}", "invalid", "int", ValueError),
+            ("${lower(source_event.value)}", 42, "lower", TypeError),
+        ]
+        for ignore_missing_fields in [True, False]
+    ],
 ]
 
 
@@ -513,14 +537,26 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         else:
             assert event == expected
 
-    @pytest.mark.parametrize("rule, event, expected, message", failure_test_cases)
-    def test_template_failures(self, rule, event, expected, message):
+    @pytest.mark.parametrize("rule, event, expected, message, expected_error", failure_test_cases)
+    def test_template_failures(self, rule, event, expected, message, expected_error):
         self._load_rule(rule)
         result = self.object.process(event)
         assert event == expected
         assert result.data == []
-        assert result.errors == []
-        assert any(re.search(message, str(warning)) for warning in result.warnings)
+        if expected_error is ProcessingCriticalError:
+            assert result.warnings == []
+            assert len(result.errors) == 1
+            error = result.errors[0]
+            assert isinstance(error, ProcessingCriticalError)
+            assert re.search(message, str(error))
+            assert isinstance(error.__cause__, FieldTemplateFunctionError)
+            assert isinstance(error.__cause__.__cause__, (ValueError, TypeError))
+        else:
+            assert result.errors == []
+            assert any(
+                isinstance(warning, expected_error) and re.search(message, str(warning))
+                for warning in result.warnings
+            )
 
     @pytest.mark.parametrize(
         "template, expected_events, expected_calls",

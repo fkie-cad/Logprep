@@ -36,7 +36,10 @@ from logprep.ng.processor.selective_extractor.extracted_event import ExtractedEv
 from logprep.ng.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.processor.base.rule import Rule
-from logprep.util.field_template import FieldTemplateLookupError
+from logprep.util.field_template import (
+    FieldTemplateEvaluationError,
+    FieldTemplateLookupError,
+)
 from logprep.util.field_template_helpers import (
     SOURCE_EVENT_CONTEXT,
     LazyContext,
@@ -89,6 +92,8 @@ class SelectiveExtractor(FieldManager):
                 )
                 return
 
+            raise ProcessingCriticalError(str(error), rule) from error
+        except FieldTemplateEvaluationError as error:
             raise ProcessingCriticalError(str(error), rule) from error
 
         if extracted_event:

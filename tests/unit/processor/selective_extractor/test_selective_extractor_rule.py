@@ -12,6 +12,7 @@ from logprep.processor.selective_extractor.rule import (
     SelectiveExtractorRule,
     SelectiveExtractorRuleError,
 )
+from logprep.util.field_template import FieldTemplateConfigError
 
 
 @pytest.fixture(name="rule_definition")
@@ -343,6 +344,19 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
+                        "event_template": {"value": '${int("invalid")}'},
+                        "outputs": [{"kafka": "topic"}],
+                    },
+                },
+                b"",
+                InvalidRuleDefinitionError,
+                "Invalid event_template: Function 'int' failed during constant folding: ValueError:",
+                id="folded_function_failure_rejects_rule",
+            ),
+            pytest.param(
+                {
+                    "filter": "test",
+                    "selective_extractor": {
                         "event_template": {"value": "${source_event.field"},
                         "outputs": [{"kafka": "topic"}],
                     },
@@ -590,8 +604,11 @@ class TestSelectiveExtractorRule:
         with mock.patch("pathlib.Path.is_file", return_value=True):
             with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
                 if raised:
-                    with pytest.raises(raised, match=message):
+                    with pytest.raises(raised, match=message) as caught:
                         _ = SelectiveExtractorRule.create_from_dict(rule_definition)
+                    if "failed during constant folding" in message:
+                        assert isinstance(caught.value.__cause__, FieldTemplateConfigError)
+                        assert isinstance(caught.value.__cause__.__cause__, ValueError)
                 else:
                     extractor_rule = SelectiveExtractorRule.create_from_dict(rule_definition)
                     assert isinstance(extractor_rule, SelectiveExtractorRule)

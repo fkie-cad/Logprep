@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Final, TypeAlias
 
 from attr import define, field
 
-from logprep.util.helper import FieldValue, add_fields_to
+from logprep.util.helper import FieldValue
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule
@@ -138,13 +138,20 @@ SOURCE_EVENT_CONTEXT: Final[str] = "source_event"
 
 
 def source_fields_to_ft(source_fields: list[str]) -> dict[str, FieldValue]:
-    """Build a nested template selecting each dotted path from ``source_event``."""
+    """Select dotted source paths while preserving escapes and literal delimiters."""
     result: dict[str, FieldValue] = {}
-    for field in source_fields:
-        ft = f"${{{SOURCE_EVENT_CONTEXT}.{field}}}"
-
-        add_fields_to(result, {field: ft})
-
+    for source_field in source_fields:
+        characters = iter(source_field)
+        escaped: list[str] = []
+        for character in characters:
+            if character == "\\":
+                escaped.extend((character, next(characters, "")))
+                continue
+            if character.isspace() or character in "|(),='\"}$":
+                escaped.append("\\")
+            escaped.append(character)
+        reference = "".join(escaped)
+        result[source_field] = f"${{{SOURCE_EVENT_CONTEXT}.{reference}}}"
     return result
 
 

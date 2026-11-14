@@ -4,9 +4,11 @@
 * domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
 * domain_resolver: remove `debug_cache`
 * domain_resolver: `source_fields` must be a list with exactly one element
+* selective_extractor: `ignore_missing_fields` now writes a warning on missing fields instead of creating incomplete extra events
+* selective_extractor: selecting list items via numeric source paths is no longer supported
 
 ### Features
-* selective_extractor: add fmt as event_template to configuration
+* selective_extractor: add field_template as `event_template` to configuration
 
 ### Improvements
 * util: add field mapping template utility

@@ -39,6 +39,20 @@ _FALSE_VALUE_STRINGS: ReadonlyList[str] = ("false", "False")
 _BOOLEAN_VALUE_STRINGS: ReadonlyList[str] = (*_TRUE_VALUE_STRINGS, *_FALSE_VALUE_STRINGS)
 _NONE_VALUE_STRINGS: ReadonlyList[str] = ("none", "None")
 
+# Right now all _CHARACTERS and the SEPARATOR must be only one Character
+for x in (
+    _ESCAPE_CHARACTER,
+    _PATH_SEPARATOR,
+    _COMMA_CHARACTER,
+    _EQUAL_CHARACTER,
+    _LPAREN_CHARACTER,
+    _RPAREN_CHARACTER,
+    _CONVERSION_SEPARATOR,
+    _SINGLE_QUOTE_CHARACTER,
+    _DOUBLE_QUOTE_CHARACTER,
+):
+    assert len(x) == 1
+
 _NUMBER_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"[+-]?[0-9](?:_?[0-9])*" r"(?:\.[0-9](?:_?[0-9])*)?" r"(?:[eE][+-]?[0-9]+)?"
 )
@@ -60,6 +74,10 @@ class FieldTemplateConfigError(LogprepException):
 
 class FieldTemplateEvaluationError(LogprepException):
     """A compiled field template could not be evaluated."""
+
+
+class FieldTemplateFunctionError(FieldTemplateEvaluationError):
+    """A runtime template function failed; the original exception is the cause."""
 
 
 class FieldTemplateLookupError(FieldTemplateEvaluationError):
@@ -389,7 +407,8 @@ class ParsedCall:
         """Prepare a validated call and apply its argument borrowing policy.
 
         Fold calls only when the function opts in and all arguments are constant.
-        Exceptions from functions executed during folding propagate unchanged.
+        Function failures during folding raise ``FieldTemplateConfigError``
+        with the original exception as the cause.
         """
         function = functions[self.name]
 
@@ -417,9 +436,15 @@ class ParsedCall:
             }
 
             if len(arg_values) == len(compiled_args) and len(kwarg_values) == len(compiled_kwargs):
-                return Constant(function.fn(*arg_values, **kwarg_values))
+                try:
+                    return Constant(function.fn(*arg_values, **kwarg_values))
+                except Exception as error:
+                    raise FieldTemplateConfigError(
+                        f"Function {self.name!r} failed during constant folding: "
+                        f"{type(error).__name__}: {error}"
+                    ) from error
 
-        return Call(function, tuple(compiled_args), compiled_kwargs)
+        return Call(function, tuple(compiled_args), compiled_kwargs, name=self.name)
 
     def evaluate(self, _runtime_context: dict[str, JsonObject]) -> FieldValue:
         """Raise ``RuntimeError`` because unresolved calls must be compiled first."""
@@ -436,6 +461,7 @@ class Call:
     function: Function
     args: tuple["Operation", ...]
     kwargs: Mapping[str, "Operation"]
+    name: str = "<anonymous>"
 
     def compile(
         self, _static_context: dict[str, JsonObject], _functions: Mapping[str, Function]
@@ -450,12 +476,19 @@ class Call:
 
         A missing argument raises ``FieldTemplateLookupError`` without
         invoking the function.
-        Exceptions raised by the function propagate unchanged.
+        Exceptions raised by the function are wrapped in
+        ``FieldTemplateFunctionError`` with the original exception as the cause.
         """
         args = [arg.evaluate(runtime_context) for arg in self.args]
         kwargs = {key: arg.evaluate(runtime_context) for key, arg in self.kwargs.items()}
 
-        return self.function.fn(*args, **kwargs)
+        try:
+            return self.function.fn(*args, **kwargs)
+        except Exception as error:
+            raise FieldTemplateFunctionError(
+                f"Function {self.name!r} failed during evaluation: "
+                f"{type(error).__name__}: {error}"
+            ) from error
 
 
 @define(frozen=True)
@@ -1187,8 +1220,8 @@ class FieldTemplate:
     rules. ``lower``, ``upper``, and ``strip`` operate on strings. ``join`` takes
     a sequence of strings followed by a separator,
     and ``concat`` takes any number of string arguments. Conversion and type
-    errors propagate from these functions, during compilation if folded or
-    during evaluation otherwise.
+    errors are wrapped in ``FieldTemplateConfigError`` during constant folding
+    or ``FieldTemplateFunctionError`` during evaluation, preserving their cause.
 
     Passing ``functions`` to ``compile`` supplies the complete registry instead.
     Standalone calls require parentheses;
@@ -1275,10 +1308,11 @@ class FieldTemplate:
         FieldTemplateConfigError
             If the configuration, root declarations, static references or function
             calls are invalid, a static key resolves to a non-string value, or
-            known mapping paths duplicate or overlap one another.
+            known mapping paths duplicate or overlap one another, or a function
+            fails during constant folding.
 
-        Exceptions from signature introspection and functions executed during
-        folding propagate unchanged.
+        Function failures preserve the original exception as their cause.
+        Exceptions from signature introspection propagate unchanged.
         """
         if functions is None:
             functions = DEFAULT_FUNCTIONS
@@ -1336,9 +1370,11 @@ class FieldTemplate:
             contains a numeric name, or resolved paths collide or overlap.
         TypeError
             If the compiled root does not produce a dictionary.
+        FieldTemplateFunctionError
+            If a runtime function raises an exception. The original exception
+            is preserved as the cause.
 
-        Exceptions from runtime functions propagate unchanged. Function result
-        types are the responsibility of registered implementations.
+        Function result types are the responsibility of registered implementations.
         """
         result = self.root_operation.evaluate(runtime_context)
 
