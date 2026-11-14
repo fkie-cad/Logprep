@@ -14,9 +14,9 @@ from copy import deepcopy
 from pathlib import Path
 from unittest import mock
 
+import attrs
 import pytest
 from confluent_kafka import (
-    OFFSET_BEGINNING,
     OFFSET_INVALID,
     KafkaError,
     KafkaException,
@@ -30,7 +30,6 @@ from logprep.ng.abc.event import ErrorEvent, LogEvent
 from logprep.ng.abc.input import (
     CriticalInputError,
     FatalInputError,
-    InputWarning,
 )
 from logprep.ng.connector.confluent_kafka.input import (
     _DEFAULT_MEMBER_ID,
@@ -38,7 +37,7 @@ from logprep.ng.connector.confluent_kafka.input import (
 )
 from logprep.ng.connector.confluent_kafka.input import logger as kafka_input_logger
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
-from logprep.util.helper import FieldValue, get_dotted_field_value
+from logprep.util.helper import FieldValue
 from tests.unit.ng.connector.base import BaseInputTestCase
 
 MODULE = "logprep.ng.connector.confluent_kafka.input"
@@ -65,7 +64,7 @@ def fixture_mock_consumer(request):
 @pytest.fixture(name="mock_executor")
 def fixture_mock_executor():
     with mock.patch(
-        f"{MODULE}.concurrent.futures.ThreadPoolExecutor",
+        f"{MODULE}.ThreadPoolExecutor",
         spec=ThreadPoolExecutor,
     ) as executor:
         executor.return_value = executor
@@ -81,6 +80,12 @@ def register_partitions(connector, *partitions, offset=0):
     """Simulate an assignment, which the connector needs before it accepts messages."""
     for partition in partitions:
         connector._register_partition(partition, offset)
+
+
+def dispatch(connector, partition, *offsets):
+    """Simulate handing messages to the pipeline, only those can be acknowledged."""
+    for offset in offsets:
+        connector._partitions[partition].track_dispatch(offset)
 
 
 class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
@@ -140,28 +145,30 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         with pytest.raises(TypeError, match=r"unexpected keyword argument"):
             _ = Factory.create({"test connector": kafka_config})
 
-    async def test_error_callback_logs_error(self):
-        with mock.patch("logging.Logger.error") as mock_error:
-            test_error = Exception("test error")
-            await self.object._error_callback(test_error)
-            mock_error.assert_called()
-            mock_error.assert_called_with("%s: %s", self.object.description, test_error)
+    async def test_error_callback_logs_error(self, caplog):
+        await self.object._error_callback(Exception("test error"))
+
+        assert re.search(rf"ERROR.*{re.escape(self.object.description)}: test error", caplog.text)
         assert self.object.metrics.number_of_errors.value == 1
 
-    async def test_stats_callback_sets_metric_objetc_attributes(self):
-        librdkafka_metrics = tuple(
-            filter(lambda x: x.startswith("librdkafka"), self.expected_metrics)
-        )
-        for metric in librdkafka_metrics:
-            setattr(self.object.metrics, metric, 0)
+    async def test_stats_callback_sets_every_librdkafka_metric(self):
+        stats = json.loads(Path(KAFKA_STATS_JSON_PATH).read_text("utf8"))
+        names = [
+            field.name
+            for field in attrs.fields(ConfluentKafkaInput.Metrics)
+            if field.name.startswith("librdkafka_")
+        ]
+        for value, name in enumerate(names, start=1):  # distinct from the defaults
+            key = name.removeprefix("librdkafka_")
+            if key.startswith("cgrp_"):
+                stats["cgrp"][key.removeprefix("cgrp_")] = value
+            else:
+                stats[key] = value
 
-        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
-        await self.object._stats_callback(json_string)
-        stats_dict = json.loads(json_string)
-        for metric in librdkafka_metrics:
-            metric_name = metric.replace("librdkafka_", "").replace("cgrp_", "cgrp.")
-            metric_value = get_dotted_field_value(stats_dict, metric_name)
-            assert getattr(self.object.metrics, metric) == metric_value, metric
+        await self.object._stats_callback(json.dumps(stats))
+
+        for value, name in enumerate(names, start=1):
+            assert getattr(self.object.metrics, name).value == value, name
 
     async def test_stats_set_age_metric_explicitly(self):
         json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
@@ -218,6 +225,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_acknowledge_stores_the_next_gap_free_offset(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 0)
+        dispatch(self.object, 0, 0)
 
         event = self._create_log_event({"some": "event"})
         await self.object.acknowledge([event])
@@ -227,6 +235,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_acknowledge_holds_offsets_back_until_the_gap_is_closed(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 0)
+        dispatch(self.object, 0, 0, 1, 2, 3)
 
         # offset 1 is missing, so nothing above it may be stored yet
         await self.object.acknowledge(
@@ -242,8 +251,9 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     ):
         await self.object.setup()
         register_partitions(self.object, 0, offset=10)
+        dispatch(self.object, 0, 10)
 
-        # already committed, so it does not advance the watermark
+        # not in flight, e.g. from an earlier assignment
         await self.object.acknowledge([self._create_log_event({"some": "event"}, offset=1)])
         await self.object._store_pending_offsets()
 
@@ -261,6 +271,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         # offsets to be committed are only stored in memory and consume path will handle them later
         await self.object.setup()
         register_partitions(self.object, 0)
+        dispatch(self.object, 0, 0)
         mock_consumer.reset_mock()
 
         await self.object.acknowledge([self._create_log_event({"some": "event"})])
@@ -270,6 +281,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_pending_offsets_are_stored_before_consume(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 0)
+        dispatch(self.object, 0, 0)
         await self.object.acknowledge([self._create_log_event({"some": "event"})])
         mock_consumer.reset_mock()
         mock_consumer.consume.return_value = []
@@ -281,6 +293,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_store_warns_and_retries_on_kafka_exception(self, mock_consumer, caplog):
         await self.object.setup()
         register_partitions(self.object, 0)
+        dispatch(self.object, 0, 0)
         await self.object.acknowledge([self._create_log_event({"some": "event"})])
         mock_consumer.store_offsets.side_effect = KafkaException("test error")
 
@@ -298,18 +311,21 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_acknowledge_handles_out_of_order_offsets(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 0, offset=100)
+        dispatch(self.object, 0, 100, 101, 102)
 
         await self.object.acknowledge(
             [self._create_log_event({"n": n}, offset=n) for n in (102, 100, 101)]
         )
 
         assert await self._stored_offsets(mock_consumer) == [(0, 103)]
-        assert self.object._partitions[0].committable_offsets == set()
+        assert self.object._partitions[0].acknowledged == set()
 
     async def test_acknowledge_advances_several_partitions_in_one_call(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 0, offset=100)
         register_partitions(self.object, 1, offset=200)
+        dispatch(self.object, 0, 100, 101)
+        dispatch(self.object, 1, 200)
 
         await self.object.acknowledge(
             [
@@ -321,20 +337,51 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         assert await self._stored_offsets(mock_consumer) == [(0, 102), (1, 201)]
 
-    async def test_acknowledge_keeps_offsets_above_a_gap_committable(self, mock_consumer):
+    async def test_acknowledge_keeps_acknowledgements_above_an_open_offset(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 0, offset=100)
+        dispatch(self.object, 0, *range(100, 107))
 
         await self.object.acknowledge(
             [self._create_log_event({"n": n}, offset=n) for n in (100, 101, 104, 102, 106)]
         )
 
         assert await self._stored_offsets(mock_consumer) == [(0, 103)]
-        assert self.object._partitions[0].committable_offsets == {104, 106}
+        assert self.object._partitions[0].acknowledged == {104, 106}
+
+    async def test_acknowledge_skips_offsets_that_were_never_delivered(self, mock_consumer):
+        # e.g. compacted away or transaction markers
+        await self.object.setup()
+        register_partitions(self.object, 0, offset=100)
+        dispatch(self.object, 0, 100, 103, 107)
+
+        await self.object.acknowledge(
+            [self._create_log_event({"n": n}, offset=n) for n in (100, 103)]
+        )
+        assert await self._stored_offsets(mock_consumer) == [(0, 107)]
+
+        await self.object.acknowledge([self._create_log_event({"n": 0}, offset=107)])
+        assert await self._stored_offsets(mock_consumer) == [(0, 108)]
+
+    async def test_acknowledge_starts_at_the_first_dispatched_offset(self, mock_consumer):
+        # nothing committed, the consumer started at auto.offset.reset
+        await self.object.setup()
+        register_partitions(self.object, 0, offset=None)
+        await self.object._store_pending_offsets()
+        mock_consumer.store_offsets.assert_not_called()
+
+        dispatch(self.object, 0, 5000, 5001)
+        await self.object.acknowledge(
+            [self._create_log_event({"n": n}, offset=n) for n in (5000, 5001)]
+        )
+
+        assert await self._stored_offsets(mock_consumer) == [(0, 5002)]
+        assert not self.object._partitions[0].is_pending
 
     async def test_acknowledge_is_idempotent(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 0, offset=100)
+        dispatch(self.object, 0, 100, 101)
         events = [self._create_log_event({"n": n}, offset=n) for n in (100, 101)]
 
         await self.object.acknowledge(events)
@@ -345,20 +392,21 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         await self.object._store_pending_offsets()
         mock_consumer.store_offsets.assert_not_called()
 
-    async def test_acknowledge_warns_and_skips_already_committed_offsets(
-        self, mock_consumer, caplog
-    ):
+    async def test_acknowledge_discards_offsets_not_in_flight(self, mock_consumer, caplog):
         await self.object.setup()
         register_partitions(self.object, 0, offset=100)
+        dispatch(self.object, 0, 100)
 
         await self.object.acknowledge(
             [
                 self._create_log_event({"n": 0}, offset=99),
                 self._create_log_event({"n": 1}, offset=100),
+                self._create_log_event({"n": 2}, offset=101),
             ]
         )
 
-        assert "offset 99 already committed" in caplog.text
+        assert "discarded 2 acknowledgements for offsets no longer held" in caplog.text
+        assert self.object.metrics.orphaned_acknowledgements.value == 2
         assert await self._stored_offsets(mock_consumer) == [(0, 101)]
 
     async def test_acknowledge_warns_on_offsets_of_unregistered_partitions(self, caplog):
@@ -368,38 +416,20 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             [self._create_log_event({"n": n}, partition=9, offset=n) for n in range(3)]
         )
 
-        assert caplog.text.count("discarded 3 acknowledgements for released partitions") == 1
+        assert caplog.text.count("discarded 3 acknowledgements for offsets no longer held") == 1
         assert self.object.metrics.orphaned_acknowledgements.value == 3
 
     async def test_acknowledge_handles_a_full_batch_of_offsets(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 0)
+        dispatch(self.object, 0, *range(10_000))
 
         await self.object.acknowledge(
             [self._create_log_event({"n": n}, offset=n) for n in range(10_000)]
         )
 
         assert await self._stored_offsets(mock_consumer) == [(0, 10_000)]
-        assert self.object._partitions[0].committable_offsets == set()
-
-    async def test_revoke_warns_about_offsets_that_were_ready_to_commit(self, caplog):
-        await self.object.setup()
-        register_partitions(self.object, 3, offset=100)
-        # 100 is missing, so 101 can never be stored and is lost on revocation
-        await self.object.acknowledge([self._create_log_event({"n": 0}, partition=3, offset=101)])
-
-        await self.object._revoke_callback(None, [TopicPartition("test_input_raw", partition=3)])
-
-        assert "offsets [101] of partition 3 were ready to commit and are now lost" in caplog.text
-
-    async def test_revoke_does_not_warn_if_nothing_was_pending(self, caplog):
-        await self.object.setup()
-        register_partitions(self.object, 3, offset=100)
-        await self.object.acknowledge([self._create_log_event({"n": 0}, partition=3, offset=100)])
-
-        await self.object._revoke_callback(None, [TopicPartition("test_input_raw", partition=3)])
-
-        assert "ready to commit and are now lost" not in caplog.text
+        assert self.object._partitions[0].acknowledged == set()
 
     async def test_get_next_raises_critical_input_error_if_not_a_dict(self, mock_consumer):
         await self.object.setup()
@@ -533,10 +563,22 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         assert isinstance(error_event, ErrorEvent)
         assert "Input record value is not a valid json string" in error_event.data["errors"]
 
-    async def test_commit_callback_raises_warning_error_and_counts_failures(self):
-        with pytest.raises(InputWarning, match="Could not commit offsets"):
-            await self.object._commit_callback(Exception, [mock.MagicMock()])
+    async def test_commit_callback_logs_and_counts_failures_without_raising(self, caplog):
+        # raising inside consume() would drop the messages it already fetched
+        await self.object.setup()
+        register_partitions(self.object, 7, offset=5)
+
+        await self.object._commit_callback(
+            KafkaException("STALE_MEMBER_EPOCH"),
+            [
+                TopicPartition("test_input_raw", partition=7, offset=10),
+                TopicPartition("test_input_raw", partition=8, offset=OFFSET_INVALID),
+            ],
+        )
+
+        assert "could not commit offsets {7: 10}: STALE_MEMBER_EPOCH" in caplog.text
         assert self.object.metrics.commit_failures.value == 1
+        assert self._committed_offset_sample(7) == 5
 
     async def test_commit_callback_counts_commit_success(self):
         await self.object._commit_callback(None, [])
@@ -560,15 +602,15 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         assert self._committed_offset_sample(99) == 666
 
-    async def test_commit_callback_sets_offset_to_0_for_special_offsets(self):
+    async def test_commit_callback_ignores_special_offsets(self):
         await self.object.setup()
         register_partitions(self.object, 7, offset=5)
 
         await self.object._commit_callback(
-            None, [TopicPartition("test_input_raw", partition=7, offset=OFFSET_BEGINNING)]
+            None, [TopicPartition("test_input_raw", partition=7, offset=OFFSET_INVALID)]
         )
 
-        assert self._committed_offset_sample(7) == 0
+        assert self._committed_offset_sample(7) == 5
 
     async def test_commit_callback_ignores_unregistered_partitions(self):
         await self.object.setup()
@@ -706,23 +748,32 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         metric = getattr(self.object.metrics, metric_name)
         assert len(metric.collect_samples()) == 0
 
-    async def test_lost_callback_counts_warnings_and_unregisters(self, mock_consumer):
+    async def test_lost_callback_warns_once_and_unregisters(self, mock_consumer, caplog):
         await self.object.setup()
-        register_partitions(self.object, 3)
+        register_partitions(self.object, 3, 4)
+        dispatch(self.object, 3, 0, 1, 2)
+        dispatch(self.object, 4, 0)
+        # 2 waits for 1, so it is no longer in flight
+        await self.object.acknowledge([self._create_log_event({"n": 2}, partition=3, offset=2)])
 
-        with mock.patch("logging.Logger.warning") as mock_warning:
-            await self.object._lost_callback(
-                mock_consumer, [TopicPartition("test_input_raw", partition=3)]
-            )
+        await self.object._lost_callback(
+            mock_consumer,
+            [
+                TopicPartition("test_input_raw", partition=3),
+                TopicPartition("test_input_raw", partition=4),
+            ],
+        )
 
-        mock_warning.assert_called()
+        assert re.search(
+            r"WARNING.*lost.*partitions \[3, 4\].*3 events were still in flight", caplog.text
+        )
         assert self.object.metrics.number_of_warnings.value == 1
-        assert 3 not in self.object._partitions
+        assert not self.object._partitions
 
     async def test_lost_callback_does_not_wait_for_in_flight_events(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 3)
-        self.object._partitions[3].last_dispatched_offset = 99  # never acknowledged
+        dispatch(self.object, 3, 0)  # never acknowledged
 
         await asyncio.wait_for(
             self.object._lost_callback(
@@ -733,33 +784,40 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         assert 3 not in self.object._partitions
 
-    async def test_assign_callback_registers_partition_and_logs_info(self, mock_consumer):
+    async def test_assign_callback_registers_partitions_and_logs_their_offsets(
+        self, mock_consumer, caplog
+    ):
+        caplog.set_level("INFO")
         await self.object.setup()
-
         mock_consumer.committed.return_value = [
-            TopicPartition("test_input_raw", partition=3, offset=42)
+            TopicPartition("test_input_raw", partition=3, offset=42),
+            TopicPartition("test_input_raw", partition=4, offset=OFFSET_INVALID),
         ]
 
-        with mock.patch("logging.Logger.info") as mock_info:
-            await self.object._assign_callback(
-                None, [TopicPartition("test_input_raw", partition=3, offset=OFFSET_INVALID)]
-            )
+        await self.object._assign_callback(
+            None,
+            [
+                TopicPartition("test_input_raw", partition=3),
+                TopicPartition("test_input_raw", partition=4),
+            ],
+        )
 
-        mock_info.assert_called()
-        assert self.object._partitions[3].next_expected_offset == 42
+        assert "committed offsets {3: 42, 4: None}" in caplog.text
+        assert self.object._partitions.keys() == {3, 4}
+        assert self.object._partitions[3].offset_to_store is None  # nothing dispatched yet
         assert self._committed_offset_sample(3) == 42
+        mock_consumer.committed.assert_awaited_once_with(mock.ANY, timeout=5.0)
 
-    async def test_revoke_callback_logs_warning_and_unregisters(self):
+    async def test_revoke_callback_logs_info_and_unregisters(self, caplog):
+        # revocations are routine on every scaling, so they are no warnings
+        caplog.set_level("INFO")
         await self.object.setup()
         register_partitions(self.object, 3)
 
-        with mock.patch("logging.Logger.warning") as mock_warning:
-            await self.object._revoke_callback(
-                None, [TopicPartition("test_input_raw", partition=3)]
-            )
+        await self.object._revoke_callback(None, [TopicPartition("test_input_raw", partition=3)])
 
-        mock_warning.assert_called()
-        assert self.object.metrics.number_of_warnings.value == 1
+        assert re.search(r"INFO.*to be revoked.*partitions \[3\]", caplog.text)
+        assert self.object.metrics.number_of_warnings.value == 0
         assert 3 not in self.object._partitions
 
     async def test_assign_callback_logs_error_and_falls_back_if_consumer_closed(
@@ -783,7 +841,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     ):
         await self.object.setup()
         register_partitions(self.object, 3)
-        self.object._partitions[3].last_dispatched_offset = 1
+        dispatch(self.object, 3, 0, 1)
 
         revoke = asyncio.create_task(
             self.object._revoke_callback(None, [TopicPartition("test_input_raw", partition=3)])
@@ -851,7 +909,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         self.object = self._create_test_instance(config_patch={"revoke_drain_timeout": 0.01})
         await self.object.setup()
         register_partitions(self.object, 3)
-        self.object._partitions[3].last_dispatched_offset = 99  # never acknowledged
+        dispatch(self.object, 3, 0)  # never acknowledged
 
         await self.object._revoke_callback(None, [TopicPartition("test_input_raw", partition=3)])
 
@@ -865,7 +923,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         self.object = self._create_test_instance(config_patch={"revoke_drain_timeout": 0.01})
         await self.object.setup()
         register_partitions(self.object, 3)
-        self.object._partitions[3].last_dispatched_offset = 99  # 1 to 99 never acknowledged
+        dispatch(self.object, 3, *range(100))  # 1 to 99 never acknowledged
         await self.object.acknowledge([self._create_log_event({"n": 0}, partition=3, offset=0)])
 
         await self.object._revoke_callback(None, [TopicPartition("test_input_raw", partition=3)])
@@ -876,6 +934,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         # the assignment is gone, a store would be refused anyway
         await self.object.setup()
         register_partitions(self.object, 3)
+        dispatch(self.object, 3, 0)
         await self.object.acknowledge([self._create_log_event({"n": 0}, partition=3, offset=0)])
 
         await self.object._lost_callback(None, [TopicPartition("test_input_raw", partition=3)])
@@ -885,7 +944,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     async def test_revoke_callback_releases_partitions_when_cancelled(self):
         await self.object.setup()
         register_partitions(self.object, 3)
-        self.object._partitions[3].last_dispatched_offset = 99
+        dispatch(self.object, 3, 0)
 
         revoke = asyncio.create_task(
             self.object._revoke_callback(None, [TopicPartition("test_input_raw", partition=3)])
@@ -901,7 +960,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         await self.object.setup()
         register_partitions(self.object, 3, 4)
         for partition in (3, 4):
-            self.object._partitions[partition].last_dispatched_offset = 0
+            dispatch(self.object, partition, 0)
 
         revoke = asyncio.create_task(
             self.object._revoke_callback(
@@ -939,7 +998,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         assert self.object.metrics.number_of_warnings.value == 1
         assert "skipped message of untracked partition 5 at offset 42" in caplog.text
 
-    async def test_get_raw_event_acknowledges_empty_messages(self, mock_consumer, caplog):
+    async def test_get_raw_event_skips_and_acknowledges_empty_messages(self, mock_consumer, caplog):
         # a null value never reaches the pipeline, so nothing would acknowledge it
         await self.object.setup()
         register_partitions(self.object, 1)
@@ -952,12 +1011,12 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_consumer.consume.return_value = [mock_record]
 
         assert await self.object._get_raw_event(0.001) is None
-        assert self.object._partitions[1].next_expected_offset == 1
-        assert self.object._partitions[1].is_drained
+        assert not self.object._partitions[1].is_pending
+        assert await self._stored_offsets(mock_consumer) == [(1, 1)]
         assert self.object.metrics.number_of_warnings.value == 1
         assert "skipped message without value of partition 1 at offset 0" in caplog.text
 
-    async def test_get_raw_event_tracks_the_last_dispatched_offset(self, mock_consumer):
+    async def test_get_raw_event_tracks_dispatched_offsets(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 1)
 
@@ -970,8 +1029,9 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         await self.object._get_raw_event(0.001)
 
-        assert self.object._partitions[1].last_dispatched_offset == 7
-        assert not self.object._partitions[1].is_drained
+        # offsets 0 to 6 were never delivered, so they do not hold the offset to store back
+        assert self.object._partitions[1].offset_to_store == 7
+        assert self.object._partitions[1].is_pending
 
     async def test_get_raw_event_skips_messages_without_partition_or_offset(
         self, mock_consumer, caplog
@@ -989,42 +1049,18 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         assert self.object.metrics.number_of_warnings.value == 1
         assert "skipped message without partition or offset" in caplog.text
 
-    async def test_assign_callback_raises_fatal_error_if_committed_offsets_fail(
-        self, mock_consumer
+    async def test_assign_callback_registers_partitions_if_committed_offsets_fail(
+        self, mock_consumer, caplog
     ):
+        # they only seed the gauges, so the assignment proceeds without them
         await self.object.setup()
         mock_consumer.committed.side_effect = KafkaException("no coordinator")
 
-        with pytest.raises(FatalInputError, match="failed to get committed offsets"):
-            await self.object._assign_callback(
-                None, [TopicPartition("test_input_raw", partition=3)]
-            )
-
-    async def test_assign_callback_raises_fatal_error_if_a_partition_has_no_offset(
-        self, mock_consumer
-    ):
-        await self.object.setup()
-        mock_consumer.committed.return_value = [
-            TopicPartition("test_input_raw", partition=99, offset=1)
-        ]
-
-        with pytest.raises(FatalInputError, match="failed to get committed offset for partition 3"):
-            await self.object._assign_callback(
-                None, [TopicPartition("test_input_raw", partition=3)]
-            )
-
-    @pytest.mark.parametrize("committed_offset", [OFFSET_INVALID, OFFSET_BEGINNING])
-    async def test_assign_callback_starts_at_zero_for_special_offsets(
-        self, mock_consumer, committed_offset
-    ):
-        await self.object.setup()
-        mock_consumer.committed.return_value = [
-            TopicPartition("test_input_raw", partition=3, offset=committed_offset)
-        ]
-
         await self.object._assign_callback(None, [TopicPartition("test_input_raw", partition=3)])
 
-        assert self.object._partitions[3].next_expected_offset == 0
+        assert "could not get committed offsets: no coordinator" in caplog.text
+        assert self.object.metrics.number_of_warnings.value == 1
+        assert 3 in self.object._partitions
 
     async def test_health_returns_false_if_base_health_fails(self, mock_consumer):
         # the topic check would pass, so the base health is the only reason to fail
@@ -1036,6 +1072,25 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             "logprep.ng.abc.input.Input.health", new=mock.AsyncMock(return_value=False)
         ):
             assert not await self.object.health()
+
+    async def test_shut_down_revokes_without_draining(self, mock_consumer):
+        await self.object.setup()
+        register_partitions(self.object, 3)
+        dispatch(self.object, 3, 0, 1)  # 1 is never acknowledged
+        await self.object.acknowledge([self._create_log_event({"n": 0}, partition=3, offset=0)])
+
+        async def unsubscribe():
+            await self.object._revoke_callback(
+                None, [TopicPartition("test_input_raw", partition=3)]
+            )
+
+        mock_consumer.unsubscribe.side_effect = unsubscribe
+
+        await asyncio.wait_for(self.object.shut_down(), timeout=1)
+
+        assert 3 not in self.object._partitions
+        stored = mock_consumer.store_offsets.call_args.kwargs["offsets"]
+        assert [(tp.partition, tp.offset) for tp in stored] == [(3, 1)]
 
     async def test_shut_down_is_idempotent(self, mock_consumer):
         await self.object.setup()
@@ -1074,14 +1129,14 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         self._before_consuming(self.object)
         assert not await self.object.health()
 
-    async def test_health_logs_error_on_kafka_exception(self, mock_consumer):
+    async def test_health_logs_error_on_kafka_exception(self, mock_consumer, caplog):
         mock_consumer.list_topics.side_effect = KafkaException("test error")
         await self.object.setup()
         self._before_consuming(self.object)
-        with mock.patch("logging.Logger.error") as mock_error:
-            await self.object.health()
 
-            mock_error.assert_called()
+        await self.object.health()
+
+        assert re.search(r"ERROR.*Health check failed: test error", caplog.text)
 
     async def test_health_counts_metrics_on_kafka_exception(self, mock_consumer):
         mock_consumer.list_topics.side_effect = KafkaException("test error")

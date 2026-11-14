@@ -326,6 +326,33 @@ async def test_revocation_waits_for_acknowledgement_before_handover(group: Consu
         assert member.connector.metrics.revoke_drain_timeouts.value == 0, "drain timed out"
 
 
+async def test_starting_past_the_committed_offset_still_commits(group: ConsumerGroup) -> None:
+    group.produce(5 * PARTITIONS)  # skipped by "latest", never delivered
+
+    c1 = await group.add_consumer("c1", kafka_config={"auto.offset.reset": "latest"})
+    assert await until(lambda: c1.assigned == ALL_PARTITIONS)
+    # "latest" is resolved asynchronously, so produce until every partition delivers
+    for _ in range(50):
+        group.produce(PARTITIONS)
+        if await until(lambda: {msg.partition for msg in c1.dispatched} == ALL_PARTITIONS, 0.2):
+            break
+    start = {
+        p: min(msg.offset for msg in c1.dispatched if msg.partition == p) for p in ALL_PARTITIONS
+    }
+    delivered = {msg for msg in group.produced if msg.offset >= start[msg.partition]}
+    assert await until(lambda: c1.dispatched == delivered)
+    await c1.acknowledge_all()
+
+    c2 = await group.add_consumer("c2")
+    assert await until(lambda: c1.revoked), "nothing revoked"
+    assert await until(lambda: c2.assigned == c1.revoked), "handover incomplete"
+    assert c1.connector.metrics.revoke_drain_timeouts.value == 0, "drain timed out"
+
+    handed_over = {msg for msg in group.produce(5 * PARTITIONS) if msg.partition in c1.revoked}
+    assert await until(lambda: handed_over <= c2.dispatched), "c2 did not resume"
+    assert not group.duplicates, f"dispatched twice: {group.duplicates}"
+
+
 @needs_real_broker
 async def test_overrunning_the_rebalance_timeout_fences_and_replays(group: ConsumerGroup) -> None:
     produced = group.produce(10 * PARTITIONS)
