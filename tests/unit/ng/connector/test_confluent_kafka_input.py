@@ -645,13 +645,13 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     @pytest.mark.parametrize(
         "key, guidance",
         [
-            ("enable.auto.offset.store", 'enforced as "false"'),
-            ("enable.auto.commit", 'enforced as "true"'),
-            ("enable.partition.eof", 'enforced as "false"'),
-            ("group.protocol", 'enforced as "consumer"'),
-            ("session.timeout.ms", "group.consumer.session.timeout.ms on the broker"),
-            ("heartbeat.interval.ms", "group.consumer.heartbeat.interval.ms on the broker"),
-            ("partition.assignment.strategy", "use group.remote.assignor"),
+            ("enable.auto.offset.store", '"false"'),
+            ("enable.auto.commit", '"true"'),
+            ("enable.partition.eof", '"false"'),
+            ("group.protocol", '"consumer"'),
+            ("session.timeout.ms", "group.consumer.session.timeout.ms"),
+            ("heartbeat.interval.ms", "group.consumer.heartbeat.interval.ms"),
+            ("partition.assignment.strategy", "group.remote.assignor"),
             ("group.protocol.type", "not applicable"),
         ],
     )

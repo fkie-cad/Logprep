@@ -31,9 +31,10 @@ Example
             # enable.partition.eof
             # group.protocol
 
-This connector requires the KIP-848 consumer group protocol and therefore a broker
-on version 4.0.0 or later. It is the only protocol under which a revocation can be
-held open to drain in-flight events and still commit their offsets.
+This connector requires the KIP-848 consumer group protocol
+and therefore a broker on version 4.0.0 or later.
+It is the only protocol under which a revocation can be held open
+to drain in-flight events and still commit their offsets.
 """
 
 import asyncio
@@ -98,11 +99,11 @@ Partition: typing.TypeAlias = int
 Offset: typing.TypeAlias = int
 
 
-def _validate_supported_options(_, __, kafka_config: dict[str, str]) -> None:
+def _validate_supported_options(_, attribute, kafka_config: dict[str, str]) -> None:
     rejected = kafka_config.keys() & REJECTED_CONFIG.keys()
     if rejected:
         reasons = "; ".join(f"{key}: {REJECTED_CONFIG[key]}" for key in sorted(rejected))
-        raise ValueError(f"kafka_config contains unsupported entries: {reasons}")
+        raise ValueError(f"{attribute.name} contains unsupported entries: {reasons}")
 
 
 def _max_drain_timeout_s(kafka_config: dict[str, str]) -> float:
@@ -111,11 +112,11 @@ def _max_drain_timeout_s(kafka_config: dict[str, str]) -> float:
     return int(poll_ms) / 1000 - _DRAIN_TIMEOUT_HEADROOM_S
 
 
-def _validate_drain_fits_poll_interval(conf, _, revoke_drain_timeout: float) -> None:
+def _validate_drain_fits_poll_interval(conf, attribute, revoke_drain_timeout: float) -> None:
     budget = _max_drain_timeout_s(conf.kafka_config)
     if revoke_drain_timeout > budget:
         raise ValueError(
-            f"revoke_drain_timeout ({revoke_drain_timeout:.1f}s) must not exceed "
+            f"{attribute.name} ({revoke_drain_timeout:.1f}s) must not exceed "
             f"{budget:.1f}s, which is max.poll.interval.ms minus "
             f"{_DRAIN_TIMEOUT_HEADROOM_S:.0f}s of headroom"
         )
@@ -713,7 +714,8 @@ class ConfluentKafkaInput(Input):
     async def _revoke_callback(
         self, _: AIOConsumer, topic_partitions: list[TopicPartition]
     ) -> None:
-        """Hold the partitions until their in-flight events are acknowledged.
+        """
+        Hold the partitions until their in-flight events are acknowledged.
 
         The coordinator withholds these partitions from their next owner until this
         member acknowledges the revocation, which librdkafka only does once the
@@ -793,7 +795,8 @@ class ConfluentKafkaInput(Input):
     async def _commit_callback(
         self, error: KafkaException | None, topic_partitions: list[TopicPartition]
     ) -> None:
-        """Never raises: an exception inside `consume()` drops the messages it already fetched."""
+        """Bumps commit metrics and reports error scenarios"""
+        # no errors may be raised in this method; might lead to dropped messages in librdkafka
         if error is not None:
             # retried with the next commit, librdkafka marks every partition as failed
             self._metrics.commit_failures.inc(1)
@@ -802,12 +805,12 @@ class ConfluentKafkaInput(Input):
                 {tp.partition: tp.offset for tp in topic_partitions if tp.offset >= 0},
                 error,
             )
-            return
-        self._metrics.commit_success.inc(1)
-        for tp in topic_partitions:
-            state = self._partitions.get(tp.partition)
-            if state is not None and tp.offset >= 0:
-                state.committed_offset_gauge.set(tp.offset)
+        else:
+            self._metrics.commit_success.inc(1)
+            for tp in topic_partitions:
+                state = self._partitions.get(tp.partition)
+                if state is not None and tp.offset >= 0:
+                    state.committed_offset_gauge.set(tp.offset)
 
     async def health(self) -> bool:  # type: ignore[override]
         """Check the topic until subscribed, afterwards calling the consumer could deadlock a rebalance"""
