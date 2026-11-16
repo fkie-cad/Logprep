@@ -9,6 +9,7 @@ import asyncio
 import json
 import re
 import socket
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from pathlib import Path
@@ -27,14 +28,8 @@ from confluent_kafka.aio import AIOConsumer
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.event import ErrorEvent, LogEvent
-from logprep.ng.abc.input import (
-    CriticalInputError,
-    FatalInputError,
-)
-from logprep.ng.connector.confluent_kafka.input import (
-    _DEFAULT_MEMBER_ID,
-    ConfluentKafkaInput,
-)
+from logprep.ng.abc.input import FatalInputError
+from logprep.ng.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.ng.connector.confluent_kafka.input import logger as kafka_input_logger
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaInputMeta
 from logprep.util.helper import FieldValue
@@ -145,11 +140,21 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         with pytest.raises(TypeError, match=r"unexpected keyword argument"):
             _ = Factory.create({"test connector": kafka_config})
 
-    async def test_error_callback_logs_error(self, caplog):
-        await self.object._error_callback(Exception("test error"))
+    async def test_error_callback_warns_on_recoverable_errors(self, caplog):
+        # librdkafka retries those itself, e.g. on every broker restart
+        await self.object._error_callback(KafkaError(KafkaError._TRANSPORT, "disconnected"))
 
-        assert re.search(rf"ERROR.*{re.escape(self.object.description)}: test error", caplog.text)
-        assert self.object.metrics.number_of_errors.value == 1
+        assert re.search(r"WARNING.*kafka client error, retrying: .*disconnected", caplog.text)
+        assert self.object.metrics.number_of_warnings.value == 1
+        assert self.object.metrics.number_of_errors.value == 0
+
+    async def test_error_callback_leaves_fatal_errors_to_consume(self, caplog):
+        # consume() returns them as well, which stops the pipeline
+        await self.object._error_callback(KafkaError(KafkaError._FATAL, "fenced", fatal=True))
+
+        assert caplog.text == ""
+        assert self.object.metrics.number_of_errors.value == 0
+        assert self.object.metrics.number_of_warnings.value == 0
 
     async def test_stats_callback_sets_every_librdkafka_metric(self):
         stats = json.loads(Path(KAFKA_STATS_JSON_PATH).read_text("utf8"))
@@ -185,8 +190,8 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         await self.object.shut_down()
 
-    async def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(
-        self, mock_consumer
+    async def test_get_next_warns_and_continues_on_recoverable_kafka_errors(
+        self, mock_consumer, caplog
     ):
         mock_kafka_message = mock.MagicMock()
         mock_kafka_message.error.return_value = KafkaError(
@@ -202,10 +207,39 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         mock_consumer.consume.return_value = [mock_kafka_message]
 
-        with pytest.raises(CriticalInputError):
-            await self.object.get_next(1)
+        assert await self.object.get_next(1) is None
+        assert re.search(r"WARNING.*kafka consumer error, retrying: .*Unknown topic", caplog.text)
+        assert self.object.metrics.number_of_warnings.value == 1
 
-        await self.object.shut_down()
+    @pytest.mark.parametrize("code", [KafkaError._BAD_MSG, KafkaError._BAD_COMPRESSION])
+    async def test_get_next_returns_an_error_event_for_broken_messages(self, mock_consumer, code):
+        # no retry repairs them, so they go to the error output instead of failing forever
+        mock_kafka_message = mock.MagicMock()
+        mock_kafka_message.error.return_value = KafkaError(code, "corrupt")
+        mock_kafka_message.partition.return_value = 2
+        mock_kafka_message.offset.return_value = 7
+        mock_kafka_message.value.return_value = b"\x00garbage"
+        await self.object.setup()
+        register_partitions(self.object, 2)
+        mock_consumer.consume.return_value = [mock_kafka_message]
+
+        event = await self.object.get_next(1)
+
+        assert isinstance(event, ErrorEvent)
+        assert "broken kafka message" in event.data["errors"]
+        assert event.input_meta == ConfluentKafkaInputMeta(partition=2, offset=7)
+        assert self.object._partitions[2].sorted_pending == deque([7])
+
+    async def test_get_next_raises_fatal_input_error_for_fatal_kafka_errors(self, mock_consumer):
+        mock_kafka_message = mock.MagicMock()
+        mock_kafka_message.error.return_value = KafkaError(
+            KafkaError._FATAL, "fenced by a newer instance", fatal=True
+        )
+        await self.object.setup()
+        mock_consumer.consume.return_value = [mock_kafka_message]
+
+        with pytest.raises(FatalInputError, match="kafka client failed fatally: .*fenced"):
+            await self.object.get_next(1)
 
     async def test_shut_down_calls_consumer_close(self, mock_consumer):
         await self.object.setup()
@@ -286,7 +320,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_consumer.reset_mock()
         mock_consumer.consume.return_value = []
 
-        await self.object._get_raw_event(0.001)
+        await self.object._get_event(0.001)
 
         assert [call[0] for call in mock_consumer.mock_calls] == ["store_offsets", "consume"]
 
@@ -487,22 +521,6 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         assert event.original == '{"element":"in list"}'.encode("utf8")
         assert event.input_meta == ConfluentKafkaInputMeta(partition=1, offset=42)
 
-    async def test_get_raw_event_is_callable(self, mock_consumer):
-        mock_record = mock.MagicMock()
-        mock_record.error.return_value = None
-        mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
-        mock_record.partition.return_value = 1
-        mock_record.offset.return_value = 42
-
-        mock_consumer.consume.return_value = [mock_record]
-
-        await self.object.setup()
-        register_partitions(self.object, 1)
-
-        result = await self.object._get_raw_event(0.001)
-
-        assert result
-
     async def test_get_event_raises_exception_if_input_invalid_json(self, mock_consumer):
         mock_record = mock.MagicMock()
         mock_record.error.return_value = None
@@ -552,17 +570,6 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
                 await self.object.setup()
         mock_subscribe.assert_not_called()
 
-    async def test_get_next_raises_critical_input_parsing_error(self):
-        await self.object.setup()
-
-        self.object._get_raw_event = mock.AsyncMock(
-            return_value=(b'{"invalid": "json', ConfluentKafkaInputMeta(partition=0, offset=42))
-        )
-
-        error_event = await self.object.get_next(1)
-        assert isinstance(error_event, ErrorEvent)
-        assert "Input record value is not a valid json string" in error_event.data["errors"]
-
     async def test_commit_callback_logs_and_counts_failures_without_raising(self, caplog):
         # raising inside consume() would drop the messages it already fetched
         await self.object.setup()
@@ -576,7 +583,10 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             ],
         )
 
-        assert "could not commit offsets {7: 10}: STALE_MEMBER_EPOCH" in caplog.text
+        assert (
+            "could not commit offsets {7: 10}, retrying with the next commit: STALE_MEMBER_EPOCH"
+            in caplog.text
+        )
         assert self.object.metrics.commit_failures.value == 1
         assert self._committed_offset_sample(7) == 5
 
@@ -802,7 +812,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             ],
         )
 
-        assert "committed offsets {3: 42, 4: None}" in caplog.text
+        assert "assigned partitions as member 42, committed offsets {3: 42, 4: None}" in caplog.text
         assert self.object._partitions.keys() == {3, 4}
         assert self.object._partitions[3].offset_to_store is None  # nothing dispatched yet
         assert self._committed_offset_sample(3) == 42
@@ -816,25 +826,21 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         await self.object._revoke_callback(None, [TopicPartition("test_input_raw", partition=3)])
 
-        assert re.search(r"INFO.*to be revoked.*partitions \[3\]", caplog.text)
+        assert re.search(r"INFO.*revoking partitions \[3\]", caplog.text)
         assert self.object.metrics.number_of_warnings.value == 0
         assert 3 not in self.object._partitions
 
-    async def test_assign_callback_logs_error_and_falls_back_if_consumer_closed(
-        self, mock_consumer, caplog
-    ):
+    async def test_assign_callback_warns_if_the_member_id_fails(self, mock_consumer, caplog):
+        caplog.set_level("INFO")
         mock_consumer._consumer.memberid.side_effect = RuntimeError("Consumer is closed")
-        mock_consumer.committed.return_value = [
-            TopicPartition("test_input_raw", partition=3, offset=42)
-        ]
-
         await self.object.setup()
-        await self.object._assign_callback(
-            None, [TopicPartition("test_input_raw", partition=3, offset=OFFSET_INVALID)]
-        )
 
-        assert re.search(r"ERROR.*Consumer is closed", caplog.text)
-        assert self.object._member_id == _DEFAULT_MEMBER_ID
+        await self.object._assign_callback(None, [TopicPartition("test_input_raw", partition=3)])
+
+        assert re.search(r"WARNING.*could not get member id: Consumer is closed", caplog.text)
+        assert "assigned partitions as member unknown" in caplog.text
+        assert self.object.metrics.number_of_warnings.value == 1
+        assert 3 in self.object._partitions
 
     async def test_revoke_callback_waits_until_in_flight_events_are_acknowledged(
         self, mock_consumer
@@ -914,7 +920,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         await self.object._revoke_callback(None, [TopicPartition("test_input_raw", partition=3)])
 
         assert self.object.metrics.revoke_drain_timeouts.value == 1
-        assert re.search(r"ERROR.*drain timeout", caplog.text)
+        assert re.search(r"ERROR.*drain of partitions \[3\] timed out", caplog.text)
         assert 3 not in self.object._partitions
 
     async def test_revoke_callback_stores_what_was_acknowledged_despite_drain_timeout(
@@ -982,9 +988,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         assert revoke.done()
 
-    async def test_get_raw_event_drops_messages_of_untracked_partitions(
-        self, mock_consumer, caplog
-    ):
+    async def test_get_event_drops_messages_of_untracked_partitions(self, mock_consumer, caplog):
         await self.object.setup()
 
         mock_record = mock.MagicMock()
@@ -994,11 +998,11 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.value.return_value = b'{"some": "event"}'
         mock_consumer.consume.return_value = [mock_record]
 
-        assert await self.object._get_raw_event(0.001) is None
+        assert await self.object._get_event(0.001) is None
         assert self.object.metrics.number_of_warnings.value == 1
         assert "skipped message of untracked partition 5 at offset 42" in caplog.text
 
-    async def test_get_raw_event_skips_and_acknowledges_empty_messages(self, mock_consumer, caplog):
+    async def test_get_event_skips_and_acknowledges_empty_messages(self, mock_consumer, caplog):
         # a null value never reaches the pipeline, so nothing would acknowledge it
         await self.object.setup()
         register_partitions(self.object, 1)
@@ -1010,13 +1014,13 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.value.return_value = None
         mock_consumer.consume.return_value = [mock_record]
 
-        assert await self.object._get_raw_event(0.001) is None
+        assert await self.object._get_event(0.001) is None
         assert not self.object._partitions[1].is_pending
         assert await self._stored_offsets(mock_consumer) == [(1, 1)]
         assert self.object.metrics.number_of_warnings.value == 1
         assert "skipped message without value of partition 1 at offset 0" in caplog.text
 
-    async def test_get_raw_event_tracks_dispatched_offsets(self, mock_consumer):
+    async def test_get_event_tracks_dispatched_offsets(self, mock_consumer):
         await self.object.setup()
         register_partitions(self.object, 1)
 
@@ -1027,13 +1031,13 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.value.return_value = b'{"some": "event"}'
         mock_consumer.consume.return_value = [mock_record]
 
-        await self.object._get_raw_event(0.001)
+        await self.object._get_event(0.001)
 
         # offsets 0 to 6 were never delivered, so they do not hold the offset to store back
         assert self.object._partitions[1].offset_to_store == 7
         assert self.object._partitions[1].is_pending
 
-    async def test_get_raw_event_skips_messages_without_partition_or_offset(
+    async def test_get_event_skips_messages_without_partition_or_offset(
         self, mock_consumer, caplog
     ):
         await self.object.setup()
@@ -1045,7 +1049,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_record.value.return_value = b'{"some": "event"}'
         mock_consumer.consume.return_value = [mock_record]
 
-        assert await self.object._get_raw_event(0.001) is None
+        assert await self.object._get_event(0.001) is None
         assert self.object.metrics.number_of_warnings.value == 1
         assert "skipped message without partition or offset" in caplog.text
 
@@ -1117,11 +1121,14 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         mock_consumer.list_topics.assert_called()
         await self.object.shut_down()
 
-    async def test_health_returns_false_if_topic_not_present(self, mock_consumer):
+    async def test_health_returns_false_if_topic_not_present(self, mock_consumer, caplog):
         mock_consumer.list_topics.return_value.topics = ["not_the_topic"]
         await self.object.setup()
         self._before_consuming(self.object)
+
         assert not await self.object.health()
+        assert re.search(r"ERROR.*topic test_input_raw does not exist", caplog.text)
+        assert self.object.metrics.number_of_errors.value == 1
 
     async def test_health_returns_false_on_kafka_exception(self, mock_consumer):
         mock_consumer.list_topics.side_effect = KafkaException("test error")
@@ -1136,7 +1143,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         await self.object.health()
 
-        assert re.search(r"ERROR.*Health check failed: test error", caplog.text)
+        assert re.search(r"ERROR.*health check failed: test error", caplog.text)
 
     async def test_health_counts_metrics_on_kafka_exception(self, mock_consumer):
         mock_consumer.list_topics.side_effect = KafkaException("test error")

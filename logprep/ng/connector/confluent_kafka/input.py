@@ -48,13 +48,12 @@ from socket import getfqdn
 
 import msgspec
 from attrs import Factory, define, field, validators
-from confluent_kafka import KafkaException, Message, TopicPartition
+from confluent_kafka import KafkaError, KafkaException, Message, TopicPartition
 from confluent_kafka.aio import AIOConsumer
 
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.event import AcknowledgableEvent, ErrorEvent, InputMeta, LogEvent
 from logprep.ng.abc.input import (
-    CriticalInputError,
     CriticalInputParsingError,
     FatalInputError,
     Input,
@@ -88,10 +87,17 @@ REJECTED_CONFIG = {
 _DRAIN_TIMEOUT_HEADROOM_S = 10.0
 """Seconds a drain leaves of `max.poll.interval.ms` to commit offsets before being fenced."""
 
+_BROKEN_MESSAGE = {
+    # pylint: disable=protected-access
+    # public error codes; just a naming convention
+    KafkaError._BAD_MSG,
+    KafkaError._BAD_COMPRESSION,
+    # pylint: enable=protected-access
+}
+"""Errors of a single message, which no retry repairs"""
+
 _MISSING_STATISTIC = 0
 """Reported for a statistic librdkafka does not include."""
-
-_DEFAULT_MEMBER_ID = "MISSING_MEMBER_ID"
 
 logger = logging.getLogger("KafkaInput")
 
@@ -424,7 +430,6 @@ class ConfluentKafkaInput(Input):
         "_offsets_dirty",
         "_consuming",
         "_executor",
-        "_member_id",
         "_message_iter",
         "_partitions",
         "_shutting_down",
@@ -461,7 +466,6 @@ class ConfluentKafkaInput(Input):
         self._offsets_dirty = False
         self._consuming = False
         self._shutting_down = False
-        self._member_id = _DEFAULT_MEMBER_ID
 
         # one thread for consume() and one for callbacks (e.g. on_revoke) inside consume()
         self._executor = ThreadPoolExecutor(max_workers=2)
@@ -487,10 +491,12 @@ class ConfluentKafkaInput(Input):
             ) from error
         self._consuming = True
 
-    async def _error_callback(self, error: KafkaException) -> None:
-        """Log a global error, librdkafka recovers itself. Must not raise, see `_commit_callback`."""
-        self._metrics.number_of_errors.inc(1)
-        logger.error("%s: %s", self.description, error)
+    async def _error_callback(self, error: KafkaError) -> None:
+        """librdkafka recovers from these itself. Must not raise, see `_commit_callback`."""
+        if error.fatal():
+            return  # also returned by consume(), which stops the pipeline
+        self._metrics.number_of_warnings.inc(1)
+        logger.warning("kafka client error, retrying: %s", error)
 
     async def _stats_callback(self, stats_raw: str) -> None:
         """Set the librdkafka metrics. Must not raise, see `_commit_callback`.
@@ -550,52 +556,6 @@ class ConfluentKafkaInput(Input):
 
         return next(self._message_iter, None)
 
-    async def _get_raw_event(self, timeout: float) -> tuple[bytes, ConfluentKafkaInputMeta] | None:
-        """Get next raw message from kafka"""
-
-        message = await self._get_next_message(timeout)
-
-        if message is None:
-            return None
-
-        if message_error := message.error():
-            raise CriticalInputError.from_message(
-                self, f"encountered kafka error: {str(message_error)}"
-            )
-
-        message_value = message.value()
-        partition = message.partition()
-        offset = message.offset()
-
-        if partition is None or offset is None:
-            # theoretically impossible scenario; defensive log instead of simple assert
-            logger.warning("skipped message without partition or offset")
-            self._metrics.number_of_warnings.inc(1)
-            return None
-
-        state = self._partitions.get(partition)
-        if state is None:
-            # theoretically impossible scenario; defensive log instead of simple assert
-            logger.warning(
-                "skipped message of untracked partition %d at offset %d", partition, offset
-            )
-            self._metrics.number_of_warnings.inc(1)
-            return None
-
-        state.track_dispatch(offset)
-        meta = ConfluentKafkaInputMeta(partition=partition, offset=offset)
-
-        if message_value is None:
-            # a null value (like a tombstone) never enters the pipeline, so it is acknowledged here
-            self._metrics.number_of_warnings.inc(1)
-            logger.warning(
-                "skipped message without value of partition %d at offset %d", partition, offset
-            )
-            self._advance_offsets([meta])
-            return None
-
-        return message_value, meta
-
     def _register_partition(self, partition: Partition, offset: Offset | None) -> None:
         """Start tracking `partition`."""
 
@@ -653,24 +613,71 @@ class ConfluentKafkaInput(Input):
         self._offsets_dirty = False
 
     async def _get_event(self, timeout: float) -> LogEvent | ErrorEvent | None:
-        """Next event from kafka, an `ErrorEvent` if it cannot be parsed"""
+        """Next event from kafka, an `ErrorEvent` if it is broken or cannot be parsed"""
 
-        data = await self._get_raw_event(timeout)
+        message = await self._get_next_message(timeout)
 
-        if data is None:
+        if message is None:
             return None
 
-        raw_event, metadata = data
+        message_error = message.error()
+        if message_error is not None:
+            if message_error.fatal():
+                raise FatalInputError.from_message(
+                    self, f"kafka client failed fatally: {message_error}"
+                )
+            if message_error.code() not in _BROKEN_MESSAGE:
+                # librdkafka recovers from these, e.g. a missing topic or a rejoin
+                self._metrics.number_of_warnings.inc(1)
+                logger.warning("kafka consumer error, retrying: %s", message_error)
+                return None
+
+        message_value = message.value()
+        partition = message.partition()
+        offset = message.offset()
+
+        if partition is None or offset is None:
+            # theoretically impossible scenario; defensive log instead of simple assert
+            logger.warning("skipped message without partition or offset")
+            self._metrics.number_of_warnings.inc(1)
+            return None
+
+        state = self._partitions.get(partition)
+        if state is None:
+            # theoretically impossible scenario; defensive log instead of simple assert
+            logger.warning(
+                "skipped message of untracked partition %d at offset %d", partition, offset
+            )
+            self._metrics.number_of_warnings.inc(1)
+            return None
+
+        state.track_dispatch(offset)
+        meta = ConfluentKafkaInputMeta(partition=partition, offset=offset)
+
+        if message_error is not None:
+            # to the error output, its acknowledgement moves the commit past it
+            return ErrorEvent.from_input_failure(
+                cause=f"broken kafka message: {message_error}",
+                original=message_value,
+                input_meta=meta,
+            )
+
+        if message_value is None:
+            # a null value (like a tombstone) never enters the pipeline, so it is acknowledged here
+            self._metrics.number_of_warnings.inc(1)
+            logger.warning(
+                "skipped message without value of partition %d at offset %d", partition, offset
+            )
+            self._advance_offsets([meta])
+            return None
 
         try:
             return LogEvent(
-                self._decode_raw_event(raw_event),
-                original=raw_event,
-                input_meta=metadata,
+                self._decode_raw_event(message_value), original=message_value, input_meta=meta
             )
         except CriticalInputParsingError as error:
             return ErrorEvent.from_input_failure(
-                original=raw_event, input_meta=metadata, cause=error
+                original=message_value, input_meta=meta, cause=error
             )
 
     def _decode_raw_event(self, raw_event: bytes) -> dict:
@@ -688,9 +695,10 @@ class ConfluentKafkaInput(Input):
         try:
             # direct call: an offloaded one is rejected while this callback runs
             member_id = self._consumer._consumer.memberid()  # pylint: disable=protected-access
-            self._member_id = member_id or _DEFAULT_MEMBER_ID
         except RuntimeError as error:
-            logger.error("Failed to retrieve member ID: %s", error)
+            member_id = "unknown"
+            self._metrics.number_of_warnings.inc(1)
+            logger.warning("could not get member id: %s", error)
 
         committed: dict[Partition, Offset | None] = {tp.partition: None for tp in topic_partitions}
         try:
@@ -702,12 +710,7 @@ class ConfluentKafkaInput(Input):
             self._metrics.number_of_warnings.inc(1)
             logger.warning("could not get committed offsets: %s", error)
 
-        logger.info(
-            "%s was assigned to topic: %s | committed offsets %s",
-            self._member_id,
-            self.config.topic,
-            committed,
-        )
+        logger.info("assigned partitions as member %s, committed offsets %s", member_id, committed)
         for partition, offset in committed.items():
             self._register_partition(partition, offset)
 
@@ -732,12 +735,7 @@ class ConfluentKafkaInput(Input):
         """
 
         partitions = [tp.partition for tp in topic_partitions]
-        logger.info(
-            "%s to be revoked from topic: %s | partitions %s",
-            self._member_id,
-            self.config.topic,
-            partitions,
-        )
+        logger.info("revoking partitions %s", partitions)
 
         try:
             # the workflow has stopped before, nothing would acknowledge anymore
@@ -759,17 +757,16 @@ class ConfluentKafkaInput(Input):
                     await self._acknowledged_signal.wait()
 
             logger.info(
-                "drained partitions %s in %.1fs, offsets are committed on handover",
+                "drained partitions %s in %.1fs",
                 partitions,
                 asyncio.get_running_loop().time() - started,
             )
         except TimeoutError:
             self._metrics.revoke_drain_timeouts.inc(1)
             logger.error(
-                "drain timeout of %.1fs exceeded while revoking partitions %s, "
-                "in-flight events will be reprocessed by the new owner",
-                self.config.revoke_drain_timeout,
+                "drain of partitions %s timed out after %.1fs, in-flight events will be reprocessed",
                 partitions,
+                self.config.revoke_drain_timeout,
             )
         finally:
             self._metrics.revoke_drain_seconds.set(asyncio.get_running_loop().time() - started)
@@ -784,13 +781,7 @@ class ConfluentKafkaInput(Input):
             if state is not None:
                 in_flight += len(state.sorted_pending) - len(state.acknowledged)
         self._metrics.number_of_warnings.inc(1)
-        logger.warning(
-            "%s has lost topic: %s | partitions %s | %d events were still in flight",
-            self._member_id,
-            self.config.topic,
-            partitions,
-            in_flight,
-        )
+        logger.warning("lost partitions %s, %d events were still in flight", partitions, in_flight)
 
     async def _commit_callback(
         self, error: KafkaException | None, topic_partitions: list[TopicPartition]
@@ -801,7 +792,7 @@ class ConfluentKafkaInput(Input):
             # retried with the next commit, librdkafka marks every partition as failed
             self._metrics.commit_failures.inc(1)
             logger.warning(
-                "could not commit offsets %s: %s",
+                "could not commit offsets %s, retrying with the next commit: %s",
                 {tp.partition: tp.offset for tp in topic_partitions if tp.offset >= 0},
                 error,
             )
@@ -826,11 +817,12 @@ class ConfluentKafkaInput(Input):
         try:
             metadata = await self._consumer.list_topics(timeout=self.config.health_timeout)
         except KafkaException as error:
-            logger.error("Health check failed: %s", error)
+            logger.error("health check failed: %s", error)
             self._metrics.number_of_errors.inc(1)
             return False
         if self.config.topic not in metadata.topics:
-            logger.error("Topic '%s' does not exist", self.config.topic)
+            self._metrics.number_of_errors.inc(1)
+            logger.error("topic %s does not exist", self.config.topic)
             return False
         return True
 
