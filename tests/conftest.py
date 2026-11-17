@@ -1,3 +1,12 @@
+# pylint: disable=broad-exception-caught
+# pylint: disable=missing-function-docstring
+# pylint: disable=missing-class-docstring
+# pylint: disable=invalid-name
+# pylint: disable=redefined-outer-name
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+# pylint: disable=unused-import
+
 """Global configuration and fixtures for all pytest-based tests"""
 
 import contextlib
@@ -260,7 +269,7 @@ class ProcessorTestCase:
     id: str
     rule: dict[str, Any]
     event: JsonObject
-    expected: Any  # JsonObject failed for string_splitter
+    expected: Any
     expected_extras: list[tuple[JsonObject, list[tuple[str, str]]]] = field(factory=list)
     context: Context | None = None
 
