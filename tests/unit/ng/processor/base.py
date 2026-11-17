@@ -16,7 +16,7 @@ from attrs import asdict
 from ruamel.yaml import YAML
 
 from logprep.factory import Factory
-from logprep.framework.rule_tree.rule_tree import RuleTreeNG
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.abc.processor import Processor
@@ -84,7 +84,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
     async def _load_rule(self, rule: dict | Rule):
         assert isinstance(self.object, Processor)
-        self.object._rule_tree = RuleTreeNG()
+        self.object._rule_tree = RuleTree()
 
         if isinstance(rule, dict):
             assert self.object.rule_class is not None, "rule_class is required if dict is passed"
@@ -142,7 +142,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
     async def test_rule_tree(self):
         async with self.create_and_setup_processor(override_shared=True) as instance:
-            assert isinstance(instance._rule_tree, RuleTreeNG)
+            assert isinstance(instance._rule_tree, RuleTree)
 
     async def test_rule_tree_not_empty(self):
         instance = self._create_test_instance(deepcopy(self.CONFIG))
@@ -163,7 +163,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
             mock_debug.assert_called()
 
     async def test_load_rules(self):
-        self.object._rule_tree = RuleTreeNG()
+        self.object._rule_tree = RuleTree()
         rules_size = self.object._rule_tree.get_size()
         await self.object.load_rules(self.rules_dirs)
         new_rules_size = self.object._rule_tree.get_size()

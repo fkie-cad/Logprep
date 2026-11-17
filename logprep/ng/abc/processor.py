@@ -8,7 +8,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field, validators
 
-from logprep.framework.rule_tree.rule_tree import RuleTreeNG
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
 from logprep.ng.abc.event import LogEvent
@@ -77,7 +77,7 @@ class Processor(Component):
 
     rule_class: ClassVar[type[Rule] | None] = None
     _event: LogEvent
-    _rule_tree: RuleTreeNG
+    _rule_tree: RuleTree
     _strategy = None
     _bypass_rule_tree: bool
 
@@ -141,7 +141,7 @@ class Processor(Component):
         rule.metrics.number_of_processed_events.inc(1)
         return event
 
-    async def _process_rule_tree_multiple_times(self, tree: RuleTreeNG, event: dict) -> None:
+    async def _process_rule_tree_multiple_times(self, tree: RuleTree, event: dict) -> None:
         applied_rules = set()
         matching_rules: Iterable[Rule] = tree.get_matching_rules(event)
         while matching_rules:
@@ -150,12 +150,12 @@ class Processor(Component):
                 applied_rules.add(rule)
             matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
-    async def _process_rule_tree_once(self, tree: RuleTreeNG, event: dict) -> None:
+    async def _process_rule_tree_once(self, tree: RuleTree, event: dict) -> None:
         matching_rules = tree.get_matching_rules(event)
         for rule in matching_rules:
             await self._process_rule(rule, event)
 
-    async def _process_rule_tree(self, event: dict, tree: RuleTreeNG) -> None:
+    async def _process_rule_tree(self, event: dict, tree: RuleTree) -> None:
         if self.config.apply_multiple_times:
             await self._process_rule_tree_multiple_times(tree, event)
         else:
@@ -281,15 +281,15 @@ class Processor(Component):
             self._bypass_rule_tree = True
             logger.debug("Bypassing rule tree for processor %s", self.name)
 
-        rule_tree_config = RuleTreeNG.Config()
+        rule_tree_config = RuleTree.Config()
 
         if self.config.tree_config:
             rule_tree_config_data = await GetterFactory.from_string(
                 self.config.tree_config
             ).get_dict()
-            rule_tree_config = RuleTreeNG.Config(**rule_tree_config_data)
+            rule_tree_config = RuleTree.Config(**rule_tree_config_data)
 
-        self._rule_tree = RuleTreeNG(config=rule_tree_config)
+        self._rule_tree = RuleTree(config=rule_tree_config)
         await self.load_rules(rules_targets=self.config.rules)
 
         for rule in self.rules:

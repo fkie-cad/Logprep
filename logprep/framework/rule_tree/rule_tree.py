@@ -100,10 +100,18 @@ class RuleTree:
     _rule_mapping: dict
     _root: Node
 
+    @staticmethod
+    def load_rule_tree(root: Node | None = None, config: str | None = None) -> "RuleTree":
+        tree_config = RuleTree.Config()
+        if config:
+            config_data = getter.GetterFactory.from_string(config).get_dict()
+            tree_config = RuleTree.Config(**config_data)
+        return RuleTree(root, tree_config)
+
     def __init__(
         self,
         root: Node | None = None,
-        config: str | None = None,
+        config: Config | None = None,
     ):
         """Rule tree initialization function.
 
@@ -114,16 +122,12 @@ class RuleTree:
         ----------
         root: Node, optional
             Node that should be used as the new rule tree's root node.
-        config: str, optional
-            Path to a tree configuration.
+        config: RuleTree.Config, optional
+            A tree configuration.
         """
         self._rule_mapping = {}
-        self.tree_config = RuleTree.Config()
-        if config:
-            config_data = getter.GetterFactory.from_string(config).get_dict()
-            self.tree_config = RuleTree.Config(**config_data)
+        self.tree_config = config if config is not None else RuleTree.Config()
         self.rule_parser = RuleParser(self.tree_config.tag_map)
-
         self._root = Node(None) if root is None else root
 
     @property
@@ -322,30 +326,3 @@ class RuleTree:
     @property
     def root(self) -> Node:  # pylint: disable=missing-docstring
         return self._root
-
-
-# TODO(async-followup): NG-migration: remove RuleTreeNG class and adapt non-NG init instead
-class RuleTreeNG(RuleTree):
-    """Represent a set of NG rules using a rule tree model."""
-
-    def __init__(
-        self,
-        root: Node | None = None,
-        config: RuleTree.Config | None = None,
-    ):
-        """Rule tree initialization function.
-
-        Initializes a new rule tree with a given root node and a path to the tree's optional config
-        file. If no root node is specified, a new node will be created and used as root node.
-
-        Parameters
-        ----------
-        root: Node, optional
-            Node that should be used as the new rule tree's root node.
-        config: RuleTree.Config, optional
-            A tree configuration.
-        """
-        self._rule_mapping = {}
-        self.tree_config = config if config is not None else RuleTree.Config()
-        self.rule_parser = RuleParser(self.tree_config.tag_map)
-        self._root = Node(None) if root is None else root
