@@ -20,7 +20,7 @@ Processor Configuration
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.processor.generic_resolver.rule
+.. automodule:: logprep.ng.processor.generic_resolver.rule
 """
 
 import typing
