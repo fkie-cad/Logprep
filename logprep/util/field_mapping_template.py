@@ -3,7 +3,6 @@
 import inspect
 import re
 from collections.abc import Callable, Collection, Mapping
-from copy import deepcopy
 from enum import Enum, auto
 from typing import Final, TypeAlias, TypeVar, assert_never
 
@@ -15,6 +14,7 @@ from logprep.util.helper import (
     MISSING,
     FieldValue,
     JsonObject,
+    copy_field_value,
     get_field_value,
 )
 
@@ -794,8 +794,7 @@ def _compile_operation(
                         f"Cannot resolve lookup path {op.path!r} "
                         f"in static context root {op.context!r} during constant folding"
                     )
-                if isinstance(value, (dict, list)):
-                    value = deepcopy(value)
+                value = copy_field_value(value)
                 return Constant(value)
             return op
 
@@ -919,9 +918,7 @@ def _evaluate_operation(
     """
     match op:
         case Constant():
-            if isinstance(op.value, (dict, list)):
-                return deepcopy(op.value)
-            return op.value
+            return copy_field_value(op.value)
 
         case Lookup():
             if op.context not in runtime_context:
@@ -936,8 +933,8 @@ def _evaluate_operation(
                     f"in runtime context root {op.context!r}"
                 )
 
-            if op.copy_result and isinstance(value, (dict, list)):
-                return deepcopy(value)
+            if op.copy_result:
+                return copy_field_value(value)
 
             return value
 

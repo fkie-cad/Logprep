@@ -27,6 +27,7 @@
 * ci: fail on warnings during doc build
 * ci: update dependabot to use `-` instead of `/`
 * docs: fix several formatting issues
+* helper: replace copy.deepcopy with an optimized function for copying field values
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema

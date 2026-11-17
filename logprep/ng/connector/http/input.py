@@ -98,7 +98,6 @@ import zlib
 from abc import ABC
 from base64 import b64encode
 from collections.abc import Mapping, Sequence
-from copy import deepcopy
 from functools import cached_property
 
 import aiohttp
@@ -133,7 +132,7 @@ from logprep.util.credentials import (
     Credentials,
     CredentialsFactory,
 )
-from logprep.util.helper import add_fields_to
+from logprep.util.helper import add_fields_to, copy_field_value
 
 
 class HttpEndpoint(ABC):
@@ -219,7 +218,7 @@ class HttpEndpoint(ABC):
         """Puts message to internal queue"""
         if self.metafield_name in event:
             logger.warning("metadata field was in event and got overwritten")
-        event.update(deepcopy(metadata))
+        event.update(copy_field_value(metadata))
         await self.messages.put(event)
 
 

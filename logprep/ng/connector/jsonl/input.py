@@ -21,11 +21,11 @@ Example
 """
 
 import typing
-from copy import deepcopy
 
 from attrs import define
 
 from logprep.ng.connector.dummy.input import BaseDummyInput
+from logprep.util.helper import copy_field_value
 from logprep.util.json_handling import parse_jsonl
 
 
@@ -45,4 +45,4 @@ class JsonlInput(BaseDummyInput):
         return typing.cast("JsonlInput.Config", self._config)
 
     async def _produce_documents(self):
-        return deepcopy(parse_jsonl(self._config.documents_path))
+        return copy_field_value(parse_jsonl(self._config.documents_path))
