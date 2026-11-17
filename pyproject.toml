@@ -105,7 +105,7 @@ doc = [
   "sphinxcontrib-mermaid",
   "sphinx-copybutton",
   "openpyxl",
-  "pandas<3",
+  "pandas<4",
   "sphinx-autobuild>=2025.8.25",
 ]
 
