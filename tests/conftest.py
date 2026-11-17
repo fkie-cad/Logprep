@@ -389,6 +389,7 @@ async def provision_context(
             for item in args:
                 has_files |= _apply_provision_element(item)
             if has_files:
+                # TODO(async-followup): unify path handling in tests
                 monkeypatch.chdir(tmp_path)
 
         yield _provision
