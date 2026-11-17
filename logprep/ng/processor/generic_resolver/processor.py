@@ -14,7 +14,7 @@ Processor Configuration
         rules:
             - tests/testdata/rules/rules
 
-.. autoclass:: logprep.processor.generic_resolver.processor.GenericResolver.Config
+.. autoclass:: logprep.ng.processor.generic_resolver.processor.GenericResolver.Config
    :members:
    :undoc-members:
    :inherited-members:
