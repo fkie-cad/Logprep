@@ -36,21 +36,6 @@
 * ci: remove deprecated GHA dependency for doc preview links; do it ourselves
 * ci: fail on warnings during doc build
 * docs: fix several formatting issues
-* util: add field mapping template utility
-* cache: hold a payload in addition to timestamps
-* domain_resolver: adapt `domain_resolver` to changes of `cache`
-* domain_resolver: add `resolved_domains`, `timeouts_cached`, `no_answer_domains` and `no_nameserver` metric
-* docs: remove outdated jupyter notebooks; relevant examples moved to unit tests
-* ci: update GitHub actions to their latest release with cooldown of 1 week
-* ci: add basic dependabot config
-* ci: deploy the k8s example to a kind cluster and check that events go through to opensearch
-* examples/compose: replace archived bitnamilegacy images by `apache/kafka`, `danielqsj/kafka-exporter` and the official grafana, prometheus, keycloak and postgres images
-* examples/compose: add profile `kafka-metrics` for optional kafka prometheus metrics
-* examples/compose: add healthcheck to opensearch waiting for cluster status >= yellow
-* examples/compose: make profile `oauth2` more consistent by including fda/ucl
-* examples/compose: pin opensearch and opensearch-dashboards to 3.9.0
-* examples/k8s: run Kafka 4.3.1 on the official `apache/kafka` image instead of the archived bitnami chart
-* examples/k8s: use the official opensearch helm charts and images (3.9.0) instead of the archived bitnami chart
 * requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
 * tests: adapt NG processor and HTTP getter coverage to asynchronous setup, shutdown, rule loading, and refresh lifecycles
 * tests: add coverage for asynchronous scheduler execution and pending jobs
