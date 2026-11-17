@@ -27,7 +27,7 @@ from logprep.processor.base.exceptions import (
 )
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
-from tests.conftest import BaseURL, Endpoint
+from tests.conftest import Endpoint
 from tests.unit.ng.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)

@@ -232,7 +232,7 @@ class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
 
     def test_config_is_immutable(self):
         with pytest.raises(FrozenInstanceError):
-            setattr(self.object._config, "type", "new_type")
+            self.object._config.type = "new_type"
 
     async def test_health_returns_bool(self):
         await self.object.setup()
