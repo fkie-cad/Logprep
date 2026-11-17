@@ -22,9 +22,7 @@ from multiprocessing import active_children, set_start_method
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Literal, TypeAlias
 from unittest import mock
-from unittest.mock import MagicMock
 
-import aiohttp
 import pytest
 import responses
 from _pytest.mark.structures import ParameterSet
@@ -37,7 +35,7 @@ from logprep.ng.util.getter import RefreshableGetter as NGRefreshableGetter
 from logprep.registry import Registry
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.environ import _ENV_SNAPSHOT
-from logprep.util.getter import HttpGetter, RefreshableGetter
+from logprep.util.getter import RefreshableGetter
 from logprep.util.helper import MISSING, FieldValue, JsonObject, Missing
 
 
@@ -167,21 +165,6 @@ def mock_env(env_dict: dict) -> _MockEnv:
                 ...
     """
     return _MockEnv(env_dict)
-
-
-class MockClientResponse(aiohttp.ClientResponse):
-    """
-    Workaround for aioresponses compatibility with aiohttp >= 3.14.
-
-    aiohttp requires the 'stream_writer' argument, which aioresponses
-    does not yet provide. Remove once upstream support is released.
-
-    See: https://github.com/pnuckowski/aioresponses/pull/288
-    """
-
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault("stream_writer", MagicMock(output_size=0))
-        super().__init__(*args, **kwargs)
 
 
 @define(kw_only=True, slots=True)
