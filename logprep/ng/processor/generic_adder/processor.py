@@ -21,7 +21,7 @@ Processor Configuration
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.processor.generic_adder.rule
+.. automodule:: logprep.ng.processor.generic_adder.rule
 """
 
 import typing
