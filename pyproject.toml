@@ -54,7 +54,7 @@ dependencies = [
   "numpy>=1.26.0,<3",
   "opensearch-py[async]>=3.2,<4", # [>=3.2]: #904
   "prometheus_client<1",
-  "pycryptodome<4",
+  "pycryptodome<5",
   "pyparsing<4",
   "scikit-learn>=1.2.0,<2",
   "joblib<2",
