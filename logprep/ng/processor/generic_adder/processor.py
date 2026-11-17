@@ -15,7 +15,7 @@ Processor Configuration
         rules:
             - tests/testdata/rules/rules
 
-.. autoclass:: logprep.processor.generic_adder.processor.GenericAdder.Config
+.. autoclass:: logprep.ng.processor.generic_adder.processor.GenericAdder.Config
    :members:
    :undoc-members:
    :inherited-members:
