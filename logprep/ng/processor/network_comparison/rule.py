@@ -53,7 +53,7 @@ target field :code:`network_comparison.example`.
 
     Currently, it is not possible to check in more than one :code:`source_field` per rule.
 
-.. autoclass:: logprep.processor.network_comparison.rule.NetworkComparisonRule.Config
+.. autoclass:: logprep.ng.processor.network_comparison.rule.NetworkComparisonRule.Config
    :members:
    :undoc-members:
    :inherited-members:
