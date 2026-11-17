@@ -122,9 +122,8 @@ class Requester(FieldManager):
                 conflicting_fields.extend(error.skipped_fields)
         if rule.target_field_mapping:
             source_fields = rule.target_field_mapping.keys()
-            result: dict[str, FieldValue] = typing.cast(
-                dict[str, FieldValue], self._get_result(response)
-            )
+            result = self._get_result(response)
+            assert isinstance(result, dict)
             contents = self._get_field_values(result, source_fields)
             targets = rule.target_field_mapping.values()
             try:
