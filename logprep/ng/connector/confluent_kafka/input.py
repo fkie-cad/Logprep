@@ -655,7 +655,9 @@ class ConfluentKafkaInput(Input):
         meta = ConfluentKafkaInputMeta(partition=partition, offset=offset)
 
         if message_error is not None:
+            assert message_error.code() in _BROKEN_MESSAGE
             # to the error output, its acknowledgement moves the commit past it
+            self._metrics.number_of_errors.inc(1)
             return ErrorEvent.from_input_failure(
                 cause=f"broken kafka message: {message_error}",
                 original=message_value,
@@ -817,8 +819,8 @@ class ConfluentKafkaInput(Input):
         try:
             metadata = await self._consumer.list_topics(timeout=self.config.health_timeout)
         except KafkaException as error:
-            logger.error("health check failed: %s", error)
             self._metrics.number_of_errors.inc(1)
+            logger.error("health check failed: %s", error)
             return False
         if self.config.topic not in metadata.topics:
             self._metrics.number_of_errors.inc(1)

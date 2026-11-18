@@ -229,6 +229,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         assert "broken kafka message" in event.data["errors"]
         assert event.input_meta == ConfluentKafkaInputMeta(partition=2, offset=7)
         assert self.object._partitions[2].sorted_pending == deque([7])
+        assert self.object.metrics.number_of_errors.value == 1
 
     async def test_get_next_raises_fatal_input_error_for_fatal_kafka_errors(self, mock_consumer):
         mock_kafka_message = mock.MagicMock()
@@ -536,6 +537,7 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         error_event = await self.object._get_event(0.001)
         assert isinstance(error_event, ErrorEvent)
         assert "is not a valid json string" in error_event.reason
+        assert self.object.metrics.number_of_errors.value == 1
 
     async def test_get_event_returns_error_if_not_utf8(self, mock_consumer):
         mock_record = mock.MagicMock()
