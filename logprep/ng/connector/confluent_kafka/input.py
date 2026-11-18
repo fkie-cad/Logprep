@@ -85,7 +85,7 @@ REJECTED_CONFIG = {
 """Keys not allowed to be set & corresponding hint"""
 
 _DRAIN_TIMEOUT_HEADROOM_S = 10.0
-"""Seconds a drain leaves of `max.poll.interval.ms` to commit offsets before being fenced."""
+"""Seconds a drain leaves of `max.poll.interval.ms` to commit offsets before being fenced"""
 
 _BROKEN_MESSAGE = {
     # pylint: disable=protected-access
@@ -97,7 +97,7 @@ _BROKEN_MESSAGE = {
 """Errors of a single message, which no retry repairs"""
 
 _MISSING_STATISTIC = 0
-"""Reported for a statistic librdkafka does not include."""
+"""Reported for a statistic librdkafka does not include"""
 
 logger = logging.getLogger("KafkaInput")
 
@@ -113,7 +113,7 @@ def _validate_supported_options(_, attribute, kafka_config: dict[str, str]) -> N
 
 
 def _max_drain_timeout_s(kafka_config: dict[str, str]) -> float:
-    """The longest drain that cannot outlive the rebalance timeout granted by the broker."""
+    """The longest drain that cannot outlive the rebalance timeout granted by the broker"""
     poll_ms = kafka_config.get("max.poll.interval.ms", DEFAULT_CONFIG["max.poll.interval.ms"])
     return int(poll_ms) / 1000 - _DRAIN_TIMEOUT_HEADROOM_S
 
@@ -135,7 +135,7 @@ class _PartitionState:
     last_dispatched_offset: Offset | None = None
 
     sorted_pending: deque[Offset] = field(factory=deque)
-    """Dispatched, from the oldest unacknowledged on."""
+    """Dispatched, from the oldest unacknowledged on"""
 
     acknowledged: set[Offset] = field(factory=set)
 
@@ -145,30 +145,30 @@ class _PartitionState:
 
     @property
     def offset_to_store(self) -> Offset | None:
-        """Everything dispatched below it is acknowledged, None until the first dispatch."""
+        """Everything dispatched below it is acknowledged, None until the first dispatch"""
         if self.sorted_pending:
             return self.sorted_pending[0]
         return None if self.last_dispatched_offset is None else self.last_dispatched_offset + 1
 
     @property
     def is_pending(self) -> bool:
-        """Whether dispatched offsets await acknowledgement."""
+        """Whether dispatched offsets await acknowledgement"""
         return bool(self.sorted_pending)
 
     def is_within_pending(self, offset: Offset) -> bool:
-        """Range check, keeps late or repeated acknowledgements out of `acknowledged`."""
+        """Range check, keeps late or repeated acknowledgements out of `acknowledged`"""
         pending = self.sorted_pending
         return bool(pending) and pending[0] <= offset <= pending[-1]
 
     def track_dispatch(self, offset: Offset) -> None:
-        """Offsets arrive ascending, so appending keeps `sorted_pending` sorted."""
+        """Offsets arrive ascending, so appending keeps `sorted_pending` sorted"""
         self.last_dispatched_offset = offset
         self.sorted_pending.append(offset)
         self.current_offset_gauge.set(offset + 1)
 
 
 class ConfluentKafkaInput(Input):
-    """A kafka input connector."""
+    """A kafka input connector"""
 
     @define(kw_only=True, slots=False)
     class Metrics(Input.Metrics):
@@ -315,7 +315,7 @@ class ConfluentKafkaInput(Input):
                 name="confluent_kafka_input_librdkafka_cgrp_stateage",
             )
         )
-        """Time elapsed since last state change (milliseconds)."""
+        """Time elapsed since last state change (milliseconds)"""
 
         librdkafka_cgrp_rebalance_age: GaugeMetric = field(
             factory=lambda: GaugeMetric(
@@ -323,7 +323,7 @@ class ConfluentKafkaInput(Input):
                 name="confluent_kafka_input_librdkafka_cgrp_rebalance_age",
             )
         )
-        """Time elapsed since last rebalance (assign or revoke) (milliseconds)."""
+        """Time elapsed since last rebalance (assign or revoke) (milliseconds)"""
 
         librdkafka_cgrp_rebalance_cnt: GaugeMetric = field(
             factory=lambda: GaugeMetric(
@@ -331,7 +331,7 @@ class ConfluentKafkaInput(Input):
                 name="confluent_kafka_input_librdkafka_cgrp_rebalance_cnt",
             )
         )
-        """Total number of rebalance (assign or revoke)."""
+        """Total number of rebalance (assign or revoke)"""
 
         librdkafka_cgrp_assignment_size: GaugeMetric = field(
             factory=lambda: GaugeMetric(
@@ -339,14 +339,14 @@ class ConfluentKafkaInput(Input):
                 name="confluent_kafka_input_librdkafka_cgrp_assignment_size",
             )
         )
-        """Current assignment's partition count."""
+        """Current assignment's partition count"""
 
     @define(kw_only=True, slots=False)
     class Config(Input.Config):
         """Kafka input connector specific configurations"""
 
         topic: str = field(validator=validators.instance_of(str))
-        """The topic from which new log messages will be fetched."""
+        """The topic from which new log messages will be fetched"""
 
         kafka_config: dict[str, str] = field(
             validator=(
@@ -458,7 +458,7 @@ class ConfluentKafkaInput(Input):
         return DEFAULT_CONFIG | client_id | self.config.kafka_config | _ENFORCED_CONFIG | callbacks
 
     async def setup(self) -> None:
-        """Set the confluent kafka input connector."""
+        """Set the confluent kafka input connector"""
 
         self._message_iter: Iterator[Message] = iter([])
         self._partitions: dict[Partition, _PartitionState] = {}
@@ -492,7 +492,7 @@ class ConfluentKafkaInput(Input):
         self._consuming = True
 
     async def _error_callback(self, error: KafkaError) -> None:
-        """librdkafka recovers from these itself. Must not raise, see `_commit_callback`."""
+        """librdkafka recovers from these itself. Must not raise, see `_commit_callback`"""
         if error.fatal():
             return  # also returned by consume(), which stops the pipeline
         self._metrics.number_of_warnings.inc(1)
@@ -557,7 +557,7 @@ class ConfluentKafkaInput(Input):
         return next(self._message_iter, None)
 
     def _register_partition(self, partition: Partition, offset: Offset | None) -> None:
-        """Start tracking `partition`."""
+        """Start tracking `partition`"""
 
         labels = {"description": f"topic: {self.config.topic} - partition: {partition}"}
         state = _PartitionState(
@@ -574,7 +574,7 @@ class ConfluentKafkaInput(Input):
         return any(p in states and states[p].is_pending for p in partitions)
 
     def _advance_offsets(self, metadata: Iterable[InputMeta]) -> None:
-        """Mark offsets as acknowledged and advance the offset to store of their partitions."""
+        """Mark offsets as acknowledged and advance the offset to store of their partitions"""
 
         orphaned = 0
         for item in metadata:
@@ -684,7 +684,7 @@ class ConfluentKafkaInput(Input):
             )
 
     def _decode_raw_event(self, raw_event: bytes) -> dict:
-        """Parse the raw document from Kafka into a json."""
+        """Parse the raw document from Kafka into a json"""
         try:
             return self._decoder.decode(raw_event)
         except msgspec.DecodeError as error:
@@ -750,7 +750,7 @@ class ConfluentKafkaInput(Input):
                 self._partitions.pop(partition, None)
 
     async def _drain(self, partitions: list[Partition]) -> None:
-        """Wait until every dispatched event of `partitions` is acknowledged, or time out."""
+        """Wait until every dispatched event of `partitions` is acknowledged, or time out"""
 
         started = asyncio.get_running_loop().time()
         try:
@@ -775,7 +775,7 @@ class ConfluentKafkaInput(Input):
             self._metrics.revoke_drain_seconds.set(asyncio.get_running_loop().time() - started)
 
     async def _lost_callback(self, _: AIOConsumer, topic_partitions: list[TopicPartition]) -> None:
-        """Release the partitions without draining, this member can no longer commit them."""
+        """Release the partitions without draining, this member can no longer commit them"""
         partitions = [tp.partition for tp in topic_partitions]
         in_flight = 0
         for partition in partitions:
@@ -815,7 +815,7 @@ class ConfluentKafkaInput(Input):
         return await self._topic_available()
 
     async def _topic_available(self) -> bool:
-        """Ask the broker whether the topic exists."""
+        """Ask the broker whether the topic exists"""
 
         try:
             metadata = await self._consumer.list_topics(timeout=self.config.health_timeout)
@@ -835,7 +835,7 @@ class ConfluentKafkaInput(Input):
         self._acknowledged_signal.set()
 
     async def shut_down(self) -> None:
-        """Shut down the confluent kafka input connector and cleanup resources."""
+        """Shut down the confluent kafka input connector and cleanup resources"""
 
         if self._consumer is not None:
             self._shutting_down = True
