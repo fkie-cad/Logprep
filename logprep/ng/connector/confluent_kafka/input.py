@@ -614,6 +614,7 @@ class ConfluentKafkaInput(Input):
 
     async def _get_event(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Next event from kafka, an `ErrorEvent` if it is broken or cannot be parsed"""
+        # pylint: disable=too-many-return-statements
 
         message = await self._get_next_message(timeout)
 
