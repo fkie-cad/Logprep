@@ -137,7 +137,7 @@ class LazyContext(dict[str, FieldValue]):
 SOURCE_EVENT_CONTEXT: Final[str] = "source_event"
 
 
-def source_fields_to_ft(source_fields: list[str]) -> dict[str, FieldValue]:
+def source_fields_to_field_template(source_fields: list[str]) -> dict[str, FieldValue]:
     """Select dotted source paths while preserving escapes and literal delimiters."""
     result: dict[str, FieldValue] = {}
     for source_field in source_fields:
@@ -155,7 +155,7 @@ def source_fields_to_ft(source_fields: list[str]) -> dict[str, FieldValue]:
     return result
 
 
-def rule_to_ft_context(rule: "Rule") -> dict[str, FieldValue]:
+def rule_to_field_template_context(rule: "Rule") -> dict[str, FieldValue]:
     """Expose a rule's string ID, description, and normalized filter to templates."""
     return {
         "description": rule.description,

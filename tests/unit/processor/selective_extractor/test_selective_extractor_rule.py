@@ -425,8 +425,8 @@ class TestSelectiveExtractorRule:
                     },
                 },
                 b"",
-                TypeError,  # with optional output None,
-                "missing 1 required keyword-only argument: 'outputs'",  # with optional output None,
+                TypeError,  # with optional output None
+                "missing 1 required keyword-only argument: 'outputs'",
             ),
             (
                 {

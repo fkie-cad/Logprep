@@ -16,7 +16,7 @@ from logprep.util.field_template import (
     Function,
     ParsedCall,
 )
-from logprep.util.field_template_helpers import source_fields_to_ft
+from logprep.util.field_template_helpers import source_fields_to_field_template
 from logprep.util.helper import FieldValue, JsonObject
 
 STATIC_CONTEXT: dict[str, JsonObject] = {
@@ -72,42 +72,42 @@ def _assert_value_types(actual: FieldValue, expected: FieldValue) -> None:
     ["mapping", "expected"],
     [
         pytest.param(
-            source_fields_to_ft(["event.id "]),
+            source_fields_to_field_template(["event.id "]),
             {"event": {"id ": 456}},
             id="source_field_space",
         ),
         pytest.param(
-            source_fields_to_ft(["event.id|"]),
+            source_fields_to_field_template(["event.id|"]),
             {"event": {"id|": 789}},
             id="source_field_pipe",
         ),
         pytest.param(
-            source_fields_to_ft(["a\tb"]),
+            source_fields_to_field_template(["a\tb"]),
             {"a\tb": "tab field"},
             id="source_field_tab",
         ),
         pytest.param(
-            source_fields_to_ft([r"event.a\.b"]),
+            source_fields_to_field_template([r"event.a\.b"]),
             {"event": {"a.b": "literal dot"}},
             id="source_field_escaped_dot",
         ),
         pytest.param(
-            source_fields_to_ft([r"event.id\|"]),
+            source_fields_to_field_template([r"event.id\|"]),
             {"event": {"id|": 789}},
             id="source_field_escaped_pipe",
         ),
         pytest.param(
-            source_fields_to_ft(["event.id\\ "]),
+            source_fields_to_field_template(["event.id\\ "]),
             {"event": {"id ": 456}},
             id="source_field_escaped_space",
         ),
         pytest.param(
-            source_fields_to_ft([r"back\\|slash"]),
+            source_fields_to_field_template([r"back\\|slash"]),
             {"back\\|slash": "backslash and pipe field"},
             id="source_field_escaped_backslash_before_pipe",
         ),
         pytest.param(
-            source_fields_to_ft(["a(b,c='d')}"]),
+            source_fields_to_field_template(["a(b,c='d')}"]),
             {"a(b,c='d')}": "delimiter field"},
             id="source_field_expression_delimiters",
         ),

@@ -185,8 +185,8 @@ from logprep.util.field_template import (
     FieldTemplateConfigError,
 )
 from logprep.util.field_template_helpers import (
-    rule_to_ft_context,
-    source_fields_to_ft,
+    rule_to_field_template_context,
+    source_fields_to_field_template,
 )
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import FieldValue, field_value_validator
@@ -285,7 +285,7 @@ class SelectiveExtractorRule(FieldManagerRule):
                     "one of event_template, extract_from_file or source_fields only allowed"
                 )
             if self.event_template is None:
-                self.event_template = source_fields_to_ft(self.source_fields)
+                self.event_template = source_fields_to_field_template(self.source_fields)
 
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
         """Compile the normalized template, translating template configuration errors.
@@ -302,7 +302,7 @@ class SelectiveExtractorRule(FieldManagerRule):
         try:
             self.compiled_template = FieldTemplate.compile(
                 self.config.event_template,
-                static_context={"rule": rule_to_ft_context(self)},
+                static_context={"rule": rule_to_field_template_context(self)},
                 runtime_roots=["source_event", "context"],
             )
         except FieldTemplateConfigError as error:
