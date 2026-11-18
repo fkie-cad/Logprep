@@ -6,6 +6,7 @@
 * domain_resolver: `source_fields` must be a list with exactly one element
 * selective_extractor: `ignore_missing_fields` now writes a warning on missing fields instead of creating incomplete extra events
 * selective_extractor: selecting list items via numeric source paths is no longer supported
+* ng: kafka input uses the consumer group protocol `consumer` (KIP-848), requires Kafka >=4.0 and `confluent-kafka` >=2.13
 
 ### Features
 * selective_extractor: add field_template as `event_template` to configuration
@@ -31,6 +32,12 @@
 * ci: update dependabot to use `-` instead of `/`
 * docs: fix several formatting issues
 * util: rename field mapping template to field template
+* ng: kafka input avoids duplicates on rebalance by gracefully draining revoked partitions (`revoke_drain_timeout`)
+* ng: kafka input rejects `kafka_config` entries it enforces or KIP-848 no longer supports
+* ng: kafka input adds the metrics `revoke_drain_seconds`, `revoke_drain_timeouts` and `orphaned_acknowledgements`
+* ng: kafka input health check no longer calls the consumer once subscribed
+* ng: kafka input stops on fatal errors, warns on recoverable ones and sends broken messages to the error output
+* ci: run the kafka input rebalance tests against a real kafka broker
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
