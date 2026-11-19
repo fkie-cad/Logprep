@@ -905,7 +905,6 @@ class HttpGetter(RefreshableGetter):
             try:
                 async with session.get(
                     url=self.uri,
-                    timeout=aiohttp.ClientTimeout(total=5),
                     allow_redirects=True,
                     headers=self._headers,
                 ) as response:
