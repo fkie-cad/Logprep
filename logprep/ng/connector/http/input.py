@@ -78,18 +78,22 @@ with the key :code:`password_file`.
 
 Behaviour of HTTP Requests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  * :code:`GET`:
 
-    * Responds always with 200 (ignores configured Basic Auth)
-    * When Messages Queue is full, it responds with 429
-  * :code:`POST`:
+  - :code:`GET`:
 
-    * Responds with 200 on non-Basic Auth Endpoints
-    * Responds with 401 on Basic Auth Endpoints (and 200 with appropriate credentials)
-    * When Messages Queue is full, it responds wiht 429
-  * :code:`ALL OTHER`:
+    - Responds always with 200 (ignores configured Basic Auth)
+    - When messages queue is full, it responds with 429
 
-    * Responds with 405
+  - :code:`POST`:
+
+    - Responds with 200 on non-Basic Auth Endpoints
+    - Responds with 401 on Basic Auth Endpoints (and 200 with appropriate credentials)
+    - When messages queue is full, it responds with 429
+    - Responds with 413 if a request holds more events than :code:`message_backlog_size`
+
+  - :code:`ALL OTHER`:
+
+    - Responds with 405
 """
 
 import asyncio
@@ -106,6 +110,7 @@ import falcon
 import falcon.asgi
 import msgspec
 from attrs import define, field, validators
+from falcon import HTTP_413, HTTPError  # pylint: disable=no-name-in-module
 
 from logprep.connector.http.input import (
     DEFAULT_META_HEADERS,
@@ -217,16 +222,30 @@ class HttpEndpoint(ABC):
 
     async def put_message(self, event: dict, metadata: dict):
         """Puts message to internal queue"""
-        if self.metafield_name in event:
+        await self.put_messages([event], metadata)
+
+    async def put_messages(self, events: list[dict], metadata: dict):
+        """Puts all events of one request to the internal queue or none of them"""
+        if len(events) > self.messages.maxsize:
+            logger.warning(
+                "Rejected request with %d events, message_backlog_size is %d",
+                len(events),
+                self.messages.maxsize,
+            )
+            raise HTTPError(HTTP_413)
+        if metadata and any(self.metafield_name in event for event in events):
             logger.warning("metadata field was in event and got overwritten")
-        event.update(deepcopy(metadata))
-        await self.messages.put(event)
+        if self.messages.qsize() + len(events) > self.messages.maxsize:
+            raise asyncio.QueueFull
+        # no await between the capacity check and the puts keeps this all-or-nothing
+        for event in events:
+            self.messages.put_nowait(event | deepcopy(metadata))
 
 
 class JSONHttpEndpoint(HttpEndpoint):
     """:code:`json` endpoint to get json from request"""
 
-    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder()
+    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder(type=dict)
 
     @raise_request_exceptions
     @basic_auth
@@ -260,16 +279,17 @@ class JSONLHttpEndpoint(HttpEndpoint):
         self.collect_metrics()
         data = await self.get_data(req)
         events = self._decoder.decode_lines(data)
-        for event in events:
-            if self.original_event_field:
-                target_field = self.original_event_field["target_field"]
-                event_value = (
-                    data.decode("utf8") if self.original_event_field["format"] == "str" else event
-                )
-                event = {}
-                add_fields_to(event, {target_field: event_value})
-
-            await self.put_message(event, kwargs["metadata"])
+        if self.original_event_field:
+            target_field = self.original_event_field["target_field"]
+            as_str = self.original_event_field["format"] == "str"
+            wrapped_events = []
+            for event in events:
+                wrapped_event: dict = {}
+                event_value = data.decode("utf8") if as_str else event
+                add_fields_to(wrapped_event, {target_field: event_value})
+                wrapped_events.append(wrapped_event)
+            events = wrapped_events
+        await self.put_messages(events, kwargs["metadata"])
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -400,11 +420,14 @@ class HttpInput(Input):
         - url
         - User-Agent
 
-        The output header names in Events are stored as json strings, and are transformed from "User-Agent" to "user_agent"
+        The output header names in Events are stored as json strings,
+        and are transformed from "User-Agent" to "user_agent"
         """
 
         collect_meta: bool = field(validator=validators.instance_of(bool), default=True)
-        """Deprecated use copy_headers_to_logs instead, to turn off collecting metadata set copy_headers_to_logs to an empty list ([]).
+        """
+        Deprecated use copy_headers_to_logs instead, to turn off collecting metadata
+        set copy_headers_to_logs to an empty list ([]).
         Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
@@ -417,7 +440,8 @@ class HttpInput(Input):
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
-        """Defines the name of the key for the collected metadata fields.
+        """
+        Defines the name of the key for the collected metadata fields.
         Logs a Warning if metadata field overwrites preexisting field in Event
         """
 
@@ -431,10 +455,11 @@ class HttpInput(Input):
             ),
             default=None,
         )
-        """Optional config parameter that writes the full event to one single target field. The
-        format can be specified with the parameter :code:`format`. Possible are :code:`str` and :code:`dict` where
-        dict is the default format. The target field can be specified with the parameter
-        :code:`target_field`."""
+        """
+        Optional config parameter that writes the full event to one single target field. The
+        format can be specified with the parameter :code:`format`.
+        Possible are :code:`str` and :code:`dict` where dict is the default format.
+        The target field can be specified with the parameter :code:`target_field`."""
 
         def __attrs_post_init__(self):
             if (
