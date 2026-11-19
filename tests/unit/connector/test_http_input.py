@@ -541,6 +541,57 @@ class TestHttpConnector(BaseInputTestCase):
         expected = {"event": {"original": '{"message": "my message"}'}}
         assert message == expected, f"{expected} does not equal {message}"
 
+    def _original_event_field_client(self, event_format):
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["original_event_field"] = {
+            "target_field": "event.original",
+            "format": event_format,
+        }
+        connector = Factory.create({"test connector": connector_config})
+        connector.pipeline_index = 1
+        connector.setup()
+        return connector, testing.TestClient(connector.app)
+
+    def test_original_event_field_jsonl_with_event_as_dict(self):
+        connector, client = self._original_event_field_client("dict")
+        resp = client.post("/jsonl", body='{"message": "first"}\n{"message": "second"}')
+        assert resp.status_code == 200
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": {"message": "first"}}}
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": {"message": "second"}}}
+        assert connector.messages.empty()
+
+    def test_original_event_field_jsonl_with_event_as_string_holds_whole_body(self):
+        connector, client = self._original_event_field_client("str")
+        body = '{"message": "first"}\n{"message": "second"}'
+        resp = client.post("/jsonl", body=body)
+        assert resp.status_code == 200
+        # every event holds the complete request body, not only its own line
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": body}}
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": body}}
+        assert connector.messages.empty()
+
+    def test_original_event_field_jsonl_is_queued_completely_or_not_at_all(self):
+        connector, client = self._original_event_field_client("dict")
+        for _ in range(self.CONFIG["message_backlog_size"] - 1):
+            connector.messages.put({"message": "filler"})
+        resp = client.post("/jsonl", body='{"message": "first"}\n{"message": "second"}')
+        assert resp.status_code == 429
+        assert connector.messages.qsize() == self.CONFIG["message_backlog_size"] - 1
+
+    def test_original_event_field_plaintext_with_event_as_dict(self):
+        connector, client = self._original_event_field_client("dict")
+        resp = client.post("/plaintext", body="my message")
+        assert resp.status_code == 200
+        assert connector.messages.get(timeout=0.5) == {
+            "event": {"original": {"message": "my message"}}
+        }
+
+    def test_original_event_field_plaintext_with_event_as_string(self):
+        connector, client = self._original_event_field_client("str")
+        resp = client.post("/plaintext", body="my message")
+        assert resp.status_code == 200
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": "my message"}}
+
     def test_server_multiple_config_changes(self):
         message = {"message": "my message"}
         connector_config = deepcopy(self.CONFIG)

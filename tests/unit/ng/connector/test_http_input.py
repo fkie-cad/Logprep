@@ -402,6 +402,56 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
             expected = {"event": {"original": '{"message": "my message"}'}}
             assert message == expected, f"{expected} does not equal {message}"
 
+    async def _original_event_field_instance(self, event_format):
+        instance = self._create_test_instance(
+            {"original_event_field": {"target_field": "event.original", "format": event_format}}
+        )
+        await instance.setup()
+        return instance
+
+    async def test_original_event_field_jsonl_with_event_as_dict(self):
+        instance = await self._original_event_field_instance("dict")
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/jsonl", body='{"message": "first"}\n{"message": "second"}')
+        assert resp.status_code == 200
+        assert instance.messages.get_nowait() == {"event": {"original": {"message": "first"}}}
+        assert instance.messages.get_nowait() == {"event": {"original": {"message": "second"}}}
+        assert instance.messages.empty()
+
+    async def test_original_event_field_jsonl_with_event_as_string_holds_whole_body(self):
+        instance = await self._original_event_field_instance("str")
+        body = '{"message": "first"}\n{"message": "second"}'
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/jsonl", body=body)
+        assert resp.status_code == 200
+        # every event holds the complete request body, not only its own line
+        assert instance.messages.get_nowait() == {"event": {"original": body}}
+        assert instance.messages.get_nowait() == {"event": {"original": body}}
+        assert instance.messages.empty()
+
+    async def test_original_event_field_jsonl_is_queued_completely_or_not_at_all(self):
+        instance = await self._original_event_field_instance("dict")
+        for _ in range(instance.messages.maxsize - 1):
+            instance.messages.put_nowait({"message": "filler"})
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/jsonl", body='{"message": "first"}\n{"message": "second"}')
+        assert resp.status_code == 429
+        assert instance.messages.qsize() == instance.messages.maxsize - 1
+
+    async def test_original_event_field_plaintext_with_event_as_dict(self):
+        instance = await self._original_event_field_instance("dict")
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/plaintext", body="my message")
+        assert resp.status_code == 200
+        assert instance.messages.get_nowait() == {"event": {"original": {"message": "my message"}}}
+
+    async def test_original_event_field_plaintext_with_event_as_string(self):
+        instance = await self._original_event_field_instance("str")
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/plaintext", body="my message")
+        assert resp.status_code == 200
+        assert instance.messages.get_nowait() == {"event": {"original": "my message"}}
+
     async def test_server_multiple_config_changes(self, client):
         message = {"message": "my message"}
         instance = self._create_test_instance(
