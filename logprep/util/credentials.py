@@ -712,7 +712,7 @@ class OAuth2PasswordFlowCredentials(Credentials):
         async with session.post(
             url=self.endpoint,
             data=payload,
-            timeout=self.timeout,
+            timeout=aiohttp.ClientTimeout(total=self.timeout),
             headers=headers,
         ) as response:
             await self._handle_aiohttp_bad_requests_errors(response)
