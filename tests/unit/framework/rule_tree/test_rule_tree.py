@@ -40,7 +40,7 @@ class TestRuleTree:
         assert rule_tree.root.expression is None
 
     def test_init_with_specifying_config(self):
-        rule_tree = RuleTree(config="tests/testdata/unit/tree_config.json")
+        rule_tree = RuleTree.load_rule_tree(config="tests/testdata/unit/tree_config.json")
         assert isinstance(rule_tree.root, Node)
         assert rule_tree.rule_parser._rule_tagger._tag_map == {
             "field_name_to_check_for_in_rule": "TAG-TO-CHECK-IF-IN-EVENT"

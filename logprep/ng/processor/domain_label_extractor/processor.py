@@ -141,18 +141,15 @@ class DomainLabelExtractor(FieldManager):
         if self._is_valid_ip(domain):
             _fail_on_source("ip")
             return
-
         try:
             url = urlsplit(domain)
         except ValueError:
             _fail_on_source("invalid_domain")
             return
-
         hostname = url.hostname if url.scheme != "" else url.path
         if hostname is None or len(hostname.strip()) == 0:
             _set_result(registered="", tld="", sub="")
             return
-
         labels = Domain(hostname)
         if labels.suffix == "":
             _set_result(registered="", tld="", sub="")

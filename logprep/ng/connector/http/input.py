@@ -570,7 +570,7 @@ class HttpInput(Input):
 
         async with aiohttp.ClientSession(
             base_url=self.target,
-            timeout=aiohttp.ClientTimeout(self.config.health_timeout),
+            timeout=aiohttp.ClientTimeout(total=self.config.health_timeout),
         ) as session:
 
             async def check_endpoint_status(endpoint: str) -> None:

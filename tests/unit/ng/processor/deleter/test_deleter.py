@@ -35,6 +35,7 @@ class TestDeleter(BaseProcessorTestCase[Deleter]):
         ],
     )
     async def test_process_deletes_event(self, event, testcase):
+        await self.object.setup()
         await self.object.process(event)
         assert not event.data, testcase
         assert isinstance(event, LogEvent), testcase
