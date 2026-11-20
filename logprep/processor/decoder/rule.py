@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long  # long lines are part of the rendered JSON examples
 """
 Decoder
 ============
@@ -38,6 +39,35 @@ A speaking example:
         }
     }
 
+Any field of a :code:`windows_event_log` can be selected and renamed with the
+:code:`fields` option:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Custom fields
+
+    filter: message
+    decoder:
+        source_format: windows_event_log
+        mapping:
+            message: parsed
+        fields:
+            - element: Provider
+              section: System
+              attribute: Name
+              target: SourceName
+            - element: TimeCreated
+              section: System
+              attribute: SystemTime
+              target: EventTime
+              convert: timestamp
+            - element: Data
+              section: EventData
+              name: TargetUserName
+              target: TargetUserName
+            - element: Computer
+              target: Hostname
+
 
 .. autoclass:: logprep.processor.decoder.rule.DecoderRule.Config
    :members:
@@ -57,10 +87,27 @@ import typing
 
 from attrs import define, field, validators
 
-from logprep.processor.decoder.decoders import DECODERS
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.decoder.decoders import (
+    DECODERS,
+    XmlFieldDefinition,
+    validate_fields,
+)
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 IMPLEMENTED_DECODERS = tuple(DECODERS.keys())
+
+
+def _validate_fields(instance, attribute, value) -> None:
+    """Validate the optional ``fields`` configuration."""
+    if value is not None and instance.source_format != "windows_event_log":
+        raise InvalidRuleDefinitionError(
+            f"{attribute.name} is only supported with source_format windows_event_log"
+        )
+    try:
+        validate_fields(value)
+    except ValueError as error:
+        raise InvalidRuleDefinitionError(f"{attribute.name}: {error}") from error
 
 
 class DecoderRule(FieldManagerRule):
@@ -97,7 +144,22 @@ class DecoderRule(FieldManagerRule):
         :code:`logfmt`,
         :code:`cri`,
         :code:`docker`,
-        :code:`decolorize`
+        :code:`decolorize`,
+        :code:`windows_event_log`
+        """
+        fields: list[XmlFieldDefinition] | None = field(
+            validator=_validate_fields,
+            default=None,
+        )
+        """Optional configuration for the :code:`windows_event_log` format. Replaces the default
+           extraction with a list of definitions for any field in the XML. Each definition needs
+           an :code:`element` and a :code:`target` and may set :code:`section` (:code:`Event`,
+           :code:`System` by default, :code:`EventData`, :code:`UserData` or
+           :code:`ProcessingErrorData`), :code:`name` to match an element's ``Name`` attribute,
+           :code:`attribute` and :code:`convert` (:code:`str`, :code:`int` or :code:`timestamp`).
+           Defaults to the `im_msvistalog
+           <https://docs.nxlog.co/agent/current/im/msvistalog.html>`_-style field names plus
+           flattened data fields if omitted.
         """
 
     @property
@@ -109,3 +171,8 @@ class DecoderRule(FieldManagerRule):
     def source_format(self) -> str:
         """Getter for rule config"""
         return self.config.source_format
+
+    @property
+    def fields(self) -> list[XmlFieldDefinition] | None:
+        """Getter for the optional windows_event_log field mapping"""
+        return self.config.fields
