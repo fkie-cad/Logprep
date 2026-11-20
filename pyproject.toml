@@ -94,7 +94,7 @@ dev = [
   "types-requests",
   "types-psutil",
   "types-PyYaml",
-  "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
+  "deepdiff>=8.6.2,<10", # [>=8.6.2]: CVE-2026-33155
 ]
 
 doc = [
