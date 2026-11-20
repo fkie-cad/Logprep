@@ -140,8 +140,8 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_get_error_code_too_many_requests(self):
         data = {"message": "my log message"}
-        self.object.messages.put = mock.MagicMock()
-        self.object.messages.put.side_effect = queue.Full()
+        self.object.messages.put_batch = mock.MagicMock()
+        self.object.messages.put_batch.side_effect = queue.Full()
         resp = self.client.post("/json", json=data)
         assert resp.status_code == 429
 
@@ -219,6 +219,85 @@ class TestHttpConnector(BaseInputTestCase):
         assert event_from_queue["message"] == "my second log message"
         event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue["message"] == "my third log message"
+
+    def test_jsonl_is_queued_completely_or_not_at_all(self):
+        backlog_size = self.CONFIG["message_backlog_size"]
+        for _ in range(backlog_size - 2):
+            self.object.messages.put({"message": "filler"})
+        data = "\n".join(f'{{"message": "{i}"}}' for i in range(3))
+        resp = self.client.post("/jsonl", body=data)
+        assert resp.status_code == 429
+        assert self.object.messages.qsize() == backlog_size - 2
+
+    def test_jsonl_retry_after_429_does_not_duplicate_events(self):
+        backlog_size = self.CONFIG["message_backlog_size"]
+        for _ in range(backlog_size - 2):
+            self.object.messages.put({"message": "filler"})
+        data = "\n".join(f'{{"message": "{i}"}}' for i in range(3))
+        assert self.client.post("/jsonl", body=data).status_code == 429
+        self.object.messages.get(timeout=1)
+        assert self.client.post("/jsonl", body=data).status_code == 200
+        assert self.object.messages.qsize() == backlog_size
+        queued = [self.object.messages.get(timeout=1) for _ in range(backlog_size)]
+        assert [event["message"] for event in queued[-3:]] == ["0", "1", "2"]
+
+    def test_jsonl_returns_413_if_request_exceeds_backlog_size(self):
+        backlog_size = self.CONFIG["message_backlog_size"]
+        data = "\n".join(f'{{"message": "{i}"}}' for i in range(backlog_size + 1))
+        resp = self.client.post("/jsonl", body=data)
+        assert resp.status_code == 413
+        assert self.object.messages.qsize() == 0
+
+    def test_throttling_does_not_block_event_loop(self):
+        with (
+            mock.patch.object(
+                self.object.messages, "throttle_time", return_value=0.5
+            ) as throttle_time,
+            mock.patch("time.sleep") as blocking_sleep,
+            mock.patch("logprep.util.queue.asyncio") as asyncio_mock,
+        ):
+            asyncio_mock.sleep = mock.AsyncMock()
+            assert self.client.post("/jsonl", body='{"a": 1}\n{"a": 2}').status_code == 200
+        blocking_sleep.assert_not_called()
+        asyncio_mock.sleep.assert_awaited_once_with(0.5)
+        throttle_time.assert_called_once_with(2)
+
+    @pytest.mark.parametrize(
+        "endpoint, body, headers",
+        [
+            ("/json", b'{"broken": ', {}),
+            ("/jsonl", b'{"ok": 1}\n{"broken": ', {}),
+            ("/plaintext", b"\xff\xfe", {}),
+            ("/json", b"not gzip", {"Content-Encoding": "gzip"}),
+        ],
+    )
+    def test_malformed_body_returns_400_without_internals(self, endpoint, body, headers):
+        resp = self.client.post(endpoint, body=body, headers=headers)
+        assert resp.status_code == 400
+        assert resp.json == {"title": "400 Bad Request", "description": "Malformed request body."}
+
+    def test_unexpected_error_returns_500_without_internals(self, caplog):
+        with mock.patch.object(
+            self.object.messages, "put_batch", side_effect=RuntimeError("secret /etc/path")
+        ):
+            resp = self.client.post("/json", json={"message": "x"})
+        assert resp.status_code == 500
+        assert "secret" not in resp.text
+        assert resp.json == {"title": "500 Internal Server Error"}
+        assert "secret /etc/path" in caplog.text
+
+    def test_too_many_requests_returns_429_without_internals(self):
+        with mock.patch.object(self.object.messages, "put_batch", side_effect=queue.Full):
+            resp = self.client.post("/json", json={"message": "x"})
+        assert resp.status_code == 429
+        assert resp.json == {"title": "429 Too Many Requests"}
+
+    def test_413_does_not_reveal_backlog_size(self):
+        backlog_size = self.CONFIG["message_backlog_size"]
+        data = "\n".join(f'{{"message": "{i}"}}' for i in range(backlog_size + 1))
+        resp = self.client.post("/jsonl", body=data)
+        assert resp.status_code == 413
+        assert str(backlog_size) not in resp.text
 
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
@@ -461,6 +540,57 @@ class TestHttpConnector(BaseInputTestCase):
         message = connector.messages.get(timeout=0.5)
         expected = {"event": {"original": '{"message": "my message"}'}}
         assert message == expected, f"{expected} does not equal {message}"
+
+    def _original_event_field_client(self, event_format):
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["original_event_field"] = {
+            "target_field": "event.original",
+            "format": event_format,
+        }
+        connector = Factory.create({"test connector": connector_config})
+        connector.pipeline_index = 1
+        connector.setup()
+        return connector, testing.TestClient(connector.app)
+
+    def test_original_event_field_jsonl_with_event_as_dict(self):
+        connector, client = self._original_event_field_client("dict")
+        resp = client.post("/jsonl", body='{"message": "first"}\n{"message": "second"}')
+        assert resp.status_code == 200
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": {"message": "first"}}}
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": {"message": "second"}}}
+        assert connector.messages.empty()
+
+    def test_original_event_field_jsonl_with_event_as_string_holds_whole_body(self):
+        connector, client = self._original_event_field_client("str")
+        body = '{"message": "first"}\n{"message": "second"}'
+        resp = client.post("/jsonl", body=body)
+        assert resp.status_code == 200
+        # every event holds the complete request body, not only its own line
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": body}}
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": body}}
+        assert connector.messages.empty()
+
+    def test_original_event_field_jsonl_is_queued_completely_or_not_at_all(self):
+        connector, client = self._original_event_field_client("dict")
+        for _ in range(self.CONFIG["message_backlog_size"] - 1):
+            connector.messages.put({"message": "filler"})
+        resp = client.post("/jsonl", body='{"message": "first"}\n{"message": "second"}')
+        assert resp.status_code == 429
+        assert connector.messages.qsize() == self.CONFIG["message_backlog_size"] - 1
+
+    def test_original_event_field_plaintext_with_event_as_dict(self):
+        connector, client = self._original_event_field_client("dict")
+        resp = client.post("/plaintext", body="my message")
+        assert resp.status_code == 200
+        assert connector.messages.get(timeout=0.5) == {
+            "event": {"original": {"message": "my message"}}
+        }
+
+    def test_original_event_field_plaintext_with_event_as_string(self):
+        connector, client = self._original_event_field_client("str")
+        resp = client.post("/plaintext", body="my message")
+        assert resp.status_code == 200
+        assert connector.messages.get(timeout=0.5) == {"event": {"original": "my message"}}
 
     def test_server_multiple_config_changes(self):
         message = {"message": "my message"}

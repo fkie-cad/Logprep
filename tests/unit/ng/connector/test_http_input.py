@@ -7,7 +7,6 @@
 import asyncio
 import gzip
 import json
-import queue
 import random
 import re
 from contextlib import asynccontextmanager
@@ -154,10 +153,50 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
 
     async def test_get_error_code_too_many_requests(self, instance, client):
         data = {"message": "my log message"}
-        instance.messages.put = mock.MagicMock()
-        instance.messages.put.side_effect = queue.Full()
+        instance.messages.put_nowait = mock.MagicMock()
+        instance.messages.put_nowait.side_effect = asyncio.QueueFull()
         resp = await client.post("/json", json=data)
         assert resp.status_code == 429
+        assert resp.json == {"title": "429 Too Many Requests"}
+
+    async def test_full_queue_rejects_instead_of_holding_request(self, instance, client):
+        for _ in range(instance.messages.maxsize):
+            instance.messages.put_nowait({"message": "filler"})
+        resp = await asyncio.wait_for(client.post("/json", json={"message": "x"}), timeout=1)
+        assert resp.status_code == 429
+
+    async def test_jsonl_is_queued_completely_or_not_at_all(self, instance, client):
+        for _ in range(instance.messages.maxsize - 2):
+            instance.messages.put_nowait({"message": "filler"})
+        data = "\n".join(f'{{"message": "{i}"}}' for i in range(3))
+        resp = await client.post("/jsonl", body=data)
+        assert resp.status_code == 429
+        assert instance.messages.qsize() == instance.messages.maxsize - 2
+
+    async def test_jsonl_retry_after_429_does_not_duplicate_events(self, instance, client):
+        for _ in range(instance.messages.maxsize - 2):
+            instance.messages.put_nowait({"message": "filler"})
+        data = "\n".join(f'{{"message": "{i}"}}' for i in range(3))
+        assert (await client.post("/jsonl", body=data)).status_code == 429
+        instance.messages.get_nowait()
+        assert (await client.post("/jsonl", body=data)).status_code == 200
+        queued = [instance.messages.get_nowait() for _ in range(instance.messages.qsize())]
+        assert [event["message"] for event in queued[-3:]] == ["0", "1", "2"]
+        assert len(queued) == instance.messages.maxsize
+
+    async def test_jsonl_returns_413_if_request_exceeds_backlog_size(self, instance, client):
+        backlog_size = instance.messages.maxsize
+        data = "\n".join(f'{{"message": "{i}"}}' for i in range(backlog_size + 1))
+        resp = await client.post("/jsonl", body=data)
+        assert resp.status_code == 413
+        assert str(backlog_size) not in resp.text
+        assert instance.messages.qsize() == 0
+
+    async def test_json_array_body_returns_400(self, instance, client):
+        resp = await client.post("/json", json=[{"message": "x"}])
+        assert resp.status_code == 400
+        assert resp.json == {"title": "400 Bad Request", "description": "Malformed request body."}
+        assert instance.messages.qsize() == 0
 
     async def test_json_endpoint_accepts_post_request(self, client):
         data = {"message": "my log message"}
@@ -362,6 +401,56 @@ class TestHttpConnector(BaseInputTestCase[HttpInput]):
             message = instance.messages.get_nowait()
             expected = {"event": {"original": '{"message": "my message"}'}}
             assert message == expected, f"{expected} does not equal {message}"
+
+    async def _original_event_field_instance(self, event_format):
+        instance = self._create_test_instance(
+            {"original_event_field": {"target_field": "event.original", "format": event_format}}
+        )
+        await instance.setup()
+        return instance
+
+    async def test_original_event_field_jsonl_with_event_as_dict(self):
+        instance = await self._original_event_field_instance("dict")
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/jsonl", body='{"message": "first"}\n{"message": "second"}')
+        assert resp.status_code == 200
+        assert instance.messages.get_nowait() == {"event": {"original": {"message": "first"}}}
+        assert instance.messages.get_nowait() == {"event": {"original": {"message": "second"}}}
+        assert instance.messages.empty()
+
+    async def test_original_event_field_jsonl_with_event_as_string_holds_whole_body(self):
+        instance = await self._original_event_field_instance("str")
+        body = '{"message": "first"}\n{"message": "second"}'
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/jsonl", body=body)
+        assert resp.status_code == 200
+        # every event holds the complete request body, not only its own line
+        assert instance.messages.get_nowait() == {"event": {"original": body}}
+        assert instance.messages.get_nowait() == {"event": {"original": body}}
+        assert instance.messages.empty()
+
+    async def test_original_event_field_jsonl_is_queued_completely_or_not_at_all(self):
+        instance = await self._original_event_field_instance("dict")
+        for _ in range(instance.messages.maxsize - 1):
+            instance.messages.put_nowait({"message": "filler"})
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/jsonl", body='{"message": "first"}\n{"message": "second"}')
+        assert resp.status_code == 429
+        assert instance.messages.qsize() == instance.messages.maxsize - 1
+
+    async def test_original_event_field_plaintext_with_event_as_dict(self):
+        instance = await self._original_event_field_instance("dict")
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/plaintext", body="my message")
+        assert resp.status_code == 200
+        assert instance.messages.get_nowait() == {"event": {"original": {"message": "my message"}}}
+
+    async def test_original_event_field_plaintext_with_event_as_string(self):
+        instance = await self._original_event_field_instance("str")
+        async with testing.ASGIConductor(instance.app) as client:
+            resp = await client.post("/plaintext", body="my message")
+        assert resp.status_code == 200
+        assert instance.messages.get_nowait() == {"event": {"original": "my message"}}
 
     async def test_server_multiple_config_changes(self, client):
         message = {"message": "my message"}

@@ -78,24 +78,28 @@ with the key :code:`password_file`.
 
 Behaviour of HTTP Requests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  * :code:`GET`:
 
-    * Responds always with 200 (ignores configured Basic Auth)
-    * When Messages Queue is full, it responds with 429
-  * :code:`POST`:
+  - :code:`GET`:
 
-    * Responds with 200 on non-Basic Auth Endpoints
-    * Responds with 401 on Basic Auth Endpoints (and 200 with appropriate credentials)
-    * When Messages Queue is full, it responds wiht 429
-  * :code:`ALL OTHER`:
+    - Responds always with 200 (ignores configured Basic Auth)
+    - When messages queue is full, it responds with 429
 
-    * Responds with 405
+  - :code:`POST`:
+
+    - Responds with 200 on non-Basic Auth Endpoints
+    - Responds with 401 on Basic Auth Endpoints (and 200 with appropriate credentials)
+    - When messages queue is full, it responds with 429
+    - Responds with 413 if a request holds more events than :code:`message_backlog_size`
+
+  - :code:`ALL OTHER`:
+
+    - Responds with 405
 """
 
+import asyncio
 import functools
 import hmac
 import logging
-import multiprocessing as mp
 import queue
 import re
 import typing
@@ -104,7 +108,6 @@ from abc import ABC
 from base64 import b64encode
 from collections.abc import Callable, Mapping
 from functools import cached_property
-from multiprocessing import Queue
 
 import falcon.asgi
 import msgspec
@@ -112,7 +115,9 @@ import requests
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTP_200,
+    HTTP_413,
     HTTPBadRequest,
+    HTTPError,
     HTTPInternalServerError,
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
@@ -131,6 +136,7 @@ from logprep.util.credentials import (
     CredentialsFactory,
 )
 from logprep.util.helper import add_fields_to
+from logprep.util.queue import ThrottlingQueue
 
 logger = logging.getLogger("HTTPInput")
 
@@ -178,18 +184,17 @@ def raise_request_exceptions(func: Callable):
                 return
             else:
                 raise HTTPMethodNotAllowed(["POST"])
-        except HTTPUnauthorized as error:
-            raise error from error
-        except queue.Full as error:
-            raise HTTPTooManyRequests(description="Logprep Message Queue is full.") from error
-        except msgspec.DecodeError as error:
-            raise HTTPBadRequest(
-                description=f"Can't decode message due to: {str(error)}"
-            ) from error
+        except HTTPError:
+            raise
+        except (queue.Full, asyncio.QueueFull) as error:
+            logger.debug("Rejected request to %s: message queue is full", req.path)
+            raise HTTPTooManyRequests() from error
+        except (msgspec.DecodeError, UnicodeDecodeError, zlib.error) as error:
+            logger.debug("Rejected malformed request to %s: %s", req.path, error)
+            raise HTTPBadRequest(description="Malformed request body.") from error
         except Exception as error:  # pylint: disable=broad-except
-            raise HTTPInternalServerError(
-                description=f"Unexpected Exception: {str(error)}"
-            ) from error
+            logger.exception("Unexpected error while handling request to %s", req.path)
+            raise HTTPInternalServerError() from error
         return func_wrapper
 
     return func_wrapper
@@ -218,7 +223,8 @@ def add_metadata(func: Callable):
         else:
             metadata: dict[str, str | None] = {}
             for header in endpoint.copy_headers_to_logs:
-                # remote_addr and url are special cases, because those are not copied 1 to 1 from headers
+                # remote_addr and url are special cases,
+                # because those are not copied 1 to 1 from headers
                 match header:
                     case "remote_addr":
                         metadata[header] = req.remote_addr
@@ -252,7 +258,7 @@ class HttpEndpoint(ABC):
 
     Parameters
     ----------
-    messages: mp.Queue
+    messages: ThrottlingQueue
         Input Events are put here
     collect_meta: bool
         Collects Metadata on True (default)
@@ -265,7 +271,7 @@ class HttpEndpoint(ABC):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        messages: mp.Queue,
+        messages: ThrottlingQueue,
         original_event_field: dict[str, str] | None,
         collect_meta: bool,
         metafield_name: str,
@@ -325,11 +331,22 @@ class HttpEndpoint(ABC):
                 data = zlib.decompress(data, 31)
         return data
 
-    def put_message(self, event: dict, metadata: dict):
+    async def put_message(self, event: dict, metadata: dict):
         """Puts message to internal queue"""
-        if self.metafield_name in event:
+        await self.put_messages([event], metadata)
+
+    async def put_messages(self, events: list[dict], metadata: dict):
+        """Puts all events of one request to the internal queue or none of them"""
+        if len(events) > self.messages.capacity:
+            logger.warning(
+                "Rejected request with %d events, message_backlog_size is %d",
+                len(events),
+                self.messages.capacity,
+            )
+            raise HTTPError(HTTP_413)
+        if metadata and any(self.metafield_name in event for event in events):
             logger.warning("metadata field was in event and got overwritten")
-        self.messages.put(event | metadata, block=False)
+        await self.messages.put_batch([event | metadata for event in events])
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -353,7 +370,7 @@ class JSONHttpEndpoint(HttpEndpoint):
                 )
                 event = {}
                 add_fields_to(event, {target_field: event_value})
-            self.put_message(event, kwargs["metadata"])
+            await self.put_message(event, kwargs["metadata"])
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -369,16 +386,17 @@ class JSONLHttpEndpoint(HttpEndpoint):
         self.collect_metrics()
         data = await self.get_data(req)
         events = self._decoder.decode_lines(data)
-        for event in events:
-            if self.original_event_field:
-                target_field = self.original_event_field["target_field"]
-                event_value = (
-                    data.decode("utf8") if self.original_event_field["format"] == "str" else event
-                )
-                event = {}
-                add_fields_to(event, {target_field: event_value})
-
-            self.put_message(event, kwargs["metadata"])
+        if self.original_event_field:
+            target_field = self.original_event_field["target_field"]
+            as_str = self.original_event_field["format"] == "str"
+            wrapped_events = []
+            for event in events:
+                wrapped_event: dict = {}
+                event_value = data.decode("utf8") if as_str else event
+                add_fields_to(wrapped_event, {target_field: event_value})
+                wrapped_events.append(wrapped_event)
+            events = wrapped_events
+        await self.put_messages(events, kwargs["metadata"])
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -400,7 +418,7 @@ class PlaintextHttpEndpoint(HttpEndpoint):
             )
             event = {}
             add_fields_to(event, {target_field: event_value})
-        self.put_message(event, kwargs["metadata"])
+        await self.put_message(event, kwargs["metadata"])
 
 
 class HttpInput(Input):
@@ -507,11 +525,14 @@ class HttpInput(Input):
         - url
         - User-Agent
 
-        The output header names in Events are stored as json strings, and are transformed from "User-Agent" to "user_agent"
+        The output header names in Events are stored as json strings,
+        and are transformed from "User-Agent" to "user_agent"
         """
 
         collect_meta: bool = field(validator=validators.instance_of(bool), default=True)
-        """Deprecated use copy_headers_to_logs instead, to turn off collecting metadata set copy_headers_to_logs to an empty list ([]).
+        """
+        Deprecated use copy_headers_to_logs instead, to turn off collecting metadata
+        set copy_headers_to_logs to an empty list ([]).
         Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
@@ -524,7 +545,8 @@ class HttpInput(Input):
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
-        """Defines the name of the key for the collected metadata fields.
+        """
+        Defines the name of the key for the collected metadata fields.
         Logs a Warning if metadata field overwrites preexisting field in Event
         """
 
@@ -538,10 +560,11 @@ class HttpInput(Input):
             ),
             default=None,
         )
-        """Optional config parameter that writes the full event to one single target field. The
-        format can be specified with the parameter :code:`format`. Possible are :code:`str` and :code:`dict` where
-        dict is the default format. The target field can be specified with the parameter
-        :code:`target_field`."""
+        """
+        Optional config parameter that writes the full event to one single target field.
+        The format can be specified with the parameter :code:`format`.
+        Possible are :code:`str` and :code:`dict` where dict is the default format.
+        The target field can be specified with the parameter :code:`target_field`."""
 
         def __attrs_post_init__(self):
             if (
@@ -554,7 +577,7 @@ class HttpInput(Input):
 
     __slots__: list[str] = ["target", "app", "http_server"]
 
-    messages: typing.Optional[Queue] = None
+    messages: typing.Optional[ThrottlingQueue] = None
 
     _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
@@ -642,7 +665,7 @@ class HttpInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the queue"""
-        messages = typing.cast(Queue, self.messages)
+        messages = typing.cast(ThrottlingQueue, self.messages)
 
         self._typed_metrics.message_backlog_size.set(messages.qsize())
         try:

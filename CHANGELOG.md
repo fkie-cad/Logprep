@@ -33,6 +33,11 @@
 * util: rename field mapping template to field template
 
 ### Bugfix
+* http_input: queue jsonl requests completely or not at all, so retries after a `429` no longer duplicate events
+* http_input: respond with `413` instead of `429` to requests holding more events than `message_backlog_size`
+* http_input: throttle once per request without blocking the event loop; it blocked all connections incl. health checks per event
+* http_input: error responses no longer expose internal details (exception texts, decoder errors, backlog size); unexpected errors are logged instead
+* http_input: respond with `400` instead of `500` to invalid gzip or non-UTF-8 plaintext bodies
 * domain_resolver: fix resolving domains that have no schema
 * pipeline_manager: gc.freeze before forking pipelines in order to avoid error-prone destruction of health check clients in pipeline processes
 * examples/compose: keycloak imports the logprep realm and the fda/ucl backends use its client secrets, the realm was never imported before

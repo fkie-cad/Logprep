@@ -2,12 +2,14 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=unnecessary-lambda-assignment
+import asyncio
 import multiprocessing
 import time
 import uuid
 from logging import Logger
 from logging.config import dictConfig
 from pathlib import Path
+from queue import Full
 from unittest import mock
 
 import pytest
@@ -439,6 +441,41 @@ class TestThrottlingQueue:
             with mock.patch.object(queue, "qsize", return_value=95):
                 queue.throttle()
             assert mock_sleep.call_args[0][0] > first_sleep_time
+
+    def test_put_batch_puts_all_objects(self):
+        queue = ThrottlingQueue(multiprocessing.get_context(), 3)
+        asyncio.run(queue.put_batch(["a", "b", "c"]))
+        assert [queue.get(timeout=1) for _ in range(3)] == ["a", "b", "c"]
+
+    def test_put_batch_puts_nothing_if_batch_does_not_fit(self):
+        queue = ThrottlingQueue(multiprocessing.get_context(), 3)
+        queue.put("a")
+        with pytest.raises(Full):
+            asyncio.run(queue.put_batch(["b", "c", "d"]))
+        assert queue.qsize() == 1
+
+    def test_put_batch_throttles_without_blocking(self):
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        with (
+            mock.patch.object(queue, "qsize", return_value=95),
+            mock.patch("time.sleep") as blocking_sleep,
+            mock.patch("logprep.util.queue.asyncio") as asyncio_mock,
+        ):
+            asyncio_mock.sleep = mock.AsyncMock()
+            asyncio.run(queue.put_batch(["a"]))
+            asyncio_mock.sleep.assert_awaited_once_with(queue.throttle_time(1))
+        blocking_sleep.assert_not_called()
+
+    def test_throttle_time_is_zero_below_threshold(self):
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        with mock.patch.object(queue, "qsize", return_value=90):
+            assert queue.throttle_time() == 0
+
+    def test_throttle_time_matches_throttle_sleep(self):
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        with mock.patch.object(queue, "qsize", return_value=95), mock.patch("time.sleep") as sleep:
+            queue.throttle(3)
+            sleep.assert_called_once_with(queue.throttle_time(3))
 
 
 class TestOutputQueueListener:

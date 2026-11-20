@@ -1,11 +1,12 @@
 """This module implements queue primitives for multiprocessing usage."""
 
+import asyncio
 import logging
 import multiprocessing
 import sys
 import time
 from multiprocessing.queues import Queue as BaseQueue
-from queue import Empty
+from queue import Empty, Full
 
 logger = logging.getLogger("Queue")
 
@@ -64,16 +65,31 @@ class ThrottlingQueue(Queue):  # type: ignore
         self.capacity = maxsize
         self.call_time = None
 
+    def throttle_time(self, batch_size=1) -> float:
+        """Seconds a put of :code:`batch_size` objs should wait, 0 below 90% usage."""
+        if self.consumed_percent <= 90:
+            return 0.0
+        sleep_ms = max(self.wait_time, int(self.wait_time * self.consumed_percent / batch_size))
+        return sleep_ms / 1000
+
     def throttle(self, batch_size=1):
         """Throttle put by sleeping."""
-        if self.consumed_percent > 90:
-            sleep_time = max(
-                self.wait_time, int(self.wait_time * self.consumed_percent / batch_size)
-            )
-            # sleep times in microseconds
-            time.sleep(sleep_time / 1000)
+        if sleep_time := self.throttle_time(batch_size):
+            time.sleep(sleep_time)
 
     def put(self, obj, block=True, timeout=None, batch_size=1):  # pylint: disable=arguments-differ
         """Put an obj into the queue."""
         self.throttle(batch_size)
         super().put(obj, block=block, timeout=timeout)
+
+    async def put_batch(self, objs: list) -> None:
+        """Put all objs or none of them. Raises :code:`queue.Full` if they don't fit.
+
+        Throttles without blocking the event loop. Atomic for a single producer event loop,
+        as nothing is awaited between the capacity check and the puts.
+        """
+        await asyncio.sleep(self.throttle_time(len(objs)))
+        if self.qsize() + len(objs) > self.capacity:
+            raise Full
+        for obj in objs:
+            super().put(obj, block=False)
