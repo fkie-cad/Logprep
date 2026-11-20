@@ -1,0 +1,50 @@
+name: PR Check Changelog
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled, edited]
+concurrency:
+  group: pr-check-changelog-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  enforce-changelog-update:
+    runs-on: ubuntu-24.04
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog-update') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check if changes are limited to upcoming changes
+        run: "! git diff origin/main --exit-code -- CHANGELOG.md"
+  protect-changelog:
+    runs-on: ubuntu-24.04
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-history-fix') && !startsWith(github.event.pull_request.title, 'release:') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check if changes are limited to upcoming changes
+        run: |
+          if git diff origin/main --exit-code -- CHANGELOG.md; then
+            echo "CHANGELOG.md not changed"
+            exit 0
+          fi
+
+          upcoming_changes=$(git diff -W origin/main -- CHANGELOG.md | grep "^ ## Upcoming Changes" -n | cut -d: -f1)
+          last_release=$(git diff -W origin/main -- CHANGELOG.md | grep "^ ## " -n | tail -n +2 | head -n 1 | cut -d: -f1)
+          # +2 to skip first line
+          echo "All changes should be between $upcoming_changes and $last_release"
+
+          # +6 to skip diff header
+          git diff -W origin/main -- CHANGELOG.md | grep "^[^ ]" -n | tail -n +6 | cut -d: -f1 \
+            | while read -r changed_line_nr; do
+            echo -n "Checking line $changed_line_nr...";
+            if [ $upcoming_changes -lt $changed_line_nr ] && [ $changed_line_nr -lt $last_release ]; then
+              echo " valid";
+            else
+              echo " invalid";
+              echo "Detected illegal changes"
+              exit 1
+            fi
+          done
