@@ -1,5 +1,14 @@
 ## Upcoming Changes
 ### Breaking
+
+### Features
+
+### Improvements
+
+### Bugfix
+
+## 22.0.0
+### Breaking
 * domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
 * domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
 * domain_resolver: remove `debug_cache`
