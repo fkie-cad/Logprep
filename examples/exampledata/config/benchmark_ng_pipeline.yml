@@ -116,14 +116,12 @@ input:
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       group.id: cgroup3
-      enable.auto.commit: "true"
       auto.commit.interval.ms: "10000"
       queued.min.messages: "100000"
       queued.max.messages.kbytes: "65536"
       statistics.interval.ms: "60000"
     timeout: 0.5
     consume_num_message: 200
-    max_workers: 2
     preprocessing:
       version_info_target_field: Logprep_version_info
       log_arrival_time_target_field: event.ingested
