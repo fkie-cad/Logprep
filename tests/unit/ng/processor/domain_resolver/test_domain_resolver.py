@@ -311,6 +311,42 @@ class TestDomainResolver(BaseProcessorTestCase):
         assert 'Invalid domain "https://" in "fqdn": Could not be parsed' in str(result.warnings[0])
         assert document == expected
 
+    async def test_domain_with_port(self, caplog):
+        await self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        fqdn = "google.de:123"
+        await self._load_rule(rule)
+        document = {"fqdn": fqdn}
+        expected = {"fqdn": fqdn, "resolved_ip": "1.2.3.4"}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with caplog.at_level(logging.WARNING):
+            with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+                self._mock_resolve_answer("1.2.3.4", mock_resolve)
+                await self.object.process(event)
+        assert document == expected
+
+    async def test_domain_with_port_and_path(self, caplog):
+        await self.object.setup()
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        }
+        fqdn = "google.de:123/foo"
+        await self._load_rule(rule)
+        document = {"fqdn": fqdn}
+        expected = {"fqdn": fqdn, "resolved_ip": "1.2.3.4"}
+        event = LogEvent(document, original=b"", input_meta=InputMeta())
+        with caplog.at_level(logging.WARNING):
+            with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+                self._mock_resolve_answer("1.2.3.4", mock_resolve)
+                await self.object.process(event)
+        assert document == expected
+
     @staticmethod
     def _mock_resolve_answer(expected_ip, mock_resolve):
         mock_answer = MagicMock()

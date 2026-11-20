@@ -30,6 +30,7 @@ Processor Configuration
 """
 
 import logging
+import re
 import typing
 from datetime import timedelta
 from enum import IntEnum, auto
@@ -49,6 +50,8 @@ from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import get_dotted_field_value, JsonObject
 
 logger = logging.getLogger("DomainResolver")
+
+SCHEME_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://")
 
 
 class FailureType(IntEnum):
@@ -282,9 +285,9 @@ class DomainResolver(Processor):
                 event,
             )
 
+        if not bool(SCHEME_PATTERN.match(domain_or_url_str)):
+            domain_or_url_str = f"//{domain_or_url_str}"
         url = urlsplit(domain_or_url_str)
-        if url.scheme == "" and not url.netloc:
-            url = urlsplit(f"//{domain_or_url_str}")
         domain = url.hostname
         if not domain:
             self.metrics.invalid_domains.inc(1)
