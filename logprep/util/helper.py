@@ -106,9 +106,8 @@ def _copy_field_value(value: FieldValue) -> FieldValue:
         }
     if type(value) is list:  # pylint: disable=unidiomatic-typecheck
         return [item if type(item) in _SCALAR_TYPES else _copy_field_value(item) for item in value]
-    if type(value) in _SCALAR_TYPES:
-        return value
-    return copy.deepcopy(value)
+    assert isinstance(value, _SCALAR_TYPES)
+    return value
 
 
 class DottedTemplate(Template):
