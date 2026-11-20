@@ -1,13 +1,13 @@
 .. -*- mode: rst -*-
 
-Defaults, can be overridden:
+Defaults values which can be overriden:
 
 {% for key, value in data.DEFAULT_CONFIG.items() %}
 - :code:`{{ key }}`: :code:`{{ value }}`
 {% endfor %}
 {% if data.REJECTED_CONFIG is defined %}
 
-Rejected, configure as described instead:
+Disallowed and rejected keys:
 
 {% for key, reason in data.REJECTED_CONFIG.items() %}
 - :code:`{{ key }}`: {{ reason }}
