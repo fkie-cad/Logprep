@@ -966,17 +966,6 @@ class HttpGetter(RefreshableGetter):
             )
         ) from error
 
-    # TODO(async-followup): close_sessions should be used and test covered
-    @classmethod
-    async def close_sessions(cls) -> None:
-        """Close shared HTTP sessions"""
-        if not cls._credentials_registry:
-            return
-
-        await asyncio.gather(
-            *(credentials.close_sessions() for credentials in cls._credentials_registry.values())
-        )
-
 
 async def refresh_getters():
     """Refreshes all refreshable getters"""

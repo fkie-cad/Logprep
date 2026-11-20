@@ -538,14 +538,6 @@ class Credentials:
                 ) from error
             raise
 
-    async def close_sessions(self) -> None:
-        """Close the shared HTTP sessions"""
-        if self._session is not None:
-            self.close_session()
-
-        if self._aiohttp_session is not None:
-            await self.close_aiohttp_session()
-
 
 @define(kw_only=True)
 class CredentialsFileSchema:

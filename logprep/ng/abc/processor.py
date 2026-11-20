@@ -126,7 +126,6 @@ class Processor(Component):
             extra data
 
         """
-        # TODO make processors async
         self._event = event
         logger.debug("%s processing event %s", self.description, event)
         if self._bypass_rule_tree:

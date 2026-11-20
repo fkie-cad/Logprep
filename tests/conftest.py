@@ -69,7 +69,6 @@ async def clear_getter_cache():
     yield
 
     NGRefreshableGetter.reset()
-    await NGHttpGetter.close_sessions()
     NGHttpGetter._credentials_registry.clear()  # pylint: disable=protected-access
 
 
