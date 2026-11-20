@@ -35,7 +35,16 @@ def get_config():
             {
                 "selective_extractor": {
                     "type": "selective_extractor",
-                    "rules": ["tests/testdata/acceptance/selective_extractor/rules"],
+                    "rules": [
+                        {
+                            "filter": "event",
+                            "selective_extractor": {
+                                "source_fields": ["event.action", "user.agent"],
+                                "outputs": [{"jsonl": "test_topic"}],
+                            },
+                            "description": "Route extracted fields to the jsonl custom output",
+                        }
+                    ],
                 }
             },
             {
