@@ -74,7 +74,7 @@ class GeoipEnricher(FieldManager):
     async def _load_city_db(self) -> database.Reader:
         db_path = Path(self.config.db_path)
 
-        if not Path(self.config.db_path).exists():
+        if not db_path.exists():
             logger.debug("start geoip database download...")
 
             logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"

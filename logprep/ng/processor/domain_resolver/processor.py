@@ -26,7 +26,7 @@ Processor Configuration
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.ng.processor.domain_resolver.rule
+.. automodule:: logprep.processor.domain_resolver.rule
 """
 
 import datetime
