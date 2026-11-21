@@ -19,8 +19,11 @@
 
 ### Features
 * selective_extractor: add field_template as `event_template` to configuration
+* decoder: add `windows_event_log` source format to parse Windows Event Log XML into flat fields; XML fields can be customized with the `xmlfields` rule option, which is merged into the default fields
 
 ### Improvements
+* decoder: reject DOCTYPE declarations, entity expansion and excessively nested XML in the `windows_event_log` source format
+* decoder: split the decoders module into one module per source format
 * util: add field mapping template utility
 * cache: hold a payload in addition to timestamps
 * domain_resolver: adapt `domain_resolver` to changes of `cache`
