@@ -40,9 +40,9 @@ from logprep.processor.decoder.decoders.windows_event_log import (
     MAX_XML_DEPTH,
     SECTIONS,
     XML_FIELDS,
-    XmlFieldDefinition,
+    XmlFieldOverrides,
     parse_windows_event_log,
-    validate_fields,
+    validate_xmlfields,
 )
 
 __all__ = [
@@ -64,7 +64,7 @@ __all__ = [
     "REGEX_SYSLOG_RFC5424",
     "SECTIONS",
     "XML_FIELDS",
-    "XmlFieldDefinition",
+    "XmlFieldOverrides",
     "decolorize",
     "get_decoder",
     "parse_base64",
@@ -79,5 +79,5 @@ __all__ = [
     "parse_syslog_rfc5424",
     "parse_with_regexes",
     "parse_windows_event_log",
-    "validate_fields",
+    "validate_xmlfields",
 ]

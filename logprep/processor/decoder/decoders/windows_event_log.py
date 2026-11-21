@@ -2,15 +2,16 @@
 
 The XML is parsed into a flat dict: by default the values of the ``System``
 section are mapped to field names known from `im_msvistalog`_, while event
-data fields are added at the same level. Any field of the XML can be selected
-and renamed with the ``fields`` rule option. To prevent entity expansion
-attacks, DOCTYPE declarations and deeply nested documents are rejected.
+data fields are added at the same level. The ``xmlfields`` rule option can
+override default fields and add fields from any XML section. To prevent entity
+expansion attacks, DOCTYPE declarations and deeply nested documents are
+rejected.
 
 .. _im_msvistalog: https://docs.nxlog.co/agent/current/im/msvistalog.html
 """
 
 import xml.etree.ElementTree as ET
-from typing import Callable, Literal, NamedTuple, NotRequired, TypedDict
+from typing import Callable, Literal, NamedTuple, TypedDict
 
 from logprep.processor.decoder.decoders.common import DecoderError
 from logprep.util.helper import FieldValue
@@ -21,17 +22,22 @@ MAX_XML_DEPTH = 10
 XmlFieldConvert = Literal["str", "int", "timestamp"]
 
 SECTIONS = ("Event", "System", "EventData", "UserData", "ProcessingErrorData")
+RESERVED_TARGET = "EventXML"
+XMLFIELD_KEYS = ("element", "section", "name", "attribute", "convert")
 
 
-class XmlFieldDefinition(TypedDict):
-    """Configuration of a single field to extract from the Windows Event Log XML."""
+class XmlFieldOverrides(TypedDict, total=False):
+    """Optional overrides for a default field or definition of a new field.
+
+    The target field name is the key in the ``xmlfields`` dict and therefore not
+    part of the definition itself.
+    """
 
     element: str
-    target: str
-    section: NotRequired[str]
-    name: NotRequired[str]
-    attribute: NotRequired[str]
-    convert: NotRequired[XmlFieldConvert]
+    section: str
+    name: str
+    attribute: str
+    convert: XmlFieldConvert
 
 
 def _to_iso8601(value: str) -> str:
@@ -57,30 +63,51 @@ _CONVERTERS: dict[XmlFieldConvert, Callable[[str], FieldValue]] = {
 }
 
 
-def validate_fields(fields: object) -> None:
-    """Validate a ``fields`` rule option, raising ``ValueError`` if invalid."""
-    if fields is None:
+def _validate_target(target: object) -> str:
+    """Validate and return a target field name."""
+    if not isinstance(target, str) or not target:
+        raise ValueError("target field names must be non-empty strings")
+    if target == RESERVED_TARGET:
+        raise ValueError(f"'{RESERVED_TARGET}' is reserved and cannot be configured")
+    return target
+
+
+def _validate_definition_types(target: str, definition: object) -> dict:
+    """Validate the keys and value types of a single field definition."""
+    if not isinstance(definition, dict):
+        raise ValueError(f"definition of '{target}' must be a dict")
+    unknown_keys = set(definition) - set(XMLFIELD_KEYS)
+    if unknown_keys:
+        unknown = sorted(str(key) for key in unknown_keys)
+        raise ValueError(f"unknown keys in definition of '{target}': {unknown}")
+    for key in XMLFIELD_KEYS:
+        if key in definition and not isinstance(definition[key], str):
+            raise ValueError(f"'{key}' of '{target}' must be a string")
+    return definition
+
+
+def _validate_definition_values(target: str, definition: dict) -> None:
+    """Validate the values of a single field definition."""
+    if "element" in definition and not definition["element"]:
+        raise ValueError(f"'element' of '{target}' must be a non-empty string")
+    if "section" in definition and definition["section"] not in SECTIONS:
+        raise ValueError(f"unknown section for '{target}': {definition['section']}")
+    if "convert" in definition and definition["convert"] not in _CONVERTERS:
+        raise ValueError(f"unknown convert type for '{target}': {definition['convert']}")
+    if target not in DEFAULT_XML_FIELD_TARGETS and not definition.get("element"):
+        raise ValueError(f"'element' is required for new target '{target}'")
+
+
+def validate_xmlfields(xmlfields: object) -> None:
+    """Validate an ``xmlfields`` rule option, raising ``ValueError`` if invalid."""
+    if xmlfields is None:
         return
-    if not isinstance(fields, list):
-        raise ValueError("must be a list of field definitions")
-    for definition in fields:
-        if not isinstance(definition, dict):
-            raise ValueError("each field definition must be a dict")
-        allowed_keys = {"element", "target", "section", "name", "attribute", "convert"}
-        unknown_keys = set(definition) - allowed_keys
-        if unknown_keys:
-            raise ValueError(f"unknown keys in field definition: {sorted(unknown_keys)}")
-        for key in ("element", "target"):
-            if not isinstance(definition.get(key), str) or not definition[key]:
-                raise ValueError(f"'{key}' must be a non-empty string")
-        for key in ("section", "name", "attribute", "convert"):
-            if key in definition and not isinstance(definition[key], str):
-                raise ValueError(f"'{key}' must be a string")
-        section = definition.get("section", "System")
-        if section not in SECTIONS:
-            raise ValueError(f"unknown section: {section}")
-        if definition.get("convert", "str") not in _CONVERTERS:
-            raise ValueError(f"unknown convert type: {definition.get('convert')}")
+    if not isinstance(xmlfields, dict):
+        raise ValueError("must be a dict that maps target field names to definitions")
+    for target, definition in xmlfields.items():
+        validated_target = _validate_target(target)
+        validated_definition = _validate_definition_types(validated_target, definition)
+        _validate_definition_values(validated_target, validated_definition)
 
 
 def _local_name(tag: object) -> str:
@@ -132,21 +159,38 @@ XML_FIELDS = (
 )
 
 DATA_SECTIONS = ("EventData", "UserData", "ProcessingErrorData")
+DEFAULT_XML_FIELDS = {spec.target: spec for spec in XML_FIELDS}
+DEFAULT_XML_FIELD_TARGETS = frozenset(DEFAULT_XML_FIELDS)
 
 
-def _build_fields(definitions: list[XmlFieldDefinition]) -> tuple[_XmlField, ...]:
-    """Turns rule configuration into field descriptions."""
-    return tuple(
-        _XmlField(
-            element=definition["element"],
-            target=definition["target"],
-            section=definition.get("section", "System"),
-            name=definition.get("name"),
-            attribute=definition.get("attribute"),
-            convert=_CONVERTERS[definition.get("convert", "str")],
+def _build_fields(xmlfields: dict[str, XmlFieldOverrides]) -> tuple[_XmlField, ...]:
+    """Turns configured overrides into field descriptions.
+
+    Targets that match a default field inherit its unspecified properties. New
+    targets use ``System`` and ``str`` as defaults.
+    """
+    fields = []
+    for target, definition in xmlfields.items():
+        default = DEFAULT_XML_FIELDS.get(target)
+        fields.append(
+            _XmlField(
+                element=(
+                    definition["element"]
+                    if default is None
+                    else definition.get("element", default.element)
+                ),
+                target=target,
+                section=definition.get("section", default.section if default else "System"),
+                name=definition.get("name", default.name if default else None),
+                attribute=definition.get("attribute", default.attribute if default else None),
+                convert=(
+                    _CONVERTERS[definition["convert"]]
+                    if "convert" in definition
+                    else (default.convert if default else str)
+                ),
+            )
         )
-        for definition in definitions
-    )
+    return tuple(fields)
 
 
 class _SafeTreeBuilder(ET.TreeBuilder):
@@ -220,21 +264,24 @@ def _parse_data_section(section: ET.Element, fields: dict[str, FieldValue]) -> N
 
 
 def parse_windows_event_log(
-    log_line: str, fields: list[XmlFieldDefinition] | None = None
+    log_line: str, xmlfields: dict[str, XmlFieldOverrides] | None = None
 ) -> dict[str, FieldValue]:
     """Parses Windows Event Log XML into a flat dict of fields.
 
-    By default, values of the ``System`` section are named after the fields
-    produced by `im_msvistalog <https://docs.nxlog.co/agent/current/im/msvistalog.html>`_
-    (for example ``EventID``, ``RecordNumber`` and ``Hostname``), and data
-    fields from ``EventData``, ``UserData`` and ``ProcessingErrorData`` are
-    added at the same level, keyed by their ``Name`` attribute. Unnamed data
-    fields use their tag name instead.
+    The default extraction maps values of the ``System`` section to field
+    names produced by `im_msvistalog
+    <https://docs.nxlog.co/agent/current/im/msvistalog.html>`_ (for example
+    ``EventID``, ``RecordNumber`` and ``Hostname``). Data fields from
+    ``EventData``, ``UserData`` and ``ProcessingErrorData`` are flattened into
+    the same dict, keyed by their ``Name`` attribute; unnamed data fields use
+    their tag name instead.
 
-    The optional ``fields`` configuration replaces this default extraction.
-    Each definition requires an ``element`` and a ``target`` field name and
-    accepts these optional keys:
+    The optional ``xmlfields`` configuration is merged into this result. It is
+    a dict that maps a target field name to a definition with these optional
+    keys:
 
+    - ``element``: element name to read; required for new targets, optional
+      when overriding a default field
     - ``section``: section to search; one of ``Event`` (the root), ``System``
       (default), ``EventData``, ``UserData`` or ``ProcessingErrorData``. Use
       ``section: Event`` and ``element: Event`` to read root attributes.
@@ -243,7 +290,11 @@ def parse_windows_event_log(
     - ``attribute``: read an attribute instead of the element's text
     - ``convert``: ``str`` (default), ``int`` or ``timestamp``
 
-    The unmodified XML is always kept in ``EventXML``.
+    If the target matches a default field, only the given keys are changed and
+    all other properties are inherited. New targets are added. Configured
+    fields are extracted after the defaults and therefore override default or
+    data fields with the same name. The unmodified XML is always kept in
+    ``EventXML``, which is reserved and cannot be configured.
 
     Timestamps are normalized to ISO 8601 in UTC when converted with
     :code:`timestamp`; values that cannot be converted are kept as strings.
@@ -255,7 +306,7 @@ def parse_windows_event_log(
     - Fields that are not part of the XML (for example rendered messages or
       event categories) cannot be derived and are not added.
     """
-    validate_fields(fields)
+    validate_xmlfields(xmlfields)
     parser = ET.XMLParser(target=_SafeTreeBuilder())
     try:
         parser.feed(log_line)
@@ -269,13 +320,12 @@ def parse_windows_event_log(
         raise DecoderError("windows event log has no System section")
 
     parsed: dict[str, FieldValue] = {}
-    if fields is None:
-        _parse_fields(root, parsed, XML_FIELDS)
-        for section_name in DATA_SECTIONS:
-            section = _find_child(root, section_name)
-            if section is not None:
-                _parse_data_section(section, parsed)
-    else:
-        _parse_fields(root, parsed, _build_fields(fields))
+    _parse_fields(root, parsed, XML_FIELDS)
+    for section_name in DATA_SECTIONS:
+        section = _find_child(root, section_name)
+        if section is not None:
+            _parse_data_section(section, parsed)
+    if xmlfields:
+        _parse_fields(root, parsed, _build_fields(xmlfields))
     parsed["EventXML"] = log_line
     return parsed
