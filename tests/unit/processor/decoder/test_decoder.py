@@ -1200,13 +1200,65 @@ failure_test_cases = [
                 "source_format": "windows_event_log",
             },
         },
+        {"message": """
+<!DOCTYPE Event [
+    <!ENTITY a "BOOM">
+    <!ENTITY b "&a;&a;">
+    <!ENTITY c "&b;&b;">
+    <!ENTITY d "&c;&c;">
+    <!ENTITY e "&d;&d;">
+    <!ENTITY f "&e;&e;">
+    <!ENTITY g "&f;&f;">
+    <!ENTITY h "&g;&g;">
+    <!ENTITY i "&h;&h;">
+    <!ENTITY j "&i;&i;">
+    <!ENTITY k "&j;&j;">
+    <!ENTITY l "&k;&k;">
+    <!ENTITY m "&l;&l;">
+    <!ENTITY n "&m;&m;">
+    <!ENTITY o "&n;&n;">
+    <!ENTITY p "&o;&o;">
+    <!ENTITY q "&p;&p;">
+    <!ENTITY r "&q;&q;">
+    <!ENTITY s "&r;&r;">
+    <!ENTITY t "&s;&s;">
+    <!ENTITY u "&t;&t;">
+    <!ENTITY v "&u;&u;">
+    <!ENTITY w "&v;&v;">
+    <!ENTITY x "&w;&w;">
+]>
+<Event><System><EventID>&x;</EventID></System></Event>
+"""},
         {
-            "message": "<!DOCTYPE Event [<!ENTITY x &#34;expanded&#34;>]>"
-            "<Event><System><EventID>&x;</EventID></System></Event>"
-        },
-        {
-            "message": "<!DOCTYPE Event [<!ENTITY x &#34;expanded&#34;>]>"
-            "<Event><System><EventID>&x;</EventID></System></Event>",
+            "message": """
+<!DOCTYPE Event [
+    <!ENTITY a "BOOM">
+    <!ENTITY b "&a;&a;">
+    <!ENTITY c "&b;&b;">
+    <!ENTITY d "&c;&c;">
+    <!ENTITY e "&d;&d;">
+    <!ENTITY f "&e;&e;">
+    <!ENTITY g "&f;&f;">
+    <!ENTITY h "&g;&g;">
+    <!ENTITY i "&h;&h;">
+    <!ENTITY j "&i;&i;">
+    <!ENTITY k "&j;&j;">
+    <!ENTITY l "&k;&k;">
+    <!ENTITY m "&l;&l;">
+    <!ENTITY n "&m;&m;">
+    <!ENTITY o "&n;&n;">
+    <!ENTITY p "&o;&o;">
+    <!ENTITY q "&p;&p;">
+    <!ENTITY r "&q;&q;">
+    <!ENTITY s "&r;&r;">
+    <!ENTITY t "&s;&s;">
+    <!ENTITY u "&t;&t;">
+    <!ENTITY v "&u;&u;">
+    <!ENTITY w "&v;&v;">
+    <!ENTITY x "&w;&w;">
+]>
+<Event><System><EventID>&x;</EventID></System></Event>
+""",
             "tags": ["_decoder_failure"],
         },
         id="windows event log with doctype declaration",
