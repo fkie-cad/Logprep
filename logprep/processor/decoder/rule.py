@@ -39,34 +39,36 @@ A speaking example:
         }
     }
 
-Any field of a :code:`windows_event_log` can be selected and renamed with the
-:code:`fields` option:
+For :code:`windows_event_log`, the :code:`xmlfields` option can change default
+fields and add fields from any XML section. It is a dict whose keys are the
+target field names:
 
 ..  code-block:: yaml
     :linenos:
-    :caption: Custom fields
+    :caption: Custom XML fields
 
     filter: message
     decoder:
         source_format: windows_event_log
         mapping:
             message: parsed
-        fields:
-            - element: Provider
-              section: System
-              attribute: Name
-              target: SourceName
-            - element: TimeCreated
-              section: System
-              attribute: SystemTime
-              target: EventTime
-              convert: timestamp
-            - element: Data
-              section: EventData
-              name: TargetUserName
-              target: TargetUserName
-            - element: Computer
-              target: Hostname
+        xmlfields:
+            EventID:
+                convert: str
+            SourceName:
+                attribute: Guid
+            User:
+                element: Data
+                section: EventData
+                name: TargetUserName
+
+The default fields are always extracted and the entries of :code:`xmlfields`
+are merged into them. A target that matches a default field inherits all
+properties that are not given (for example :code:`EventID` keeps its element
+and only changes :code:`convert`). New targets like :code:`User` need an
+:code:`element` and are added to the result. Because overrides are applied
+last, they replace default or event data fields with the same name. The
+unmodified XML is always written to :code:`EventXML`.
 
 
 .. autoclass:: logprep.processor.decoder.rule.DecoderRule.Config
@@ -90,22 +92,22 @@ from attrs import define, field, validators
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.decoder.decoders import (
     DECODERS,
-    XmlFieldDefinition,
-    validate_fields,
+    XmlFieldOverrides,
+    validate_xmlfields,
 )
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 IMPLEMENTED_DECODERS = tuple(DECODERS.keys())
 
 
-def _validate_fields(instance, attribute, value) -> None:
-    """Validate the optional ``fields`` configuration."""
+def _validate_xmlfields(instance, attribute, value) -> None:
+    """Validate the optional ``xmlfields`` configuration."""
     if value is not None and instance.source_format != "windows_event_log":
         raise InvalidRuleDefinitionError(
             f"{attribute.name} is only supported with source_format windows_event_log"
         )
     try:
-        validate_fields(value)
+        validate_xmlfields(value)
     except ValueError as error:
         raise InvalidRuleDefinitionError(f"{attribute.name}: {error}") from error
 
@@ -147,19 +149,23 @@ class DecoderRule(FieldManagerRule):
         :code:`decolorize`,
         :code:`windows_event_log`
         """
-        fields: list[XmlFieldDefinition] | None = field(
-            validator=_validate_fields,
+        xmlfields: dict[str, XmlFieldOverrides] | None = field(
+            validator=_validate_xmlfields,
             default=None,
         )
-        """Optional configuration for the :code:`windows_event_log` format. Replaces the default
-           extraction with a list of definitions for any field in the XML. Each definition needs
-           an :code:`element` and a :code:`target` and may set :code:`section` (:code:`Event`,
-           :code:`System` by default, :code:`EventData`, :code:`UserData` or
+        """Optional configuration for the :code:`windows_event_log` format. It is a dict that maps
+           a target field name to an override definition and is merged into the default extraction.
+           If the target is one of the default field names, only the given properties are changed;
+           all other properties are inherited. New targets are added and require an :code:`element`.
+           Overrides are applied after the defaults and therefore win over default and data fields
+           with the same name. Each definition may set :code:`element`, :code:`section`
+           (:code:`Event`, :code:`System`, :code:`EventData`, :code:`UserData` or
            :code:`ProcessingErrorData`), :code:`name` to match an element's ``Name`` attribute,
            :code:`attribute` and :code:`convert` (:code:`str`, :code:`int` or :code:`timestamp`).
-           Defaults to the `im_msvistalog
-           <https://docs.nxlog.co/agent/current/im/msvistalog.html>`_-style field names plus
-           flattened data fields if omitted.
+           The raw XML is always kept in :code:`EventXML`, which cannot be configured. Without this
+           option the `im_msvistalog
+           <https://docs.nxlog.co/agent/current/im/msvistalog.html>`_-style fields plus flattened
+           data fields are emitted.
         """
 
     @property
@@ -173,6 +179,6 @@ class DecoderRule(FieldManagerRule):
         return self.config.source_format
 
     @property
-    def fields(self) -> list[XmlFieldDefinition] | None:
+    def xmlfields(self) -> dict[str, XmlFieldOverrides] | None:
         """Getter for the optional windows_event_log field mapping"""
-        return self.config.fields
+        return self.config.xmlfields

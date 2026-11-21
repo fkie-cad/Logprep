@@ -18,7 +18,7 @@ from logprep.processor.decoder.decoders.syslog_rfc3164_local import (
 )
 from logprep.processor.decoder.decoders.syslog_rfc5424 import parse_syslog_rfc5424
 from logprep.processor.decoder.decoders.windows_event_log import (
-    XmlFieldDefinition,
+    XmlFieldOverrides,
     parse_windows_event_log,
 )
 from logprep.util.helper import FieldValue
@@ -40,15 +40,13 @@ DECODERS: dict[str, DecoderFunc] = {
 
 
 def get_decoder(
-    source_format: str, fields: list[XmlFieldDefinition] | None = None
+    source_format: str, xmlfields: dict[str, XmlFieldOverrides] | None = None
 ) -> Callable[[str], FieldValue]:
     """Provide the decoder for ``source_format`` with optional rule options applied."""
     decoder = DECODERS[source_format]
-    if fields is None:
+    if xmlfields is None:
         return decoder
     if source_format != "windows_event_log":
-        raise ValueError(
-            "field configuration is only supported with source_format windows_event_log"
-        )
+        raise ValueError("xmlfields is only supported with source_format windows_event_log")
     decoder_with_options = cast(Callable[..., FieldValue], decoder)
-    return partial(decoder_with_options, fields=fields)
+    return partial(decoder_with_options, xmlfields=xmlfields)

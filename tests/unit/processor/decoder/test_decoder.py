@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
 # pylint: disable=too-many-lines
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 import json
 
 import pytest
@@ -85,17 +86,13 @@ ADDITIONAL_DATA_WINDOWS_EVENT_XML = (
     '<UserData><Data Name="Param1">a</Data></UserData>'
     "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
 )
-CUSTOM_FIELDS = [
-    {"element": "Provider", "attribute": "Name", "target": "SourceName"},
-    {
-        "element": "TimeCreated",
-        "attribute": "SystemTime",
-        "target": "EventTime",
-        "convert": "timestamp",
-    },
-    {"element": "Data", "section": "EventData", "name": "TargetUserName", "target": "User"},
-    {"element": "Computer", "target": "Hostname"},
-]
+CUSTOM_XMLFIELDS = {
+    "EventID": {"convert": "str"},
+    "SourceName": {"attribute": "Guid"},
+    "Channel": {"element": "Computer"},
+    "TargetUserName": {"element": "Data", "section": "EventData", "name": "TargetDomainName"},
+    "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
+}
 ROOT_ATTRIBUTE_WINDOWS_EVENT_XML = (
     '<Event Version="1"><System><Channel>Application</Channel></System></Event>'
 )
@@ -466,15 +463,15 @@ example_test_cases = [
             "decoder": {
                 "mapping": {"message": "parsed"},
                 "source_format": "windows_event_log",
-                "fields": [],
+                "xmlfields": {},
             },
         },
         {"message": WINDOWS_EVENT_XML},
         {
             "message": WINDOWS_EVENT_XML,
-            "parsed": {"EventXML": WINDOWS_EVENT_XML},
+            "parsed": WINDOWS_EVENT_FIELDS,
         },
-        id="empty fields only keep the raw xml",
+        id="empty xmlfields keeps the default extraction",
     ),
     pytest.param(
         {
@@ -482,21 +479,22 @@ example_test_cases = [
             "decoder": {
                 "mapping": {"message": "parsed"},
                 "source_format": "windows_event_log",
-                "fields": CUSTOM_FIELDS,
+                "xmlfields": CUSTOM_XMLFIELDS,
             },
         },
         {"message": WINDOWS_EVENT_XML},
         {
             "message": WINDOWS_EVENT_XML,
             "parsed": {
-                "SourceName": "Microsoft-Windows-Security-Auditing",
-                "EventTime": "2026-11-12T13:13:57.811161+00:00",
+                **WINDOWS_EVENT_FIELDS,
+                "SourceName": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "EventID": "4768",
+                "Channel": "Z00WHVDC01.bbb.local",
+                "TargetUserName": "ITB",
                 "User": "z000sms03s",
-                "Hostname": "Z00WHVDC01.bbb.local",
-                "EventXML": WINDOWS_EVENT_XML,
             },
         },
-        id="custom fields select system, event data and root children",
+        id="xmlfields are merged into the default extraction",
     ),
     pytest.param(
         {
@@ -504,25 +502,25 @@ example_test_cases = [
             "decoder": {
                 "mapping": {"message": "parsed"},
                 "source_format": "windows_event_log",
-                "fields": [
-                    {
+                "xmlfields": {
+                    "EventVersion": {
                         "element": "Event",
                         "section": "Event",
                         "attribute": "Version",
-                        "target": "EventVersion",
                     }
-                ],
+                },
             },
         },
         {"message": ROOT_ATTRIBUTE_WINDOWS_EVENT_XML},
         {
             "message": ROOT_ATTRIBUTE_WINDOWS_EVENT_XML,
             "parsed": {
+                "Channel": "Application",
                 "EventVersion": "1",
                 "EventXML": ROOT_ATTRIBUTE_WINDOWS_EVENT_XML,
             },
         },
-        id="custom fields read root attributes",
+        id="xmlfields read root attributes next to defaults",
     ),
     pytest.param(
         {
@@ -530,26 +528,26 @@ example_test_cases = [
             "decoder": {
                 "mapping": {"message": "parsed"},
                 "source_format": "windows_event_log",
-                "fields": [
-                    {
+                "xmlfields": {
+                    "Code": {
                         "element": "Data",
                         "section": "UserData",
                         "name": "Code",
-                        "target": "Code",
                         "convert": "int",
                     }
-                ],
+                },
             },
         },
         {"message": NESTED_USER_DATA_WINDOWS_EVENT_XML},
         {
             "message": NESTED_USER_DATA_WINDOWS_EVENT_XML,
             "parsed": {
+                "EventID": 1,
                 "Code": 7,
                 "EventXML": NESTED_USER_DATA_WINDOWS_EVENT_XML,
             },
         },
-        id="custom fields find nested data elements by name",
+        id="xmlfields find nested data elements by name next to defaults",
     ),
     pytest.param(
         {
@@ -557,23 +555,22 @@ example_test_cases = [
             "decoder": {
                 "mapping": {"message": "parsed"},
                 "source_format": "windows_event_log",
-                "fields": [
-                    {"element": "Data", "section": "UserData", "target": "Data"},
-                    {
+                "xmlfields": {
+                    "Data": {"element": "Data", "section": "UserData"},
+                    "Unknown": {
                         "element": "Data",
                         "section": "EventData",
                         "name": "Unknown",
-                        "target": "Unknown",
                     },
-                ],
+                },
             },
         },
         {"message": WINDOWS_EVENT_XML},
         {
             "message": WINDOWS_EVENT_XML,
-            "parsed": {"EventXML": WINDOWS_EVENT_XML},
+            "parsed": WINDOWS_EVENT_FIELDS,
         },
-        id="custom fields skip missing sections and unmatched names",
+        id="xmlfields skip missing sections and unmatched names",
     ),
     pytest.param(
         {
@@ -581,31 +578,26 @@ example_test_cases = [
             "decoder": {
                 "mapping": {"message": "parsed"},
                 "source_format": "windows_event_log",
-                "fields": [
-                    {
-                        "element": "Correlation",
-                        "attribute": "ActivityID",
-                        "target": "ActivityID",
-                    },
-                    {
+                "xmlfields": {
+                    "ActivityID": {"element": "Correlation", "attribute": "ActivityID"},
+                    "EventTime": {
                         "element": "TimeCreated",
                         "attribute": "SystemTime",
-                        "target": "EventTime",
                         "convert": "timestamp",
                     },
-                    {"element": "EventID", "target": "EventID"},
-                ],
+                    "EventID": {"convert": "int"},
+                },
             },
         },
         {"message": EMPTY_ATTRIBUTE_WINDOWS_EVENT_XML},
         {
             "message": EMPTY_ATTRIBUTE_WINDOWS_EVENT_XML,
             "parsed": {
-                "EventID": "42",
+                "EventID": 42,
                 "EventXML": EMPTY_ATTRIBUTE_WINDOWS_EVENT_XML,
             },
         },
-        id="custom fields with missing attributes are skipped",
+        id="xmlfields with missing attributes are skipped",
     ),
 ]
 
@@ -1269,43 +1261,56 @@ failure_test_cases = [
     ),
 ]
 
-invalid_field_cases = [
-    pytest.param({"element": "EventID", "target": "ID"}, "must be a list", id="not a list"),
-    pytest.param(["EventID"], "must be a dict", id="definition not a dict"),
+invalid_xmlfield_cases = [
+    pytest.param(["EventID"], "must be a dict", id="not a dict"),
     pytest.param(
-        [{"element": "EventID", "target": "ID", "type": "int"}],
+        {"ID": "EventID"}, "definition of 'ID' must be a dict", id="definition not a dict"
+    ),
+    pytest.param({"": {"element": "EventID"}}, "non-empty strings", id="empty target"),
+    pytest.param({1: {"element": "EventID"}}, "non-empty strings", id="target not a string"),
+    pytest.param({"EventXML": {"element": "EventID"}}, "reserved", id="reserved target"),
+    pytest.param(
+        {"EventID": {"type": "int"}},
         "unknown keys",
         id="unknown key",
     ),
-    pytest.param([{"target": "ID"}], "'element' must be a non-empty string", id="no element"),
-    pytest.param([{"element": "EventID"}], "'target' must be a non-empty string", id="no target"),
     pytest.param(
-        [{"element": "EventID", "target": "ID", "section": 1}],
-        "'section' must be a string",
+        {"Custom": {"convert": "int"}},
+        "'element' is required for new target 'Custom'",
+        id="no element for new target",
+    ),
+    pytest.param(
+        {"Custom": {"element": ""}},
+        "'element' of 'Custom' must be a non-empty string",
+        id="empty element",
+    ),
+    pytest.param(
+        {"EventID": {"section": 1}},
+        "'section' of 'EventID' must be a string",
         id="section not a string",
     ),
     pytest.param(
-        [{"element": "EventID", "target": "ID", "section": "RenderingInfo"}],
+        {"EventID": {"section": "RenderingInfo"}},
         "unknown section",
         id="unknown section",
     ),
     pytest.param(
-        [{"element": "Data", "target": "ID", "name": 1}],
-        "'name' must be a string",
+        {"Custom": {"element": "Data", "name": 1}},
+        "'name' of 'Custom' must be a string",
         id="name not a string",
     ),
     pytest.param(
-        [{"element": "EventID", "target": "ID", "attribute": 1}],
-        "'attribute' must be a string",
+        {"EventID": {"attribute": 1}},
+        "'attribute' of 'EventID' must be a string",
         id="attribute not a string",
     ),
     pytest.param(
-        [{"element": "EventID", "target": "ID", "convert": 1}],
-        "'convert' must be a string",
+        {"EventID": {"convert": 1}},
+        "'convert' of 'EventID' must be a string",
         id="convert not a string",
     ),
     pytest.param(
-        [{"element": "EventID", "target": "ID", "convert": "float"}],
+        {"EventID": {"convert": "float"}},
         "unknown convert type",
         id="unknown convert type",
     ),
@@ -1380,27 +1385,27 @@ class TestDecoder(BaseProcessorTestCase):
             f"k{char}": "4",
         } == parse_logfmt(f"{char}=1 k{char}k=2 {char}k=3 k{char}=4")
 
-    @pytest.mark.parametrize(["fields", "expected_message"], invalid_field_cases)
-    def test_invalid_fields(self, fields, expected_message):
+    @pytest.mark.parametrize(["xmlfields", "expected_message"], invalid_xmlfield_cases)
+    def test_invalid_xmlfields(self, xmlfields, expected_message):
         rule = {
             "filter": "message",
             "decoder": {
                 "mapping": {"message": "parsed"},
                 "source_format": "windows_event_log",
-                "fields": fields,
+                "xmlfields": xmlfields,
             },
         }
         with pytest.raises(InvalidRuleDefinitionError, match=expected_message):
             self.object.rule_class.create_from_dict(rule)
 
-    def test_fields_only_allowed_with_windows_event_log(self):
+    def test_xmlfields_only_allowed_with_windows_event_log(self):
         rule = {
             "filter": "message",
-            "decoder": {"source_format": "json", "fields": CUSTOM_FIELDS},
+            "decoder": {"source_format": "json", "xmlfields": CUSTOM_XMLFIELDS},
         }
         with pytest.raises(InvalidRuleDefinitionError, match="only supported"):
             self.object.rule_class.create_from_dict(rule)
 
-    def test_get_decoder_rejects_field_config_for_other_formats(self):
+    def test_get_decoder_rejects_xmlfields_for_other_formats(self):
         with pytest.raises(ValueError, match="only supported"):
-            get_decoder("json", fields=CUSTOM_FIELDS)
+            get_decoder("json", xmlfields=CUSTOM_XMLFIELDS)
