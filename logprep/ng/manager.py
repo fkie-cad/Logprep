@@ -64,11 +64,8 @@ class PipelineManager:
             logger.warning("No error output configured")
 
         try:
-            for component in self._components:
-                await component.setup()
-
+            await asyncio.gather(*(component.setup() for component in self._components))
             workflow_config = WorkflowConfig.from_dict_or_default(self.configuration.workflow)
-
             self._orchestrator = create_orchestrator(
                 input_connector,
                 processors,
