@@ -239,7 +239,7 @@ class TestRequester(BaseProcessorTestCase[Requester]):
         assert event.data == expected
 
     async def test_has_async_io(self):
-        assert await self.object.has_asyncio() is True
+        assert self.object.has_asyncio() is True
 
     async def test_setup_and_shutdown_http_session(self):
         instance = self._create_test_instance(deepcopy(self.CONFIG))

@@ -373,6 +373,6 @@ class DomainResolver(Processor):
                 logger.info("Failed to resolve %s: %s", domain, error)
             return FailedResult(failure_type, error)
 
-    async def has_asyncio(self) -> bool:
+    def has_asyncio(self) -> bool:
         """Return whether the processor performs asynchronous I/O operations."""
         return True

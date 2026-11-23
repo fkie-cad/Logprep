@@ -28,9 +28,9 @@ import typing
 from collections.abc import Sequence
 
 from logprep.ng.abc.processor import Processor
+from logprep.ng.processor.generic_adder.rule import GenericAdderRule
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
-from logprep.ng.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.helper import FieldValue, add_fields_to
 
 
@@ -66,6 +66,6 @@ class GenericAdder(Processor):
         except Exception as error:
             raise ProcessingWarning(str(error), rule, event) from error
 
-    async def has_asyncio(self) -> bool:
+    def has_asyncio(self) -> bool:
         """Return whether the processor performs asynchronous I/O operations."""
         return True

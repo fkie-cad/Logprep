@@ -440,4 +440,4 @@ class TestDomainResolver(BaseProcessorTestCase):
 
     # TODO(async-followup): make return True in processor and adapt test
     async def test_has_async_io(self):
-        assert await self.object.has_asyncio() is True
+        assert self.object.has_asyncio() is True

@@ -347,7 +347,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
             await self.object.load_rules(rules_targets=rule_definitions)
 
     async def test_has_async_io(self):
-        assert await self.object.has_asyncio() is False
+        assert self.object.has_asyncio() is False
 
     async def test_setup_is_idempotent_for_rule_tree(self):
         await self.object.setup()

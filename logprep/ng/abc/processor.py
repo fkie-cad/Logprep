@@ -8,6 +8,7 @@ from typing import Any, ClassVar
 
 from attrs import define, field, validators
 
+from logprep.abc.exceptions import ProcessorNotInitializedError
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
@@ -88,12 +89,11 @@ class Processor(Component):
 
     @property
     def rules(self) -> Sequence[Rule]:
-        """Returns all rules
+        """Returns all rules"""
 
-        Returns
-        -------
-        rules: Sequence[Rule]
-        """
+        if hasattr(self, "self._rule_tree") or self._rule_tree is None:
+            raise ProcessorNotInitializedError(f"Processor '{self.name}' is not initialized.")
+
         return self._rule_tree.rules
 
     @property
@@ -106,7 +106,7 @@ class Processor(Component):
             "name": self.name,
         }
 
-    async def has_asyncio(self) -> bool:
+    def has_asyncio(self) -> bool:
         """Return whether the processor performs asynchronous I/O operations."""
 
         return False
@@ -296,5 +296,6 @@ class Processor(Component):
 
     def _shut_down(self):
         super()._shut_down()
+
         for rule in self.rules:
             rule.shut_down()

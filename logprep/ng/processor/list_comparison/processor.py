@@ -176,6 +176,6 @@ class ListComparison(Processor):
         """Return whether any prepared event value matches the given compare set."""
         return not prepared_values.isdisjoint(set_values)
 
-    async def has_asyncio(self) -> bool:
+    def has_asyncio(self) -> bool:
         """Return whether the processor performs asynchronous I/O operations."""
         return True

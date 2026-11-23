@@ -305,6 +305,6 @@ class Requester(FieldManager):
                 )
         return kwargs
 
-    async def has_asyncio(self) -> bool:
+    def has_asyncio(self) -> bool:
         """Return whether the processor performs asynchronous I/O operations."""
         return True

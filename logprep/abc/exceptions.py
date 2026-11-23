@@ -14,6 +14,10 @@ class LogprepException(Exception):
         return NotImplemented
 
 
+class ProcessorNotInitializedError(LogprepException):
+    """Raised when a processor is accessed before initialization."""
+
+
 class LogprepExceptionGroup(ExceptionGroup):
     """Custom ExceptionGroup for Logprep exceptions to override the default
     string representation."""

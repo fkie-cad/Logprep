@@ -163,5 +163,6 @@ class GeoipEnricher(FieldManager):
 
     async def shut_down(self) -> None:
         """Close the GeoIP database and shut down the processor"""
-        self._city_db.close()
+        if hasattr(self, "_city_db"):
+            self._city_db.close()
         await super().shut_down()
