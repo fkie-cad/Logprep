@@ -36,7 +36,7 @@ from enum import IntEnum, auto
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
-from dns.asyncresolver import NXDOMAIN, NoAnswer, Resolver, get_default_resolver
+from dns.asyncresolver import NXDOMAIN, NoAnswer, Resolver
 from dns.exception import DNSException, FormError
 from dns.exception import SyntaxError as DNSSyntaxError
 from dns.exception import Timeout, TooBig
@@ -251,7 +251,7 @@ class DomainResolver(Processor):
 
     async def setup(self):
         await super().setup()
-        self._dns_resolver = get_default_resolver()
+        self._dns_resolver = Resolver()
         # attributes are meant to be overwritten after init
         self._dns_resolver.timeout = self.config.timeout
         self._dns_resolver.lifetime = self.config.lifetime
