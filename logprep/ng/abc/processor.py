@@ -280,13 +280,13 @@ class Processor(Component):
             self._bypass_rule_tree = True
             logger.debug("Bypassing rule tree for processor %s", self.name)
 
-        rule_tree_config = RuleTree.Config()
-
         if self.config.tree_config:
             rule_tree_config_data = await GetterFactory.from_string(
                 self.config.tree_config
             ).get_dict()
             rule_tree_config = RuleTree.Config(**rule_tree_config_data)
+        else:
+            rule_tree_config = RuleTree.Config()
 
         self._rule_tree = RuleTree(config=rule_tree_config)
         await self.load_rules(rules_targets=self.config.rules)
