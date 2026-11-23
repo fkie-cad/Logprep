@@ -117,15 +117,15 @@ class GroupMember:
     acknowledged when the test calls `acknowledge`.
     """
 
-    def __init__(self, connector: ConfluentKafkaInput, monkeypatch: pytest.MonkeyPatch) -> None:
+    def __init__(self, connector: ConfluentKafkaInput) -> None:
         self.connector = connector
         self.dispatches: list[MessageMeta] = []
         """Every dispatch in order, including repeated ones"""
         self._unacknowledged_events: dict[MessageMeta, LogEvent | ErrorEvent] = {}
         self._revoke_callback = AsyncMock(wraps=connector._revoke_callback)
         self._lost_callback = AsyncMock(wraps=connector._lost_callback)
-        monkeypatch.setattr(connector, "_revoke_callback", self._revoke_callback)
-        monkeypatch.setattr(connector, "_lost_callback", self._lost_callback)
+        setattr(connector, "_revoke_callback", self._revoke_callback)
+        setattr(connector, "_lost_callback", self._lost_callback)
 
     @property
     def assigned(self) -> set[int]:
@@ -246,7 +246,7 @@ class ConsumerGroup:
                 kafka_config=settings,
                 revoke_drain_timeout=revoke_drain_timeout,
             )
-        member = GroupMember(ConfluentKafkaInput(name=name, configuration=config), self.monkeypatch)
+        member = GroupMember(ConfluentKafkaInput(name=name, configuration=config))
         await member.connector.setup()
         self.members.append(member)
         self.dispatch_tasks.append(asyncio.create_task(member.dispatch(self.stopping)))
