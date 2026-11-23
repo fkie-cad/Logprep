@@ -1,9 +1,4 @@
 ## Upcoming Changes
-### Breaking
-* domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
-* domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
-* domain_resolver: remove `debug_cache`
-* domain_resolver: `source_fields` must be a list with exactly one element
 
 ### Features
 * ng: add asynchronous getter and refresh scheduling support
@@ -16,6 +11,52 @@
 * ng: make domain resolver DNS lookups non-blocking
 * ng: initialize pseudonymizer public keys asynchronously during setup
 * ng: classify processors with asynchronous I/O during event processing correctly
+
+### Improvements
+* requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
+* tests: adapt NG processor and HTTP getter coverage to asynchronous setup, shutdown, rule loading, and refresh lifecycles
+* tests: add coverage for asynchronous scheduler execution and pending jobs
+* tests: wait for finite acceptance pipelines to finish before collecting their output
+* tests: ensure NG processor test helpers always shut down instances after errors
+* tests: disable unused WebSocket support in the asynchronous HTTP server
+* ng: offload credentials file validation from the asynchronous event loop
+* ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
+* ng: improve asynchronous refreshable getter scheduling and isolate refresh callback failures
+* ng: share concurrent getter cache updates and initialization across callers
+* ng: make shared getter state cleanup safe during cancellation and concurrent updates
+* ng: clean up and deduplicate GenericResolver refresh callbacks and their orphaned getter targets
+
+### Bugfix
+* generic_resolver: avoid sharing mutable additions between rule configurations
+* ng: fix asynchronous refreshable getter scheduling in the runner
+* ng: prevent refresh callback failures from stopping subsequent refresh processing
+* ng: avoid duplicate getter refreshes while executing refresh callbacks
+* ng: share concurrent getter cache updates to avoid duplicate requests for the same target
+* ng: make processor rule tree setup atomic and safe for repeated initialization
+* ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
+* ng: clean up and deduplicate GenericResolver refresh callbacks
+* ng: remove orphaned refreshable getter targets after callback cleanup
+* ng: make domain resolver DNS lookups non-blocking
+* ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
+* ng: harden Requester setup against repeated initialization
+* ng: shut down temporary processors after configuration validation to avoid leaking resources
+* ng: roll back initialized pipeline components when pipeline manager setup fails
+* ng: close GeoIP database readers during processor shutdown
+* ng: clean up shared getter update tasks after canceled waiters complete
+* ng: prevent running getter updates from recreating removed shared target state
+
+## 22.0.0
+### Breaking
+* domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
+* domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
+* domain_resolver: remove `debug_cache`
+* domain_resolver: `source_fields` must be a list with exactly one element
+* selective_extractor: `ignore_missing_fields` now writes a warning on missing fields instead of creating incomplete extra events
+* selective_extractor: selecting list items via numeric source paths is no longer supported
+* ng: kafka input uses the consumer group protocol `consumer` (KIP-848), requires Kafka >=4.0 and `confluent-kafka` >=2.13
+
+### Features
+* selective_extractor: add field_template as `event_template` to configuration
 
 ### Improvements
 * util: add field mapping template utility
@@ -35,42 +76,21 @@
 * examples/k8s: use the official opensearch helm charts and images (3.9.0) instead of the archived bitnami chart
 * ci: remove deprecated GHA dependency for doc preview links; do it ourselves
 * ci: fail on warnings during doc build
+* ci: update dependabot to use `-` instead of `/`
 * docs: fix several formatting issues
-* requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
-* tests: adapt NG processor and HTTP getter coverage to asynchronous setup, shutdown, rule loading, and refresh lifecycles
-* tests: add coverage for asynchronous scheduler execution and pending jobs
-* tests: wait for finite acceptance pipelines to finish before collecting their output
-* tests: ensure NG processor test helpers always shut down instances after errors
-* tests: disable unused WebSocket support in the asynchronous HTTP server
-* ng: offload credentials file validation from the asynchronous event loop
-* ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
-* ng: improve asynchronous refreshable getter scheduling and isolate refresh callback failures
-* ng: share concurrent getter cache updates and initialization across callers
-* ng: make shared getter state cleanup safe during cancellation and concurrent updates
-* ng: clean up and deduplicate GenericResolver refresh callbacks and their orphaned getter targets
+* util: rename field mapping template to field template
+* ng: kafka input avoids duplicates on rebalance by gracefully draining revoked partitions (`revoke_drain_timeout`)
+* ng: kafka input rejects `kafka_config` entries it enforces or KIP-848 no longer supports
+* ng: kafka input adds the metrics `revoke_drain_seconds`, `revoke_drain_timeouts` and `orphaned_acknowledgements`
+* ng: kafka input health check no longer calls the consumer once subscribed
+* ng: kafka input stops on fatal errors, warns on recoverable ones and sends broken messages to the error output
+* ci: run the kafka input rebalance tests against a real kafka broker
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
 * pipeline_manager: gc.freeze before forking pipelines in order to avoid error-prone destruction of health check clients in pipeline processes
 * examples/compose: keycloak imports the logprep realm and the fda/ucl backends use its client secrets, the realm was never imported before
 * examples/k8s: remove config keys from `values-dev.yaml` that logprep rejects and create the `errors` topic
-* generic_resolver: avoid sharing mutable additions between rule configurations
-* ng: fix asynchronous refreshable getter scheduling in the runner
-* ng: prevent refresh callback failures from stopping subsequent refresh processing
-* ng: avoid duplicate getter refreshes while executing refresh callbacks
-* ng: share concurrent getter cache updates to avoid duplicate requests for the same target
-* ng: make processor rule tree setup atomic and safe for repeated initialization
-* ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
-* ng: clean up and deduplicate GenericResolver refresh callbacks
-* ng: remove orphaned refreshable getter targets after callback cleanup
-* ng: make domain resolver DNS lookups non-blocking
-* ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
-* ng: harden Requester setup against repeated initialization
-* ng: shut down temporary processors after configuration validation to avoid leaking resources
-* ng: roll back initialized pipeline components when pipeline manager setup fails
-* ng: close GeoIP database readers during processor shutdown
-* ng: clean up shared getter update tasks after canceled waiters complete
-* ng: prevent running getter updates from recreating removed shared target state
 
 ## 21.2.0
 ### Breaking
