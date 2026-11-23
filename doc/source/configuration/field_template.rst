@@ -232,10 +232,17 @@ Names are case-sensitive.
      - Concatenates any number of strings without a separator. All arguments
        must be strings. No arguments produces an empty string.
      - ``concat("web", "-", "01")`` → ``"web-01"``
+   * - ``default(value, fallback=null)``
+     - Returns ``value``, or ``fallback`` if the ``value`` field is missing.
+       A present null value is returned unchanged. The fallback must exist.
+       See :ref:`field_template_errors`.
+     - If ``user`` is missing, ``source_event.user | default("unknown")`` →
+       ``"unknown"``
 
 For ``str``, ``int``, ``float``, ``lower``, ``upper``, and ``strip``, the single
 argument can also be named ``x``. ``join`` accepts ``values`` and ``separator``
-as keyword names; ``concat`` accepts positional arguments only.
+as keyword names, and ``default`` accepts ``value`` and ``fallback``.
+``concat`` accepts positional arguments only.
 
 Convert explicitly when needed: ``'${source_event.id | str | lower}'``.
 
@@ -250,6 +257,24 @@ configuration errors.
 During evaluation, a missing field causes an error, including when the lookup
 appears in a function argument, a list element, or an output key.
 A present null value is not a missing field.
+
+The only exception is a lookup passed directly as the ``value`` of ``default``,
+either as an argument or through a pipe. If that field is missing, ``default``
+returns its fallback, which is null when omitted:
+
+.. code-block:: yaml
+
+    user: '${source_event.user.name | default("unknown")}'
+    host: '${source_event.host.name | default(default(source_event.hostname, "unknown"))}'
+
+The fallback itself must exist. Nest ``default`` calls to try several fields.
+``default`` does not cover lookups inside other function calls. In
+``'${source_event.id | str | default("none")}'``, a missing ``id`` already fails
+in ``str``. Apply ``default`` first instead:
+``'${source_event.id | default("none") | str}'``.
+Values that are fixed when the rule is loaded are resolved at that point, so
+``default`` then gives the same result for every event.
+
 Functions also require suitable input values.
 For example, ``int("unknown")`` and ``lower(42)`` fail.
 Such failures are not handled as missing fields.
@@ -257,8 +282,7 @@ Function failures during constant folding are configuration errors and reject
 the rule. During evaluation, they raise ``FieldTemplateFunctionError`` with
 the original exception preserved as the cause.
 See `Output keys and nested paths`_ for constraints on output keys and paths.
-Functions do not provide automatic fallback values for missing fields or failed
-conversions.
+Functions do not provide fallback values for failed conversions.
 If evaluation fails, no partial mapping is returned.
 
 Each processor documents how it handles these errors.

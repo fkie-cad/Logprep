@@ -435,6 +435,51 @@ def _assert_value_types(actual: FieldValue, expected: FieldValue) -> None:
             {"event.test": 1, "event": {"test": 2}},
             id="runtime_escaped_dot_is_distinct_from_path",
         ),
+        pytest.param(
+            {"value": '${source_event.event.id | default("its missing")}'},
+            {"value": 123},
+            id="default_present_field",
+        ),
+        pytest.param(
+            {"value": '${source_event.missing | default("its missing")}'},
+            {"value": "its missing"},
+            id="default_missing_field",
+        ),
+        pytest.param(
+            {"value": "${source_event.missing | default}"},
+            {"value": None},
+            id="default_without_replacement",
+        ),
+        pytest.param(
+            {"value": '${source_event.optional | default("its missing")}'},
+            {"value": None},
+            id="default_keeps_explicit_none",
+        ),
+        pytest.param(
+            {"value": '${default(value=source_event.missing, fallback="its missing")}'},
+            {"value": "its missing"},
+            id="default_keyword_value",
+        ),
+        pytest.param(
+            {"value": '${source_event.missing | default(default(source_event.other, "last"))}'},
+            {"value": "last"},
+            id="default_nested_replacement",
+        ),
+        pytest.param(
+            {"value": "${rule.id | default(0)}"},
+            {"value": 42},
+            id="default_static_present_field",
+        ),
+        pytest.param(
+            {"value": '${rule.missing | default("its missing")}'},
+            {"value": "its missing"},
+            id="default_static_missing_field",
+        ),
+        pytest.param(
+            {'${source_event.missing | default("key")}': 1},
+            {"key": 1},
+            id="default_in_key",
+        ),
     ],
 )
 def test_compile_and_evaluate(mapping: JsonObject, expected: JsonObject) -> None:
@@ -1070,6 +1115,41 @@ def test_compile_and_evaluate(mapping: JsonObject, expected: JsonObject) -> None
             "in runtime context root 'source_event'",
             id="runtime_index_out_of_bounds",
         ),
+        pytest.param(
+            {"value": '${unknown.id | default("its missing")}'},
+            RUNTIME_ROOTS,
+            FieldTemplateConfigError,
+            "Unknown context root",
+            id="default_unknown_root",
+        ),
+        pytest.param(
+            {"value": "${source_event.missing | default(rule.missing)}"},
+            RUNTIME_ROOTS,
+            FieldTemplateConfigError,
+            "Cannot resolve lookup path",
+            id="default_missing_static_replacement",
+        ),
+        pytest.param(
+            {"value": '${target_event.id | default("its missing")}'},
+            RUNTIME_ROOTS,
+            FieldTemplateEvaluationError,
+            "Missing runtime context root 'target_event'",
+            id="default_missing_runtime_root",
+        ),
+        pytest.param(
+            {"value": "${source_event.event.id | default(source_event.missing)}"},
+            RUNTIME_ROOTS,
+            FieldTemplateEvaluationError,
+            "in runtime context root 'source_event'",
+            id="default_missing_runtime_replacement",
+        ),
+        pytest.param(
+            {"value": '${source_event.missing | str | default("its missing")}'},
+            RUNTIME_ROOTS,
+            FieldTemplateEvaluationError,
+            "in runtime context root 'source_event'",
+            id="default_does_not_cover_nested_call",
+        ),
     ],
 )
 def test_compile_and_evaluate_errors(
@@ -1415,9 +1495,9 @@ def test_function_errors(
                 {"value": expression}, static_context=STATIC_CONTEXT, runtime_roots=RUNTIME_ROOTS
             )
         elif phase == "validation":
-            field_template._validate_operation(Call(Function(str), (), {}), {}, (), {})
+            field_template._validate_operation(Call(Function(lambda: ""), (), {}), {}, (), {})
         elif phase == "compilation":
-            Call(Function(str), (), {}).compile({}, {})
+            Call(Function(lambda: ""), (), {}).compile({}, {})
         elif phase == "runtime":
             template = FieldTemplate.compile(
                 {"value": expression}, static_context=STATIC_CONTEXT, runtime_roots=RUNTIME_ROOTS

@@ -11,6 +11,7 @@
 * ng: offload GeoIP database initialization to a separate thread
 * ng: share concurrent getter cache updates across callers
 * ng: refresh independent getter targets concurrently
+* util: add default function and missing-value handling to field template
 
 ### Bugfix
 * ng: prevent refresh callback failures from interrupting subsequent callbacks
@@ -18,7 +19,7 @@
 * ng: prevent duplicate rules during repeated processor setup
 * ng: remove orphaned getter targets after callback cleanup
 * ng: fix resource cleanup during failed setup and configuration validation
-*
+
 ## 22.0.0
 ### Breaking
 * domain_resolver: add `lifetime` parameter in addition to `timeout` parameter

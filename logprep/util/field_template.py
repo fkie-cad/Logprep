@@ -1,6 +1,5 @@
 """Compile field templates against static context and evaluate runtime context."""
 
-import inspect
 import re
 from collections.abc import Collection, Mapping
 from copy import deepcopy
@@ -16,6 +15,7 @@ from logprep.util.helper import (
     MISSING,
     FieldValue,
     JsonObject,
+    Missing,
     get_dotted_field_list,
     get_field_value,
 )
@@ -83,8 +83,8 @@ class FieldTemplateFunctionError(FieldTemplateEvaluationError):
 class FieldTemplateLookupError(FieldTemplateEvaluationError):
     """A required runtime context root or field path could not be resolved.
 
-    Missing fields and context roots raise this error. An explicit ``None``
-    is a valid value.
+    Missing fields and context roots raise this error, as does a function that
+    returns ``MISSING`` during evaluation. An explicit ``None`` is a valid value.
     """
 
 
@@ -404,45 +404,81 @@ class ParsedCall:
     def compile(
         self, static_context: dict[str, JsonObject], functions: Mapping[str, Function]
     ) -> "Call | Constant":
-        """Prepare a validated call and apply its argument borrowing policy.
+        """Prepare a validated call and apply its argument borrowing and missing policies.
 
-        Fold calls only when the function opts in and all arguments are constant.
-        Function failures during folding raise ``FieldTemplateConfigError``
-        with the original exception as the cause.
+        Direct lookup arguments of parameters in ``allowed_missing_params`` become
+        ``OptionalLookup`` operations. Fold calls only when the function opts in and
+        all arguments are constant or statically missing. Function failures during
+        folding raise ``FieldTemplateConfigError`` with the original exception as
+        the cause. A folded result of ``MISSING`` also raises ``FieldTemplateConfigError``.
         """
         function = functions[self.name]
 
         def compile_argument(
             argument: "Operation",
-        ) -> "Operation":
-            compiled = argument.compile(static_context, functions)
+            accepts_missing: bool,
+        ) -> "Argument":
+            can_copy_result: bool = not function.can_borrow_input
+
+            arg = (
+                OptionalLookup(
+                    context=argument.context,
+                    path=argument.path,
+                    copy_result=can_copy_result,
+                )
+                if isinstance(argument, Lookup) and accepts_missing
+                else argument
+            )
+
+            compiled = arg.compile(static_context, functions)
 
             if isinstance(compiled, Lookup):
                 return Lookup(
                     context=compiled.context,
                     path=compiled.path,
-                    copy_result=not function.can_borrow_input,
+                    copy_result=can_copy_result,
                 )
 
             return compiled
 
-        compiled_args = [compile_argument(arg) for arg in self.args]
-        compiled_kwargs = {key: compile_argument(arg) for key, arg in self.kwargs.items()}
+        compiled_args = [
+            compile_argument(arg, function.accepts_missing(i)) for i, arg in enumerate(self.args)
+        ]
+        compiled_kwargs = {
+            key: compile_argument(arg, function.accepts_missing(key))
+            for key, arg in self.kwargs.items()
+        }
 
         if function.foldable:
-            arg_values = [arg.value for arg in compiled_args if isinstance(arg, Constant)]
+
+            def constant_value(arg: "Constant | MissingValue") -> FieldValue | Missing:
+                return MISSING if isinstance(arg, MissingValue) else arg.value
+
+            arg_values = [
+                constant_value(arg)
+                for arg in compiled_args
+                if isinstance(arg, (Constant, MissingValue))
+            ]
             kwarg_values = {
-                key: arg.value for key, arg in compiled_kwargs.items() if isinstance(arg, Constant)
+                key: constant_value(arg)
+                for key, arg in compiled_kwargs.items()
+                if isinstance(arg, (Constant, MissingValue))
             }
 
             if len(arg_values) == len(compiled_args) and len(kwarg_values) == len(compiled_kwargs):
                 try:
-                    return Constant(function.fn(*arg_values, **kwarg_values))
+                    result = function.fn(*arg_values, **kwarg_values)
                 except Exception as error:
                     raise FieldTemplateConfigError(
                         f"Function {self.name!r} failed during constant folding: "
                         f"{type(error).__name__}: {error}"
                     ) from error
+
+                if result is MISSING:
+                    raise FieldTemplateConfigError(
+                        f"Function {self.name!r} cannot produce a value: its arguments are always missing"
+                    )
+                return Constant(result)
 
         return Call(function, tuple(compiled_args), compiled_kwargs, name=self.name)
 
@@ -455,12 +491,66 @@ class ParsedCall:
 
 
 @define(frozen=True)
+class MissingValue:
+    """A call argument whose static lookup path does not exist."""
+
+    def evaluate(self, _runtime_context) -> Missing:
+        """Return ``MISSING``."""
+        return MISSING
+
+
+@define(frozen=True)
+class OptionalLookup:
+    """A call argument lookup that yields ``MISSING`` for an absent field.
+
+    It is only created for parameters listed in ``allowed_missing_params`` and is
+    never part of an ``Operation`` outside a call. A missing context root still
+    raises.
+    """
+
+    context: str
+    path: tuple[str, ...]
+    copy_result: bool = True
+
+    def compile(
+        self, static_context: dict[str, JsonObject], _functions: Mapping[str, Function]
+    ) -> "Constant | MissingValue | OptionalLookup":
+        """Resolve static lookups to a copied ``Constant`` or ``MissingValue``.
+
+        Runtime lookups are retained.
+        """
+        if self.context in static_context:
+            value = get_field_value(static_context[self.context], self.path)
+            if value is MISSING:
+                return MissingValue()
+            return Constant(deepcopy(value) if isinstance(value, (dict, list)) else value)
+        return self
+
+    def evaluate(self, runtime_context: dict[str, JsonObject]) -> FieldValue | Missing:
+        """Resolve a runtime field, returning ``MISSING`` if the path does not exist.
+
+        Mutable values are copied unless borrowing is enabled. A missing root raises
+        ``FieldTemplateLookupError``.
+        """
+        if self.context not in runtime_context:
+            raise FieldTemplateLookupError(
+                f"Missing runtime context root {self.context!r} for lookup path {self.path!r}"
+            )
+
+        value = get_field_value(runtime_context[self.context], self.path)
+        if self.copy_result and isinstance(value, (dict, list)):
+            return deepcopy(value)
+
+        return value
+
+
+@define(frozen=True)
 class Call:
     """A resolved function and compiled arguments ready for evaluation."""
 
     function: Function
-    args: tuple["Operation", ...]
-    kwargs: Mapping[str, "Operation"]
+    args: ReadonlyList["Argument"]
+    kwargs: Mapping[str, "Argument"]
     name: str = "<anonymous>"
 
     def compile(
@@ -474,21 +564,29 @@ class Call:
     def evaluate(self, runtime_context: dict[str, JsonObject]) -> FieldValue:
         """Evaluate positional arguments, then kwargs, and invoke the function.
 
-        A missing argument raises ``FieldTemplateLookupError`` without
-        invoking the function.
-        Exceptions raised by the function are wrapped in
-        ``FieldTemplateFunctionError`` with the original exception as the cause.
+        A missing argument raises ``FieldTemplateLookupError`` without invoking
+        the function, unless its parameter is listed in ``allowed_missing_params``.
+        Such parameters receive ``MISSING`` instead. Exceptions raised by the
+        function are wrapped in ``FieldTemplateFunctionError`` with the original
+        exception as the cause. A result of ``MISSING`` raises
+        ``FieldTemplateLookupError``.
         """
         args = [arg.evaluate(runtime_context) for arg in self.args]
         kwargs = {key: arg.evaluate(runtime_context) for key, arg in self.kwargs.items()}
 
         try:
-            return self.function.fn(*args, **kwargs)
+            result = self.function.fn(*args, **kwargs)
         except Exception as error:
             raise FieldTemplateFunctionError(
                 f"Function {self.name!r} failed during evaluation: "
                 f"{type(error).__name__}: {error}"
             ) from error
+
+        if result is MISSING:
+            raise FieldTemplateLookupError(
+                f"Function {self.name!r} returned a missing value during evaluation"
+            )
+        return result
 
 
 @define(frozen=True)
@@ -778,6 +876,7 @@ class ListOperation:
 
 
 Operation: TypeAlias = Constant | Lookup | ParsedCall | Call | MappingOperation | ListOperation
+Argument: TypeAlias = Operation | OptionalLookup | MissingValue
 
 
 @define(frozen=True)
@@ -1127,18 +1226,24 @@ def _validate_operation(
     static_context: dict[str, dict[str, FieldValue]],
     runtime_roots: Collection[str],
     functions: Mapping[str, Function],
+    accepts_missing: bool = False,
 ) -> None:
     """Check lookup paths, function names and signatures in a parsed tree.
 
     Runtime field existence is deferred until evaluation. Static values containing
-    ``None`` are valid; only missing paths fail validation. Callers must check that
+    ``None`` are valid. Only missing paths fail validation. Callers must check that
     static and runtime roots do not overlap before calling this function.
+
+    ``accepts_missing`` marks a direct argument of a parameter listed in
+    ``allowed_missing_params``. A static lookup in that position may be missing.
+    Its root must still be declared.
 
     Raises
     ------
     FieldTemplateConfigError
-        If a lookup references an undeclared root or an unresolved static path,
-        or a call references an unknown function or cannot bind its arguments.
+        If a lookup references an undeclared root or an unresolved static path
+        outside a missing-accepting argument, or a call references an unknown
+        function or cannot bind its arguments.
     RuntimeError
         If an already compiled ``Call`` reaches this phase.
 
@@ -1158,6 +1263,10 @@ def _validate_operation(
             if op.context in runtime_roots:
                 return
 
+            if accepts_missing:
+                # Log here that missing allowed for static lookup, this should not be done because it will always eveluate to the same thing
+                return
+
             if get_field_value(static_context[op.context], op.path) is MISSING:
                 raise FieldTemplateConfigError(
                     f"Cannot resolve lookup path {op.path!r} "
@@ -1171,20 +1280,23 @@ def _validate_operation(
 
             function = functions[op.name]
 
-            # Cache this on function, not relevant for now
-            sig = inspect.signature(function.fn)
             try:
-                sig.bind(*op.args, **op.kwargs)
+                function.signature.bind(*op.args, **op.kwargs)
             except TypeError as error:
                 raise FieldTemplateConfigError(
                     f"Invalid arguments for function {op.name!r}: {error}"
                 ) from error
 
-            for arg in op.args:
-                _validate_operation(arg, static_context, runtime_roots, functions)
+            arguments: list[tuple[int | str, Operation]] = [*enumerate(op.args), *op.kwargs.items()]
+            for arg, value in arguments:
+                accepts_missing = function.accepts_missing(arg)
+                if accepts_missing and not isinstance(value, Lookup):
+                    # Log this here somehow
+                    pass
 
-            for kwarg in op.kwargs.values():
-                _validate_operation(kwarg, static_context, runtime_roots, functions)
+                _validate_operation(
+                    value, static_context, runtime_roots, functions, accepts_missing=accepts_missing
+                )
             return
 
         case MappingOperation():
@@ -1215,11 +1327,16 @@ class FieldTemplate:
     ``str(add(source_event.id, 20))`` when both functions are registered.
 
     Default functions are ``str``, ``int``, ``float``, ``lower``, ``upper``,
-    ``strip``, ``join``, and ``concat``. ``str`` accepts any field value, including
-    mappings, lists, and ``None``. ``int`` and ``float`` use Python conversion
-    rules. ``lower``, ``upper``, and ``strip`` operate on strings. ``join`` takes
-    a sequence of strings followed by a separator,
-    and ``concat`` takes any number of string arguments. Conversion and type
+    ``strip``, ``join``, ``concat``, and ``default``. ``str`` accepts any field value,
+    including mappings, lists, and ``None``. ``int`` and ``float`` use Python
+    conversion rules. ``lower``, ``upper``, and ``strip`` operate on strings. ``join``
+    takes a sequence of strings followed by a separator,
+    and ``concat`` takes any number of string arguments. ``default(value, fallback)``
+    returns ``fallback``, ``None`` unless given, when the lookup passed directly as
+    ``value`` is missing. A present ``None`` is kept and ``fallback`` must exist.
+    Lookups nested inside other calls, such as ``${source_event.id | str | default}``,
+    still raise when missing. Defaulting a static lookup is resolved during
+    compilation and gives the same result for every evaluation. Conversion and type
     errors are wrapped in ``FieldTemplateConfigError`` during constant folding
     or ``FieldTemplateFunctionError`` during evaluation, preserving their cause.
 
@@ -1364,7 +1481,9 @@ class FieldTemplate:
         ------
         FieldTemplateLookupError
             If a runtime root or field is missing, including in mapping keys,
-            list elements, and function arguments. No partial result is returned.
+            list elements, and function arguments, or if a function returns
+            ``MISSING``. Fields passed directly to a parameter listed in
+            ``allowed_missing_params`` may be missing. No partial result is returned.
         FieldTemplateEvaluationError
             If a key resolves to a non-string value, a runtime multi-segment path
             contains a numeric name, or resolved paths collide or overlap.
