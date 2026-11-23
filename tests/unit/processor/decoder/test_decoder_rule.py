@@ -5,8 +5,15 @@ from contextlib import nullcontext as does_not_raise
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.decoder.decoders.windows_event_log import XmlFieldOverrides
-from logprep.processor.decoder.rule import DecoderRule, parse_xmlfields
+from logprep.processor.decoder.decoders.windows_event_log import (
+    DEFAULT_XML_FIELDS,
+    XmlFieldSpec,
+)
+from logprep.processor.decoder.rule import (
+    DecoderRule,
+    XmlFieldOverrides,
+    parse_xmlfields,
+)
 
 
 class TestDecoderRule:
@@ -130,7 +137,7 @@ class TestDecoderRule:
         rule2 = DecoderRule.create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase
 
-    def test_create_from_dict_normalizes_xmlfields_to_attrs_dataclasses(self):
+    def test_create_from_dict_resolves_xmlfields_to_field_specs(self):
         raw_xmlfields = {
             "EventID": {"convert": "int"},
             "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
@@ -146,10 +153,16 @@ class TestDecoderRule:
         )
 
         assert rule.xmlfields == {
-            "EventID": XmlFieldOverrides(convert="int"),
-            "User": XmlFieldOverrides(element="Data", section="EventData", name="TargetUserName"),
+            "EventID": XmlFieldSpec(
+                element="EventID",
+                target="EventID",
+                convert=DEFAULT_XML_FIELDS["EventID"].convert,
+            ),
+            "User": XmlFieldSpec(
+                element="Data", target="User", section="EventData", name="TargetUserName"
+            ),
         }
-        assert all(isinstance(value, XmlFieldOverrides) for value in rule.xmlfields.values())
+        assert all(isinstance(value, XmlFieldSpec) for value in rule.xmlfields.values())
 
     def test_create_from_dict_accepts_xmlfield_overrides_instances(self):
         overrides = XmlFieldOverrides(element="EventID", convert="str")
@@ -163,8 +176,10 @@ class TestDecoderRule:
             }
         )
 
-        assert rule.xmlfields == {"EventID": overrides}
-        assert isinstance(rule.xmlfields["EventID"], XmlFieldOverrides)
+        assert rule.xmlfields == {
+            "EventID": XmlFieldSpec(element="EventID", target="EventID", convert=str)
+        }
+        assert isinstance(rule.xmlfields["EventID"], XmlFieldSpec)
 
     @pytest.mark.parametrize(
         ["xmlfields", "expected_message"],
@@ -213,5 +228,11 @@ class TestDecoderRule:
     def test_parse_xmlfields_is_idempotent(self):
         parsed = parse_xmlfields({"EventID": {"convert": "int"}})
 
-        assert parsed == {"EventID": XmlFieldOverrides(convert="int")}
+        assert parsed == {
+            "EventID": XmlFieldSpec(
+                element="EventID",
+                target="EventID",
+                convert=DEFAULT_XML_FIELDS["EventID"].convert,
+            )
+        }
         assert parse_xmlfields(parsed) == parsed

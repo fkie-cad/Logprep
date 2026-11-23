@@ -86,6 +86,7 @@ Examples for decoder:
 """
 
 import typing
+from typing import Callable, Literal
 
 from attrs import define, field, validators
 
@@ -93,16 +94,43 @@ from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.decoder.decoders.registry import DECODERS
 from logprep.processor.decoder.decoders.windows_event_log import (
     DEFAULT_XML_FIELD_TARGETS,
-    XmlFieldConvert,
-    XmlFieldOverrides,
+    DEFAULT_XML_FIELDS,
+    XmlFieldSpec,
+    to_int_or_str,
+    to_iso8601,
 )
 from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.util.helper import FieldValue
 
 IMPLEMENTED_DECODERS = tuple(DECODERS.keys())
+
+XmlFieldConvert = Literal["str", "int", "timestamp"]
+
+
+@define(frozen=True, kw_only=True)
+class XmlFieldOverrides:
+    """Raw override for a default field or definition of a new field.
+
+    The target field name is the key in the ``xmlfields`` dict and therefore not
+    part of the definition itself. ``None`` means that a value is not configured
+    and a default is inherited when the rule is parsed.
+    """
+
+    element: str | None = None
+    section: str | None = None
+    name: str | None = None
+    attribute: str | None = None
+    convert: XmlFieldConvert | None = None
+
 
 XMLFIELD_KEYS = ("element", "section", "name", "attribute", "convert")
 XMLFIELD_SECTIONS = ("Event", "System", "EventData", "UserData", "ProcessingErrorData")
 XMLFIELD_CONVERTS = typing.get_args(XmlFieldConvert)
+XML_FIELD_CONVERTERS: dict[str, Callable[[str], FieldValue]] = {
+    "str": str,
+    "int": to_int_or_str,
+    "timestamp": to_iso8601,
+}
 RESERVED_XMLFIELD_TARGET = "EventXML"
 
 
@@ -159,20 +187,52 @@ def _validate_definition_values(target: str, definition: XmlFieldOverrides) -> N
         )
 
 
-def parse_xmlfields(xmlfields: object) -> dict[str, XmlFieldOverrides] | None:
-    """Validate an ``xmlfields`` rule option and normalize its definitions."""
+def _build_spec(target: str, override: XmlFieldOverrides) -> XmlFieldSpec:
+    """Resolve an override against the default fields into a field spec."""
+    default = DEFAULT_XML_FIELDS.get(target)
+    if override.convert is not None:
+        convert = XML_FIELD_CONVERTERS[override.convert]
+    else:
+        convert = default.convert if default else str
+    return XmlFieldSpec(
+        element=(
+            override.element
+            if override.element is not None
+            else (default.element if default else "")
+        ),
+        target=target,
+        section=(
+            override.section
+            if override.section is not None
+            else (default.section if default else "System")
+        ),
+        name=override.name if override.name is not None else (default.name if default else None),
+        attribute=(
+            override.attribute
+            if override.attribute is not None
+            else (default.attribute if default else None)
+        ),
+        convert=convert,
+    )
+
+
+def parse_xmlfields(xmlfields: object) -> dict[str, XmlFieldSpec] | None:
+    """Validate an ``xmlfields`` rule option and resolve its field specs."""
     if xmlfields is None:
         return None
     if not isinstance(xmlfields, dict):
         raise InvalidRuleDefinitionError(
             "xmlfields: must be a dict that maps target field names to definitions"
         )
-    parsed: dict[str, XmlFieldOverrides] = {}
+    parsed: dict[str, XmlFieldSpec] = {}
     for target, definition in xmlfields.items():
         validated_target = _validate_target(target)
-        parsed_definition = _parse_definition(validated_target, definition)
-        _validate_definition_values(validated_target, parsed_definition)
-        parsed[validated_target] = parsed_definition
+        if isinstance(definition, XmlFieldSpec):
+            parsed[validated_target] = definition
+            continue
+        override = _parse_definition(validated_target, definition)
+        _validate_definition_values(validated_target, override)
+        parsed[validated_target] = _build_spec(validated_target, override)
     return parsed
 
 
@@ -221,7 +281,7 @@ class DecoderRule(FieldManagerRule):
         :code:`decolorize`,
         :code:`windows_event_log`
         """
-        xmlfields: dict[str, XmlFieldOverrides] | None = field(
+        xmlfields: dict[str, XmlFieldSpec] | None = field(
             converter=parse_xmlfields,
             validator=validate_xmlfields,
             default=None,
@@ -252,6 +312,6 @@ class DecoderRule(FieldManagerRule):
         return self.config.source_format
 
     @property
-    def xmlfields(self) -> dict[str, XmlFieldOverrides] | None:
+    def xmlfields(self) -> dict[str, XmlFieldSpec] | None:
         """Getter for the optional windows_event_log field mapping"""
         return self.config.xmlfields

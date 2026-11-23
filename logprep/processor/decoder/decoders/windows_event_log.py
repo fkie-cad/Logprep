@@ -11,7 +11,8 @@ rejected.
 """
 
 import xml.etree.ElementTree as ET
-from typing import Callable, Literal
+from collections.abc import Iterable
+from typing import Callable
 
 from attrs import define
 
@@ -21,26 +22,20 @@ from logprep.util.time import UTC, TimeParser, TimeParserException
 
 MAX_XML_DEPTH = 10
 
-XmlFieldConvert = Literal["str", "int", "timestamp"]
-
 
 @define(frozen=True, kw_only=True)
-class XmlFieldOverrides:
-    """Optional overrides for a default field or definition of a new field.
+class XmlFieldSpec:
+    """Description of a single value to extract from the Windows Event Log XML."""
 
-    The target field name is the key in the ``xmlfields`` dict and therefore not
-    part of the definition itself. ``None`` means that a value is not configured
-    and a default is inherited where possible.
-    """
-
-    element: str | None = None
-    section: str | None = None
+    element: str
+    target: str
+    section: str = "System"
     name: str | None = None
     attribute: str | None = None
-    convert: XmlFieldConvert | None = None
+    convert: Callable[[str], FieldValue] = str
 
 
-def _to_iso8601(value: str) -> str:
+def to_iso8601(value: str) -> str:
     """Normalizes a Windows ``SystemTime`` to an ISO 8601 timestamp in UTC."""
     try:
         return TimeParser.from_string(value).astimezone(UTC).isoformat()
@@ -48,19 +43,12 @@ def _to_iso8601(value: str) -> str:
         return value
 
 
-def _to_int_or_str(value: str) -> FieldValue:
+def to_int_or_str(value: str) -> FieldValue:
     """Converts numeric strings to int while preserving unparsable values."""
     try:
         return int(value)
     except ValueError:
         return value
-
-
-_CONVERTERS: dict[XmlFieldConvert, Callable[[str], FieldValue]] = {
-    "str": str,
-    "int": _to_int_or_str,
-    "timestamp": _to_iso8601,
-}
 
 
 def _local_name(tag: object) -> str:
@@ -82,92 +70,42 @@ def _text(element: ET.Element) -> str:
     return (element.text or "").strip()
 
 
-@define(frozen=True, kw_only=True)
-class _XmlField:
-    """Description of a single value to extract from the Windows Event Log XML."""
-
-    element: str
-    target: str
-    section: str = "System"
-    name: str | None = None
-    attribute: str | None = None
-    convert: Callable[[str], FieldValue] = str
-
-
 XML_FIELDS = (
-    _XmlField(element="Provider", target="SourceName", attribute="Name"),
-    _XmlField(element="Provider", target="ProviderGuid", attribute="Guid"),
-    _XmlField(element="EventID", target="EventID", convert=_to_int_or_str),
-    _XmlField(element="Version", target="Version", convert=_to_int_or_str),
-    _XmlField(element="Level", target="LevelValue", convert=_to_int_or_str),
-    _XmlField(element="Task", target="TaskValue", convert=_to_int_or_str),
-    _XmlField(element="Opcode", target="OpcodeValue", convert=_to_int_or_str),
-    _XmlField(element="Keywords", target="Keywords"),
-    _XmlField(
+    XmlFieldSpec(element="Provider", target="SourceName", attribute="Name"),
+    XmlFieldSpec(element="Provider", target="ProviderGuid", attribute="Guid"),
+    XmlFieldSpec(element="EventID", target="EventID", convert=to_int_or_str),
+    XmlFieldSpec(element="Version", target="Version", convert=to_int_or_str),
+    XmlFieldSpec(element="Level", target="LevelValue", convert=to_int_or_str),
+    XmlFieldSpec(element="Task", target="TaskValue", convert=to_int_or_str),
+    XmlFieldSpec(element="Opcode", target="OpcodeValue", convert=to_int_or_str),
+    XmlFieldSpec(element="Keywords", target="Keywords"),
+    XmlFieldSpec(
         element="TimeCreated",
         target="EventTime",
         attribute="SystemTime",
-        convert=_to_iso8601,
+        convert=to_iso8601,
     ),
-    _XmlField(element="EventRecordID", target="RecordNumber", convert=_to_int_or_str),
-    _XmlField(element="Correlation", target="ActivityID", attribute="ActivityID"),
-    _XmlField(
+    XmlFieldSpec(element="EventRecordID", target="RecordNumber", convert=to_int_or_str),
+    XmlFieldSpec(element="Correlation", target="ActivityID", attribute="ActivityID"),
+    XmlFieldSpec(
         element="Execution",
         target="ExecutionProcessID",
         attribute="ProcessID",
-        convert=_to_int_or_str,
+        convert=to_int_or_str,
     ),
-    _XmlField(
+    XmlFieldSpec(
         element="Execution",
         target="ExecutionThreadID",
         attribute="ThreadID",
-        convert=_to_int_or_str,
+        convert=to_int_or_str,
     ),
-    _XmlField(element="Channel", target="Channel"),
-    _XmlField(element="Computer", target="Hostname"),
+    XmlFieldSpec(element="Channel", target="Channel"),
+    XmlFieldSpec(element="Computer", target="Hostname"),
 )
 
 DATA_SECTIONS = ("EventData", "UserData", "ProcessingErrorData")
 DEFAULT_XML_FIELDS = {spec.target: spec for spec in XML_FIELDS}
 DEFAULT_XML_FIELD_TARGETS = frozenset(DEFAULT_XML_FIELDS)
-
-
-def _build_fields(xmlfields: dict[str, XmlFieldOverrides]) -> tuple[_XmlField, ...]:
-    """Turns configured overrides into field descriptions.
-
-    Targets that match a default field inherit its unspecified properties. New
-    targets use ``System`` and ``str`` as defaults.
-    """
-    fields = []
-    for target, override in xmlfields.items():
-        default = DEFAULT_XML_FIELDS.get(target)
-        if override.convert is not None:
-            convert = _CONVERTERS[override.convert]
-        else:
-            convert = default.convert if default else str
-        fields.append(
-            _XmlField(
-                element=override.element or (default.element if default else ""),
-                target=target,
-                section=(
-                    override.section
-                    if override.section is not None
-                    else (default.section if default else "System")
-                ),
-                name=(
-                    override.name
-                    if override.name is not None
-                    else (default.name if default else None)
-                ),
-                attribute=(
-                    override.attribute
-                    if override.attribute is not None
-                    else (default.attribute if default else None)
-                ),
-                convert=convert,
-            )
-        )
-    return tuple(fields)
 
 
 class _SafeTreeBuilder(ET.TreeBuilder):
@@ -194,7 +132,7 @@ class _SafeTreeBuilder(ET.TreeBuilder):
         return super().end(tag)
 
 
-def _find_field_element(root: ET.Element, spec: _XmlField) -> ET.Element | None:
+def _find_field_element(root: ET.Element, spec: XmlFieldSpec) -> ET.Element | None:
     """Find the first element in the configured section matching the specification."""
     section = root if spec.section == "Event" else _find_child(root, spec.section)
     if section is None:
@@ -213,7 +151,7 @@ def _find_field_element(root: ET.Element, spec: _XmlField) -> ET.Element | None:
     )
 
 
-def _parse_fields(root: ET.Element, fields: JsonObject, specs: tuple[_XmlField, ...]) -> None:
+def _parse_fields(root: ET.Element, fields: JsonObject, specs: Iterable[XmlFieldSpec]) -> None:
     """Adds the values described by ``specs`` to ``fields``."""
     for spec in specs:
         element = _find_field_element(root, spec)
@@ -239,7 +177,7 @@ def _parse_data_section(section: ET.Element, fields: JsonObject) -> None:
 
 
 def parse_windows_event_log(
-    log_line: str, xmlfields: dict[str, XmlFieldOverrides] | None = None
+    log_line: str, xmlfields: dict[str, XmlFieldSpec] | None = None
 ) -> JsonObject:
     """Parses Windows Event Log XML into a flat dict of fields.
 
@@ -251,27 +189,9 @@ def parse_windows_event_log(
     the same dict, keyed by their ``Name`` attribute; unnamed data fields use
     their tag name instead.
 
-    The optional ``xmlfields`` configuration is merged into this result. It is
-    a dict that maps a target field name to a definition with these optional
-    keys:
-
-    - ``element``: element name to read; required for new targets, optional
-      when overriding a default field
-    - ``section``: section to search; one of ``Event`` (the root), ``System``
-      (default), ``EventData``, ``UserData`` or ``ProcessingErrorData``. Use
-      ``section: Event`` and ``element: Event`` to read root attributes.
-    - ``name``: value of the element's ``Name`` attribute, e.g. to select a
-      specific ``Data`` element
-    - ``attribute``: read an attribute instead of the element's text
-    - ``convert``: ``str`` (default), ``int`` or ``timestamp``
-
-    The rule validates these options and normalizes them into
-    ``XmlFieldOverrides`` instances when the rule is created. This function
-    therefore expects already parsed overrides and does not parse rule options.
-
-    If the target matches a default field, only the given keys are changed and
-    all other properties are inherited. New targets are added. Configured
-    fields are extracted after the defaults and therefore override default or
+    The optional ``xmlfields`` mapping contains fully resolved ``XmlFieldSpec``
+    instances that were created by the decoder rule when the rule was loaded.
+    They are applied after the defaults and therefore override default or event
     data fields with the same name. The unmodified XML is always kept in
     ``EventXML``, which is reserved and cannot be configured.
 
@@ -304,6 +224,6 @@ def parse_windows_event_log(
         if section is not None:
             _parse_data_section(section, parsed)
     if xmlfields:
-        _parse_fields(root, parsed, _build_fields(xmlfields))
+        _parse_fields(root, parsed, xmlfields.values())
     parsed["EventXML"] = log_line
     return parsed
