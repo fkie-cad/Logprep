@@ -93,11 +93,20 @@ from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.decoder.decoders.registry import DECODERS
 from logprep.processor.decoder.decoders.windows_event_log import (
     XmlFieldOverrides,
+    parse_xmlfields,
     validate_xmlfields,
 )
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 IMPLEMENTED_DECODERS = tuple(DECODERS.keys())
+
+
+def _parse_xmlfields(value: object) -> dict[str, XmlFieldOverrides] | None:
+    """Normalize the optional ``xmlfields`` configuration to attrs dataclasses."""
+    try:
+        return parse_xmlfields(value)
+    except ValueError as error:
+        raise InvalidRuleDefinitionError(f"xmlfields: {error}") from error
 
 
 def _validate_xmlfields(instance, attribute, value) -> None:
@@ -150,6 +159,7 @@ class DecoderRule(FieldManagerRule):
         :code:`windows_event_log`
         """
         xmlfields: dict[str, XmlFieldOverrides] | None = field(
+            converter=_parse_xmlfields,
             validator=_validate_xmlfields,
             default=None,
         )

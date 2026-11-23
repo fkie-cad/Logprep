@@ -4,6 +4,11 @@ from contextlib import nullcontext as does_not_raise
 
 import pytest
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.decoder.decoders.windows_event_log import (
+    XmlFieldOverrides,
+    parse_xmlfields,
+)
 from logprep.processor.decoder.rule import DecoderRule
 
 
@@ -127,3 +132,89 @@ class TestDecoderRule:
         rule1 = DecoderRule.create_from_dict(rule1)
         rule2 = DecoderRule.create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase
+
+    def test_create_from_dict_normalizes_xmlfields_to_attrs_dataclasses(self):
+        raw_xmlfields = {
+            "EventID": {"convert": "int"},
+            "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
+        }
+        rule = DecoderRule.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {
+                    "source_format": "windows_event_log",
+                    "xmlfields": raw_xmlfields,
+                },
+            }
+        )
+
+        assert rule.xmlfields == {
+            "EventID": XmlFieldOverrides(convert="int"),
+            "User": XmlFieldOverrides(element="Data", section="EventData", name="TargetUserName"),
+        }
+        assert all(isinstance(value, XmlFieldOverrides) for value in rule.xmlfields.values())
+
+    def test_create_from_dict_accepts_xmlfield_overrides_instances(self):
+        overrides = XmlFieldOverrides(element="EventID", convert="str")
+        rule = DecoderRule.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {
+                    "source_format": "windows_event_log",
+                    "xmlfields": {"EventID": overrides},
+                },
+            }
+        )
+
+        assert rule.xmlfields == {"EventID": overrides}
+        assert isinstance(rule.xmlfields["EventID"], XmlFieldOverrides)
+
+    @pytest.mark.parametrize(
+        ["xmlfields", "expected_message"],
+        [
+            pytest.param(
+                {"EventID": XmlFieldOverrides(convert="float")},  # type: ignore
+                "unknown convert type",
+                id="unknown convert type in overrides instance",
+            ),
+            pytest.param(
+                {"EventID": XmlFieldOverrides(section="RenderingInfo")},
+                "unknown section",
+                id="unknown section in overrides instance",
+            ),
+            pytest.param(
+                {"Custom": XmlFieldOverrides(attribute="Name")},
+                "'element' is required for new target 'Custom'",
+                id="missing element in overrides instance",
+            ),
+            pytest.param(
+                {"Custom": XmlFieldOverrides(element="")},
+                "'element' of 'Custom' must be a non-empty string",
+                id="empty element in overrides instance",
+            ),
+            pytest.param(
+                {"EventID": XmlFieldOverrides(convert=1)},  # type: ignore
+                "'convert' of 'EventID' must be a string",
+                id="wrong type in overrides instance",
+            ),
+        ],
+    )
+    def test_create_from_dict_validates_xmlfield_overrides_instances(
+        self, xmlfields, expected_message
+    ):
+        with pytest.raises(InvalidRuleDefinitionError, match=expected_message):
+            DecoderRule.create_from_dict(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "source_format": "windows_event_log",
+                        "xmlfields": xmlfields,
+                    },
+                }
+            )
+
+    def test_parse_xmlfields_is_idempotent(self):
+        parsed = parse_xmlfields({"EventID": {"convert": "int"}})
+
+        assert parsed == {"EventID": XmlFieldOverrides(convert="int")}
+        assert parse_xmlfields(parsed) == parsed
