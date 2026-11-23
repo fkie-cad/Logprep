@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
       - name: Set up Nix
-        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # https://github.com/cachix/install-nix-action/releases/tag/v31.11.3
+        uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # https://github.com/cachix/install-nix-action/releases/tag/v31.11.5
       - name: Build package
         run: |
           mkdir -p dist

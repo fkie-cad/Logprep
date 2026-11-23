@@ -19,7 +19,7 @@ jobs:
         with:
           version: latest
       - name: Set up Nix
-        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # https://github.com/cachix/install-nix-action/releases/tag/v31.11.3
+        uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # https://github.com/cachix/install-nix-action/releases/tag/v31.11.5
       - name: Build images
         working-directory: examples/compose
         run: |
@@ -131,14 +131,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
       - name: Set up Nix
-        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # https://github.com/cachix/install-nix-action/releases/tag/v31.11.3
+        uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # https://github.com/cachix/install-nix-action/releases/tag/v31.11.5
       - name: Build logprep image
         run: |
           nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
           docker load < image
           docker image tag logprep:py${PYTHON_VERSION} local/logprep:latest
       - name: Set up Helm
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # https://github.com/Azure/setup-helm/releases/tag/v5.0.1
+        uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # https://github.com/Azure/setup-helm/releases/tag/v5.1.0
         with:
           version: v3.22.1
       - name: Create kind cluster
