@@ -5,11 +5,8 @@ from contextlib import nullcontext as does_not_raise
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.decoder.decoders.windows_event_log import (
-    XmlFieldOverrides,
-    parse_xmlfields,
-)
-from logprep.processor.decoder.rule import DecoderRule
+from logprep.processor.decoder.decoders.windows_event_log import XmlFieldOverrides
+from logprep.processor.decoder.rule import DecoderRule, parse_xmlfields
 
 
 class TestDecoderRule:

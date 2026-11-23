@@ -92,33 +92,96 @@ from attrs import define, field, validators
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.decoder.decoders.registry import DECODERS
 from logprep.processor.decoder.decoders.windows_event_log import (
+    DEFAULT_XML_FIELD_TARGETS,
+    XmlFieldConvert,
     XmlFieldOverrides,
-    parse_xmlfields,
-    validate_xmlfields,
 )
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 IMPLEMENTED_DECODERS = tuple(DECODERS.keys())
 
-
-def _parse_xmlfields(value: object) -> dict[str, XmlFieldOverrides] | None:
-    """Normalize the optional ``xmlfields`` configuration to attrs dataclasses."""
-    try:
-        return parse_xmlfields(value)
-    except ValueError as error:
-        raise InvalidRuleDefinitionError(f"xmlfields: {error}") from error
+XMLFIELD_KEYS = ("element", "section", "name", "attribute", "convert")
+XMLFIELD_SECTIONS = ("Event", "System", "EventData", "UserData", "ProcessingErrorData")
+XMLFIELD_CONVERTS = typing.get_args(XmlFieldConvert)
+RESERVED_XMLFIELD_TARGET = "EventXML"
 
 
-def _validate_xmlfields(instance, attribute, value) -> None:
+def _validate_target(target: object) -> str:
+    """Validate and return a target field name."""
+    if not isinstance(target, str) or not target:
+        raise InvalidRuleDefinitionError("xmlfields: target field names must be non-empty strings")
+    if target == RESERVED_XMLFIELD_TARGET:
+        raise InvalidRuleDefinitionError(
+            f"xmlfields: '{RESERVED_XMLFIELD_TARGET}' is reserved and cannot be configured"
+        )
+    return target
+
+
+def _parse_definition(target: str, definition: object) -> XmlFieldOverrides:
+    """Validate a single field definition and turn it into an attrs dataclass."""
+    if isinstance(definition, XmlFieldOverrides):
+        values = {
+            key: value for key in XMLFIELD_KEYS if (value := getattr(definition, key)) is not None
+        }
+    elif isinstance(definition, dict):
+        unknown_keys = set(definition) - set(XMLFIELD_KEYS)
+        if unknown_keys:
+            unknown = sorted(str(key) for key in unknown_keys)
+            raise InvalidRuleDefinitionError(
+                f"xmlfields: unknown keys in definition of '{target}': {unknown}"
+            )
+        values = {key: definition[key] for key in XMLFIELD_KEYS if key in definition}
+    else:
+        raise InvalidRuleDefinitionError(f"xmlfields: definition of '{target}' must be a dict")
+    for key, value in values.items():
+        if not isinstance(value, str):
+            raise InvalidRuleDefinitionError(f"xmlfields: '{key}' of '{target}' must be a string")
+    return XmlFieldOverrides(**values)
+
+
+def _validate_definition_values(target: str, definition: XmlFieldOverrides) -> None:
+    """Validate the values of a single field definition."""
+    if definition.element is not None and not definition.element:
+        raise InvalidRuleDefinitionError(
+            f"xmlfields: 'element' of '{target}' must be a non-empty string"
+        )
+    if definition.section is not None and definition.section not in XMLFIELD_SECTIONS:
+        raise InvalidRuleDefinitionError(
+            f"xmlfields: unknown section for '{target}': {definition.section}"
+        )
+    if definition.convert is not None and definition.convert not in XMLFIELD_CONVERTS:
+        raise InvalidRuleDefinitionError(
+            f"xmlfields: unknown convert type for '{target}': {definition.convert}"
+        )
+    if target not in DEFAULT_XML_FIELD_TARGETS and not definition.element:
+        raise InvalidRuleDefinitionError(
+            f"xmlfields: 'element' is required for new target '{target}'"
+        )
+
+
+def parse_xmlfields(xmlfields: object) -> dict[str, XmlFieldOverrides] | None:
+    """Validate an ``xmlfields`` rule option and normalize its definitions."""
+    if xmlfields is None:
+        return None
+    if not isinstance(xmlfields, dict):
+        raise InvalidRuleDefinitionError(
+            "xmlfields: must be a dict that maps target field names to definitions"
+        )
+    parsed: dict[str, XmlFieldOverrides] = {}
+    for target, definition in xmlfields.items():
+        validated_target = _validate_target(target)
+        parsed_definition = _parse_definition(validated_target, definition)
+        _validate_definition_values(validated_target, parsed_definition)
+        parsed[validated_target] = parsed_definition
+    return parsed
+
+
+def validate_xmlfields(instance, attribute, value) -> None:
     """Validate the optional ``xmlfields`` configuration."""
     if value is not None and instance.source_format != "windows_event_log":
         raise InvalidRuleDefinitionError(
             f"{attribute.name} is only supported with source_format windows_event_log"
         )
-    try:
-        validate_xmlfields(value)
-    except ValueError as error:
-        raise InvalidRuleDefinitionError(f"{attribute.name}: {error}") from error
 
 
 class DecoderRule(FieldManagerRule):
@@ -159,8 +222,8 @@ class DecoderRule(FieldManagerRule):
         :code:`windows_event_log`
         """
         xmlfields: dict[str, XmlFieldOverrides] | None = field(
-            converter=_parse_xmlfields,
-            validator=_validate_xmlfields,
+            converter=parse_xmlfields,
+            validator=validate_xmlfields,
             default=None,
         )
         """Optional configuration for the :code:`windows_event_log` format. It is a dict that maps

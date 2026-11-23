@@ -23,10 +23,6 @@ MAX_XML_DEPTH = 10
 
 XmlFieldConvert = Literal["str", "int", "timestamp"]
 
-SECTIONS = ("Event", "System", "EventData", "UserData", "ProcessingErrorData")
-RESERVED_TARGET = "EventXML"
-XMLFIELD_KEYS = ("element", "section", "name", "attribute", "convert")
-
 
 @define(frozen=True, kw_only=True)
 class XmlFieldOverrides:
@@ -65,67 +61,6 @@ _CONVERTERS: dict[XmlFieldConvert, Callable[[str], FieldValue]] = {
     "int": _to_int_or_str,
     "timestamp": _to_iso8601,
 }
-
-
-def _validate_target(target: object) -> str:
-    """Validate and return a target field name."""
-    if not isinstance(target, str) or not target:
-        raise ValueError("target field names must be non-empty strings")
-    if target == RESERVED_TARGET:
-        raise ValueError(f"'{RESERVED_TARGET}' is reserved and cannot be configured")
-    return target
-
-
-def _parse_definition(target: str, definition: object) -> XmlFieldOverrides:
-    """Validate a single field definition and turn it into an attrs dataclass."""
-    if isinstance(definition, XmlFieldOverrides):
-        values = {
-            key: value for key in XMLFIELD_KEYS if (value := getattr(definition, key)) is not None
-        }
-    elif isinstance(definition, dict):
-        unknown_keys = set(definition) - set(XMLFIELD_KEYS)
-        if unknown_keys:
-            unknown = sorted(str(key) for key in unknown_keys)
-            raise ValueError(f"unknown keys in definition of '{target}': {unknown}")
-        values = {key: definition[key] for key in XMLFIELD_KEYS if key in definition}
-    else:
-        raise ValueError(f"definition of '{target}' must be a dict")
-    for key, value in values.items():
-        if not isinstance(value, str):
-            raise ValueError(f"'{key}' of '{target}' must be a string")
-    return XmlFieldOverrides(**values)
-
-
-def _validate_definition_values(target: str, definition: XmlFieldOverrides) -> None:
-    """Validate the values of a single field definition."""
-    if definition.element is not None and not definition.element:
-        raise ValueError(f"'element' of '{target}' must be a non-empty string")
-    if definition.section is not None and definition.section not in SECTIONS:
-        raise ValueError(f"unknown section for '{target}': {definition.section}")
-    if definition.convert is not None and definition.convert not in _CONVERTERS:
-        raise ValueError(f"unknown convert type for '{target}': {definition.convert}")
-    if target not in DEFAULT_XML_FIELD_TARGETS and not definition.element:
-        raise ValueError(f"'element' is required for new target '{target}'")
-
-
-def parse_xmlfields(xmlfields: object) -> dict[str, XmlFieldOverrides] | None:
-    """Validate an ``xmlfields`` rule option and normalize its definitions."""
-    if xmlfields is None:
-        return None
-    if not isinstance(xmlfields, dict):
-        raise ValueError("must be a dict that maps target field names to definitions")
-    parsed: dict[str, XmlFieldOverrides] = {}
-    for target, definition in xmlfields.items():
-        validated_target = _validate_target(target)
-        parsed_definition = _parse_definition(validated_target, definition)
-        _validate_definition_values(validated_target, parsed_definition)
-        parsed[validated_target] = parsed_definition
-    return parsed
-
-
-def validate_xmlfields(xmlfields: object) -> None:
-    """Validate an ``xmlfields`` rule option, raising ``ValueError`` if invalid."""
-    parse_xmlfields(xmlfields)
 
 
 def _local_name(tag: object) -> str:
@@ -330,6 +265,10 @@ def parse_windows_event_log(
     - ``attribute``: read an attribute instead of the element's text
     - ``convert``: ``str`` (default), ``int`` or ``timestamp``
 
+    The rule validates these options and normalizes them into
+    ``XmlFieldOverrides`` instances when the rule is created. This function
+    therefore expects already parsed overrides and does not parse rule options.
+
     If the target matches a default field, only the given keys are changed and
     all other properties are inherited. New targets are added. Configured
     fields are extracted after the defaults and therefore override default or
@@ -346,7 +285,6 @@ def parse_windows_event_log(
     - Fields that are not part of the XML (for example rendered messages or
       event categories) cannot be derived and are not added.
     """
-    parsed_xmlfields = parse_xmlfields(xmlfields)
     parser = ET.XMLParser(target=_SafeTreeBuilder())
     try:
         parser.feed(log_line)
@@ -365,7 +303,7 @@ def parse_windows_event_log(
         section = _find_child(root, section_name)
         if section is not None:
             _parse_data_section(section, parsed)
-    if parsed_xmlfields:
-        _parse_fields(root, parsed, _build_fields(parsed_xmlfields))
+    if xmlfields:
+        _parse_fields(root, parsed, _build_fields(xmlfields))
     parsed["EventXML"] = log_line
     return parsed
