@@ -48,14 +48,13 @@ jobs:
           TAGS: ${{ inputs.tags }}
           PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
-          python - <<'EOF'
+          python - <<EOF
           import os
           import re
-          image = "ghcr.io/fkie-cad/logprep"
           version = os.environ["PYTHON_VERSION"]
-          # docker tags only allow [A-Za-z0-9_.-], branch names may contain e.g. "/"
+          # docker tags only allow [A-Za-z0-9_.-], replace other characters with "-"
           tags = [re.sub(r"[^A-Za-z0-9_.-]", "-", tag.strip()) for tag in os.environ["TAGS"].split(",")]
-          full_image = [f"{image}:py{version}-{tag}" for tag in tags]
+          full_image = [f"ghcr.io/fkie-cad/logprep:py{version}-{tag}" for tag in tags]
           with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
               file.write(f"tags={', '.join(full_image)}")
           EOF
