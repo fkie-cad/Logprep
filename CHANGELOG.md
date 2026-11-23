@@ -4,6 +4,7 @@
 ### Features
 
 ### Improvements
+* domain_resolver: remove unused `caplog` from tests
 
 ### Bugfix
 * domain_resolver: fix parsing domains without schema that have a port
@@ -26,7 +27,6 @@
 * cache: hold a payload in addition to timestamps
 * domain_resolver: adapt `domain_resolver` to changes of `cache`
 * domain_resolver: add `resolved_domains`, `timeouts_cached`, `no_answer_domains` and `no_nameserver` metric
-* domain_resolver: remove unused `caplog` from tests
 * docs: remove outdated jupyter notebooks; relevant examples moved to unit tests
 * ci: update GitHub actions to their latest release with cooldown of 1 week
 * ci: add basic dependabot config
