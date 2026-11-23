@@ -1,3 +1,5 @@
+# TODO(async-followup): reuse non-ng class an implement create_from_file_asnyc to the existing LabelingSchema.
+
 """This module is used create labeling schemas."""
 
 from json import JSONDecodeError

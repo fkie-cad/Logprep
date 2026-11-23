@@ -129,6 +129,7 @@ ListContent: TypeAlias = set[str]
 class ListComparisonRule(FieldManagerRule):
     """Check if documents match a filter."""
 
+    # TODO(async-followup): reuse non ng class "class Config(NonNgListComparisonRule.Config)"
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
         """Config for |RULE|"""

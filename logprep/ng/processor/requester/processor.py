@@ -101,6 +101,19 @@ class Requester(FieldManager):
         if self._has_missing_values(event, rule, source_field_dict):
             return
         kwargs = self._template_kwargs(rule.kwargs, source_field_dict)
+
+        # TODO(async-followup):
+        #  The kwargs are derived from requests which we will probably replace with aiohttp.
+        #  Not necessarily for this PR, but we should change the following functionality to
+        #  eliminate the dependency. It's not a good design choice either way to dynamically
+        #  derive keys form the requests library in my opinion:
+        # suggestion:
+        #   parameter_keys = inspect.signature(requests.Request).parameters.keys()
+        #   REQUEST_CONFIG_KEYS = [
+        #                          parameter for parameter in parameter_keys if
+        #                          parameter not in ["hooks", "cookies", "files"]
+        #                      ] + ["timeout", "proxies", "verify", "cert"]
+
         response = await self._request(event, rule, kwargs)
         if response is not None:
             self._handle_response(event, rule, response)

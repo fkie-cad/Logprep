@@ -159,6 +159,7 @@ from logprep.util.helper import FieldValue, JsonObject
 class GenericResolverRule(FieldManagerRule):
     """Check if documents match a filter."""
 
+    # TODO(async-followup): inherit from non-ng config
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
         """RuleConfig for GenericResolver"""

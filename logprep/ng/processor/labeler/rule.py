@@ -1,3 +1,5 @@
+# TODO(async-followup): reuse non-ng rule if possible (inherit)
+
 """
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^

@@ -40,10 +40,7 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
 
         assert event.data == expected, f"{result.errors}"
 
-    @pytest.mark.parametrize(
-        "rule, event, expected",
-        failure_test_cases,
-    )
+    @pytest.mark.parametrize("rule, event, expected", failure_test_cases)
     async def test_testcases_failure_handling(self, rule, event, expected):
         event = LogEvent(event, original=b"", input_meta=InputMeta())
 
