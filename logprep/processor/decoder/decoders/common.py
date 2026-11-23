@@ -1,7 +1,7 @@
 """Shared types and helpers for the individual decoder modules."""
 
 import re
-from typing import Generic, Protocol, TypeVar, runtime_checkable
+from typing import Generic, Protocol, Sequence, TypeVar, runtime_checkable
 
 from logprep.util.helper import FieldValue
 
@@ -23,7 +23,7 @@ class DecoderFunc(Generic[DecoderFuncResult_co], Protocol):
     def __call__(self, log_line: str) -> DecoderFuncResult_co: ...
 
 
-def parse_with_regexes(log_line: str, regexes: tuple[re.Pattern, ...]) -> dict[str, str]:
+def parse_with_regexes(log_line: str, regexes: Sequence[re.Pattern]) -> dict[str, str]:
     """Parse a log line with the first matching regex.
 
     It is really important that you don't use lookahead or lookbehinds in the
