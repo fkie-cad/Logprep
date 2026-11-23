@@ -2,6 +2,9 @@ name: Push mirror
 on:
   push:
     branches: ['**']
+concurrency:
+  group: push-mirror-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   push:
     if: github.actor != 'dependabot[bot]'
@@ -19,6 +22,7 @@ jobs:
           GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
           GIT_PASSWORD: ${{ secrets.GIT_PASSWORD }}
           GIT_PUSH_ARGS: '--force --quiet --no-progress'
+          PUSH_ALL_REFS: "false"
           DEBUG: "false"
       - name: Report mirror failure as warning
         if: steps.mirror.outcome == 'failure'

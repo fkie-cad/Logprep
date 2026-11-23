@@ -93,6 +93,7 @@ jobs:
     secrets: inherit
     with:
       tags: "${{ github.head_ref }}"
+      push: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
   check-examples:
     uses: ./.github/workflows/check-examples.yml
   check-pr-ci-successful:
