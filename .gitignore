@@ -4,7 +4,6 @@ __pycache__/
 *.egg-info/
 htmlcov/
 doc/build/
-doc/source/module_reference/
 *.out
 .coverage*
 tests/testdata/external/

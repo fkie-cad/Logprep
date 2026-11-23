@@ -38,3 +38,5 @@ repos:
     rev: v0.21.0
     hooks:
       - id: yamlfmt
+        # helm templates are go templates producing yaml, not yaml
+        exclude: /templates/

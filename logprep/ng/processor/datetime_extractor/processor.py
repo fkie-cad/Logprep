@@ -15,7 +15,7 @@ Processor Configuration
         rules:
             - tests/testdata/rules/rules
 
-.. autoclass:: logprep.ng.processor.datetime_extractor.processor.DateTimeExtractor.Config
+.. autoclass:: logprep.ng.processor.datetime_extractor.processor.DatetimeExtractor.Config
    :members:
    :undoc-members:
    :inherited-members:

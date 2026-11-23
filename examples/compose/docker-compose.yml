@@ -2,7 +2,7 @@
 # sudo sysctl -w vm.max_map_count=262144
 services:
   opensearch:
-    image: registry-1.docker.io/opensearchproject/opensearch:2
+    image: registry-1.docker.io/opensearchproject/opensearch:3.9.0
     hostname: opensearch
     container_name: opensearch
     environment:
@@ -25,10 +25,18 @@ services:
         hard: 65536
     volumes:
       - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "curl -sf 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' > /dev/null" # >= yellow, includes green
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
     networks:
       - opensearch
   dashboards:
-    image: registry-1.docker.io/opensearchproject/opensearch-dashboards:2
+    image: registry-1.docker.io/opensearchproject/opensearch-dashboards:3.9.0
     container_name: dashboards
     environment:
       - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
@@ -40,43 +48,50 @@ services:
     networks:
       - opensearch
   kafka:
-    image: bitnamilegacy/kafka:3.9
+    image: apache/kafka:4.3.1
     container_name: kafka
     hostname: kafka
     ports:
       - "9092:9092"
       - "9093:9093"
     environment:
-      - KAFKA_ENABLE_KRAFT=yes
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_BROKER_ID=1
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_INTER_BROKER_LISTENER_NAME=INTER_SERVICE
-      - KAFKA_CFG_LISTENERS=INTER_SERVICE://:9091,HOST://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=INTER_SERVICE://kafka:9091,HOST://127.0.0.1:9092
+      - KAFKA_LISTENERS=INTER_SERVICE://:9091,HOST://:9092,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=INTER_SERVICE://kafka:9091,HOST://127.0.0.1:9092
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTER_SERVICE:PLAINTEXT,HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@127.0.0.1:9093
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=false
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=false
+      # internal topics default to a replication factor of 3, which a single node cannot satisfy
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR=1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: |
-      sh -c
-      "((sleep 15 && echo 'kafka up' &&
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_CONSUMER_PARTITIONS-4} --topic consumer &&
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_ERROR_PARTITIONS-4} --topic errors &&
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_PRODUCER_PARTITIONS-4} --topic producer)&) &&
-      /opt/bitnami/scripts/kafka/run.sh"
+    command:
+      - bash
+      - -c
+      - |
+        (sleep 15 && echo 'kafka up' &&
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_CONSUMER_PARTITIONS-4} --topic consumer &&
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_ERROR_PARTITIONS-4} --topic errors &&
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions ${KAFKA_PRODUCER_PARTITIONS-4} --topic producer) &
+        exec /etc/kafka/docker/run
     healthcheck:
       test:
         - "CMD-SHELL"
-        - "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe"
+        - "/opt/kafka/bin/kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe"
     networks:
       - kafka
   kafka-exporter:
-    image: bitnamilegacy/kafka-exporter-archived
+    image: danielqsj/kafka-exporter:v1.10.0
     container_name: kafkaexporter
+    profiles:
+      - kafka-metrics
     command:
       - "--kafka.server=kafka:9091"
     ports:
@@ -99,7 +114,7 @@ services:
       kafka:
         condition: service_healthy
       opensearch:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ../../examples/:/home/logprep/examples/
     entrypoint:
@@ -107,22 +122,22 @@ services:
       - run
       - /home/logprep/${LOGPREP_CONFIG_PATH-examples/exampledata/config/pipeline.yml}
   grafana:
-    image: bitnamilegacy/grafana:latest
+    image: grafana/grafana:13.3.0
     container_name: grafana
     ports:
       - "3000:3000"
     volumes:
-      - ../../examples/exampledata/config/grafana/datasources:/opt/bitnami/grafana/conf/provisioning/datasources
-      - ../../examples/exampledata/config/grafana/dashboards:/opt/bitnami/grafana/conf/provisioning/dashboards
+      - ../../examples/exampledata/config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../../examples/exampledata/config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
     networks:
       - prometheus
   prometheus:
-    image: bitnamilegacy/prometheus:latest
+    image: prom/prometheus:v3.15.1
     container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ../../examples/exampledata/config/prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml
+      - ../../examples/exampledata/config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     networks:
       - kafka
       - prometheus
@@ -152,48 +167,57 @@ services:
       - ../../examples/exampledata/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../../examples/exampledata/config/nginx/mtls.conf.d:/etc/nginx/conf.d:ro
   keycloak:
-    image: bitnamilegacy/keycloak:latest
+    image: quay.io/keycloak/keycloak:26.8.1
     container_name: keycloak
     ports:
       - "8080:8080"
     profiles:
       - oauth2
+    # imports the logprep realm from data/import unless it exists already
+    command: ["start-dev", "--import-realm"]
     volumes:
-      - ../../examples/exampledata/config/keycloak:/opt/keycloak/data/import
+      - ../../examples/exampledata/config/keycloak:/opt/keycloak/data/import:ro
     environment:
-      KEYCLOAK_ADMIN_USER: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KEYCLOAK_DATABASE_HOST: keycloak_db
-      KEYCLOAK_DATABASE_PORT: 5432
-      KEYCLOAK_DATABASE_NAME: keycloak
-      KEYCLOAK_DATABASE_USER: keycloak
-      KEYCLOAK_DATABASE_PASSWORD: bitnami
-      KEYCLOAK_HTTP_PORT: 8080
-      KEYCLOAK_HTTPS_PORT: 8443
-      KEYCLOAK_BIND_ADDRESS: 127.0.0.1
-      KEYCLOAK_EXTRA_ARGS: "-Dkeycloak.import=/opt/keycloak/data/import/"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak_db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HTTP_PORT: 8080
+    depends_on:
+      keycloak_db:
+        condition: service_healthy
     networks:
       - keycloak
   keycloak_db:
-    image: bitnamilegacy/postgresql:latest
+    image: postgres:18.6
     container_name: keycloak_db
     expose:
       - 5432
     profiles:
       - oauth2
     environment:
-      POSTGRESQL_PASSWORD: bitnami
-      POSTGRESQL_POSTGRES_PASSWORD: bitnami
-      POSTGRESQL_DATABASE: keycloak
-      POSTGRESQL_USERNAME: keycloak
+      POSTGRES_PASSWORD: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_DB: keycloak
+    healthcheck:
+      test: "pg_isready --username=$$POSTGRES_USER && psql --username=$$POSTGRES_USER --list"
+      interval: 8s
+      timeout: 5s
+      retries: 10
     volumes:
-      - keycloak-db-volume:/var/lib/postgresql/data
+      # postgres 18 keeps its data in a versioned directory below /var/lib/postgresql
+      - keycloak-db-volume:/var/lib/postgresql
     networks:
       - ucl
       - keycloak
   fda-api:
     image: registry.gitlab.com/z-e-u-s/fda/fda-backend:0.25.0
     container_name: fda-api
+    profiles:
+      - oauth2
     read_only: true
     environment:
       POSTGRES_HOST: fda-db
@@ -215,7 +239,7 @@ services:
       KEYCLOAK_REALM: logprep
       KEYCLOAK_CLIENT_ID: fda-backend
       KEYCLOAK_CLIENT_ID_FOR_AUTHZ_ROLES: fda
-      KEYCLOAK_CLIENT_SECRET: Kh4tz3wMcBMrPdGVuQeOv3aTlPKpQfOw
+      KEYCLOAK_CLIENT_SECRET: tYfkKygb1g2Hf6fmAInoq3XPK1OILbSp
       KEYCLOAK_VERIFY_CERTIFICATE: "False"
       KEYCLOAK_VALIDATE_ISSUER: "False"
       SECURE_REDIRECT_EXEMPT: '[".*localhost.*"]'
@@ -233,6 +257,8 @@ services:
       - keycloak
   fda-db:
     container_name: fda-db
+    profiles:
+      - oauth2
     image: "postgres:14"
     read_only: true
     volumes:
@@ -256,6 +282,8 @@ services:
   fda-frontend:
     image: registry.gitlab.com/z-e-u-s/fda/fda-frontend:0.25.0
     container_name: fda-frontend
+    profiles:
+      - oauth2
     depends_on:
       fda-api:
         condition: service_started
@@ -269,6 +297,8 @@ services:
   ucl-api:
     image: registry.gitlab.com/z-e-u-s/ucl/ucl-backend:0.25.0
     container_name: ucl-api
+    profiles:
+      - oauth2
     read_only: true
     environment:
       POSTGRES_HOST: ucl-db
@@ -290,7 +320,7 @@ services:
       KEYCLOAK_REALM: logprep
       KEYCLOAK_CLIENT_ID: ucl-backend
       KEYCLOAK_CLIENT_ID_FOR_AUTHZ_ROLES: ucl
-      KEYCLOAK_CLIENT_SECRET: CwPAptWESjdJXboOLTnHRBpf5MnsC3UY
+      KEYCLOAK_CLIENT_SECRET: Zq15PsiNvXjCtBUHwG8x8NwaWjJwaB17
       KEYCLOAK_VERIFY_CERTIFICATE: "False"
       KEYCLOAK_VALIDATE_ISSUER: "False"
       # FDA_BASE_URL: http://fda-frontend
@@ -308,6 +338,8 @@ services:
       - keycloak
   ucl-db:
     container_name: ucl-db
+    profiles:
+      - oauth2
     image: "postgres:14"
     read_only: true
     volumes:
@@ -331,6 +363,8 @@ services:
   ucl-frontend:
     image: registry.gitlab.com/z-e-u-s/ucl/ucl-frontend:0.25.0
     container_name: ucl-frontend
+    profiles:
+      - oauth2
     depends_on:
       ucl-api:
         condition: service_started

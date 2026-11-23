@@ -1,11 +1,24 @@
 ## Upcoming Changes
 ### Breaking
+
+### Features
+
+### Improvements
+
+### Bugfix
+
+## 22.0.0
+### Breaking
 * domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
 * domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
 * domain_resolver: remove `debug_cache`
 * domain_resolver: `source_fields` must be a list with exactly one element
+* selective_extractor: `ignore_missing_fields` now writes a warning on missing fields instead of creating incomplete extra events
+* selective_extractor: selecting list items via numeric source paths is no longer supported
+* ng: kafka input uses the consumer group protocol `consumer` (KIP-848), requires Kafka >=4.0 and `confluent-kafka` >=2.13
 
 ### Features
+* selective_extractor: add field_template as `event_template` to configuration
 
 ### Improvements
 * util: add field mapping template utility
@@ -16,10 +29,31 @@
 * docs: remove outdated jupyter notebooks; relevant examples moved to unit tests
 * ci: update GitHub actions to their latest release with cooldown of 1 week
 * ci: add basic dependabot config
+* ci: deploy the k8s example to a kind cluster and check that events go through to opensearch
+* examples/compose: replace archived bitnamilegacy images by `apache/kafka`, `danielqsj/kafka-exporter` and the official grafana, prometheus, keycloak and postgres images
+* examples/compose: add profile `kafka-metrics` for optional kafka prometheus metrics
+* examples/compose: add healthcheck to opensearch waiting for cluster status >= yellow
+* examples/compose: make profile `oauth2` more consistent by including fda/ucl
+* examples/compose: pin opensearch and opensearch-dashboards to 3.9.0
+* examples/k8s: run Kafka 4.3.1 on the official `apache/kafka` image instead of the archived bitnami chart
+* examples/k8s: use the official opensearch helm charts and images (3.9.0) instead of the archived bitnami chart
+* ci: remove deprecated GHA dependency for doc preview links; do it ourselves
+* ci: fail on warnings during doc build
+* ci: update dependabot to use `-` instead of `/`
+* docs: fix several formatting issues
+* util: rename field mapping template to field template
+* ng: kafka input avoids duplicates on rebalance by gracefully draining revoked partitions (`revoke_drain_timeout`)
+* ng: kafka input rejects `kafka_config` entries it enforces or KIP-848 no longer supports
+* ng: kafka input adds the metrics `revoke_drain_seconds`, `revoke_drain_timeouts` and `orphaned_acknowledgements`
+* ng: kafka input health check no longer calls the consumer once subscribed
+* ng: kafka input stops on fatal errors, warns on recoverable ones and sends broken messages to the error output
+* ci: run the kafka input rebalance tests against a real kafka broker
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
 * pipeline_manager: gc.freeze before forking pipelines in order to avoid error-prone destruction of health check clients in pipeline processes
+* examples/compose: keycloak imports the logprep realm and the fda/ucl backends use its client secrets, the realm was never imported before
+* examples/k8s: remove config keys from `values-dev.yaml` that logprep rejects and create the `errors` topic
 
 ## 21.2.0
 ### Breaking
@@ -32,7 +66,7 @@
 ### Bugfix
 * domain_label_extractor: fix error-handling on invalid input types and partial urls
 
-# 21.1.1
+## 21.1.1
 ### Breaking
 
 ### Features
