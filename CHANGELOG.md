@@ -1,24 +1,19 @@
 ## Upcoming Changes
+### Breaking
 
 ### Features
 * ng: add asynchronous getter and refresh scheduling support
 * ng: load configuration, rule tree configuration, rule definitions, and processor rules asynchronously
-* ng: make getter-backed setup and processing asynchronous for:
-  - `geoip_enricher`, `grokker`, `requester`, `amides`
-  - `generic_adder`, `generic_resolver`, `list_comparison`, `network_comparison`
-  - `selective_extractor`, `pseudonymizer`, `template_replacer`
+* ng: make getter-backed setup and processing asynchronous many processors
 * ng: offload GeoIP database lookups from the async event loop
 * ng: make domain resolver DNS lookups non-blocking
 * ng: initialize pseudonymizer public keys asynchronously during setup
 * ng: classify processors with asynchronous I/O during event processing correctly
 
 ### Improvements
-* requester: use `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
-* tests: adapt NG processor and HTTP getter coverage to asynchronous setup, shutdown, rule loading, and refresh lifecycles
-* tests: add coverage for asynchronous scheduler execution and pending jobs
-* tests: wait for finite acceptance pipelines to finish before collecting their output
-* tests: ensure NG processor test helpers always shut down instances after errors
-* tests: disable unused WebSocket support in the asynchronous HTTP server
+* ng: requester uses `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
+* ng: adapt NG tests to asynchronous lifecycles and improve test reliability
+* http_server: disable unused WebSocket support
 * ng: offload credentials file validation from the asynchronous event loop
 * ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
 * ng: improve asynchronous refreshable getter scheduling and isolate refresh callback failures
@@ -36,14 +31,10 @@
 * ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
 * ng: clean up and deduplicate GenericResolver refresh callbacks
 * ng: remove orphaned refreshable getter targets after callback cleanup
-* ng: make domain resolver DNS lookups non-blocking
 * ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
 * ng: harden Requester setup against repeated initialization
 * ng: shut down temporary processors after configuration validation to avoid leaking resources
-* ng: roll back initialized pipeline components when pipeline manager setup fails
-* ng: close GeoIP database readers during processor shutdown
-* ng: clean up shared getter update tasks after canceled waiters complete
-* ng: prevent running getter updates from recreating removed shared target state
+* ng: improve resource cleanup and lifecycle management during setup, shutdown, and cancellation
 
 ## 22.0.0
 ### Breaking

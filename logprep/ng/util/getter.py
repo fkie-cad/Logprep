@@ -907,6 +907,7 @@ class HttpGetter(RefreshableGetter):
                     url=self.uri,
                     allow_redirects=True,
                     headers=self._headers,
+                    timeout=5,
                 ) as response:
                     if retry_config.is_retry(
                         method="GET",

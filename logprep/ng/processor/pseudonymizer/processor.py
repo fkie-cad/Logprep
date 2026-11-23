@@ -203,14 +203,9 @@ class Pseudonymizer(FieldManager):
 
     def __init__(self, name: str, configuration: Config) -> None:
         super().__init__(name, configuration)
-        self.__regex_mapping = None
 
     async def _regex_mapping(self) -> dict:
-        if self.__regex_mapping is None:
-            self.__regex_mapping = await GetterFactory.from_string(
-                self.config.regex_mapping
-            ).get_dict()
-        return self.__regex_mapping
+        return await GetterFactory.from_string(self.config.regex_mapping).get_dict()
 
     @cached_property
     def _get_pseudonym_dict_cached(self) -> Callable:
