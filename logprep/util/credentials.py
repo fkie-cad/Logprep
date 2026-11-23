@@ -473,12 +473,8 @@ class Credentials:
         return self._session
 
     async def get_aiohttp_session(self) -> aiohttp.ClientSession:
-        """Return the shared aiohttp session"""
-
+        """Return the shared aiohttp session."""
         if self._aiohttp_session is None or self._aiohttp_session.closed:
-            if self._aiohttp_session is not None and not self._aiohttp_session.closed:
-                await self._aiohttp_session.close()
-
             self._aiohttp_session = aiohttp.ClientSession(trust_env=True)
 
         return self._aiohttp_session
