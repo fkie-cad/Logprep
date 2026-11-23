@@ -895,7 +895,7 @@ class HttpGetter(RefreshableGetter):
 
         try:
             session = await self._get_aiohttp_session()
-        except aiohttp.ClientError as error:
+        except (aiohttp.ClientError, TimeoutError) as error:
             raise RefreshableGetterError(str(error)) from error
 
         retry_config = self._get_retry_config()
