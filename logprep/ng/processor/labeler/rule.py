@@ -34,8 +34,8 @@ from collections.abc import Iterable
 
 from attrs import define, field, validators
 
-from logprep.ng.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.processor.labeler.labeling_schema import LabelingSchema
 
 
 class LabelerRule(FieldManagerRule):

@@ -1,10 +1,11 @@
 """This module is used create labeling schemas."""
 
 from json import JSONDecodeError
-from typing import Optional, List, Any
+from typing import Any, List, Optional, Self
 
 from jsonref import loads
 
+from logprep.ng.util.getter import GetterFactory as NGGetterFactory
 from logprep.processor.base.exceptions import (
     KeyDoesnotExistInSchemaError,
     ValueDoesnotExistInSchemaError,
@@ -37,7 +38,9 @@ class LabelingSchema:
         self._schema = {}
         self._parents = {}
 
-    def __eq__(self, other: "LabelingSchema") -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, LabelingSchema):
+            return NotImplemented
         return self._schema == other.schema
 
     @property
@@ -46,16 +49,37 @@ class LabelingSchema:
         return self._schema
 
     @staticmethod
+    def _create_from_file(content: str) -> "LabelingSchema":
+        schema = loads(content)
+        if not schema:
+            raise LabelingSchemaError()
+        labeling_schema = LabelingSchema()
+        labeling_schema.ingest_schema(schema)
+        return labeling_schema
+
+    @staticmethod
+    async def create_from_file_async(path: str) -> "LabelingSchema":
+        """Create a schema from a file at a given path."""
+        try:
+            content = await NGGetterFactory.from_string(path).get()
+            return LabelingSchema._create_from_file(content)
+        except FileNotFoundError as error:
+            raise InvalidLabelingSchemaFileError(path=path, message="File not found") from error
+        except OSError as error:
+            raise InvalidLabelingSchemaFileError(message=str(error)) from error
+        except JSONDecodeError as error:
+            raise InvalidLabelingSchemaFileError(
+                path=path, message="JSON decoder error: " + str(error)
+            ) from error
+        except LabelingSchemaError as error:
+            raise InvalidLabelingSchemaFileError(path=path, message=str(error)) from error
+
+    @staticmethod
     def create_from_file(path: str) -> "LabelingSchema":
         """Create a schema from a file at a given path."""
         try:
             content = GetterFactory.from_string(path).get()
-            schema = loads(content)
-            if not schema:
-                raise LabelingSchemaError()
-            labeling_schema = LabelingSchema()
-            labeling_schema.ingest_schema(schema)
-            return labeling_schema
+            return LabelingSchema._create_from_file(content)
         except FileNotFoundError as error:
             raise InvalidLabelingSchemaFileError(path=path, message="File not found") from error
         except OSError as error:

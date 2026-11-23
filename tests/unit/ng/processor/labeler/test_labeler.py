@@ -106,9 +106,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         expected = {"äpplyrüle": "nö", "label": {"räpörter": ["windöws"]}}
 
         # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
-        with mock.patch(
-            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
-        ):
+        with mock.patch("logprep.processor.labeler.labeling_schema.LabelingSchema.validate_labels"):
             async with self.create_and_setup_processor(config_patch=config) as instance:
                 await instance.process(event)
 
@@ -143,9 +141,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         }
 
         # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
-        with mock.patch(
-            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
-        ):
+        with mock.patch("logprep.processor.labeler.labeling_schema.LabelingSchema.validate_labels"):
             async with self.create_and_setup_processor(config_patch=config) as instance:
                 await instance.process(event)
 
@@ -192,9 +188,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         }
 
         # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
-        with mock.patch(
-            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
-        ):
+        with mock.patch("logprep.processor.labeler.labeling_schema.LabelingSchema.validate_labels"):
             async with self.create_and_setup_processor(config_patch=config) as instance:
                 await instance.process(event)
 
@@ -216,9 +210,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         }
 
         # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
-        with mock.patch(
-            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
-        ):
+        with mock.patch("logprep.processor.labeler.labeling_schema.LabelingSchema.validate_labels"):
             async with self.create_and_setup_processor(config_patch=config) as instance:
                 await instance.process(event)
 
@@ -241,9 +233,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         }
 
         # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
-        with mock.patch(
-            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
-        ):
+        with mock.patch("logprep.processor.labeler.labeling_schema.LabelingSchema.validate_labels"):
             async with self.create_and_setup_processor(config_patch=config) as instance:
                 await instance.process(event)
 
@@ -269,9 +259,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         }
 
         # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
-        with mock.patch(
-            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
-        ):
+        with mock.patch("logprep.processor.labeler.labeling_schema.LabelingSchema.validate_labels"):
             async with self.create_and_setup_processor(config_patch=config) as instance:
                 await instance.process(event)
 
@@ -298,7 +286,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
     async def test_create_loads_the_specified_labeling_schema(self):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = path_to_schema
-        expected_schema = LabelingSchema.create_from_file(path_to_schema)
+        expected_schema = await LabelingSchema.create_from_file_async(path_to_schema)
 
         async with self.create_and_setup_processor(config_patch=config) as instance:
             assert instance._schema == expected_schema
@@ -312,9 +300,7 @@ class TestLabeler(BaseProcessorTestCase[Labeler]):
         expected = {"applyrule": "yes", "label": {"reporter": ["foo", "windows"]}}
 
         # TODO(async-followup): adapt tests to new setup logic; temporarily mock additional calls.
-        with mock.patch(
-            "logprep.ng.processor.labeler.labeling_schema.LabelingSchema.validate_labels"
-        ):
+        with mock.patch("logprep.processor.labeler.labeling_schema.LabelingSchema.validate_labels"):
             async with self.create_and_setup_processor(config_patch=config) as instance:
                 await instance.process(event)
 

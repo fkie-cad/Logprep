@@ -30,9 +30,9 @@ from collections.abc import Iterable, Sequence
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
-from logprep.ng.processor.labeler.labeling_schema import LabelingSchema
 from logprep.ng.processor.labeler.rule import LabelerRule
 from logprep.processor.base.rule import Rule
+from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 
@@ -73,7 +73,7 @@ class Labeler(Processor):
 
     async def setup(self) -> None:
         await super().setup()
-        self._schema = await LabelingSchema.create_from_file(self.config.schema)
+        self._schema = await LabelingSchema.create_from_file_async(self.config.schema)
         for rule in self.rules:
             if self.config.include_parent_labels:
                 rule.add_parent_labels_from_schema(self._schema)
