@@ -483,18 +483,6 @@ class Credentials:
 
         return self._aiohttp_session
 
-    def close_session(self) -> None:
-        """Close the shared requests session"""
-        if self._session is not None:
-            self._session.close()
-            self._session = None
-
-    async def close_aiohttp_session(self) -> None:
-        """Close the shared aiohttp session"""
-        if self._aiohttp_session is not None:
-            await self._aiohttp_session.close()
-            self._aiohttp_session = None
-
     def _no_authorization_header(self, session):
         """checks if authorization header already exists in the given request session"""
         return session.headers.get("Authorization") is None
@@ -689,6 +677,9 @@ class OAuth2PasswordFlowCredentials(Credentials):
 
         return session
 
+    # TODO(async-followup): unify both methods '_get_aiohttp_token'
+    #   This code is duplicated with the other _get_aiohttp_token and this one should be used rather than the other.
+    #   Simply have a fallback that when the payload is not provided to produce it yourself or something
     async def _get_aiohttp_token(self, payload: dict[str, str]) -> AccessToken:
         """Retrieve the token asynchronously from the OAuth2 token endpoint"""
         headers: dict[str, str] = {}

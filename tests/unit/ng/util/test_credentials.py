@@ -20,25 +20,9 @@ from logprep.util.credentials import (
 async def credential_cleanup():
     credentials = []
     yield credentials
-    for credential in credentials:
-        await credential.close_aiohttp_session()
 
 
 class TestAiohttpCredentials:
-    async def test_session_is_reused_and_closed(self, credential_cleanup):
-        credentials = Credentials()
-        credential_cleanup.append(credentials)
-
-        first = await credentials.get_aiohttp_session()
-        second = await credentials.get_aiohttp_session()
-        assert first is second
-        assert not first.closed
-
-        await credentials.close_aiohttp_session()
-        assert first.closed
-        third = await credentials.get_aiohttp_session()
-        assert third is not first
-
     def test_retry_configuration_matches_requests(self):
         credentials = Credentials()
         retry = credentials.get_retry_config()

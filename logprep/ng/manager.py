@@ -64,7 +64,8 @@ class PipelineManager:
             logger.warning("No error output configured")
 
         try:
-            await self._setup_components()
+            for component in self._components:
+                await component.setup()
 
             workflow_config = WorkflowConfig.from_dict_or_default(self.configuration.workflow)
 
@@ -87,24 +88,6 @@ class PipelineManager:
             except Exception:  # pylint: disable=broad-except
                 logger.exception("Failure while rolling back PipelineManager setup")
 
-            raise
-
-    async def _setup_components(self) -> None:
-        """Set up all components and stop unfinished setup tasks on failure"""
-
-        setup_tasks = [asyncio.create_task(component.setup()) for component in self._components]
-
-        try:
-            await asyncio.gather(*setup_tasks)
-        except (CancelledError, Exception):
-            for task in setup_tasks:
-                if not task.done():
-                    task.cancel()
-
-            await asyncio.gather(
-                *setup_tasks,
-                return_exceptions=True,
-            )
             raise
 
     async def run(
