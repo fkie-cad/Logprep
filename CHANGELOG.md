@@ -6,6 +6,7 @@
 ### Improvements
 
 ### Bugfix
+* domain_resolver: fix parsing domains without schema that have a port
 
 ## 22.0.0
 ### Breaking
