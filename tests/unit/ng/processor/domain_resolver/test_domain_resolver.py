@@ -311,7 +311,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         assert 'Invalid domain "https://" in "fqdn": Could not be parsed' in str(result.warnings[0])
         assert document == expected
 
-    async def test_domain_with_port(self, caplog):
+    async def test_domain_with_port(self):
         await self.object.setup()
         rule = {
             "filter": "fqdn",
@@ -323,13 +323,12 @@ class TestDomainResolver(BaseProcessorTestCase):
         document = {"fqdn": fqdn}
         expected = {"fqdn": fqdn, "resolved_ip": "1.2.3.4"}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        with caplog.at_level(logging.WARNING):
-            with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
-                self._mock_resolve_answer("1.2.3.4", mock_resolve)
-                await self.object.process(event)
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
         assert document == expected
 
-    async def test_domain_with_port_and_path(self, caplog):
+    async def test_domain_with_port_and_path(self):
         await self.object.setup()
         rule = {
             "filter": "fqdn",
@@ -341,10 +340,9 @@ class TestDomainResolver(BaseProcessorTestCase):
         document = {"fqdn": fqdn}
         expected = {"fqdn": fqdn, "resolved_ip": "1.2.3.4"}
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        with caplog.at_level(logging.WARNING):
-            with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
-                self._mock_resolve_answer("1.2.3.4", mock_resolve)
-                await self.object.process(event)
+        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+            self._mock_resolve_answer("1.2.3.4", mock_resolve)
+            await self.object.process(event)
         assert document == expected
 
     @staticmethod
