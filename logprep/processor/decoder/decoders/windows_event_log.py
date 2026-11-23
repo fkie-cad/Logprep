@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from typing import Callable, Literal, NamedTuple, TypedDict
 
 from logprep.processor.decoder.decoders.common import DecoderError
-from logprep.util.helper import FieldValue
+from logprep.util.helper import FieldValue, JsonObject
 from logprep.util.time import UTC, TimeParser, TimeParserException
 
 MAX_XML_DEPTH = 10
@@ -236,9 +236,7 @@ def _find_field_element(root: ET.Element, spec: _XmlField) -> ET.Element | None:
     )
 
 
-def _parse_fields(
-    root: ET.Element, fields: dict[str, FieldValue], specs: tuple[_XmlField, ...]
-) -> None:
+def _parse_fields(root: ET.Element, fields: JsonObject, specs: tuple[_XmlField, ...]) -> None:
     """Adds the values described by ``specs`` to ``fields``."""
     for spec in specs:
         element = _find_field_element(root, spec)
@@ -249,7 +247,7 @@ def _parse_fields(
             fields[spec.target] = spec.convert(value.strip())
 
 
-def _parse_data_section(section: ET.Element, fields: dict[str, FieldValue]) -> None:
+def _parse_data_section(section: ET.Element, fields: JsonObject) -> None:
     """Flattens event data elements, using their ``Name`` attribute as field name."""
     elements = list(section)
     while elements:
@@ -265,7 +263,7 @@ def _parse_data_section(section: ET.Element, fields: dict[str, FieldValue]) -> N
 
 def parse_windows_event_log(
     log_line: str, xmlfields: dict[str, XmlFieldOverrides] | None = None
-) -> dict[str, FieldValue]:
+) -> JsonObject:
     """Parses Windows Event Log XML into a flat dict of fields.
 
     The default extraction maps values of the ``System`` section to field
@@ -319,7 +317,7 @@ def parse_windows_event_log(
     if system is None:
         raise DecoderError("windows event log has no System section")
 
-    parsed: dict[str, FieldValue] = {}
+    parsed: JsonObject = {}
     _parse_fields(root, parsed, XML_FIELDS)
     for section_name in DATA_SECTIONS:
         section = _find_child(root, section_name)
