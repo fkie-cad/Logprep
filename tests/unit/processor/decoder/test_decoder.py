@@ -12,7 +12,9 @@ from logprep.processor.base.exceptions import (
     ProcessingError,
     ProcessingWarning,
 )
-from logprep.processor.decoder.decoders import MAX_XML_DEPTH, get_decoder, parse_logfmt
+from logprep.processor.decoder.decoders.logfmt import parse_logfmt
+from logprep.processor.decoder.decoders.registry import get_decoder
+from logprep.processor.decoder.decoders.windows_event_log import MAX_XML_DEPTH
 from logprep.util.typing import is_list_of
 from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase

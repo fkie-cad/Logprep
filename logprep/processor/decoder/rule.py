@@ -90,8 +90,8 @@ import typing
 from attrs import define, field, validators
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.decoder.decoders import (
-    DECODERS,
+from logprep.processor.decoder.decoders.registry import DECODERS
+from logprep.processor.decoder.decoders.windows_event_log import (
     XmlFieldOverrides,
     validate_xmlfields,
 )

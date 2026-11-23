@@ -43,7 +43,8 @@ from typing import Callable
 
 from typing_extensions import override
 
-from logprep.processor.decoder.decoders import DecoderError, get_decoder
+from logprep.processor.decoder.decoders.common import DecoderError
+from logprep.processor.decoder.decoders.registry import get_decoder
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.field_manager.rule import FieldManagerRule
