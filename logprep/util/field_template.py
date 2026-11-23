@@ -1,6 +1,5 @@
 """Compile field templates against static context and evaluate runtime context."""
 
-import inspect
 import re
 from collections.abc import Collection, Mapping
 from copy import deepcopy
@@ -16,6 +15,7 @@ from logprep.util.helper import (
     MISSING,
     FieldValue,
     JsonObject,
+    Missing,
     get_dotted_field_list,
     get_field_value,
 )
@@ -414,35 +414,69 @@ class ParsedCall:
 
         def compile_argument(
             argument: "Operation",
-        ) -> "Operation":
-            compiled = argument.compile(static_context, functions)
+            accepts_missing: bool,
+        ) -> "Argument":
+            can_copy_result: bool = not function.can_borrow_input
+
+            arg = (
+                OptionalLookup(
+                    context=argument.context,
+                    path=argument.path,
+                    copy_result=can_copy_result,
+                )
+                if isinstance(argument, Lookup) and accepts_missing
+                else argument
+            )
+
+            compiled = arg.compile(static_context, functions)
 
             if isinstance(compiled, Lookup):
                 return Lookup(
                     context=compiled.context,
                     path=compiled.path,
-                    copy_result=not function.can_borrow_input,
+                    copy_result=can_copy_result,
                 )
 
             return compiled
 
-        compiled_args = [compile_argument(arg) for arg in self.args]
-        compiled_kwargs = {key: compile_argument(arg) for key, arg in self.kwargs.items()}
+        compiled_args = [
+            compile_argument(arg, function.accepts_missing(i)) for i, arg in enumerate(self.args)
+        ]
+        compiled_kwargs = {
+            key: compile_argument(arg, function.accepts_missing(key))
+            for key, arg in self.kwargs.items()
+        }
 
         if function.foldable:
-            arg_values = [arg.value for arg in compiled_args if isinstance(arg, Constant)]
+
+            def constant_value(arg: "Constant | MissingValue") -> FieldValue | Missing:
+                return MISSING if isinstance(arg, MissingValue) else arg.value
+
+            arg_values = [
+                constant_value(arg)
+                for arg in compiled_args
+                if isinstance(arg, (Constant, MissingValue))
+            ]
             kwarg_values = {
-                key: arg.value for key, arg in compiled_kwargs.items() if isinstance(arg, Constant)
+                key: constant_value(arg)
+                for key, arg in compiled_kwargs.items()
+                if isinstance(arg, (Constant, MissingValue))
             }
 
             if len(arg_values) == len(compiled_args) and len(kwarg_values) == len(compiled_kwargs):
                 try:
-                    return Constant(function.fn(*arg_values, **kwarg_values))
+                    result = function.fn(*arg_values, **kwarg_values)
                 except Exception as error:
                     raise FieldTemplateConfigError(
                         f"Function {self.name!r} failed during constant folding: "
                         f"{type(error).__name__}: {error}"
                     ) from error
+
+                if result is MISSING:
+                    raise FieldTemplateConfigError(
+                        f"Function {self.name!r} cannot produce a value: its arguments are always missing"
+                    )
+                return Constant(result)
 
         return Call(function, tuple(compiled_args), compiled_kwargs, name=self.name)
 
@@ -455,12 +489,48 @@ class ParsedCall:
 
 
 @define(frozen=True)
+class MissingValue:
+    def evaluate(self, _runtime_context) -> Missing:
+        return MISSING
+
+
+@define(frozen=True)
+class OptionalLookup:
+    context: str
+    path: tuple[str, ...]
+    copy_result: bool = True
+
+    def compile(
+        self, static_context: dict[str, JsonObject], _functions: Mapping[str, Function]
+    ) -> "Constant | MissingValue | OptionalLookup":
+        if self.context in static_context:
+            value = get_field_value(static_context[self.context], self.path)
+            if value is MISSING:
+                return MissingValue()
+            return Constant(deepcopy(value) if isinstance(value, (dict, list)) else value)
+        return self
+
+    def evaluate(self, runtime_context: dict[str, JsonObject]) -> FieldValue | Missing:
+        """Resolve a runtime field and copy mutable values unless borrowing is enabled."""
+        if self.context not in runtime_context:
+            raise FieldTemplateLookupError(
+                f"Missing runtime context root {self.context!r} for lookup path {self.path!r}"
+            )
+
+        value = get_field_value(runtime_context[self.context], self.path)
+        if self.copy_result and isinstance(value, (dict, list)):
+            return deepcopy(value)
+
+        return value
+
+
+@define(frozen=True)
 class Call:
     """A resolved function and compiled arguments ready for evaluation."""
 
     function: Function
-    args: tuple["Operation", ...]
-    kwargs: Mapping[str, "Operation"]
+    args: ReadonlyList["Argument"]
+    kwargs: Mapping[str, "Argument"]
     name: str = "<anonymous>"
 
     def compile(
@@ -483,12 +553,18 @@ class Call:
         kwargs = {key: arg.evaluate(runtime_context) for key, arg in self.kwargs.items()}
 
         try:
-            return self.function.fn(*args, **kwargs)
+            result = self.function.fn(*args, **kwargs)
         except Exception as error:
             raise FieldTemplateFunctionError(
                 f"Function {self.name!r} failed during evaluation: "
                 f"{type(error).__name__}: {error}"
             ) from error
+
+        if result is MISSING:
+            raise FieldTemplateLookupError(
+                f"Function {self.name!r} returned a missing value during evaluation"
+            )
+        return result
 
 
 @define(frozen=True)
@@ -778,6 +854,7 @@ class ListOperation:
 
 
 Operation: TypeAlias = Constant | Lookup | ParsedCall | Call | MappingOperation | ListOperation
+Argument: TypeAlias = Operation | OptionalLookup | MissingValue
 
 
 @define(frozen=True)
@@ -1127,6 +1204,7 @@ def _validate_operation(
     static_context: dict[str, dict[str, FieldValue]],
     runtime_roots: Collection[str],
     functions: Mapping[str, Function],
+    accepts_missing: bool = False,
 ) -> None:
     """Check lookup paths, function names and signatures in a parsed tree.
 
@@ -1158,6 +1236,10 @@ def _validate_operation(
             if op.context in runtime_roots:
                 return
 
+            if accepts_missing:
+                # Log here that missing allowed for static lookup, this should not be done because it will always eveluate to the same thing
+                return
+
             if get_field_value(static_context[op.context], op.path) is MISSING:
                 raise FieldTemplateConfigError(
                     f"Cannot resolve lookup path {op.path!r} "
@@ -1171,20 +1253,23 @@ def _validate_operation(
 
             function = functions[op.name]
 
-            # Cache this on function, not relevant for now
-            sig = inspect.signature(function.fn)
             try:
-                sig.bind(*op.args, **op.kwargs)
+                function.signature.bind(*op.args, **op.kwargs)
             except TypeError as error:
                 raise FieldTemplateConfigError(
                     f"Invalid arguments for function {op.name!r}: {error}"
                 ) from error
 
-            for arg in op.args:
-                _validate_operation(arg, static_context, runtime_roots, functions)
+            arguments: list[tuple[int | str, Operation]] = [*enumerate(op.args), *op.kwargs.items()]
+            for arg, value in arguments:
+                accepts_missing = function.accepts_missing(arg)
+                if accepts_missing and not isinstance(value, Lookup):
+                    # Log this here somehow
+                    pass
 
-            for kwarg in op.kwargs.values():
-                _validate_operation(kwarg, static_context, runtime_roots, functions)
+                _validate_operation(
+                    value, static_context, runtime_roots, functions, accepts_missing=accepts_missing
+                )
             return
 
         case MappingOperation():

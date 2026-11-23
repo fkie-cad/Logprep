@@ -1,15 +1,27 @@
+import inspect
 from collections.abc import Callable, ItemsView, Mapping, ValuesView
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final, TypeAlias
 
-from attr import define, field
+from attr import Factory, define, field
 
-from logprep.util.helper import FieldValue
+from logprep.util.helper import MISSING, FieldValue, Missing
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule
 
 ContextEntry: TypeAlias = FieldValue | Callable[[], FieldValue]
+
+
+_SINGLE_VALUE_KINDS: Final = (
+    inspect.Parameter.POSITIONAL_ONLY,
+    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    inspect.Parameter.KEYWORD_ONLY,
+)
+_FIXED_POSITIONAL: Final = (
+    inspect.Parameter.POSITIONAL_ONLY,
+    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+)
 
 
 @define(frozen=True)
@@ -36,11 +48,43 @@ class Function:
     # to validate than we previously thought because type hints mean nothing
     can_borrow_input: bool = field(default=False)
     foldable: bool = field(default=False)
+    allowed_missing_params: frozenset[str] = field(factory=frozenset)
+    signature: inspect.Signature = field(
+        default=Factory(lambda self: inspect.signature(self.fn), takes_self=True),
+        init=False,
+        eq=False,
+        repr=False,
+    )
+
+    def __attrs_post_init__(self):
+        for name in sorted(self.allowed_missing_params):
+            parameter = self.signature.parameters.get(name)
+            if parameter is None:
+                raise ValueError(f"Unknown parameter {name!r} in allowed_missing_params")
+            if parameter.kind not in _SINGLE_VALUE_KINDS:
+                raise ValueError(
+                    f"Variadic parameter {name!r} cannot be listed in allowed_missing_params"
+                )
+
+    def accepts_missing(self, argument: int | str) -> bool:
+        if isinstance(argument, str):
+            return argument in self.allowed_missing_params
+
+        parameters = tuple(self.signature.parameters.values())
+        if argument < len(parameters) and parameters[argument].kind in _FIXED_POSITIONAL:
+            return parameters[argument].name in self.allowed_missing_params
+        return False
 
 
 def concat(*values: str) -> str:
     """Concatenate string arguments without a separator; other types raise ``TypeError``."""
     return "".join(values)
+
+
+def default(value: FieldValue | Missing, replacement: FieldValue = None) -> FieldValue:
+    if value is MISSING:
+        return replacement
+    return value
 
 
 DEFAULT_FUNCTIONS: Final[Mapping[str, Function]] = MappingProxyType(
@@ -55,6 +99,12 @@ DEFAULT_FUNCTIONS: Final[Mapping[str, Function]] = MappingProxyType(
             lambda values, separator: separator.join(values), can_borrow_input=True, foldable=True
         ),
         "concat": Function(concat, can_borrow_input=True, foldable=True),
+        "default": Function(
+            default,
+            can_borrow_input=False,
+            foldable=True,
+            allowed_missing_params=frozenset({"value"}),
+        ),
     }
 )
 
