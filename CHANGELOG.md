@@ -4,8 +4,8 @@
 ### Features
 * ng: introduce asynchronous getters and resource caching
 * ng: migrate configuration and rule loading to asynchronous APIs
-* ng: migrate Requester HTTP requests to `aiohttp`
-* ng: use asynchronous DNS resolution in DomainResolver
+* ng: migrate `requester` HTTP requests to `aiohttp`
+* ng: use asynchronous DNS resolution in `domain_resolver`
 
 ### Improvements
 * ng: offload GeoIP database initialization to a separate thread
