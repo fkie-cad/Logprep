@@ -2,40 +2,23 @@
 ### Breaking
 
 ### Features
-* ng: add asynchronous getter and refresh scheduling support
-* ng: load configuration, rule tree configuration, rule definitions, and processor rules asynchronously
-* ng: make getter-backed setup and processing asynchronous many processors
-* ng: offload GeoIP database initialization to a separate thread
-* ng: make domain resolver DNS lookups non-blocking
-* ng: initialize pseudonymizer public keys asynchronously during setup
-* ng: classify processors with asynchronous I/O during event processing correctly
+* ng: introduce asynchronous getters and resource caching
+* ng: migrate configuration and rule loading to asynchronous APIs
+* ng: migrate Requester HTTP requests to `aiohttp`
+* ng: use asynchronous DNS resolution in DomainResolver
 
 ### Improvements
-* ng: requester uses `aiohttp` authorization headers for basic authentication instead of deprecated auth parameters
-* ng: adapt NG tests to asynchronous lifecycles and improve test reliability
-* http_server: disable unused WebSocket support
-* ng: offload credentials file validation from the asynchronous event loop
-* ng: refresh independent getter targets concurrently to avoid cross-target refresh delays
-* ng: improve asynchronous refreshable getter scheduling and isolate refresh callback failures
-* ng: share concurrent getter cache updates and initialization across callers
-* ng: make shared getter state cleanup safe during cancellation and concurrent updates
-* ng: clean up and deduplicate GenericResolver refresh callbacks and their orphaned getter targets
+* ng: offload GeoIP database initialization to a separate thread
+* ng: share concurrent getter cache updates across callers
+* ng: refresh independent getter targets concurrently
 
 ### Bugfix
-* generic_resolver: avoid sharing mutable additions between rule configurations
-* ng: fix asynchronous refreshable getter scheduling in the runner
-* ng: prevent refresh callback failures from stopping subsequent refresh processing
-* ng: avoid duplicate getter refreshes while executing refresh callbacks
-* ng: share concurrent getter cache updates to avoid duplicate requests for the same target
-* ng: make processor rule tree setup atomic and safe for repeated initialization
-* ng: preserve Requester timeout, TLS, and proxy behavior and harden its aiohttp session lifecycle
-* ng: clean up and deduplicate GenericResolver refresh callbacks
-* ng: remove orphaned refreshable getter targets after callback cleanup
-* ng: preserve Requester timeout, TLS certificate, and environment proxy behavior after the aiohttp migration
-* ng: harden Requester setup against repeated initialization
-* ng: shut down temporary processors after configuration validation to avoid leaking resources
-* ng: improve resource cleanup and lifecycle management during setup, shutdown, and cancellation
-
+* ng: prevent refresh callback failures from interrupting subsequent callbacks
+* ng: avoid redundant getter requests during refresh callbacks
+* ng: prevent duplicate rules during repeated processor setup
+* ng: remove orphaned getter targets after callback cleanup
+* ng: fix resource cleanup during failed setup and configuration validation
+*
 ## 22.0.0
 ### Breaking
 * domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
