@@ -5,7 +5,7 @@
 * ng: add asynchronous getter and refresh scheduling support
 * ng: load configuration, rule tree configuration, rule definitions, and processor rules asynchronously
 * ng: make getter-backed setup and processing asynchronous many processors
-* ng: offload GeoIP database lookups from the async event loop
+* ng: offload GeoIP database initialization to a separate thread
 * ng: make domain resolver DNS lookups non-blocking
 * ng: initialize pseudonymizer public keys asynchronously during setup
 * ng: classify processors with asynchronous I/O during event processing correctly
