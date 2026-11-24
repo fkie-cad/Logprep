@@ -351,7 +351,3 @@ class Pseudonymizer(FieldManager):
         self.metrics.cache_load.set(
             (sum(c.currsize for c in caches)) / (sum(typing.cast(int, c.maxsize) for c in caches))
         )
-
-    async def shut_down(self) -> None:
-        self.__regex_mapping = None
-        await super().shut_down()
