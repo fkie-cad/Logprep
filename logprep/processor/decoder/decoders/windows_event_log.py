@@ -217,8 +217,7 @@ def parse_windows_event_log(
         raise DecoderError("can't parse windows event log xml") from error
     if _local_name(root.tag) != "Event":
         raise DecoderError("not a windows event log")
-    system = _find_child(root, "System")
-    if system is None:
+    if _find_child(root, "System") is None:
         raise DecoderError("windows event log has no System section")
 
     parsed: JsonObject = {}
