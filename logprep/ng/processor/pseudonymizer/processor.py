@@ -183,10 +183,6 @@ class Pseudonymizer(FieldManager):
 
     rule_class = PseudonymizerRule
 
-    __slots__ = ["__regex_mapping"]
-
-    __regex_mapping: dict | None
-
     @cached_property
     def _hasher(self) -> SHA256Hasher:
         return SHA256Hasher()
