@@ -65,6 +65,7 @@ def _local_name(tag: object) -> str:
     ElementTree represents comments and processing instructions with callable
     tags, which are ignored by returning an empty name.
     """
+    # str.rpartition("}")[-1] also returns the original string when "}" is absent.
     return tag.rpartition("}")[-1] if isinstance(tag, str) else ""
 
 
