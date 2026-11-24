@@ -8,7 +8,6 @@ from typing import Any, ClassVar
 
 from attrs import define, field, validators
 
-from logprep.abc.exceptions import ProcessorNotInitializedError
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.component import NgComponent as Component
