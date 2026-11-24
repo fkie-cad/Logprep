@@ -30,9 +30,9 @@ from collections.abc import Iterable, Sequence
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
-from logprep.ng.processor.labeler.rule import LabelerRule
 from logprep.processor.base.rule import Rule
 from logprep.processor.labeler.labeling_schema import LabelingSchema
+from logprep.processor.labeler.rule import LabelerRule
 from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 

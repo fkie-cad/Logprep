@@ -14,9 +14,9 @@ from pytest import raises
 from logprep.factory import Factory
 from logprep.ng.abc.event import InputMeta, LogEvent
 from logprep.ng.processor.labeler.processor import Labeler
-from logprep.ng.processor.labeler.rule import LabelerRule
 from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
+from logprep.processor.labeler.rule import LabelerRule
 from tests.testdata.metadata import path_to_schema, path_to_schema2
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
