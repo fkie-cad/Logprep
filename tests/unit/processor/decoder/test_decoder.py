@@ -88,6 +88,12 @@ ADDITIONAL_DATA_WINDOWS_EVENT_XML = (
     '<UserData><Data Name="Param1">a</Data></UserData>'
     "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
 )
+DATA_FIELD_COLLISION_WINDOWS_EVENT_XML = (
+    "<Event><System><EventID>2</EventID></System>"
+    '<EventData><Data Name="Param1">from_event</Data></EventData>'
+    '<UserData><Data Name="Param1">from_user</Data></UserData>'
+    "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
+)
 CUSTOM_XMLFIELDS = {
     "EventID": {"convert": "str"},
     "SourceName": {"attribute": "Guid"},
@@ -445,6 +451,26 @@ example_test_cases = [
             },
         },
         id="parse windows event log with user and processing error data",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {"message": DATA_FIELD_COLLISION_WINDOWS_EVENT_XML},
+        {
+            "message": DATA_FIELD_COLLISION_WINDOWS_EVENT_XML,
+            "parsed": {
+                "EventID": 2,
+                "Param1": "from_event",
+                "ErrorCode": "5",
+                "EventXML": DATA_FIELD_COLLISION_WINDOWS_EVENT_XML,
+            },
+        },
+        id="parse windows event log does not overwrite data field",
     ),
     pytest.param(
         {

@@ -164,16 +164,16 @@ def _parse_fields(root: ET.Element, fields: JsonObject, specs: Iterable[XmlField
 
 def _parse_data_section(section: ET.Element, fields: JsonObject) -> None:
     """Flattens event data elements, using their ``Name`` attribute as field name."""
-    elements = list(section)
+    elements = list(reversed(section))
     while elements:
         element = elements.pop()
         name = element.get("Name")
         if name:
-            fields[name] = _text(element)
+            fields.setdefault(name, _text(element))
         elif len(element):
             elements.extend(reversed(element))
         else:
-            fields[_local_name(element.tag)] = _text(element)
+            fields.setdefault(_local_name(element.tag), _text(element))
 
 
 def parse_windows_event_log(
