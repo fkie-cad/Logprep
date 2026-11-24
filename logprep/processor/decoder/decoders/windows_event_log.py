@@ -12,6 +12,7 @@ rejected.
 
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable
+from enum import StrEnum
 from typing import Callable
 
 from attrs import define
@@ -23,13 +24,20 @@ from logprep.util.time import UTC, TimeParser, TimeParserException
 MAX_XML_DEPTH = 10
 
 
+class WindowsEventLogElement(StrEnum):
+    """String constants for Windows Event Log XML elements/sections."""
+
+    SYSTEM = "System"
+    EVENT = "Event"
+
+
 @define(frozen=True, kw_only=True)
 class XmlFieldSpec:
     """Description of a single value to extract from the Windows Event Log XML."""
 
     element: str
     target: str
-    section: str = "System"
+    section: str = WindowsEventLogElement.SYSTEM
     name: str | None = None
     attribute: str | None = None
     convert: Callable[[str], FieldValue] = str
@@ -134,7 +142,9 @@ class _SafeTreeBuilder(ET.TreeBuilder):
 
 def _find_field_element(root: ET.Element, spec: XmlFieldSpec) -> ET.Element | None:
     """Find the first element in the configured section matching the specification."""
-    section = root if spec.section == "Event" else _find_child(root, spec.section)
+    section = (
+        root if spec.section == WindowsEventLogElement.EVENT else _find_child(root, spec.section)
+    )
     if section is None:
         return None
     if _local_name(section.tag) == spec.element:
@@ -215,9 +225,9 @@ def parse_windows_event_log(
         root = parser.close()
     except ET.ParseError as error:
         raise DecoderError("can't parse windows event log xml") from error
-    if _local_name(root.tag) != "Event":
+    if _local_name(root.tag) != WindowsEventLogElement.EVENT:
         raise DecoderError("not a windows event log")
-    if _find_child(root, "System") is None:
+    if _find_child(root, WindowsEventLogElement.SYSTEM) is None:
         raise DecoderError("windows event log has no System section")
 
     parsed: JsonObject = {}
