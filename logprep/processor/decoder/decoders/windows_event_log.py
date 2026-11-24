@@ -59,19 +59,9 @@ def to_int_or_str(value: str) -> FieldValue:
         return value
 
 
-def _local_name(tag: object) -> str:
-    """Strips an optional XML namespace from a tag name.
-
-    ElementTree represents comments and processing instructions with callable
-    tags, which are ignored by returning an empty name.
-    """
-    # str.rpartition("}")[-1] also returns the original string when "}" is absent.
-    return tag.rpartition("}")[-1] if isinstance(tag, str) else ""
-
-
 def _find_child(element: ET.Element, name: str) -> ET.Element | None:
-    """Returns the first direct child with ``name``, ignoring namespaces."""
-    return next((child for child in element if _local_name(child.tag) == name), None)
+    """Returns the first direct child with ``name``."""
+    return next((child for child in element if child.tag == name), None)
 
 
 def _text(element: ET.Element) -> str:
@@ -124,6 +114,11 @@ class _SafeTreeBuilder(ET.TreeBuilder):
         super().__init__()
         self._depth = 0
 
+    @staticmethod
+    def _local_tag(tag: str) -> str:
+        # str.rpartition("}")[-1] also returns the original string when "}" is absent.
+        return tag.rpartition("}")[-1]
+
     def doctype(self, name: str, pubid: str | None, system: str | None) -> None:
         """Reject any DTD declaration before entities can be expanded."""
         raise DecoderError("doctype is not supported in windows event logs")
@@ -133,12 +128,12 @@ class _SafeTreeBuilder(ET.TreeBuilder):
         self._depth += 1
         if self._depth > MAX_XML_DEPTH:
             raise DecoderError("windows event log xml is nested too deeply")
-        return super().start(tag, attrs)
+        return super().start(self._local_tag(tag), attrs)
 
     def end(self, tag: str) -> ET.Element:
         """Decrement the depth after an element is closed."""
         self._depth -= 1
-        return super().end(tag)
+        return super().end(self._local_tag(tag))
 
 
 def _find_field_element(root: ET.Element, spec: XmlFieldSpec) -> ET.Element | None:
@@ -148,14 +143,14 @@ def _find_field_element(root: ET.Element, spec: XmlFieldSpec) -> ET.Element | No
     )
     if section is None:
         return None
-    if _local_name(section.tag) == spec.element:
+    if section.tag == spec.element:
         return section
     return next(
         (
             element
             for element in section.iter()
             if element is not section
-            and _local_name(element.tag) == spec.element
+            and element.tag == spec.element
             and (spec.name is None or element.get("Name") == spec.name)
         ),
         None,
@@ -187,8 +182,8 @@ def _parse_data_section(section: ET.Element, fields: JsonObject) -> None:
             elements.extend(reversed(element))
         else:
             value = _text(element)
-            if value:
-                fields.setdefault(_local_name(element.tag), value)
+            if value and isinstance(element.tag, str):
+                fields.setdefault(element.tag, value)
 
 
 def parse_windows_event_log(
@@ -226,7 +221,7 @@ def parse_windows_event_log(
         root = parser.close()
     except ET.ParseError as error:
         raise DecoderError("can't parse windows event log xml") from error
-    if _local_name(root.tag) != WindowsEventLogElement.EVENT:
+    if root.tag != WindowsEventLogElement.EVENT:
         raise DecoderError("not a windows event log")
     if _find_child(root, WindowsEventLogElement.SYSTEM) is None:
         raise DecoderError("windows event log has no System section")
