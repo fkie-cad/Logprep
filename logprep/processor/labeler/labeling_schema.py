@@ -49,7 +49,7 @@ class LabelingSchema:
         return self._schema
 
     @staticmethod
-    def _create_from_file(content: str) -> "LabelingSchema":
+    def _create_from_json(content: str) -> "LabelingSchema":
         schema = loads(content)
         if not schema:
             raise LabelingSchemaError()
@@ -62,7 +62,7 @@ class LabelingSchema:
         """Create a schema from a file at a given path."""
         try:
             content = await NGGetterFactory.from_string(path).get()
-            return LabelingSchema._create_from_file(content)
+            return LabelingSchema._create_from_json(content)
         except FileNotFoundError as error:
             raise InvalidLabelingSchemaFileError(path=path, message="File not found") from error
         except OSError as error:
@@ -79,7 +79,7 @@ class LabelingSchema:
         """Create a schema from a file at a given path."""
         try:
             content = GetterFactory.from_string(path).get()
-            return LabelingSchema._create_from_file(content)
+            return LabelingSchema._create_from_json(content)
         except FileNotFoundError as error:
             raise InvalidLabelingSchemaFileError(path=path, message="File not found") from error
         except OSError as error:

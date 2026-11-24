@@ -90,10 +90,6 @@ class Processor(Component):
     @property
     def rules(self) -> Sequence[Rule]:
         """Returns all rules"""
-
-        if hasattr(self, "self._rule_tree") or self._rule_tree is None:
-            raise ProcessorNotInitializedError(f"Processor '{self.name}' is not initialized.")
-
         return self._rule_tree.rules
 
     @property
@@ -297,5 +293,7 @@ class Processor(Component):
     def _shut_down(self):
         super()._shut_down()
 
-        for rule in self.rules:
-            rule.shut_down()
+        rule_tree = getattr(self, "_rule_tree", None)
+        if rule_tree is not None:
+            for rule in rule_tree.rules:
+                rule.shut_down()

@@ -870,8 +870,7 @@ class HttpGetter(RefreshableGetter):
         domain_uri = f"{scheme}://{domain}"
         if domain_uri not in self._credentials_registry:
             self._credentials_registry.update({domain_uri: self.credentials})
-        creds = self._credentials_registry.get(domain_uri)
-        return creds if creds else Credentials()
+        return self._credentials_registry[domain_uri]
 
     async def _get_aiohttp_session(self) -> aiohttp.ClientSession:
         """Get the shared aiohttp session for the current target"""
