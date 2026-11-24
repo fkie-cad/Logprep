@@ -65,7 +65,6 @@ WINDOWS_EVENT_FIELDS = {
     "TargetUserName": "z000sms03s",
     "TargetDomainName": "ITB",
     "Status": "0x12",
-    "CertIssuerName": "",
     "EventXML": WINDOWS_EVENT_XML,
 }
 MINIMAL_WINDOWS_EVENT_XML = (
@@ -424,13 +423,44 @@ example_test_cases = [
             "parsed": {
                 "EventID": "not-a-number",
                 "EventTime": "not-a-time",
-                "Empty": "",
                 "Data": "positional",
                 "Nested": "value",
                 "EventXML": UNPARSABLE_WINDOWS_EVENT_XML,
             },
         },
         id="parse windows event log with unparsable and unnamed values",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><Version/></System>"
+                '<EventData><Data Name="EmptyData"></Data><Data Name="Present">ok</Data>'
+                "<Data></Data></EventData></Event>"
+            )
+        },
+        {
+            "message": (
+                "<Event><System><Version/></System>"
+                '<EventData><Data Name="EmptyData"></Data><Data Name="Present">ok</Data>'
+                "<Data></Data></EventData></Event>"
+            ),
+            "parsed": {
+                "Present": "ok",
+                "EventXML": (
+                    "<Event><System><Version/></System>"
+                    '<EventData><Data Name="EmptyData"></Data><Data Name="Present">ok</Data>'
+                    "<Data></Data></EventData></Event>"
+                ),
+            },
+        },
+        id="parse windows event log skips empty values in system and data fields",
     ),
     pytest.param(
         {

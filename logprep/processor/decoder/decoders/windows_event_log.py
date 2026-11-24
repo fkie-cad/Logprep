@@ -169,11 +169,15 @@ def _parse_data_section(section: ET.Element, fields: JsonObject) -> None:
         element = elements.pop()
         name = element.get("Name")
         if name:
-            fields.setdefault(name, _text(element))
+            value = _text(element)
+            if value:
+                fields.setdefault(name, value)
         elif len(element):
             elements.extend(reversed(element))
         else:
-            fields.setdefault(_local_name(element.tag), _text(element))
+            value = _text(element)
+            if value:
+                fields.setdefault(_local_name(element.tag), value)
 
 
 def parse_windows_event_log(
