@@ -20,6 +20,7 @@ from typing import Any, ClassVar, Iterable, TypeAlias
 from urllib.parse import urlparse
 
 import aiohttp
+from aiohttp import ClientTimeout
 from attrs import define, field, validators
 from urllib3 import Retry
 
@@ -907,7 +908,7 @@ class HttpGetter(RefreshableGetter):
                     url=self.uri,
                     allow_redirects=True,
                     headers=self._headers,
-                    timeout=5,
+                    timeout=aiohttp.ClientTimeout(5),
                 ) as response:
                     if retry_config.is_retry(
                         method="GET",

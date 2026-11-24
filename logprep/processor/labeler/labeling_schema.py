@@ -1,9 +1,9 @@
 """This module is used create labeling schemas."""
 
 from json import JSONDecodeError
-from typing import Any, List, Optional, Self
+from typing import Any, List, Optional
 
-from jsonref import loads
+from jsonref import loads  # type: ignore[import-untyped]
 
 from logprep.ng.util.getter import GetterFactory as NGGetterFactory
 from logprep.processor.base.exceptions import (
