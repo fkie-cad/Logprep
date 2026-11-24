@@ -2,11 +2,23 @@
 ### Breaking
 
 ### Features
+* ng: introduce asynchronous getters and resource caching
+* ng: migrate configuration and rule loading to asynchronous APIs
+* ng: migrate `requester` HTTP requests to `aiohttp`
+* ng: use asynchronous DNS resolution in `domain_resolver`
 
 ### Improvements
+* ng: offload GeoIP database initialization to a separate thread
+* ng: share concurrent getter cache updates across callers
+* ng: refresh independent getter targets concurrently
 
 ### Bugfix
-
+* ng: prevent refresh callback failures from interrupting subsequent callbacks
+* ng: avoid redundant getter requests during refresh callbacks
+* ng: prevent duplicate rules during repeated processor setup
+* ng: remove orphaned getter targets after callback cleanup
+* ng: fix resource cleanup during failed setup and configuration validation
+*
 ## 22.0.0
 ### Breaking
 * domain_resolver: add `lifetime` parameter in addition to `timeout` parameter

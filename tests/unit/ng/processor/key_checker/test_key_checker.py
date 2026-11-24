@@ -33,20 +33,26 @@ class TestKeyChecker(BaseProcessorTestCase[KeyChecker]):
     @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
     async def test_testcases_positive(self, rule, event, expected, context, provision_context):
         provision_context(context)
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
         assert event.data == expected
 
     async def test_field_exists_warning(self):
-        rule_dict = {
+        rule = {
             "filter": "*",
             "key_checker": {
                 "source_fields": ["not.existing.key"],
                 "target_field": "missing_fields",
             },
         }
-        await self._load_rule(rule_dict)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
         document = {
             "key1": {
                 "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
@@ -56,6 +62,9 @@ class TestKeyChecker(BaseProcessorTestCase[KeyChecker]):
             "missing_fields": ["i.exists.already"],
         }
         event = LogEvent(document, original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)

@@ -52,10 +52,16 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         self, rule, event, expected, context, expected_error, message, provision_context
     ):
         provision_context(context)
-        await self._load_rule(rule)
+
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
         original_data = deepcopy(event)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            await instance.process(event)
+
         if expected_error is ProcessingCriticalError:
             assert event.data == original_data
             assert event.extra_data == []
@@ -99,16 +105,21 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
         document = {"user": "test_user", "other": "field"}
         exp_document = {"user": "test_user", "other": "field"}
         event = LogEvent(document, original=document, input_meta=InputMeta())
-        await self.object.process(event)
+
+        async with self.create_and_setup_processor() as instance:
+            await instance.process(event)
 
         assert document == exp_document
 
     async def test_process_adds_extracted_event_to_extra_data(self):
         document = {"message": "test_message", "field1": 1, "field2": 2}
         event = LogEvent(document, original=document, input_meta=InputMeta())
-        event = await self.object.process(event)
-        assert len(event.extra_data) == 1
-        extracted_event = event.extra_data[0]
+
+        async with self.create_and_setup_processor() as instance:
+            result = await instance.process(event)
+
+        assert len(result.extra_data) == 1
+        extracted_event = result.extra_data[0]
         assert isinstance(extracted_event, ExtractedEvent)
 
     async def test_process_returns_event_extra_data_with_extraction_fields_from_rule(self):
@@ -120,11 +131,15 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
                 "outputs": [{"kafka": "topic"}],
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {field_name: "the value"}
         event = LogEvent(document, original=document, input_meta=InputMeta())
-        event = await self.object.process(event)
-        extracted_event = event.extra_data[0]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
+        extracted_event = result.extra_data[0]
         assert field_name in extracted_event.data
 
     async def test_process_returns_selective_extractor_outputs(self):
@@ -136,11 +151,15 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
                 "outputs": [{"opensearch": "my topic"}],
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {field_name: "test_message", "other": "field"}
         event = LogEvent(document, original=document, input_meta=InputMeta())
-        event = await self.object.process(event)
-        extracted_event = event.extra_data[0]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
+        extracted_event = result.extra_data[0]
         assert extracted_event.output_name == "opensearch"
         assert extracted_event.output_target == "my topic"
 
@@ -154,33 +173,43 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
                 "outputs": [{"opensearch": "index"}],
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         event = LogEvent(document, original=document, input_meta=InputMeta())
-        event = await self.object.process(event)
-        extracted_event = event.extra_data[0]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
+        extracted_event = result.extra_data[0]
         assert isinstance(extracted_event, ExtractedEvent)
         assert extracted_event.data == expected
 
     async def test_process_returns_none_when_no_extraction_field_matches(self):
         document = {"nomessage": "test_message", "other": "field"}
         event = LogEvent(document, original=document, input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor() as instance:
+            result = await instance.process(event)
+
         assert isinstance(result, LogEvent)
         assert result.extra_data == []
         assert result.errors == []
 
     async def test_gets_matching_rules_from_rules_tree(self):
-        matching_rules = self.object._rule_tree.get_matching_rules({"message": "the message"})
+        async with self.create_and_setup_processor() as instance:
+            matching_rules = instance._rule_tree.get_matching_rules({"message": "the message"})
+
         assert isinstance(matching_rules, list)
         assert len(matching_rules) > 0
 
     async def test_apply_rules_is_called(self):
-        with mock.patch(
-            f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"
-        ) as mock_apply_rules:
-            event = LogEvent({"message": "the message"}, original=b"", input_meta=InputMeta())
-            await self.object.process(event)
-            mock_apply_rules.assert_called()
+        async with self.create_and_setup_processor() as instance:
+            with mock.patch(
+                f"{instance.__module__}.{instance.__class__.__name__}._apply_rules"
+            ) as mock_apply_rules:
+                event = LogEvent({"message": "the message"}, original=b"", input_meta=InputMeta())
+                await instance.process(event)
+                mock_apply_rules.assert_called()
 
     async def test_process_extracts_dotted_fields(self):
         rule = {
@@ -190,18 +219,27 @@ class TestSelectiveExtractor(BaseProcessorTestCase[SelectiveExtractor]):
                 "outputs": [{"opensearch": "index"}],
             },
         }
-        await self._load_rule(rule)
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
         document = {"message": "test_message", "other": {"message": "my message value"}}
         event = LogEvent(document, original=document, input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         extracted_event = result.extra_data[0]
         assert extracted_event.data.get("other", {}).get("message") is not None
 
     async def test_process_clears_internal_extracted_events_list_before_every_event(self):
         document = {"message": "test_message", "field1": 1, "field2": 2}
         event = LogEvent(document, original=document, input_meta=InputMeta())
-        _ = await self.object.process(event)
-        assert len(self.object._event.extra_data) == 1
-        event = LogEvent(document, original=document, input_meta=InputMeta())
-        _ = await self.object.process(event)
-        assert len(self.object._event.extra_data) == 1
+
+        async with self.create_and_setup_processor() as instance:
+            await instance.process(event)
+
+            assert len(instance._event.extra_data) == 1
+            event = LogEvent(document, original=document, input_meta=InputMeta())
+
+            await instance.process(event)
+
+            assert len(instance._event.extra_data) == 1

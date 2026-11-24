@@ -90,6 +90,7 @@
             pkgs.mkShell {
               packages = [
                 virtualenv
+                pkgs.git
                 pkgs.uv
                 pkgs.kubernetes-helm
                 pkgs.pandoc

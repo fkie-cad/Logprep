@@ -227,6 +227,7 @@ class DictRuleLoader(RuleLoader):
           A list with one Rule object created from the dictionary.
         """
 
+        # TODO(async-followup): global import and try to fix partial import cycle
         from logprep.registry import Registry  # pylint: disable=import-outside-toplevel
 
         if not isinstance(self.source, dict):

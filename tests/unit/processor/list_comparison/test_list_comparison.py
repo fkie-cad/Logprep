@@ -519,7 +519,7 @@ failure_test_cases = [  # rule, event, expected, error_message
         },
         {"user": "Franz"},
         {"user": "Franz", "tags": ["_list_comparison_failure"]},
-        r"Max retries exceeded",
+        r"(?si)failed.*load",
         id="http list is unreachable",
     ),
 ]
