@@ -36,6 +36,7 @@
 ### Improvements
 * decoder: reject DOCTYPE declarations, entity expansion and excessively nested XML in the `windows_event_log` source format
 * decoder: split the decoders module into one module per source format
+* decoder: document the default Windows Event Log fields and resolve `xmlfields` to a sequence of `XmlFieldSpec`
 * util: add field mapping template utility
 * cache: hold a payload in addition to timestamps
 * domain_resolver: adapt `domain_resolver` to changes of `cache`

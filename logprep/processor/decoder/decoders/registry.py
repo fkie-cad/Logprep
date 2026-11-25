@@ -1,5 +1,6 @@
 """Registry of all available decoders and construction with rule options."""
 
+from collections.abc import Sequence
 from functools import partial
 from typing import Callable, cast
 
@@ -40,7 +41,7 @@ DECODERS: dict[str, DecoderFunc] = {
 
 
 def get_decoder(
-    source_format: str, xmlfields: dict[str, XmlFieldSpec] | None = None
+    source_format: str, xmlfields: Sequence[XmlFieldSpec] | None = None
 ) -> Callable[[str], FieldValue]:
     """Provide the decoder for ``source_format`` with optional rule options applied."""
     decoder = DECODERS[source_format]
