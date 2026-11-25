@@ -67,8 +67,7 @@ are merged into them. A target that matches a default field inherits all
 properties that are not given (for example :code:`EventID` keeps its element
 and only changes :code:`convert`). New targets like :code:`User` need an
 :code:`element` and are added to the result. Because overrides are applied
-last, they replace default or event data fields with the same name. The
-unmodified XML is always written to :code:`EventXML`.
+last, they replace default or event data fields with the same name.
 
 
 .. autoclass:: logprep.processor.decoder.rule.DecoderRule.Config
@@ -295,8 +294,7 @@ class DecoderRule(FieldManagerRule):
            (:code:`Event`, :code:`System`, :code:`EventData`, :code:`UserData` or
            :code:`ProcessingErrorData`), :code:`name` to match an element's ``Name`` attribute,
            :code:`attribute` and :code:`convert` (:code:`str`, :code:`int` or :code:`timestamp`).
-           The raw XML is always kept in :code:`EventXML`, which cannot be configured. Without this
-           option the `im_msvistalog
+           Without this option the `im_msvistalog
            <https://docs.nxlog.co/agent/current/im/msvistalog.html>`_-style fields plus flattened
            data fields are emitted.
         """

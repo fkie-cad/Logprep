@@ -201,8 +201,7 @@ def parse_windows_event_log(
     The optional ``xmlfields`` mapping contains fully resolved ``XmlFieldSpec``
     instances that were created by the decoder rule when the rule was loaded.
     They are applied after the defaults and therefore override default or event
-    data fields with the same name. The unmodified XML is always kept in
-    ``EventXML``, which is reserved and cannot be configured.
+    data fields with the same name.
 
     Timestamps are normalized to ISO 8601 in UTC when converted with
     :code:`timestamp`; values that cannot be converted are kept as strings.
@@ -233,5 +232,4 @@ def parse_windows_event_log(
             _parse_data_section(section, parsed)
     if xmlfields:
         _parse_fields(root, parsed, xmlfields.values())
-    parsed["EventXML"] = log_line
     return parsed
