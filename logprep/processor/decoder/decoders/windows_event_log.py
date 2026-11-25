@@ -13,7 +13,7 @@ rejected.
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable, Sequence
 from enum import StrEnum
-from typing import Any, Callable, Literal, get_args
+from typing import Any, Callable
 
 from attrs import define
 
@@ -23,9 +23,7 @@ from logprep.util.helper import FieldValue, JsonObject
 from logprep.util.time import UTC, TimeParser, TimeParserException
 
 MAX_XML_DEPTH = 10
-XmlFieldConvert = Literal["str", "int", "timestamp"]
 XMLFIELD_KEYS = ("element", "section", "name", "attribute", "convert")
-XMLFIELD_CONVERTS = get_args(XmlFieldConvert)
 
 
 class WindowsEventLogElement(StrEnum):
@@ -152,7 +150,7 @@ def _spec_from_definition(target: str, definition: object) -> XmlFieldSpec:
         if not isinstance(value, str):
             raise InvalidRuleDefinitionError(f"xmlfields: '{key}' of '{target}' must be a string")
         if key == "convert":
-            if value not in XMLFIELD_CONVERTS:
+            if value not in XMLFIELD_CONVERTERS:
                 raise InvalidRuleDefinitionError(
                     f"xmlfields: unknown convert type for '{target}': {value}"
                 )
