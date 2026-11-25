@@ -1916,3 +1916,20 @@ class TestDecoder(BaseProcessorTestCase):
                     "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
                 },
             )
+
+    def test_uses_decode_func_from_rule(self):
+        rule = self.object.rule_class.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {"source_fields": ["message"], "target_field": "parsed"},
+            }
+        )
+
+        def decode(value):
+            return {"decoded": value}
+
+        rule.decode_func = decode
+        self._load_rule(rule)
+        event = {"message": "some value"}
+        self.object.process(event)
+        assert event["parsed"] == {"decoded": "some value"}

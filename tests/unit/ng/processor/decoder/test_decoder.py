@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=duplicate-code  # legacy and ng tests intentionally mirror each other
 # pylint: disable=line-too-long
 import json
 from copy import deepcopy
@@ -80,3 +81,20 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
                     await instance.process(event)
 
                 assert json.dumps(event.data["parsed"]) == expected_output
+
+    async def test_uses_decode_func_from_rule(self):
+        rule = self.object.rule_class.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {"source_fields": ["message"], "target_field": "parsed"},
+            }
+        )
+
+        def decode(value):
+            return {"decoded": value}
+
+        rule.decode_func = decode
+        await self._load_rule(rule)
+        event = LogEvent({"message": "some value"}, original=b"", input_meta=InputMeta())
+        await self.object.process(event)
+        assert event.data["parsed"] == {"decoded": "some value"}

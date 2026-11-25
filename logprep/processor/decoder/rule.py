@@ -89,8 +89,9 @@ from typing import Callable, Literal
 
 from attrs import define, field, validators
 
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.decoder.decoders.registry import DECODERS
+from logprep.processor.decoder.decoders.registry import DECODERS, get_decoder
 from logprep.processor.decoder.decoders.windows_event_log import (
     DEFAULT_XML_FIELD_TARGETS,
     DEFAULT_XML_FIELDS,
@@ -241,6 +242,8 @@ def validate_xmlfields(instance, attribute, value) -> None:
 class DecoderRule(FieldManagerRule):
     """Rule for the |PROCESSOR_NAME| processor"""
 
+    decode_func: Callable[[str], FieldValue]
+
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
         """Config for DecoderRule"""
@@ -308,3 +311,7 @@ class DecoderRule(FieldManagerRule):
     def xmlfields(self) -> dict[str, XmlFieldSpec] | None:
         """Getter for the optional windows_event_log field mapping"""
         return self.config.xmlfields
+
+    def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):
+        super().__init__(filter_rule, config, processor_name)
+        self.decode_func = get_decoder(self.source_format, self.xmlfields)

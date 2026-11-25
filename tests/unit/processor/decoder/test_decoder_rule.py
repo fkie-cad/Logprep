@@ -1,10 +1,12 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 from contextlib import nullcontext as does_not_raise
+from functools import partial
 
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.decoder.decoders.registry import DECODERS
 from logprep.processor.decoder.decoders.windows_event_log import (
     DEFAULT_XML_FIELDS,
     XmlFieldSpec,
@@ -236,3 +238,29 @@ class TestDecoderRule:
             )
         }
         assert parse_xmlfields(parsed) == parsed
+
+    def test_decode_func_is_resolved_on_init(self):
+        rule = DecoderRule.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {"source_format": "base64"},
+            }
+        )
+
+        assert rule.decode_func is DECODERS["base64"]
+        assert rule.decode_func("dGhpcyxpcyx0aGUsbWVzc2FnZQ==") == "this,is,the,message"
+
+    def test_decode_func_includes_xmlfields_on_init(self):
+        rule = DecoderRule.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {
+                    "source_format": "windows_event_log",
+                    "xmlfields": {"EventID": {"convert": "int"}},
+                },
+            }
+        )
+
+        assert isinstance(rule.decode_func, partial)
+        assert rule.decode_func.func is DECODERS["windows_event_log"]
+        assert rule.decode_func.keywords == {"xmlfields": rule.xmlfields}
