@@ -19,38 +19,6 @@ from logprep.util.typing import is_list_of
 from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
-WINDOWS_EVENT_FIELDS = {
-    "SourceName": "Microsoft-Windows-Security-Auditing",
-    "ProviderGuid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
-    "EventID": 4768,
-    "Version": 2,
-    "LevelValue": 0,
-    "TaskValue": 14339,
-    "OpcodeValue": 0,
-    "Keywords": "0x8010000000000000",
-    "EventTime": "2026-11-12T13:13:57.811161+00:00",
-    "RecordNumber": 17115866894,
-    "ActivityID": "{B32E47DD-4C50-0007-0B48-2EB3504CDD01}",
-    "ExecutionProcessID": 144,
-    "ExecutionThreadID": 3480,
-    "Channel": "Security",
-    "Hostname": "Z00WHVDC01.bbb.local",
-    "TargetUserName": "z000sms03s",
-    "TargetDomainName": "ITB",
-    "Status": "0x12",
-}
-MINIMAL_WINDOWS_EVENT_FIELDS = {
-    "Channel": "Application",
-    "EventTime": "2026-10-14T10:55:07.744922+00:00",
-}
-CUSTOM_XMLFIELDS = {
-    "EventID": {"convert": "str"},
-    "SourceName": {"attribute": "Guid"},
-    "Channel": {"element": "Computer"},
-    "TargetUserName": {"element": "Data", "section": "EventData", "name": "TargetDomainName"},
-    "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
-}
-
 example_test_cases = [
     pytest.param(
         {
@@ -369,7 +337,26 @@ example_test_cases = [
                 "</EventData>"
                 "</Event>"
             ),
-            "parsed": WINDOWS_EVENT_FIELDS,
+            "parsed": {
+                "SourceName": "Microsoft-Windows-Security-Auditing",
+                "ProviderGuid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "EventID": 4768,
+                "Version": 2,
+                "LevelValue": 0,
+                "TaskValue": 14339,
+                "OpcodeValue": 0,
+                "Keywords": "0x8010000000000000",
+                "EventTime": "2026-11-12T13:13:57.811161+00:00",
+                "RecordNumber": 17115866894,
+                "ActivityID": "{B32E47DD-4C50-0007-0B48-2EB3504CDD01}",
+                "ExecutionProcessID": 144,
+                "ExecutionThreadID": 3480,
+                "Channel": "Security",
+                "Hostname": "Z00WHVDC01.bbb.local",
+                "TargetUserName": "z000sms03s",
+                "TargetDomainName": "ITB",
+                "Status": "0x12",
+            },
         },
         id="parse windows event log into flat dict",
     ),
@@ -389,7 +376,12 @@ example_test_cases = [
                 '<TimeCreated SystemTime="2026-10-14T12:55:07.744922+02:00"/></System></Event>'
             )
         },
-        {"parsed": MINIMAL_WINDOWS_EVENT_FIELDS},
+        {
+            "parsed": {
+                "Channel": "Application",
+                "EventTime": "2026-10-14T10:55:07.744922+00:00",
+            }
+        },
         id="parse minimal windows event log without namespace",
     ),
     pytest.param(
@@ -520,7 +512,12 @@ example_test_cases = [
                 '<TimeCreated SystemTime="2026-10-14T12:55:07.744922+02:00"/></System></Event>'
             )
         },
-        {"message": MINIMAL_WINDOWS_EVENT_FIELDS},
+        {
+            "message": {
+                "Channel": "Application",
+                "EventTime": "2026-10-14T10:55:07.744922+00:00",
+            }
+        },
         id="overwrite source field with parsed windows event log",
     ),
     pytest.param(
@@ -589,7 +586,26 @@ example_test_cases = [
                 "</EventData>"
                 "</Event>"
             ),
-            "parsed": WINDOWS_EVENT_FIELDS,
+            "parsed": {
+                "SourceName": "Microsoft-Windows-Security-Auditing",
+                "ProviderGuid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "EventID": 4768,
+                "Version": 2,
+                "LevelValue": 0,
+                "TaskValue": 14339,
+                "OpcodeValue": 0,
+                "Keywords": "0x8010000000000000",
+                "EventTime": "2026-11-12T13:13:57.811161+00:00",
+                "RecordNumber": 17115866894,
+                "ActivityID": "{B32E47DD-4C50-0007-0B48-2EB3504CDD01}",
+                "ExecutionProcessID": 144,
+                "ExecutionThreadID": 3480,
+                "Channel": "Security",
+                "Hostname": "Z00WHVDC01.bbb.local",
+                "TargetUserName": "z000sms03s",
+                "TargetDomainName": "ITB",
+                "Status": "0x12",
+            },
         },
         id="empty xmlfields keeps the default extraction",
     ),
@@ -625,7 +641,17 @@ example_test_cases = [
             "decoder": {
                 "mapping": {"message": "parsed"},
                 "source_format": "windows_event_log",
-                "xmlfields": CUSTOM_XMLFIELDS,
+                "xmlfields": {
+                    "EventID": {"convert": "str"},
+                    "SourceName": {"attribute": "Guid"},
+                    "Channel": {"element": "Computer"},
+                    "TargetUserName": {
+                        "element": "Data",
+                        "section": "EventData",
+                        "name": "TargetDomainName",
+                    },
+                    "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
+                },
             },
         },
         {
@@ -686,11 +712,24 @@ example_test_cases = [
                 "</Event>"
             ),
             "parsed": {
-                **WINDOWS_EVENT_FIELDS,
                 "SourceName": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "ProviderGuid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
                 "EventID": "4768",
+                "Version": 2,
+                "LevelValue": 0,
+                "TaskValue": 14339,
+                "OpcodeValue": 0,
+                "Keywords": "0x8010000000000000",
+                "EventTime": "2026-11-12T13:13:57.811161+00:00",
+                "RecordNumber": 17115866894,
+                "ActivityID": "{B32E47DD-4C50-0007-0B48-2EB3504CDD01}",
+                "ExecutionProcessID": 144,
+                "ExecutionThreadID": 3480,
                 "Channel": "Z00WHVDC01.bbb.local",
+                "Hostname": "Z00WHVDC01.bbb.local",
                 "TargetUserName": "ITB",
+                "TargetDomainName": "ITB",
+                "Status": "0x12",
                 "User": "z000sms03s",
             },
         },
@@ -828,7 +867,26 @@ example_test_cases = [
                 "</EventData>"
                 "</Event>"
             ),
-            "parsed": WINDOWS_EVENT_FIELDS,
+            "parsed": {
+                "SourceName": "Microsoft-Windows-Security-Auditing",
+                "ProviderGuid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "EventID": 4768,
+                "Version": 2,
+                "LevelValue": 0,
+                "TaskValue": 14339,
+                "OpcodeValue": 0,
+                "Keywords": "0x8010000000000000",
+                "EventTime": "2026-11-12T13:13:57.811161+00:00",
+                "RecordNumber": 17115866894,
+                "ActivityID": "{B32E47DD-4C50-0007-0B48-2EB3504CDD01}",
+                "ExecutionProcessID": 144,
+                "ExecutionThreadID": 3480,
+                "Channel": "Security",
+                "Hostname": "Z00WHVDC01.bbb.local",
+                "TargetUserName": "z000sms03s",
+                "TargetDomainName": "ITB",
+                "Status": "0x12",
+            },
         },
         id="xmlfields skip missing sections and unmatched names",
     ),
@@ -1824,11 +1882,37 @@ class TestDecoder(BaseProcessorTestCase):
     def test_xmlfields_only_allowed_with_windows_event_log(self):
         rule = {
             "filter": "message",
-            "decoder": {"source_format": "json", "xmlfields": CUSTOM_XMLFIELDS},
+            "decoder": {
+                "source_format": "json",
+                "xmlfields": {
+                    "EventID": {"convert": "str"},
+                    "SourceName": {"attribute": "Guid"},
+                    "Channel": {"element": "Computer"},
+                    "TargetUserName": {
+                        "element": "Data",
+                        "section": "EventData",
+                        "name": "TargetDomainName",
+                    },
+                    "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
+                },
+            },
         }
         with pytest.raises(InvalidRuleDefinitionError, match="only supported"):
             self.object.rule_class.create_from_dict(rule)
 
     def test_get_decoder_rejects_xmlfields_for_other_formats(self):
         with pytest.raises(ValueError, match="only supported"):
-            get_decoder("json", xmlfields=CUSTOM_XMLFIELDS)
+            get_decoder(
+                "json",
+                xmlfields={
+                    "EventID": {"convert": "str"},
+                    "SourceName": {"attribute": "Guid"},
+                    "Channel": {"element": "Computer"},
+                    "TargetUserName": {
+                        "element": "Data",
+                        "section": "EventData",
+                        "name": "TargetDomainName",
+                    },
+                    "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
+                },
+            )
