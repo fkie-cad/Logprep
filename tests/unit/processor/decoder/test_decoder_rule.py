@@ -8,10 +8,13 @@ import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.decoder.decoders.registry import DECODERS
 from logprep.processor.decoder.decoders.windows_event_log import (
+    DATA_SECTIONS,
     DEFAULT_XMLFIELDS,
+    WindowsEventLogElement,
     XmlFieldSpec,
 )
 from logprep.processor.decoder.rule import (
+    XMLFIELD_SECTIONS,
     DecoderRule,
     XmlFieldOverrides,
     parse_xmlfields,
@@ -26,6 +29,13 @@ class TestDecoderRule:
         }
         rule_dict = DecoderRule.create_from_dict(rule)
         assert isinstance(rule_dict, DecoderRule)
+
+    def test_section_constants_match_windows_event_log_enum(self):
+        assert set(XMLFIELD_SECTIONS) == {section.value for section in WindowsEventLogElement}
+        assert set(DATA_SECTIONS) == set(XMLFIELD_SECTIONS) - {
+            WindowsEventLogElement.EVENT.value,
+            WindowsEventLogElement.SYSTEM.value,
+        }
 
     @pytest.mark.parametrize(
         ["rule", "assert_error_if_expected"],

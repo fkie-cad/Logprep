@@ -29,6 +29,9 @@ class WindowsEventLogElement(StrEnum):
 
     SYSTEM = "System"
     EVENT = "Event"
+    EVENT_DATA = "EventData"
+    USER_DATA = "UserData"
+    PROCESSING_ERROR_DATA = "ProcessingErrorData"
 
 
 @define(frozen=True, kw_only=True)
@@ -102,7 +105,12 @@ XMLFIELDS = (
     XmlFieldSpec(element="Computer", target="Hostname"),
 )
 
-DATA_SECTIONS = ("EventData", "UserData", "ProcessingErrorData")
+DATA_SECTIONS = (
+    WindowsEventLogElement.EVENT_DATA,
+    WindowsEventLogElement.USER_DATA,
+    WindowsEventLogElement.PROCESSING_ERROR_DATA,
+)
+XMLFIELD_SECTIONS = tuple(section.value for section in WindowsEventLogElement)
 DEFAULT_XMLFIELDS = {spec.target: spec for spec in XMLFIELDS}
 DEFAULT_XMLFIELD_TARGETS = frozenset(DEFAULT_XMLFIELDS)
 

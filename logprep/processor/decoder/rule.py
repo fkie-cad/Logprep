@@ -172,6 +172,7 @@ from logprep.processor.decoder.decoders.registry import DECODERS, get_decoder
 from logprep.processor.decoder.decoders.windows_event_log import (
     DEFAULT_XMLFIELD_TARGETS,
     DEFAULT_XMLFIELDS,
+    XMLFIELD_SECTIONS,
     XmlFieldSpec,
     to_int_or_str,
     to_iso8601,
@@ -201,7 +202,6 @@ class XmlFieldOverrides:
 
 
 XMLFIELD_KEYS = ("element", "section", "name", "attribute", "convert")
-XMLFIELD_SECTIONS = ("Event", "System", "EventData", "UserData", "ProcessingErrorData")
 XMLFIELD_CONVERTS = typing.get_args(XmlFieldConvert)
 XMLFIELD_CONVERTERS: dict[str, Callable[[str], FieldValue]] = {
     "str": str,
