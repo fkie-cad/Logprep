@@ -149,8 +149,7 @@ def _find_field_element(root: ET.Element, spec: XmlFieldSpec) -> ET.Element | No
         (
             element
             for element in section.iter()
-            if element is not section
-            and element.tag == spec.element
+            if element.tag == spec.element
             and (spec.name is None or element.get("Name") == spec.name)
         ),
         None,
