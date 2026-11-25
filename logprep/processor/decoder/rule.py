@@ -39,9 +39,86 @@ A speaking example:
         }
     }
 
-For :code:`windows_event_log`, the :code:`xmlfields` option can change default
-fields and add fields from any XML section. It is a dict whose keys are the
-target field names:
+For :code:`windows_event_log`, the following fields are extracted from the
+:code:`System` section by default. If no XML attribute is listed, the stripped
+text of the element is used:
+
+..  list-table:: Default Windows Event Log fields
+   :header-rows: 1
+
+   * - Target field
+     - XML element
+     - XML attribute
+     - Conversion
+   * - :code:`SourceName`
+     - :code:`Provider`
+     - :code:`Name`
+     - -
+   * - :code:`ProviderGuid`
+     - :code:`Provider`
+     - :code:`Guid`
+     - -
+   * - :code:`EventID`
+     - :code:`EventID`
+     - -
+     - :code:`int`
+   * - :code:`Version`
+     - :code:`Version`
+     - -
+     - :code:`int`
+   * - :code:`LevelValue`
+     - :code:`Level`
+     - -
+     - :code:`int`
+   * - :code:`TaskValue`
+     - :code:`Task`
+     - -
+     - :code:`int`
+   * - :code:`OpcodeValue`
+     - :code:`Opcode`
+     - -
+     - :code:`int`
+   * - :code:`Keywords`
+     - :code:`Keywords`
+     - -
+     - -
+   * - :code:`EventTime`
+     - :code:`TimeCreated`
+     - :code:`SystemTime`
+     - :code:`timestamp`
+   * - :code:`RecordNumber`
+     - :code:`EventRecordID`
+     - -
+     - :code:`int`
+   * - :code:`ActivityID`
+     - :code:`Correlation`
+     - :code:`ActivityID`
+     - -
+   * - :code:`ExecutionProcessID`
+     - :code:`Execution`
+     - :code:`ProcessID`
+     - :code:`int`
+   * - :code:`ExecutionThreadID`
+     - :code:`Execution`
+     - :code:`ThreadID`
+     - :code:`int`
+   * - :code:`Channel`
+     - :code:`Channel`
+     - -
+     - -
+   * - :code:`Hostname`
+     - :code:`Computer`
+     - -
+     - -
+
+The :code:`int` conversion turns numeric strings into integers and leaves other
+values unchanged. :code:`timestamp` normalizes timestamps to ISO 8601 in UTC
+and leaves values that cannot be parsed unchanged. Fields from the
+:code:`EventData`, :code:`UserData` and :code:`ProcessingErrorData` sections are
+additionally flattened into the result, keyed by their :code:`Name` attribute.
+
+The :code:`xmlfields` option can change these defaults and add fields from any
+XML section. It is a dict whose keys are the target field names:
 
 ..  code-block:: yaml
     :linenos:
