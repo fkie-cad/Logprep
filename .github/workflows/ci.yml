@@ -99,12 +99,12 @@ jobs:
           sudo apt-get -y install pandoc
       - name: Install uv and sync deps
         run: |
-          uv sync --frozen --extra doc
-      - name: Build docs
+          # doc build currently needs pytest --> dev as well
+          uv sync --frozen --extra dev --extra doc
+      - name: Build docs and fail on warnings
         run: |
           cd doc
-          uv run sphinx-apidoc -fT -o source/module_reference ../logprep
-          uv run make clean html
+          uv run make clean html SPHINXOPTS="--fail-on-warning"
   documentation-preview:
     runs-on: ubuntu-24.04
     permissions:

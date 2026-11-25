@@ -1,13 +1,45 @@
 ## Upcoming Changes
 ### Breaking
-* domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
-* domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
-* domain_resolver: remove `debug_cache`
-* domain_resolver: `source_fields` must be a list with exactly one element
 * pre_detector: no longer silently skip missing mapping files in `ip_alerter` on initialization, but raise exception instead
 * pre_detector: less validation when parsing addresses in `ip_alerter` due to changed parsing method
 
 ### Features
+* ng: introduce asynchronous getters and resource caching
+* ng: migrate configuration and rule loading to asynchronous APIs
+* ng: migrate `requester` HTTP requests to `aiohttp`
+* ng: use asynchronous DNS resolution in `domain_resolver`
+
+### Improvements
+* ng: offload GeoIP database initialization to a separate thread
+* ng: share concurrent getter cache updates across callers
+* ng: refresh independent getter targets concurrently
+* pre_detector: use faster address parsing in `ip_alerter`
+* pre_detector: split matching IPs with TTL from permanent IPs in `ip_alerter` to improve CIDR matching performance 
+* pre_detector: group CIDR matching by their prefix length in `ip_alerter` to improve matching performance  
+* pre_detector: do not parse IPs in `ip_alerter` if no networks to match exist
+
+### Bugfix
+* ng: prevent refresh callback failures from interrupting subsequent callbacks
+* ng: avoid redundant getter requests during refresh callbacks
+* ng: prevent duplicate rules during repeated processor setup
+* ng: remove orphaned getter targets after callback cleanup
+* ng: fix resource cleanup during failed setup and configuration validation
+* pre_detector: both matching of compressed and uncompressed IPv6 IPs in `ip_alerter` does now work
+* pre_detector: matching of IPv4-mapped IPv6 IPs in `ip_alerter` does now work
+* pre_detector: failed matching of a single IP does no longer cause networks to automatically not match in `ip_alerter`
+
+## 22.0.0
+### Breaking
+* domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
+* domain_resolver: add a separate cache for timeouts to allow different lifetimes than the regular domain cache using the `timeout_block_time` parameter
+* domain_resolver: remove `debug_cache`
+* domain_resolver: `source_fields` must be a list with exactly one element
+* selective_extractor: `ignore_missing_fields` now writes a warning on missing fields instead of creating incomplete extra events
+* selective_extractor: selecting list items via numeric source paths is no longer supported
+* ng: kafka input uses the consumer group protocol `consumer` (KIP-848), requires Kafka >=4.0 and `confluent-kafka` >=2.13
+
+### Features
+* selective_extractor: add field_template as `event_template` to configuration
 
 ### Improvements
 * util: add field mapping template utility
@@ -26,19 +58,22 @@
 * examples/k8s: run Kafka 4.3.1 on the official `apache/kafka` image instead of the archived bitnami chart
 * examples/k8s: use the official opensearch helm charts and images (3.9.0) instead of the archived bitnami chart
 * ci: remove deprecated GHA dependency for doc preview links; do it ourselves
-* pre_detector: use faster address parsing in `ip_alerter`
-* pre_detector: split matching IPs with TTL from permanent IPs in `ip_alerter` to improve CIDR matching performance 
-* pre_detector: group CIDR matching by their prefix length in `ip_alerter` to improve matching performance  
-* pre_detector: do not parse IPs in `ip_alerter` if no networks to match exist
+* ci: fail on warnings during doc build
+* ci: update dependabot to use `-` instead of `/`
+* docs: fix several formatting issues
+* util: rename field mapping template to field template
+* ng: kafka input avoids duplicates on rebalance by gracefully draining revoked partitions (`revoke_drain_timeout`)
+* ng: kafka input rejects `kafka_config` entries it enforces or KIP-848 no longer supports
+* ng: kafka input adds the metrics `revoke_drain_seconds`, `revoke_drain_timeouts` and `orphaned_acknowledgements`
+* ng: kafka input health check no longer calls the consumer once subscribed
+* ng: kafka input stops on fatal errors, warns on recoverable ones and sends broken messages to the error output
+* ci: run the kafka input rebalance tests against a real kafka broker
 
 ### Bugfix
 * domain_resolver: fix resolving domains that have no schema
 * pipeline_manager: gc.freeze before forking pipelines in order to avoid error-prone destruction of health check clients in pipeline processes
 * examples/compose: keycloak imports the logprep realm and the fda/ucl backends use its client secrets, the realm was never imported before
 * examples/k8s: remove config keys from `values-dev.yaml` that logprep rejects and create the `errors` topic
-* pre_detector: both matching of compressed and uncompressed IPv6 IPs in `ip_alerter` does now work
-* pre_detector: matching of IPv4-mapped IPv6 IPs in `ip_alerter` does now work
-* pre_detector: failed matching of a single IP does no longer cause networks to automatically not match in `ip_alerter`
 
 ## 21.2.0
 ### Breaking

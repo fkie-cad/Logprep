@@ -204,7 +204,6 @@ Exit Codes
 .. autoclass:: logprep.util.defaults.EXITCODES
    :members:
    :undoc-members:
-   :inherited-members:
    :noindex:
 
 

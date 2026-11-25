@@ -9,7 +9,6 @@ from typing import Sequence, cast
 
 from logprep.abc.component import Component
 from logprep.factory import Factory
-from logprep.ng.abc.component import NgComponent
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
@@ -41,12 +40,10 @@ class PipelineManager:
                 cast(Processor, recorder.create(processor_config))
                 for processor_config in self.configuration.pipeline
             ]
-
             named_outputs = {
                 output_name: cast(Output, recorder.create({output_name: output}))
                 for output_name, output in self.configuration.output.items()
             }
-
             error_output = (
                 cast(Output, recorder.create(self.configuration.error_output))
                 if self.configuration.error_output
@@ -66,18 +63,29 @@ class PipelineManager:
         if error_output is None:
             logger.warning("No error output configured")
 
-        await asyncio.gather(*(component.setup() for component in self._components))
+        try:
+            await asyncio.gather(*(component.setup() for component in self._components))
+            workflow_config = WorkflowConfig.from_dict_or_default(self.configuration.workflow)
+            self._orchestrator = create_orchestrator(
+                input_connector,
+                processors,
+                default_output,
+                named_outputs,
+                error_output,
+                workflow_config,
+            )
+        except (CancelledError, Exception):
+            logger.error(
+                "PipelineManager.setup cancelled or failed; shutting down...",
+                exc_info=True,
+            )
 
-        workflow_config = WorkflowConfig.from_dict_or_default(self.configuration.workflow)
+            try:
+                await self._shut_down()
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("Failure while rolling back PipelineManager setup")
 
-        self._orchestrator = create_orchestrator(
-            input_connector,
-            processors,
-            default_output,
-            named_outputs,
-            error_output,
-            workflow_config,
-        )
+            raise
 
     async def run(
         self, stop_event: asyncio.Event, shutdown_timeout_s: float, worker_shutdown_timeout_s: float

@@ -2,6 +2,8 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    pull-request-branch-name:
+      separator: "-"
     schedule:
       interval: weekly
       day: monday
@@ -21,6 +23,8 @@ updates:
       prefix: "ci"
   - package-ecosystem: uv
     directory: /
+    pull-request-branch-name:
+      separator: "-"
     schedule:
       interval: weekly
       day: monday
@@ -38,6 +42,8 @@ updates:
       prefix: "deps"
   - package-ecosystem: nix
     directory: /
+    pull-request-branch-name:
+      separator: "-"
     schedule:
       interval: monthly
     cooldown:

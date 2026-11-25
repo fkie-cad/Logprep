@@ -149,7 +149,7 @@ shared_test_cases = normalize_test_cases(
         config({"source_field": "id"}, target_field="event_id"),
         {"id": "0"},
         {"event_id": "0", "data": {"id": "0", "event_id": "0"}},
-        id="accepts a nonempty string containing zero and writes a top-level target",
+        id="accepts a non-empty string containing zero and writes a top-level target",
     ),
     pytest.param(
         config({"source_field": "id"}, target_field=r"event\.id"),

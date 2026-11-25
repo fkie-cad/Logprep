@@ -43,6 +43,7 @@ Processor Configuration
 .. automodule:: logprep.processor.pseudonymizer.rule
 """
 
+import asyncio
 import re
 import typing
 from collections.abc import Sequence
@@ -58,10 +59,10 @@ from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.processor import OutputSpec, Processor
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.ng.processor.pseudonymizer.pseudonym_event import PseudonymEvent
+from logprep.ng.util.getter import GetterFactory
 from logprep.processor.base.rule import Rule
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.converters import convert_ordered_tuples_with_factory
-from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_values
 from logprep.util.pseudo.encrypter import (
@@ -196,9 +197,11 @@ class Pseudonymizer(FieldManager):
         encrypter.load_public_keys(self.config.pubkey_analyst, self.config.pubkey_depseudo)
         return encrypter
 
-    @cached_property
-    def _regex_mapping(self) -> dict:
-        return GetterFactory.from_string(self.config.regex_mapping).get_dict()
+    def __init__(self, name: str, configuration: Config) -> None:
+        super().__init__(name, configuration)
+
+    async def _regex_mapping(self) -> dict:
+        return await GetterFactory.from_string(self.config.regex_mapping).get_dict()
 
     @cached_property
     def _get_pseudonym_dict_cached(self) -> Callable:
@@ -220,13 +223,14 @@ class Pseudonymizer(FieldManager):
 
     async def setup(self) -> None:
         await super().setup()
-        self._replace_regex_keywords_by_regex_expression()
+        await self._replace_regex_keywords_by_regex_expression()
 
-    def _replace_regex_keywords_by_regex_expression(self) -> None:
+    async def _replace_regex_keywords_by_regex_expression(self) -> None:
         for rule in self.rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
-                if regex_keyword in self._regex_mapping:
-                    rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
+                _regex_mapping = await self._regex_mapping()
+                if regex_keyword in _regex_mapping:
+                    rule.pseudonyms[dotted_field] = re.compile(_regex_mapping[regex_keyword])
                 elif isinstance(regex_keyword, str):  # after the first run, the regex is compiled
                     raise InvalidConfigurationError(
                         f"Regex keyword '{regex_keyword}' not found in regex_mapping '{self.config.regex_mapping}'"
