@@ -6,11 +6,15 @@
 * ng: migrate configuration and rule loading to asynchronous APIs
 * ng: migrate `requester` HTTP requests to `aiohttp`
 * ng: use asynchronous DNS resolution in `domain_resolver`
+* decoder: add `windows_event_log` source format to parse Windows Event Log XML into flat fields; XML fields can be customized with the `xmlfields` rule option, which is merged into the default fields. This config interface is not stable yet.
 
 ### Improvements
 * ng: offload GeoIP database initialization to a separate thread
 * ng: share concurrent getter cache updates across callers
 * ng: refresh independent getter targets concurrently
+* decoder: reject DOCTYPE declarations, entity expansion and excessively nested XML in the `windows_event_log` source format
+* decoder: split the decoders module into one module per source format
+* decoder: document the default Windows Event Log fields and resolve `xmlfields` to a sequence of `XmlFieldSpec`
 
 ### Bugfix
 * ng: prevent refresh callback failures from interrupting subsequent callbacks
@@ -31,12 +35,8 @@
 
 ### Features
 * selective_extractor: add field_template as `event_template` to configuration
-* decoder: add `windows_event_log` source format to parse Windows Event Log XML into flat fields; XML fields can be customized with the `xmlfields` rule option, which is merged into the default fields. This config interface is not stable yet.
 
 ### Improvements
-* decoder: reject DOCTYPE declarations, entity expansion and excessively nested XML in the `windows_event_log` source format
-* decoder: split the decoders module into one module per source format
-* decoder: document the default Windows Event Log fields and resolve `xmlfields` to a sequence of `XmlFieldSpec`
 * util: add field mapping template utility
 * cache: hold a payload in addition to timestamps
 * domain_resolver: adapt `domain_resolver` to changes of `cache`
