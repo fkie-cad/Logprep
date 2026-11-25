@@ -4,6 +4,7 @@
 # pylint: disable=line-too-long
 import json
 from copy import deepcopy
+from unittest import mock
 
 import pytest
 
@@ -90,11 +91,10 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
             }
         )
 
-        def decode(value):
-            return {"decoded": value}
-
+        decode = mock.Mock(return_value={"decoded": "some value"})
         rule.decode_func = decode
-        await self._load_rule(rule)
-        event = LogEvent({"message": "some value"}, original=b"", input_meta=InputMeta())
-        await self.object.process(event)
-        assert event.data["parsed"] == {"decoded": "some value"}
+
+        result = self.object.transform_values(["some value"], {"message": "some value"}, rule)
+
+        decode.assert_called_once_with("some value")
+        assert result == [{"decoded": "some value"}]
