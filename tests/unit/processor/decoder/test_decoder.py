@@ -403,26 +403,22 @@ example_test_cases = [
         {
             "message": (
                 '<Event><System><EventID>not-a-number</EventID><TimeCreated SystemTime="not-a-time"/>'
-                "<Version/></System><EventData>"
-                '<Data Name="Empty"></Data><Data>positional</Data><Data><Nested>value</Nested></Data>'
-                "</EventData></Event>"
+                "<Version/></System>"
+                '<EventData><Data Name="Empty"></Data></EventData></Event>'
             )
         },
         {
             "message": (
                 '<Event><System><EventID>not-a-number</EventID><TimeCreated SystemTime="not-a-time"/>'
-                "<Version/></System><EventData>"
-                '<Data Name="Empty"></Data><Data>positional</Data><Data><Nested>value</Nested></Data>'
-                "</EventData></Event>"
+                "<Version/></System>"
+                '<EventData><Data Name="Empty"></Data></EventData></Event>'
             ),
             "parsed": {
                 "EventID": "not-a-number",
                 "EventTime": "not-a-time",
-                "Data": "positional",
-                "Nested": "value",
             },
         },
-        id="parse windows event log with unparsable and unnamed values",
+        id="parse windows event log with unparsable values",
     ),
     pytest.param(
         {
@@ -461,14 +457,14 @@ example_test_cases = [
             "message": (
                 "<Event><System><EventID>2</EventID></System>"
                 '<UserData><Data Name="Param1">a</Data></UserData>'
-                "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
+                '<ProcessingErrorData><Data Name="ErrorCode">5</Data></ProcessingErrorData></Event>'
             )
         },
         {
             "message": (
                 "<Event><System><EventID>2</EventID></System>"
                 '<UserData><Data Name="Param1">a</Data></UserData>'
-                "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
+                '<ProcessingErrorData><Data Name="ErrorCode">5</Data></ProcessingErrorData></Event>'
             ),
             "parsed": {
                 "EventID": 2,
@@ -491,7 +487,7 @@ example_test_cases = [
                 "<Event><System><EventID>2</EventID></System>"
                 '<EventData><Data Name="Param1">from_event</Data></EventData>'
                 '<UserData><Data Name="Param1">from_user</Data></UserData>'
-                "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
+                '<ProcessingErrorData><Data Name="ErrorCode">5</Data></ProcessingErrorData></Event>'
             )
         },
         {
@@ -499,7 +495,7 @@ example_test_cases = [
                 "<Event><System><EventID>2</EventID></System>"
                 '<EventData><Data Name="Param1">from_event</Data></EventData>'
                 '<UserData><Data Name="Param1">from_user</Data></UserData>'
-                "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
+                '<ProcessingErrorData><Data Name="ErrorCode">5</Data></ProcessingErrorData></Event>'
             ),
             "parsed": {
                 "EventID": 2,
@@ -596,6 +592,32 @@ example_test_cases = [
             "parsed": WINDOWS_EVENT_FIELDS,
         },
         id="empty xmlfields keeps the default extraction",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+                "xmlfields": {
+                    "EventXML": {"element": "Data", "section": "EventData", "name": "Param1"}
+                },
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                '<EventData><Data Name="Param1">value</Data></EventData></Event>'
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                '<EventData><Data Name="Param1">value</Data></EventData></Event>'
+            ),
+            "parsed": {"EventID": 1, "Param1": "value", "EventXML": "value"},
+        },
+        id="xmlfields can target EventXML",
     ),
     pytest.param(
         {
@@ -1437,6 +1459,75 @@ failure_test_cases = [
                 "source_format": "windows_event_log",
             },
         },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<EventData><Data>first</Data><Data>second</Data></EventData></Event>"
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<EventData><Data>first</Data><Data>second</Data></EventData></Event>"
+            ),
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with unnamed data values",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<EventData><Data><Nested>value</Nested></Data></EventData></Event>"
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<EventData><Data><Nested>value</Nested></Data></EventData></Event>"
+            ),
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with nested unnamed data value",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
+            ),
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with unnamed processing error data",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
         {"message": """
 <!DOCTYPE Event [
     <!ENTITY a "BOOM">
@@ -1601,7 +1692,6 @@ invalid_xmlfield_cases = [
     ),
     pytest.param({"": {"element": "EventID"}}, "non-empty strings", id="empty target"),
     pytest.param({1: {"element": "EventID"}}, "non-empty strings", id="target not a string"),
-    pytest.param({"EventXML": {"element": "EventID"}}, "reserved", id="reserved target"),
     pytest.param(
         {"EventID": {"type": "int"}},
         "unknown keys",

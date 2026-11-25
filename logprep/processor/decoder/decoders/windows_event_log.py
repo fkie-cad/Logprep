@@ -168,7 +168,11 @@ def _parse_fields(root: ET.Element, fields: JsonObject, specs: Iterable[XmlField
 
 
 def _parse_data_section(section: ET.Element, fields: JsonObject) -> None:
-    """Flattens event data elements, using their ``Name`` attribute as field name."""
+    """Flattens event data elements, using their ``Name`` attribute as field name.
+
+    Unnamed values are rejected because deriving the field name from the element
+    tag would make multiple unnamed values collide.
+    """
     elements = list(reversed(section))
     while elements:
         element = elements.pop()
@@ -179,10 +183,8 @@ def _parse_data_section(section: ET.Element, fields: JsonObject) -> None:
                 fields.setdefault(name, value)
         elif len(element):
             elements.extend(reversed(element))
-        else:
-            value = _text(element)
-            if value and isinstance(element.tag, str):
-                fields.setdefault(element.tag, value)
+        elif _text(element):
+            raise DecoderError("unnamed value in windows event log data section")
 
 
 def parse_windows_event_log(
@@ -195,8 +197,8 @@ def parse_windows_event_log(
     <https://docs.nxlog.co/agent/current/im/msvistalog.html>`_ (for example
     ``EventID``, ``RecordNumber`` and ``Hostname``). Data fields from
     ``EventData``, ``UserData`` and ``ProcessingErrorData`` are flattened into
-    the same dict, keyed by their ``Name`` attribute; unnamed data fields use
-    their tag name instead.
+    the same dict, keyed by their ``Name`` attribute; unnamed values are
+    rejected.
 
     The optional ``xmlfields`` mapping contains fully resolved ``XmlFieldSpec``
     instances that were created by the decoder rule when the rule was loaded.
@@ -210,6 +212,7 @@ def parse_windows_event_log(
 
     - DOCTYPE declarations are rejected to prevent entity expansion, and
       documents nested deeper than ``MAX_XML_DEPTH`` are rejected as well.
+    - Unnamed values in data sections are rejected to avoid field name collisions.
     - Fields that are not part of the XML (for example rendered messages or
       event categories) cannot be derived and are not added.
     """

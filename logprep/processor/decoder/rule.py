@@ -130,17 +130,12 @@ XML_FIELD_CONVERTERS: dict[str, Callable[[str], FieldValue]] = {
     "int": to_int_or_str,
     "timestamp": to_iso8601,
 }
-RESERVED_XMLFIELD_TARGET = "EventXML"
 
 
 def _validate_target(target: object) -> str:
     """Validate and return a target field name."""
     if not isinstance(target, str) or not target:
         raise InvalidRuleDefinitionError("xmlfields: target field names must be non-empty strings")
-    if target == RESERVED_XMLFIELD_TARGET:
-        raise InvalidRuleDefinitionError(
-            f"xmlfields: '{RESERVED_XMLFIELD_TARGET}' is reserved and cannot be configured"
-        )
     return target
 
 
