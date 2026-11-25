@@ -8,7 +8,7 @@ import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.decoder.decoders.registry import DECODERS
 from logprep.processor.decoder.decoders.windows_event_log import (
-    DEFAULT_XML_FIELDS,
+    DEFAULT_XMLFIELDS,
     XmlFieldSpec,
 )
 from logprep.processor.decoder.rule import (
@@ -158,7 +158,7 @@ class TestDecoderRule:
             "EventID": XmlFieldSpec(
                 element="EventID",
                 target="EventID",
-                convert=DEFAULT_XML_FIELDS["EventID"].convert,
+                convert=DEFAULT_XMLFIELDS["EventID"].convert,
             ),
             "User": XmlFieldSpec(
                 element="Data", target="User", section="EventData", name="TargetUserName"
@@ -234,7 +234,7 @@ class TestDecoderRule:
             "EventID": XmlFieldSpec(
                 element="EventID",
                 target="EventID",
-                convert=DEFAULT_XML_FIELDS["EventID"].convert,
+                convert=DEFAULT_XMLFIELDS["EventID"].convert,
             )
         }
         assert parse_xmlfields(parsed) == parsed

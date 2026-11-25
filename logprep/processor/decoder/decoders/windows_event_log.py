@@ -69,7 +69,7 @@ def _text(element: ET.Element) -> str:
     return (element.text or "").strip()
 
 
-XML_FIELDS = (
+XMLFIELDS = (
     XmlFieldSpec(element="Provider", target="SourceName", attribute="Name"),
     XmlFieldSpec(element="Provider", target="ProviderGuid", attribute="Guid"),
     XmlFieldSpec(element="EventID", target="EventID", convert=to_int_or_str),
@@ -103,8 +103,8 @@ XML_FIELDS = (
 )
 
 DATA_SECTIONS = ("EventData", "UserData", "ProcessingErrorData")
-DEFAULT_XML_FIELDS = {spec.target: spec for spec in XML_FIELDS}
-DEFAULT_XML_FIELD_TARGETS = frozenset(DEFAULT_XML_FIELDS)
+DEFAULT_XMLFIELDS = {spec.target: spec for spec in XMLFIELDS}
+DEFAULT_XMLFIELD_TARGETS = frozenset(DEFAULT_XMLFIELDS)
 
 
 class _SafeTreeBuilder(ET.TreeBuilder):
@@ -228,7 +228,7 @@ def parse_windows_event_log(
         raise DecoderError("windows event log has no System section")
 
     parsed: JsonObject = {}
-    _parse_fields(root, parsed, XML_FIELDS)
+    _parse_fields(root, parsed, XMLFIELDS)
     for section_name in DATA_SECTIONS:
         section = _find_child(root, section_name)
         if section is not None:

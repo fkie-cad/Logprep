@@ -93,8 +93,8 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.decoder.decoders.registry import DECODERS, get_decoder
 from logprep.processor.decoder.decoders.windows_event_log import (
-    DEFAULT_XML_FIELD_TARGETS,
-    DEFAULT_XML_FIELDS,
+    DEFAULT_XMLFIELD_TARGETS,
+    DEFAULT_XMLFIELDS,
     XmlFieldSpec,
     to_int_or_str,
     to_iso8601,
@@ -126,7 +126,7 @@ class XmlFieldOverrides:
 XMLFIELD_KEYS = ("element", "section", "name", "attribute", "convert")
 XMLFIELD_SECTIONS = ("Event", "System", "EventData", "UserData", "ProcessingErrorData")
 XMLFIELD_CONVERTS = typing.get_args(XmlFieldConvert)
-XML_FIELD_CONVERTERS: dict[str, Callable[[str], FieldValue]] = {
+XMLFIELD_CONVERTERS: dict[str, Callable[[str], FieldValue]] = {
     "str": str,
     "int": to_int_or_str,
     "timestamp": to_iso8601,
@@ -176,7 +176,7 @@ def _validate_definition_values(target: str, definition: XmlFieldOverrides) -> N
         raise InvalidRuleDefinitionError(
             f"xmlfields: unknown convert type for '{target}': {definition.convert}"
         )
-    if target not in DEFAULT_XML_FIELD_TARGETS and not definition.element:
+    if target not in DEFAULT_XMLFIELD_TARGETS and not definition.element:
         raise InvalidRuleDefinitionError(
             f"xmlfields: 'element' is required for new target '{target}'"
         )
@@ -184,9 +184,9 @@ def _validate_definition_values(target: str, definition: XmlFieldOverrides) -> N
 
 def _build_spec(target: str, override: XmlFieldOverrides) -> XmlFieldSpec:
     """Resolve an override against the default fields into a field spec."""
-    default = DEFAULT_XML_FIELDS.get(target)
+    default = DEFAULT_XMLFIELDS.get(target)
     if override.convert is not None:
-        convert = XML_FIELD_CONVERTERS[override.convert]
+        convert = XMLFIELD_CONVERTERS[override.convert]
     else:
         convert = default.convert if default else str
     return XmlFieldSpec(
