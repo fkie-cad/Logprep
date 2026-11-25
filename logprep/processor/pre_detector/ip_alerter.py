@@ -60,8 +60,8 @@ class IPAlerter:
             if not isfile(mapping_path):
                 raise InvalidConfigurationError(f"Mapping file does not exist: {mapping_path}")
             address_mapping = GetterFactory.from_string(mapping_path).get_yaml()
-            if isinstance(address_mapping, list):
-                raise ValueError(f"expected a mapping and not a list ({mapping_path})")
+            if not isinstance(address_mapping, dict):
+                raise ValueError(f"Expected a mapping in file: {mapping_path}")
             self._add_address_mapping(address_mapping)
 
     def _add_address_mapping(self, address_mapping: dict):

@@ -138,7 +138,7 @@ class TestIPAlerter:
         temp_file = tmp_path / f"{uuid4()}"
         with temp_file.open("w", encoding="utf-8") as f:
             f.write('["test"]')
-        with pytest.raises(ValueError, match=r"expected a mapping and not a list"):
+        with pytest.raises(ValueError, match=r"Expected a mapping in file: "):
             IPAlerter(temp_file.as_posix())
 
     def test_add_invalid_cidr(self, ip_alerter):
