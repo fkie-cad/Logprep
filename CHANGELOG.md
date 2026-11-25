@@ -1,5 +1,7 @@
 ## Upcoming Changes
 ### Breaking
+* pre_detector: no longer silently skip missing mapping files in `ip_alerter` on initialization, but raise exception instead
+* pre_detector: less validation when parsing addresses in `ip_alerter` due to changed parsing method
 
 ### Features
 * ng: introduce asynchronous getters and resource caching
@@ -11,6 +13,10 @@
 * ng: offload GeoIP database initialization to a separate thread
 * ng: share concurrent getter cache updates across callers
 * ng: refresh independent getter targets concurrently
+* pre_detector: use faster address parsing in `ip_alerter`
+* pre_detector: split matching IPs with TTL from permanent IPs in `ip_alerter` to improve CIDR matching performance 
+* pre_detector: group CIDR matching by their prefix length in `ip_alerter` to improve matching performance  
+* pre_detector: do not parse IPs in `ip_alerter` if no networks to match exist
 
 ### Bugfix
 * ng: prevent refresh callback failures from interrupting subsequent callbacks
@@ -18,7 +24,10 @@
 * ng: prevent duplicate rules during repeated processor setup
 * ng: remove orphaned getter targets after callback cleanup
 * ng: fix resource cleanup during failed setup and configuration validation
-*
+* pre_detector: both matching of compressed and uncompressed IPv6 IPs in `ip_alerter` does now work
+* pre_detector: matching of IPv4-mapped IPv6 IPs in `ip_alerter` does now work
+* pre_detector: failed matching of a single IP does no longer cause networks to automatically not match in `ip_alerter`
+
 ## 22.0.0
 ### Breaking
 * domain_resolver: add `lifetime` parameter in addition to `timeout` parameter

@@ -49,7 +49,7 @@ def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
 
 
 def test_start_of_logprep_with_full_configuration_http():
-    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
+    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher", "pre_detector"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.output.update({"kafka": {"type": "dummy_output", "default": False}})
     endpoint = "http://localhost:32000"
@@ -284,7 +284,7 @@ def test_config_loglevel_error_hides_info(tmp_path):
 
 
 def test_config_loglevel_info_shows_info(tmp_path):
-    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
+    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher", "pre_detector"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.output.update({"kafka": {"type": "dummy_output", "default": False}})
 
