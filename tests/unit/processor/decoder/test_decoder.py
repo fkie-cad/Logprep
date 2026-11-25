@@ -1,12 +1,20 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
+# pylint: disable=too-many-lines
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 import json
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
-from logprep.processor.decoder.decoders import parse_logfmt
+from logprep.processor.base.exceptions import (
+    InvalidRuleDefinitionError,
+    ProcessingError,
+    ProcessingWarning,
+)
+from logprep.processor.decoder.decoders.logfmt import parse_logfmt
+from logprep.processor.decoder.decoders.registry import get_decoder
+from logprep.processor.decoder.decoders.windows_event_log import MAX_XML_DEPTH
 from logprep.util.typing import is_list_of
 from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -263,6 +271,650 @@ example_test_cases = [
             "message": "ls\r\nexamplefile.zip\r\n",
         },
         id="decolorize simple",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+                "<System>"
+                '<Provider Name="Microsoft-Windows-Security-Auditing" '
+                'Guid="{54849625-5478-4994-a5ba-3e3b0328c30d}"/>'
+                "<EventID>4768</EventID>"
+                "<Version>2</Version>"
+                "<Level>0</Level>"
+                "<Task>14339</Task>"
+                "<Opcode>0</Opcode>"
+                "<Keywords>0x8010000000000000</Keywords>"
+                '<TimeCreated SystemTime="2026-11-12T13:13:57.811161100Z"/>'
+                "<EventRecordID>17115866894</EventRecordID>"
+                '<Correlation ActivityID="{B32E47DD-4C50-0007-0B48-2EB3504CDD01}"/>'
+                '<Execution ProcessID="144" ThreadID="3480"/>'
+                "<Channel>Security</Channel>"
+                "<Computer>Z00WHVDC01.bbb.local</Computer>"
+                "<Security/>"
+                "</System>"
+                "<EventData>"
+                '<Data Name="TargetUserName">z000sms03s</Data>'
+                '<Data Name="TargetDomainName">ITB</Data>'
+                '<Data Name="Status">0x12</Data>'
+                '<Data Name="CertIssuerName"></Data>'
+                "</EventData>"
+                "</Event>"
+            )
+        },
+        {
+            "message": (
+                '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+                "<System>"
+                '<Provider Name="Microsoft-Windows-Security-Auditing" '
+                'Guid="{54849625-5478-4994-a5ba-3e3b0328c30d}"/>'
+                "<EventID>4768</EventID>"
+                "<Version>2</Version>"
+                "<Level>0</Level>"
+                "<Task>14339</Task>"
+                "<Opcode>0</Opcode>"
+                "<Keywords>0x8010000000000000</Keywords>"
+                '<TimeCreated SystemTime="2026-11-12T13:13:57.811161100Z"/>'
+                "<EventRecordID>17115866894</EventRecordID>"
+                '<Correlation ActivityID="{B32E47DD-4C50-0007-0B48-2EB3504CDD01}"/>'
+                '<Execution ProcessID="144" ThreadID="3480"/>'
+                "<Channel>Security</Channel>"
+                "<Computer>Z00WHVDC01.bbb.local</Computer>"
+                "<Security/>"
+                "</System>"
+                "<EventData>"
+                '<Data Name="TargetUserName">z000sms03s</Data>'
+                '<Data Name="TargetDomainName">ITB</Data>'
+                '<Data Name="Status">0x12</Data>'
+                '<Data Name="CertIssuerName"></Data>'
+                "</EventData>"
+                "</Event>"
+            ),
+            "parsed": {
+                "SourceName": "Microsoft-Windows-Security-Auditing",
+                "ProviderGuid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "EventID": 4768,
+                "Version": 2,
+                "LevelValue": 0,
+                "TaskValue": 14339,
+                "OpcodeValue": 0,
+                "Keywords": "0x8010000000000000",
+                "EventTime": "2026-11-12T13:13:57.811161+00:00",
+                "RecordNumber": 17115866894,
+                "ActivityID": "{B32E47DD-4C50-0007-0B48-2EB3504CDD01}",
+                "ExecutionProcessID": 144,
+                "ExecutionThreadID": 3480,
+                "Channel": "Security",
+                "Hostname": "Z00WHVDC01.bbb.local",
+                "TargetUserName": "z000sms03s",
+                "TargetDomainName": "ITB",
+                "Status": "0x12",
+            },
+        },
+        id="parse windows event log into flat dict",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "parsed",
+                "source_format": "windows_event_log",
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "message": (
+                "<Event><System><!-- generated --><Channel>Application</Channel>"
+                '<TimeCreated SystemTime="2026-10-14T12:55:07.744922+02:00"/></System></Event>'
+            )
+        },
+        {
+            "parsed": {
+                "Channel": "Application",
+                "EventTime": "2026-10-14T10:55:07.744922+00:00",
+            }
+        },
+        id="parse minimal windows event log without namespace",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                '<Event><System><EventID>not-a-number</EventID><TimeCreated SystemTime="not-a-time"/>'
+                "<Version/></System>"
+                '<EventData><Data Name="Empty"></Data></EventData></Event>'
+            )
+        },
+        {
+            "message": (
+                '<Event><System><EventID>not-a-number</EventID><TimeCreated SystemTime="not-a-time"/>'
+                "<Version/></System>"
+                '<EventData><Data Name="Empty"></Data></EventData></Event>'
+            ),
+            "parsed": {
+                "EventID": "not-a-number",
+                "EventTime": "not-a-time",
+            },
+        },
+        id="parse windows event log with unparsable values",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><Version/></System>"
+                '<EventData><Data Name="EmptyData"></Data><Data Name="Present">ok</Data>'
+                "<Data></Data></EventData></Event>"
+            )
+        },
+        {
+            "message": (
+                "<Event><System><Version/></System>"
+                '<EventData><Data Name="EmptyData"></Data><Data Name="Present">ok</Data>'
+                "<Data></Data></EventData></Event>"
+            ),
+            "parsed": {"Present": "ok"},
+        },
+        id="parse windows event log skips empty values in system and data fields",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>2</EventID></System>"
+                '<UserData><Data Name="Param1">a</Data></UserData>'
+                '<ProcessingErrorData><Data Name="ErrorCode">5</Data></ProcessingErrorData></Event>'
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>2</EventID></System>"
+                '<UserData><Data Name="Param1">a</Data></UserData>'
+                '<ProcessingErrorData><Data Name="ErrorCode">5</Data></ProcessingErrorData></Event>'
+            ),
+            "parsed": {
+                "EventID": 2,
+                "Param1": "a",
+                "ErrorCode": "5",
+            },
+        },
+        id="parse windows event log with user and processing error data",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>2</EventID></System>"
+                '<EventData><Data Name="Param1">from_event</Data></EventData>'
+                '<UserData><Data Name="Param1">from_user</Data></UserData>'
+                '<ProcessingErrorData><Data Name="ErrorCode">5</Data></ProcessingErrorData></Event>'
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>2</EventID></System>"
+                '<EventData><Data Name="Param1">from_event</Data></EventData>'
+                '<UserData><Data Name="Param1">from_user</Data></UserData>'
+                '<ProcessingErrorData><Data Name="ErrorCode">5</Data></ProcessingErrorData></Event>'
+            ),
+            "parsed": {
+                "EventID": 2,
+                "Param1": "from_event",
+                "ErrorCode": "5",
+            },
+        },
+        id="parse windows event log does not overwrite data field",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "message"},
+                "source_format": "windows_event_log",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": (
+                "<Event><System><!-- generated --><Channel>Application</Channel>"
+                '<TimeCreated SystemTime="2026-10-14T12:55:07.744922+02:00"/></System></Event>'
+            )
+        },
+        {
+            "message": {
+                "Channel": "Application",
+                "EventTime": "2026-10-14T10:55:07.744922+00:00",
+            }
+        },
+        id="overwrite source field with parsed windows event log",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+                "xmlfields": {},
+            },
+        },
+        {
+            "message": (
+                '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+                "<System>"
+                '<Provider Name="Microsoft-Windows-Security-Auditing" '
+                'Guid="{54849625-5478-4994-a5ba-3e3b0328c30d}"/>'
+                "<EventID>4768</EventID>"
+                "<Version>2</Version>"
+                "<Level>0</Level>"
+                "<Task>14339</Task>"
+                "<Opcode>0</Opcode>"
+                "<Keywords>0x8010000000000000</Keywords>"
+                '<TimeCreated SystemTime="2026-11-12T13:13:57.811161100Z"/>'
+                "<EventRecordID>17115866894</EventRecordID>"
+                '<Correlation ActivityID="{B32E47DD-4C50-0007-0B48-2EB3504CDD01}"/>'
+                '<Execution ProcessID="144" ThreadID="3480"/>'
+                "<Channel>Security</Channel>"
+                "<Computer>Z00WHVDC01.bbb.local</Computer>"
+                "<Security/>"
+                "</System>"
+                "<EventData>"
+                '<Data Name="TargetUserName">z000sms03s</Data>'
+                '<Data Name="TargetDomainName">ITB</Data>'
+                '<Data Name="Status">0x12</Data>'
+                '<Data Name="CertIssuerName"></Data>'
+                "</EventData>"
+                "</Event>"
+            )
+        },
+        {
+            "message": (
+                '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+                "<System>"
+                '<Provider Name="Microsoft-Windows-Security-Auditing" '
+                'Guid="{54849625-5478-4994-a5ba-3e3b0328c30d}"/>'
+                "<EventID>4768</EventID>"
+                "<Version>2</Version>"
+                "<Level>0</Level>"
+                "<Task>14339</Task>"
+                "<Opcode>0</Opcode>"
+                "<Keywords>0x8010000000000000</Keywords>"
+                '<TimeCreated SystemTime="2026-11-12T13:13:57.811161100Z"/>'
+                "<EventRecordID>17115866894</EventRecordID>"
+                '<Correlation ActivityID="{B32E47DD-4C50-0007-0B48-2EB3504CDD01}"/>'
+                '<Execution ProcessID="144" ThreadID="3480"/>'
+                "<Channel>Security</Channel>"
+                "<Computer>Z00WHVDC01.bbb.local</Computer>"
+                "<Security/>"
+                "</System>"
+                "<EventData>"
+                '<Data Name="TargetUserName">z000sms03s</Data>'
+                '<Data Name="TargetDomainName">ITB</Data>'
+                '<Data Name="Status">0x12</Data>'
+                '<Data Name="CertIssuerName"></Data>'
+                "</EventData>"
+                "</Event>"
+            ),
+            "parsed": {
+                "SourceName": "Microsoft-Windows-Security-Auditing",
+                "ProviderGuid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "EventID": 4768,
+                "Version": 2,
+                "LevelValue": 0,
+                "TaskValue": 14339,
+                "OpcodeValue": 0,
+                "Keywords": "0x8010000000000000",
+                "EventTime": "2026-11-12T13:13:57.811161+00:00",
+                "RecordNumber": 17115866894,
+                "ActivityID": "{B32E47DD-4C50-0007-0B48-2EB3504CDD01}",
+                "ExecutionProcessID": 144,
+                "ExecutionThreadID": 3480,
+                "Channel": "Security",
+                "Hostname": "Z00WHVDC01.bbb.local",
+                "TargetUserName": "z000sms03s",
+                "TargetDomainName": "ITB",
+                "Status": "0x12",
+            },
+        },
+        id="empty xmlfields keeps the default extraction",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+                "xmlfields": {
+                    "EventXML": {"element": "Data", "section": "EventData", "name": "Param1"}
+                },
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                '<EventData><Data Name="Param1">value</Data></EventData></Event>'
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                '<EventData><Data Name="Param1">value</Data></EventData></Event>'
+            ),
+            "parsed": {"EventID": 1, "Param1": "value", "EventXML": "value"},
+        },
+        id="xmlfields can target EventXML",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+                "xmlfields": {
+                    "EventID": {"convert": "str"},
+                    "SourceName": {"attribute": "Guid"},
+                    "Channel": {"element": "Computer"},
+                    "TargetUserName": {
+                        "element": "Data",
+                        "section": "EventData",
+                        "name": "TargetDomainName",
+                    },
+                    "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
+                },
+            },
+        },
+        {
+            "message": (
+                '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+                "<System>"
+                '<Provider Name="Microsoft-Windows-Security-Auditing" '
+                'Guid="{54849625-5478-4994-a5ba-3e3b0328c30d}"/>'
+                "<EventID>4768</EventID>"
+                "<Version>2</Version>"
+                "<Level>0</Level>"
+                "<Task>14339</Task>"
+                "<Opcode>0</Opcode>"
+                "<Keywords>0x8010000000000000</Keywords>"
+                '<TimeCreated SystemTime="2026-11-12T13:13:57.811161100Z"/>'
+                "<EventRecordID>17115866894</EventRecordID>"
+                '<Correlation ActivityID="{B32E47DD-4C50-0007-0B48-2EB3504CDD01}"/>'
+                '<Execution ProcessID="144" ThreadID="3480"/>'
+                "<Channel>Security</Channel>"
+                "<Computer>Z00WHVDC01.bbb.local</Computer>"
+                "<Security/>"
+                "</System>"
+                "<EventData>"
+                '<Data Name="TargetUserName">z000sms03s</Data>'
+                '<Data Name="TargetDomainName">ITB</Data>'
+                '<Data Name="Status">0x12</Data>'
+                '<Data Name="CertIssuerName"></Data>'
+                "</EventData>"
+                "</Event>"
+            )
+        },
+        {
+            "message": (
+                '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+                "<System>"
+                '<Provider Name="Microsoft-Windows-Security-Auditing" '
+                'Guid="{54849625-5478-4994-a5ba-3e3b0328c30d}"/>'
+                "<EventID>4768</EventID>"
+                "<Version>2</Version>"
+                "<Level>0</Level>"
+                "<Task>14339</Task>"
+                "<Opcode>0</Opcode>"
+                "<Keywords>0x8010000000000000</Keywords>"
+                '<TimeCreated SystemTime="2026-11-12T13:13:57.811161100Z"/>'
+                "<EventRecordID>17115866894</EventRecordID>"
+                '<Correlation ActivityID="{B32E47DD-4C50-0007-0B48-2EB3504CDD01}"/>'
+                '<Execution ProcessID="144" ThreadID="3480"/>'
+                "<Channel>Security</Channel>"
+                "<Computer>Z00WHVDC01.bbb.local</Computer>"
+                "<Security/>"
+                "</System>"
+                "<EventData>"
+                '<Data Name="TargetUserName">z000sms03s</Data>'
+                '<Data Name="TargetDomainName">ITB</Data>'
+                '<Data Name="Status">0x12</Data>'
+                '<Data Name="CertIssuerName"></Data>'
+                "</EventData>"
+                "</Event>"
+            ),
+            "parsed": {
+                "SourceName": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "ProviderGuid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "EventID": "4768",
+                "Version": 2,
+                "LevelValue": 0,
+                "TaskValue": 14339,
+                "OpcodeValue": 0,
+                "Keywords": "0x8010000000000000",
+                "EventTime": "2026-11-12T13:13:57.811161+00:00",
+                "RecordNumber": 17115866894,
+                "ActivityID": "{B32E47DD-4C50-0007-0B48-2EB3504CDD01}",
+                "ExecutionProcessID": 144,
+                "ExecutionThreadID": 3480,
+                "Channel": "Z00WHVDC01.bbb.local",
+                "Hostname": "Z00WHVDC01.bbb.local",
+                "TargetUserName": "ITB",
+                "TargetDomainName": "ITB",
+                "Status": "0x12",
+                "User": "z000sms03s",
+            },
+        },
+        id="xmlfields are merged into the default extraction",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+                "xmlfields": {
+                    "EventVersion": {
+                        "element": "Event",
+                        "section": "Event",
+                        "attribute": "Version",
+                    }
+                },
+            },
+        },
+        {"message": '<Event Version="1"><System><Channel>Application</Channel></System></Event>'},
+        {
+            "message": '<Event Version="1"><System><Channel>Application</Channel></System></Event>',
+            "parsed": {
+                "Channel": "Application",
+                "EventVersion": "1",
+            },
+        },
+        id="xmlfields read root attributes next to defaults",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+                "xmlfields": {
+                    "Code": {
+                        "element": "Data",
+                        "section": "UserData",
+                        "name": "Code",
+                        "convert": "int",
+                    }
+                },
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                '<UserData><Wrapper><Data Name="Code">7</Data></Wrapper></UserData></Event>'
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                '<UserData><Wrapper><Data Name="Code">7</Data></Wrapper></UserData></Event>'
+            ),
+            "parsed": {
+                "EventID": 1,
+                "Code": 7,
+            },
+        },
+        id="xmlfields find nested data elements by name next to defaults",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+                "xmlfields": {
+                    "Data": {"element": "Data", "section": "UserData"},
+                    "Unknown": {
+                        "element": "Data",
+                        "section": "EventData",
+                        "name": "Unknown",
+                    },
+                },
+            },
+        },
+        {
+            "message": (
+                '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+                "<System>"
+                '<Provider Name="Microsoft-Windows-Security-Auditing" '
+                'Guid="{54849625-5478-4994-a5ba-3e3b0328c30d}"/>'
+                "<EventID>4768</EventID>"
+                "<Version>2</Version>"
+                "<Level>0</Level>"
+                "<Task>14339</Task>"
+                "<Opcode>0</Opcode>"
+                "<Keywords>0x8010000000000000</Keywords>"
+                '<TimeCreated SystemTime="2026-11-12T13:13:57.811161100Z"/>'
+                "<EventRecordID>17115866894</EventRecordID>"
+                '<Correlation ActivityID="{B32E47DD-4C50-0007-0B48-2EB3504CDD01}"/>'
+                '<Execution ProcessID="144" ThreadID="3480"/>'
+                "<Channel>Security</Channel>"
+                "<Computer>Z00WHVDC01.bbb.local</Computer>"
+                "<Security/>"
+                "</System>"
+                "<EventData>"
+                '<Data Name="TargetUserName">z000sms03s</Data>'
+                '<Data Name="TargetDomainName">ITB</Data>'
+                '<Data Name="Status">0x12</Data>'
+                '<Data Name="CertIssuerName"></Data>'
+                "</EventData>"
+                "</Event>"
+            )
+        },
+        {
+            "message": (
+                '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+                "<System>"
+                '<Provider Name="Microsoft-Windows-Security-Auditing" '
+                'Guid="{54849625-5478-4994-a5ba-3e3b0328c30d}"/>'
+                "<EventID>4768</EventID>"
+                "<Version>2</Version>"
+                "<Level>0</Level>"
+                "<Task>14339</Task>"
+                "<Opcode>0</Opcode>"
+                "<Keywords>0x8010000000000000</Keywords>"
+                '<TimeCreated SystemTime="2026-11-12T13:13:57.811161100Z"/>'
+                "<EventRecordID>17115866894</EventRecordID>"
+                '<Correlation ActivityID="{B32E47DD-4C50-0007-0B48-2EB3504CDD01}"/>'
+                '<Execution ProcessID="144" ThreadID="3480"/>'
+                "<Channel>Security</Channel>"
+                "<Computer>Z00WHVDC01.bbb.local</Computer>"
+                "<Security/>"
+                "</System>"
+                "<EventData>"
+                '<Data Name="TargetUserName">z000sms03s</Data>'
+                '<Data Name="TargetDomainName">ITB</Data>'
+                '<Data Name="Status">0x12</Data>'
+                '<Data Name="CertIssuerName"></Data>'
+                "</EventData>"
+                "</Event>"
+            ),
+            "parsed": {
+                "SourceName": "Microsoft-Windows-Security-Auditing",
+                "ProviderGuid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+                "EventID": 4768,
+                "Version": 2,
+                "LevelValue": 0,
+                "TaskValue": 14339,
+                "OpcodeValue": 0,
+                "Keywords": "0x8010000000000000",
+                "EventTime": "2026-11-12T13:13:57.811161+00:00",
+                "RecordNumber": 17115866894,
+                "ActivityID": "{B32E47DD-4C50-0007-0B48-2EB3504CDD01}",
+                "ExecutionProcessID": 144,
+                "ExecutionThreadID": 3480,
+                "Channel": "Security",
+                "Hostname": "Z00WHVDC01.bbb.local",
+                "TargetUserName": "z000sms03s",
+                "TargetDomainName": "ITB",
+                "Status": "0x12",
+            },
+        },
+        id="xmlfields skip missing sections and unmatched names",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+                "xmlfields": {
+                    "ActivityID": {"element": "Correlation", "attribute": "ActivityID"},
+                    "EventTime": {
+                        "element": "TimeCreated",
+                        "attribute": "SystemTime",
+                        "convert": "timestamp",
+                    },
+                    "EventID": {"convert": "int"},
+                },
+            },
+        },
+        {
+            "message": "<Event><System><Correlation/><TimeCreated/><EventID>42</EventID></System></Event>"
+        },
+        {
+            "message": "<Event><System><Correlation/><TimeCreated/><EventID>42</EventID></System></Event>",
+            "parsed": {"EventID": 42},
+        },
+        id="xmlfields with missing attributes are skipped",
     ),
 ]
 
@@ -818,6 +1470,331 @@ failure_test_cases = [
         },
         id="json, but not docker because one missing",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {"message": "not xml"},
+        {"message": "not xml", "tags": ["_decoder_failure"]},
+        id="not a windows event log xml",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {"message": "<NotAnEvent/>"},
+        {"message": "<NotAnEvent/>", "tags": ["_decoder_failure"]},
+        id="windows event log with wrong root element",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {"message": '<Event><EventData><Data Name="x">y</Data></EventData></Event>'},
+        {
+            "message": '<Event><EventData><Data Name="x">y</Data></EventData></Event>',
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log without system section",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<EventData><Data>first</Data><Data>second</Data></EventData></Event>"
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<EventData><Data>first</Data><Data>second</Data></EventData></Event>"
+            ),
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with unnamed data values",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<EventData><Data><Nested>value</Nested></Data></EventData></Event>"
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<EventData><Data><Nested>value</Nested></Data></EventData></Event>"
+            ),
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with nested unnamed data value",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
+            )
+        },
+        {
+            "message": (
+                "<Event><System><EventID>1</EventID></System>"
+                "<ProcessingErrorData><ErrorCode>5</ErrorCode></ProcessingErrorData></Event>"
+            ),
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with unnamed processing error data",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {"message": """
+<!DOCTYPE Event [
+    <!ENTITY a "BOOM">
+    <!ENTITY b "&a;&a;">
+    <!ENTITY c "&b;&b;">
+    <!ENTITY d "&c;&c;">
+    <!ENTITY e "&d;&d;">
+    <!ENTITY f "&e;&e;">
+    <!ENTITY g "&f;&f;">
+    <!ENTITY h "&g;&g;">
+    <!ENTITY i "&h;&h;">
+    <!ENTITY j "&i;&i;">
+    <!ENTITY k "&j;&j;">
+    <!ENTITY l "&k;&k;">
+    <!ENTITY m "&l;&l;">
+    <!ENTITY n "&m;&m;">
+    <!ENTITY o "&n;&n;">
+    <!ENTITY p "&o;&o;">
+    <!ENTITY q "&p;&p;">
+    <!ENTITY r "&q;&q;">
+    <!ENTITY s "&r;&r;">
+    <!ENTITY t "&s;&s;">
+    <!ENTITY u "&t;&t;">
+    <!ENTITY v "&u;&u;">
+    <!ENTITY w "&v;&v;">
+    <!ENTITY x "&w;&w;">
+]>
+<Event><System><EventID>&x;</EventID></System></Event>
+"""},
+        {
+            "message": """
+<!DOCTYPE Event [
+    <!ENTITY a "BOOM">
+    <!ENTITY b "&a;&a;">
+    <!ENTITY c "&b;&b;">
+    <!ENTITY d "&c;&c;">
+    <!ENTITY e "&d;&d;">
+    <!ENTITY f "&e;&e;">
+    <!ENTITY g "&f;&f;">
+    <!ENTITY h "&g;&g;">
+    <!ENTITY i "&h;&h;">
+    <!ENTITY j "&i;&i;">
+    <!ENTITY k "&j;&j;">
+    <!ENTITY l "&k;&k;">
+    <!ENTITY m "&l;&l;">
+    <!ENTITY n "&m;&m;">
+    <!ENTITY o "&n;&n;">
+    <!ENTITY p "&o;&o;">
+    <!ENTITY q "&p;&p;">
+    <!ENTITY r "&q;&q;">
+    <!ENTITY s "&r;&r;">
+    <!ENTITY t "&s;&s;">
+    <!ENTITY u "&t;&t;">
+    <!ENTITY v "&u;&u;">
+    <!ENTITY w "&v;&v;">
+    <!ENTITY x "&w;&w;">
+]>
+<Event><System><EventID>&x;</EventID></System></Event>
+""",
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with doctype declaration",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                '<!DOCTYPE Event [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+                "<Event><System><EventID>&xxe;</EventID></System></Event>"
+            )
+        },
+        {
+            "message": (
+                '<!DOCTYPE Event [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+                "<Event><System><EventID>&xxe;</EventID></System></Event>"
+            ),
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with external entity declaration",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                '<!DOCTYPE Event [<!ENTITY a "abcdefghij"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">'
+                '<!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">]>'
+                "<Event><System><EventID>&c;</EventID></System></Event>"
+            )
+        },
+        {
+            "message": (
+                '<!DOCTYPE Event [<!ENTITY a "abcdefghij"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">'
+                '<!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">]>'
+                "<Event><System><EventID>&c;</EventID></System></Event>"
+            ),
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with entity expansion",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {"message": "<Event><System><EventID>&undefined;</EventID></System></Event>"},
+        {
+            "message": "<Event><System><EventID>&undefined;</EventID></System></Event>",
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with undefined entity",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+            },
+        },
+        {
+            "message": (
+                "<Event><System><Channel>Application</Channel></System><UserData>"
+                + "<Data>" * (MAX_XML_DEPTH + 1)
+                + "x"
+                + "</Data>" * (MAX_XML_DEPTH + 1)
+                + "</UserData></Event>"
+            )
+        },
+        {
+            "message": (
+                "<Event><System><Channel>Application</Channel></System><UserData>"
+                + "<Data>" * (MAX_XML_DEPTH + 1)
+                + "x"
+                + "</Data>" * (MAX_XML_DEPTH + 1)
+                + "</UserData></Event>"
+            ),
+            "tags": ["_decoder_failure"],
+        },
+        id="windows event log with excessive nesting",
+    ),
+]
+
+invalid_xmlfield_cases = [
+    pytest.param(["EventID"], "must be a dict", id="not a dict"),
+    pytest.param(
+        {"ID": "EventID"}, "definition of 'ID' must be a dict", id="definition not a dict"
+    ),
+    pytest.param({"": {"element": "EventID"}}, "non-empty strings", id="empty target"),
+    pytest.param({1: {"element": "EventID"}}, "non-empty strings", id="target not a string"),
+    pytest.param(
+        {"EventID": {"type": "int"}},
+        "unknown keys",
+        id="unknown key",
+    ),
+    pytest.param(
+        {"Custom": {"convert": "int"}},
+        "'element' is required for new target 'Custom'",
+        id="no element for new target",
+    ),
+    pytest.param(
+        {"Custom": {"element": ""}},
+        "'element' of 'Custom' must be a non-empty string",
+        id="empty element",
+    ),
+    pytest.param(
+        {"EventID": {"section": 1}},
+        "'section' of 'EventID' must be a string",
+        id="section not a string",
+    ),
+    pytest.param(
+        {"EventID": {"section": "RenderingInfo"}},
+        "unknown section",
+        id="unknown section",
+    ),
+    pytest.param(
+        {"Custom": {"element": "Data", "name": 1}},
+        "'name' of 'Custom' must be a string",
+        id="name not a string",
+    ),
+    pytest.param(
+        {"EventID": {"attribute": 1}},
+        "'attribute' of 'EventID' must be a string",
+        id="attribute not a string",
+    ),
+    pytest.param(
+        {"EventID": {"convert": 1}},
+        "'convert' of 'EventID' must be a string",
+        id="convert not a string",
+    ),
+    pytest.param(
+        {"EventID": {"convert": "float"}},
+        "unknown convert type",
+        id="unknown convert type",
+    ),
 ]
 
 
@@ -888,3 +1865,71 @@ class TestDecoder(BaseProcessorTestCase):
             f"{char}k": "3",
             f"k{char}": "4",
         } == parse_logfmt(f"{char}=1 k{char}k=2 {char}k=3 k{char}=4")
+
+    @pytest.mark.parametrize(["xmlfields", "expected_message"], invalid_xmlfield_cases)
+    def test_invalid_xmlfields(self, xmlfields, expected_message):
+        rule = {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "windows_event_log",
+                "xmlfields": xmlfields,
+            },
+        }
+        with pytest.raises(InvalidRuleDefinitionError, match=expected_message):
+            self.object.rule_class.create_from_dict(rule)
+
+    def test_xmlfields_only_allowed_with_windows_event_log(self):
+        rule = {
+            "filter": "message",
+            "decoder": {
+                "source_format": "json",
+                "xmlfields": {
+                    "EventID": {"convert": "str"},
+                    "SourceName": {"attribute": "Guid"},
+                    "Channel": {"element": "Computer"},
+                    "TargetUserName": {
+                        "element": "Data",
+                        "section": "EventData",
+                        "name": "TargetDomainName",
+                    },
+                    "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
+                },
+            },
+        }
+        with pytest.raises(InvalidRuleDefinitionError, match="only supported"):
+            self.object.rule_class.create_from_dict(rule)
+
+    def test_get_decoder_rejects_xmlfields_for_other_formats(self):
+        with pytest.raises(ValueError, match="only supported"):
+            get_decoder(
+                "json",
+                xmlfields={
+                    "EventID": {"convert": "str"},
+                    "SourceName": {"attribute": "Guid"},
+                    "Channel": {"element": "Computer"},
+                    "TargetUserName": {
+                        "element": "Data",
+                        "section": "EventData",
+                        "name": "TargetDomainName",
+                    },
+                    "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
+                },
+            )
+
+    def test_uses_decode_func_from_rule(self):
+        rule = self.object.rule_class.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {"source_fields": ["message"], "target_field": "parsed"},
+            }
+        )
+
+        def decode(value):
+            return {"decoded": value}
+
+        rule.decode_func = decode
+        self._load_rule(rule)
+        event = {"message": "some value"}
+        self.object.process(event)
+        assert event["parsed"] == {"decoded": "some value"}

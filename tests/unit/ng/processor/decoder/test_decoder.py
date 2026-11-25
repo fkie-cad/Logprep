@@ -1,8 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=duplicate-code  # legacy and ng tests intentionally mirror each other
 # pylint: disable=line-too-long
 import json
 from copy import deepcopy
+from unittest import mock
 
 import pytest
 
@@ -80,3 +82,19 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
                     await instance.process(event)
 
                 assert json.dumps(event.data["parsed"]) == expected_output
+
+    async def test_uses_decode_func_from_rule(self):
+        rule = self.object.rule_class.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {"source_fields": ["message"], "target_field": "parsed"},
+            }
+        )
+
+        decode = mock.Mock(return_value={"decoded": "some value"})
+        rule.decode_func = decode
+
+        result = self.object.transform_values(["some value"], {"message": "some value"}, rule)
+
+        decode.assert_called_once_with("some value")
+        assert result == [{"decoded": "some value"}]

@@ -16,6 +16,7 @@ The `decoder` processor decodes or parses field values from the configured
 * cri
 * docker
 * decolorize (removing color codes in logs)
+* windows_event_log (Windows Event Log XML, parsed into flat fields)
 
 
 Processor Configuration
@@ -42,7 +43,7 @@ from typing import Callable
 
 from typing_extensions import override
 
-from logprep.processor.decoder.decoders import DECODERS, DecoderError
+from logprep.processor.decoder.decoders.common import DecoderError
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -63,8 +64,7 @@ class Decoder(FieldManager):
         rule: FieldManagerRule,
     ) -> list[FieldValue]:
         decoder_rule = typing.cast(DecoderRule, rule)
-        decoder = DECODERS[decoder_rule.source_format]
-        return self._decode(event, decoder_rule, decoder, source_field_values)
+        return self._decode(event, decoder_rule, decoder_rule.decode_func, source_field_values)
 
     @override
     def is_processable_value(self, value: FieldValue) -> bool:
