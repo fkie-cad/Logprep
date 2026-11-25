@@ -1,7 +1,7 @@
 name: PR Check Changelog
 on:
   pull_request:
-    types: [opened, reopened, synchronize, labeled, unlabeled, edited]
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled, edited]
 concurrency:
   group: pr-check-changelog-${{ github.ref }}
   cancel-in-progress: true
@@ -10,7 +10,9 @@ permissions:
 jobs:
   enforce-changelog-update:
     runs-on: ubuntu-24.04
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog-update') }}
+    if: |
+      github.event.pull_request.draft == false
+      && !contains(github.event.pull_request.labels.*.name, 'no-changelog-update')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
         with:
@@ -19,7 +21,10 @@ jobs:
         run: "! git diff origin/main --exit-code -- CHANGELOG.md"
   protect-changelog:
     runs-on: ubuntu-24.04
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-history-fix') && !startsWith(github.event.pull_request.title, 'release:') }}
+    if: |
+      github.event.pull_request.draft == false
+      && !contains(github.event.pull_request.labels.*.name, 'changelog-history-fix')
+      && !startsWith(github.event.pull_request.title, 'release:')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
         with:
