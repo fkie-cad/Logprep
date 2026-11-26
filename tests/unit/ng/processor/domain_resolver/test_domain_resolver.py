@@ -6,6 +6,7 @@ from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
+import pytest
 from dns.exception import DNSException
 from dns.resolver import LifetimeTimeout, NoNameservers, NoAnswer, NXDOMAIN
 
@@ -21,6 +22,11 @@ from logprep.ng.processor.domain_resolver.processor import (
 from logprep.factory import Factory
 from logprep.util.cache import NOT_CACHED
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+from tests.unit.processor.domain_resolver.test_domain_resolver import (
+    test_cases as non_ng_test_cases,
+)
+
+test_cases = deepcopy(non_ng_test_cases)
 
 
 class TestDomainResolver(BaseProcessorTestCase):
@@ -46,6 +52,22 @@ class TestDomainResolver(BaseProcessorTestCase):
         "logprep_domain_resolver_timeouts_cached",
         "logprep_domain_resolver_no_nameserver",
     ]
+
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context):
+        await self._load_rule(rule)
+        await self.object.setup()
+
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        if "resolved_ip" in context:
+            with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+                self._mock_resolve_answer(context["resolved_ip"], mock_resolve)
+                await self.object.process(event)
+        else:
+            await self.object.process(event)
+
+        assert event.data == expected
 
     async def test_domain_to_ip_resolved_and_added(self):
         await self.object.setup()
@@ -309,40 +331,6 @@ class TestDomainResolver(BaseProcessorTestCase):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
         assert 'Invalid domain "https://" in "fqdn": Could not be parsed' in str(result.warnings[0])
-        assert document == expected
-
-    async def test_domain_with_port(self):
-        await self.object.setup()
-        rule = {
-            "filter": "fqdn",
-            "domain_resolver": {"source_fields": ["fqdn"]},
-            "description": "",
-        }
-        fqdn = "google.de:123"
-        await self._load_rule(rule)
-        document = {"fqdn": fqdn}
-        expected = {"fqdn": fqdn, "resolved_ip": "1.2.3.4"}
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
-        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
-            self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            await self.object.process(event)
-        assert document == expected
-
-    async def test_domain_with_port_and_path(self):
-        await self.object.setup()
-        rule = {
-            "filter": "fqdn",
-            "domain_resolver": {"source_fields": ["fqdn"]},
-            "description": "",
-        }
-        fqdn = "google.de:123/foo"
-        await self._load_rule(rule)
-        document = {"fqdn": fqdn}
-        expected = {"fqdn": fqdn, "resolved_ip": "1.2.3.4"}
-        event = LogEvent(document, original=b"", input_meta=InputMeta())
-        with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
-            self._mock_resolve_answer("1.2.3.4", mock_resolve)
-            await self.object.process(event)
         assert document == expected
 
     @staticmethod

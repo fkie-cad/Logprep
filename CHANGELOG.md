@@ -5,6 +5,7 @@
 
 ### Improvements
 * domain_resolver: remove unused `caplog` from tests
+* domain_resolver: adding `test_cases` to both ng and non-ng tests 
 
 ### Bugfix
 * domain_resolver: fix parsing domains without schema that have a port
