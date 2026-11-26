@@ -54,8 +54,8 @@ class TestDomainResolver(BaseProcessorTestCase):
 
     @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
     async def test_testcases(self, rule, event, expected, context):
-        await self._load_rule(rule)
         await self.object.setup()
+        await self._load_rule(rule)
 
         event = LogEvent(event, original=b"", input_meta=InputMeta())
 
