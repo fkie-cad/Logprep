@@ -39,6 +39,7 @@ from zipfile import ZipFile
 from attrs import define, field, validators
 
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
+from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
@@ -86,7 +87,8 @@ class Grokker(FieldManager):
         """Returns all rules"""
         return typing.cast(list[GrokkerRule], super().rules)
 
-    def _apply_rules(self, event: dict, rule: GrokkerRule):
+    def _apply_rules(self, event: dict, rule: Rule):
+        rule = typing.cast(GrokkerRule, rule)
         any_match = False
         source_values = []
         for dotted_field, grok in rule.actions.items():
@@ -97,7 +99,7 @@ class Grokker(FieldManager):
             try:
                 result = grok.match(field_value)
             except TimeoutError as error:
-                self._handle_missing_fields(event, rule, rule.actions.keys(), source_values)
+                self._handle_missing_fields(event, rule, list(rule.actions.keys()), source_values)
                 raise ProcessingError(
                     f"Grok pattern timeout for source field: '{dotted_field}' in rule '{rule}', "
                     f"the grok pattern might be too complex.",
@@ -115,7 +117,7 @@ class Grokker(FieldManager):
                 merge_with_target=rule.merge_with_target,
                 overwrite_target=rule.overwrite_target,
             )
-        if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
+        if self._handle_missing_fields(event, rule, list(rule.actions.keys()), source_values):
             return
         if not any_match:
             raise ProcessingWarning("no grok pattern matched", rule, event)

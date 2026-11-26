@@ -122,7 +122,7 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
-        self._rule_tree = RuleTree(config=self.config.tree_config)
+        self._rule_tree = RuleTree.load_rule_tree(config=self.config.tree_config)
         self.load_rules(rules_targets=self.config.rules)
         self._result = None
         self._bypass_rule_tree = False

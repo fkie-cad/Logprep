@@ -1,9 +1,20 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 from contextlib import nullcontext as does_not_raise
+from functools import partial
 
 import pytest
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.decoder.decoders.registry import DECODERS
+from logprep.processor.decoder.decoders.windows_event_log import (
+    DATA_SECTIONS,
+    DEFAULT_XMLFIELDS,
+    XMLFIELD_SECTIONS,
+    WindowsEventLogElement,
+    XmlFieldSpec,
+    parse_xmlfields,
+)
 from logprep.processor.decoder.rule import DecoderRule
 
 
@@ -15,6 +26,13 @@ class TestDecoderRule:
         }
         rule_dict = DecoderRule.create_from_dict(rule)
         assert isinstance(rule_dict, DecoderRule)
+
+    def test_section_constants_match_windows_event_log_enum(self):
+        assert set(XMLFIELD_SECTIONS) == {section.value for section in WindowsEventLogElement}
+        assert set(DATA_SECTIONS) == set(XMLFIELD_SECTIONS) - {
+            WindowsEventLogElement.EVENT.value,
+            WindowsEventLogElement.SYSTEM.value,
+        }
 
     @pytest.mark.parametrize(
         ["rule", "assert_error_if_expected"],
@@ -127,3 +145,148 @@ class TestDecoderRule:
         rule1 = DecoderRule.create_from_dict(rule1)
         rule2 = DecoderRule.create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase
+
+    def test_create_from_dict_resolves_xmlfields_to_field_specs(self):
+        raw_xmlfields = {
+            "EventID": {"convert": "int"},
+            "User": {"element": "Data", "section": "EventData", "name": "TargetUserName"},
+        }
+        rule = DecoderRule.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {
+                    "source_format": "windows_event_log",
+                    "xmlfields": raw_xmlfields,
+                },
+            }
+        )
+
+        assert isinstance(rule.xmlfields, tuple)
+        assert rule.xmlfields == (
+            XmlFieldSpec(
+                element="EventID",
+                target="EventID",
+                section=WindowsEventLogElement.SYSTEM,
+                convert=DEFAULT_XMLFIELDS["EventID"].convert,
+            ),
+            XmlFieldSpec(
+                element="Data",
+                target="User",
+                section=WindowsEventLogElement.EVENT_DATA,
+                name="TargetUserName",
+                convert=str,
+            ),
+        )
+        assert all(isinstance(spec, XmlFieldSpec) for spec in rule.xmlfields)
+
+    def test_create_from_dict_accepts_xmlfield_specs(self):
+        specs = [XmlFieldSpec(target="EventID", convert=str)]
+        rule = DecoderRule.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {
+                    "source_format": "windows_event_log",
+                    "xmlfields": specs,
+                },
+            }
+        )
+
+        assert rule.xmlfields == (
+            XmlFieldSpec(
+                element="EventID",
+                target="EventID",
+                section=WindowsEventLogElement.SYSTEM,
+                convert=str,
+            ),
+        )
+
+    @pytest.mark.parametrize(
+        ["xmlfields", "expected_message"],
+        [
+            pytest.param(
+                ["EventID"],
+                "must be a dict or a sequence of XmlFieldSpec",
+                id="sequence with non-spec item",
+            ),
+            pytest.param(
+                [XmlFieldSpec(target=1, element="EventID")],  # type: ignore
+                "non-empty strings",
+                id="target not a string",
+            ),
+            pytest.param(
+                [XmlFieldSpec(target="EventID", section="RenderingInfo")],
+                "unknown section",
+                id="unknown section",
+            ),
+            pytest.param(
+                [XmlFieldSpec(target="Custom", attribute="Name")],
+                "'element' is required for new target 'Custom'",
+                id="missing element",
+            ),
+            pytest.param(
+                [XmlFieldSpec(target="Custom", element="")],
+                "'element' of 'Custom' must be a non-empty string",
+                id="empty element",
+            ),
+            pytest.param(
+                [XmlFieldSpec(target="Custom", element=1)],  # type: ignore
+                "'element' of 'Custom' must be a string",
+                id="element not a string",
+            ),
+            pytest.param(
+                [XmlFieldSpec(target="Custom", element="Data", convert="float")],  # type: ignore
+                "'convert' of 'Custom' must be a callable",
+                id="convert not callable",
+            ),
+        ],
+    )
+    def test_create_from_dict_validates_xmlfield_specs(self, xmlfields, expected_message):
+        with pytest.raises(InvalidRuleDefinitionError, match=expected_message):
+            DecoderRule.create_from_dict(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "source_format": "windows_event_log",
+                        "xmlfields": xmlfields,
+                    },
+                }
+            )
+
+    def test_parse_xmlfields_is_idempotent(self):
+        parsed = parse_xmlfields({"EventID": {"convert": "int"}})
+
+        assert parsed == (
+            XmlFieldSpec(
+                element="EventID",
+                target="EventID",
+                section=WindowsEventLogElement.SYSTEM,
+                convert=DEFAULT_XMLFIELDS["EventID"].convert,
+            ),
+        )
+        assert parse_xmlfields(parsed) == parsed
+
+    def test_decode_func_is_resolved_on_init(self):
+        rule = DecoderRule.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {"source_format": "base64"},
+            }
+        )
+
+        assert rule.decode_func is DECODERS["base64"]
+        assert rule.decode_func("dGhpcyxpcyx0aGUsbWVzc2FnZQ==") == "this,is,the,message"
+
+    def test_decode_func_includes_xmlfields_on_init(self):
+        rule = DecoderRule.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {
+                    "source_format": "windows_event_log",
+                    "xmlfields": {"EventID": {"convert": "int"}},
+                },
+            }
+        )
+
+        assert isinstance(rule.decode_func, partial)
+        assert rule.decode_func.func is DECODERS["windows_event_log"]
+        assert rule.decode_func.keywords == {"xmlfields": rule.xmlfields}

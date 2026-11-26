@@ -1,11 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=duplicate-code  # legacy and ng tests intentionally mirror each other
 # pylint: disable=line-too-long
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-positional-arguments
-
 import json
 from copy import deepcopy
+from unittest import mock
 
 import pytest
 
@@ -33,16 +32,26 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
     @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
     async def test_testcases(self, rule, event, expected, context, provision_context):
         provision_context(context)
-        await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert event.data == expected, f"{result.errors}"
 
-    @pytest.mark.parametrize(["rule", "event", "expected"], failure_test_cases)
+    @pytest.mark.parametrize("rule, event, expected", failure_test_cases)
     async def test_testcases_failure_handling(self, rule, event, expected):
-        await self._load_rule(rule)
         event = LogEvent(event, original=b"", input_meta=InputMeta())
-        result = await self.object.process(event)
+
+        config = deepcopy(self.CONFIG)
+        config["rules"] = [rule]
+
+        async with self.create_and_setup_processor(config_patch=config) as instance:
+            result = await instance.process(event)
+
         assert len(result.errors) > 0 or len(result.warnings) > 0
         assert is_list_of(
             result.errors, ProcessingError
@@ -62,9 +71,30 @@ class TestDecoder(BaseProcessorTestCase[Decoder]):
             for line in f.readlines():
                 log_input, source_format, expected_output = line.split(",")
                 rule["decoder"]["source_format"] = source_format
-                await self._load_rule(rule)
                 expected_output = expected_output.lstrip().strip("\n")
-                event = self.object._decoder.decode(log_input)
-                event = LogEvent(event, original=b"", input_meta=InputMeta())
-                await self.object.process(event)
+
+                config = deepcopy(self.CONFIG)
+                config["rules"] = [rule]
+
+                async with self.create_and_setup_processor(config_patch=config) as instance:
+                    event = instance._decoder.decode(log_input)
+                    event = LogEvent(event, original=b"", input_meta=InputMeta())
+                    await instance.process(event)
+
                 assert json.dumps(event.data["parsed"]) == expected_output
+
+    async def test_uses_decode_func_from_rule(self):
+        rule = self.object.rule_class.create_from_dict(
+            {
+                "filter": "message",
+                "decoder": {"source_fields": ["message"], "target_field": "parsed"},
+            }
+        )
+
+        decode = mock.Mock(return_value={"decoded": "some value"})
+        rule.decode_func = decode
+
+        result = self.object.transform_values(["some value"], {"message": "some value"}, rule)
+
+        decode.assert_called_once_with("some value")
+        assert result == [{"decoded": "some value"}]

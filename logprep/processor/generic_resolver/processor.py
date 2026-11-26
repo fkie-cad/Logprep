@@ -24,6 +24,7 @@ Processor Configuration
 """
 
 import typing
+from collections.abc import Sequence
 from copy import deepcopy
 from functools import cached_property, lru_cache
 from typing import Callable
@@ -121,6 +122,11 @@ class GenericResolver(FieldManager):
     def config(self) -> Config:
         """Returns the typed GenericResolver.Config"""
         return typing.cast(GenericResolver.Config, self._config)
+
+    @property
+    def rules(self) -> Sequence[GenericResolverRule]:
+        """Returns all rules"""
+        return typing.cast(Sequence[GenericResolverRule], super().rules)
 
     @property
     def max_cache_entries(self) -> int:
@@ -228,7 +234,6 @@ class GenericResolver(FieldManager):
     def setup(self) -> None:
         super().setup()
         for rule in self.rules:
-            rule = typing.cast(GenericResolverRule, rule)
             rule.init_generic_resolver()
 
         self._cache_metrics_skip_count = 0
