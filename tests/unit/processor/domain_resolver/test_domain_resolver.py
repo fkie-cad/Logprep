@@ -20,6 +20,7 @@ from logprep.processor.domain_resolver.processor import (
 
 from logprep.factory import Factory
 from logprep.util.cache import NOT_CACHED
+from tests.conftest import normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
 EXAMPLE_URL = "http://localhost"
@@ -53,6 +54,33 @@ example_test_cases = [
 ]
 
 
+test_cases = normalize_test_cases(
+    *example_test_cases,
+    pytest.param(
+        {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        },
+        {"fqdn": "google.de:123"},
+        {"fqdn": "google.de:123", "resolved_ip": "1.2.3.4"},
+        {"resolved_ip": "1.2.3.4"},
+        id="domain without schema and with port is parsed correctly",
+    ),
+    pytest.param(
+        {
+            "filter": "fqdn",
+            "domain_resolver": {"source_fields": ["fqdn"]},
+            "description": "",
+        },
+        {"fqdn": "google.de:123/foo"},
+        {"fqdn": "google.de:123/foo", "resolved_ip": "1.2.3.4"},
+        {"resolved_ip": "1.2.3.4"},
+        id="domain without schema and with port and path is parsed correctly",
+    ),
+)
+
+
 class TestDomainResolver(BaseProcessorTestCase):
     def setup_method(self):
         super().setup_method()
@@ -81,11 +109,17 @@ class TestDomainResolver(BaseProcessorTestCase):
         "logprep_domain_resolver_no_nameserver",
     ]
 
-    @pytest.mark.parametrize("rule, event, expected,", example_test_cases)
-    def test_testcases(self, rule, event, expected):
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    def test_testcases(self, rule, event, expected, context):
         self._load_rule(rule)
         self.object.setup()
-        self.object.process(event)
+
+        if "resolved_ip" in context:
+            with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+                self._mock_resolve_answer(context["resolved_ip"], mock_resolve)
+                self.object.process(event)
+        else:
+            self.object.process(event)
 
         assert event == expected
 

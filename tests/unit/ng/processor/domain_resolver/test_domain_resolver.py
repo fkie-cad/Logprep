@@ -6,6 +6,7 @@ from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
+import pytest
 from dns.exception import DNSException
 from dns.resolver import NXDOMAIN, LifetimeTimeout, NoAnswer, NoNameservers
 
@@ -20,6 +21,11 @@ from logprep.ng.processor.domain_resolver.processor import (
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.cache import NOT_CACHED
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+from tests.unit.processor.domain_resolver.test_domain_resolver import (
+    test_cases as non_ng_test_cases,
+)
+
+test_cases = deepcopy(non_ng_test_cases)
 
 
 class TestDomainResolver(BaseProcessorTestCase):
@@ -45,6 +51,22 @@ class TestDomainResolver(BaseProcessorTestCase):
         "logprep_domain_resolver_timeouts_cached",
         "logprep_domain_resolver_no_nameserver",
     ]
+
+    @pytest.mark.parametrize(["rule", "event", "expected", "context"], test_cases)
+    async def test_testcases(self, rule, event, expected, context):
+        await self.object.setup()
+        await self._load_rule(rule)
+
+        event = LogEvent(event, original=b"", input_meta=InputMeta())
+
+        if "resolved_ip" in context:
+            with mock.patch.object(self.object._dns_resolver, "resolve") as mock_resolve:
+                self._mock_resolve_answer(context["resolved_ip"], mock_resolve)
+                await self.object.process(event)
+        else:
+            await self.object.process(event)
+
+        assert event.data == expected
 
     async def test_domain_to_ip_resolved_and_added(self):
         await self.object.setup()

@@ -15,6 +15,8 @@
 * decoder: reject DOCTYPE declarations, entity expansion and excessively nested XML in the `windows_event_log` source format
 * decoder: split the decoders module into one module per source format
 * decoder: document the default Windows Event Log fields and resolve `xmlfields` to a sequence of `XmlFieldSpec`
+* domain_resolver: remove unused `caplog` from tests
+* domain_resolver: adding `test_cases` to both ng and non-ng tests 
 
 ### Bugfix
 * ng: prevent refresh callback failures from interrupting subsequent callbacks
@@ -22,7 +24,8 @@
 * ng: prevent duplicate rules during repeated processor setup
 * ng: remove orphaned getter targets after callback cleanup
 * ng: fix resource cleanup during failed setup and configuration validation
-*
+* domain_resolver: fix parsing domains without schema that have a port
+
 ## 22.0.0
 ### Breaking
 * domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
