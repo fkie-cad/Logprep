@@ -13,8 +13,8 @@ from logprep.processor.decoder.decoders.docker import parse_docker
 from logprep.processor.decoder.decoders.json import parse_json
 from logprep.processor.decoder.decoders.logfmt import parse_logfmt
 from logprep.processor.decoder.decoders.nginx import parse_nginx
-from logprep.processor.decoder.decoders.syslog_rfc3164 import parse_syslog_rfc3164
-from logprep.processor.decoder.decoders.syslog_rfc3164_local import (
+from logprep.processor.decoder.decoders.syslog_rfc3164 import (
+    parse_syslog_rfc3164,
     parse_syslog_rfc3164_local,
 )
 from logprep.processor.decoder.decoders.syslog_rfc5424 import parse_syslog_rfc5424

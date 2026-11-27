@@ -170,6 +170,260 @@ example_test_cases = [
             "filter": "message",
             "decoder": {
                 "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "message": "<38>Oct 3 10:15:37 100.100.100.1 <34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0"
+        },
+        {
+            "parsed": {
+                "host": "100.100.100.1",
+                "ident": None,
+                "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0",
+                "pid": None,
+                "pri": "38",
+                "time": "Oct 3 10:15:37",
+            },
+        },
+        id="parse nested syslog rfc 3164",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "<38>Oct 3 10:15:37 myhost Connection from 1.2.3.4:22 closed"},
+        {
+            "parsed": {
+                "host": "myhost",
+                "ident": None,
+                "message": "Connection from 1.2.3.4:22 closed",
+                "pid": None,
+                "pri": "38",
+                "time": "Oct 3 10:15:37",
+            },
+        },
+        id="parse syslog rfc 3164 without tag",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164_local",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "<34>Oct 3 10:15:32 Connection from 1.2.3.4:22 closed"},
+        {
+            "parsed": {
+                "ident": None,
+                "message": "Connection from 1.2.3.4:22 closed",
+                "pid": None,
+                "pri": "34",
+                "time": "Oct 3 10:15:32",
+            },
+        },
+        id="parse syslog rfc 3164 local without tag",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "<38>Oct 3 10:15:37 myhost sshd: Accepted from 1.2.3.4:22"},
+        {
+            "parsed": {
+                "host": "myhost",
+                "ident": "sshd",
+                "message": "Accepted from 1.2.3.4:22",
+                "pid": None,
+                "pri": "38",
+                "time": "Oct 3 10:15:37",
+            }
+        },
+        id="parse syslog rfc 3164 with tag without pid and colon in message",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "<38>Oct  3 10:15:37 myhost su[1]: ok"},
+        {
+            "parsed": {
+                "host": "myhost",
+                "ident": "su",
+                "message": "ok",
+                "pid": "1",
+                "pri": "38",
+                "time": "Oct  3 10:15:37",
+            }
+        },
+        id="parse syslog rfc 3164 with space padded day",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "<38>Oct 3 10:15:37  myhost  sshd:  Accepted"},
+        {
+            "parsed": {
+                "host": "myhost",
+                "ident": "sshd",
+                "message": "Accepted",
+                "pid": None,
+                "pri": "38",
+                "time": "Oct 3 10:15:37",
+            }
+        },
+        id="parse syslog rfc 3164 with multiple spaces around host and tag",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "<38>Oct 3 10:15:37 myhost   Paper jam"},
+        {
+            "parsed": {
+                "host": "myhost",
+                "ident": None,
+                "message": "Paper jam",
+                "pid": None,
+                "pri": "38",
+                "time": "Oct 3 10:15:37",
+            }
+        },
+        id="parse syslog rfc 3164 with multiple spaces before untagged message",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164_local",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "<34>Oct 3 10:15:32   su[1]: ok"},
+        {
+            "parsed": {
+                "ident": "su",
+                "message": "ok",
+                "pid": "1",
+                "pri": "34",
+                "time": "Oct 3 10:15:32",
+            }
+        },
+        id="parse syslog rfc 3164 local with multiple spaces before tag",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164_local",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "<34>Oct 3 10:15:32   Paper jam"},
+        {
+            "parsed": {
+                "ident": None,
+                "message": "Paper jam",
+                "pid": None,
+                "pri": "34",
+                "time": "Oct 3 10:15:32",
+            }
+        },
+        id="parse syslog rfc 3164 local with multiple spaces before untagged message",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164_local",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "<34>Oct 3 10:15:32 sshd: Accepted from 1.2.3.4:22"},
+        {
+            "parsed": {
+                "ident": "sshd",
+                "message": "Accepted from 1.2.3.4:22",
+                "pid": None,
+                "pri": "34",
+                "time": "Oct 3 10:15:32",
+            }
+        },
+        id="parse syslog rfc 3164 local with tag without pid and colon in message",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "nginx",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+        },
+        {"message": '10.0.0.1 - - [19/Dec/2023:14:04:42 +0000] "GET" 400 0 "-" "-"'},
+        {
+            "parsed": {
+                "agent": "-",
+                "code": "400",
+                "host": "10.0.0.1",
+                "method": "GET",
+                "path": None,
+                "referer": "-",
+                "size": "0",
+                "time": "19/Dec/2023:14:04:42 +0000",
+                "user": "-",
+            }
+        },
+        id="parse nginx without path",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
                 "source_format": "syslog_rfc5424",
                 "overwrite_target": True,
             },
@@ -1291,6 +1545,42 @@ test_cases = normalize_test_cases(
 )
 
 failure_test_cases = [
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+            },
+        },
+        {"message": "Oct 3 10:15:37 myhost sshd: no pri"},
+        {"message": "Oct 3 10:15:37 myhost sshd: no pri", "tags": ["_decoder_failure"]},
+        id="syslog rfc 3164 without pri fails",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164_local",
+            },
+        },
+        {"message": "Oct 3 10:15:37 sshd: no pri"},
+        {"message": "Oct 3 10:15:37 sshd: no pri", "tags": ["_decoder_failure"]},
+        id="syslog rfc 3164 local without pri fails",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
+                "source_format": "syslog_rfc3164",
+            },
+        },
+        {"message": "<38> 3 10:15:37 myhost sshd: no month"},
+        {"message": "<38> 3 10:15:37 myhost sshd: no month", "tags": ["_decoder_failure"]},
+        id="syslog rfc 3164 with incomplete timestamp fails",
+    ),
     pytest.param(
         {
             "filter": "message",

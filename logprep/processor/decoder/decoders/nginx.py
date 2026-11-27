@@ -46,6 +46,6 @@ REGEX_NGINX = (
 )
 
 
-def parse_nginx(log_line: str) -> dict[str, str]:
+def parse_nginx(log_line: str) -> dict[str, str | None]:
     """Parses an nginx ingress log line."""
     return parse_with_regexes(log_line, REGEX_NGINX)

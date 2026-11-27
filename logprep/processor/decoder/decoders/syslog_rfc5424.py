@@ -21,6 +21,6 @@ REGEX_SYSLOG_RFC5424 = (
 )
 
 
-def parse_syslog_rfc5424(log_line: str) -> dict[str, str]:
+def parse_syslog_rfc5424(log_line: str) -> dict[str, str | None]:
     """Parses an RFC 5424 syslog line."""
     return parse_with_regexes(log_line, REGEX_SYSLOG_RFC5424)
