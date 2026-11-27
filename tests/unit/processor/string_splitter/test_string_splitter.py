@@ -1,16 +1,18 @@
 # pylint: disable=missing-docstring
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
+# pylint: disable=line-too-long
 import re
 
 import pytest
 
-from tests.conftest import normalize_test_cases
+from tests.conftest import ProcessorTestCase, normalize_test_cases
 from tests.unit.processor.base import BaseProcessorTestCase
 
 example_test_cases = [
-    pytest.param(
-        {
+    ProcessorTestCase(
+        id="split on whitespaces if delimiter not explicitly defined",
+        rule={
             "filter": "message",
             "string_splitter": {
                 "source_fields": ["message"],
@@ -18,12 +20,12 @@ example_test_cases = [
                 "drop_empty": True,
             },
         },
-        {"message": "this is the message"},
-        ["this", "is", "the", "message"],
-        id="split on whitespaces if delimiter not explicitly defined",
+        event={"message": "this is the message"},
+        expected=["this", "is", "the", "message"],
     ),
-    pytest.param(
-        {
+    ProcessorTestCase(
+        id="split one item containing the delimiter multiple times then keep any resulting empty sections",
+        rule={
             "filter": "message",
             "string_splitter": {
                 "source_fields": ["message"],
@@ -32,12 +34,12 @@ example_test_cases = [
                 "drop_empty": False,
             },
         },
-        {"message": ",,this,,"},
-        ["", "", "this", "", ""],
-        id="split one item containing the delimiter multiple times then keep any resulting empty sections",
+        event={"message": ",,this,,"},
+        expected=["", "", "this", "", ""],
     ),
-    pytest.param(
-        {
+    ProcessorTestCase(
+        id="split one item containing the delimiter multiple times then drop any resulting empty sections",
+        rule={
             "filter": "message",
             "string_splitter": {
                 "source_fields": ["message"],
@@ -46,9 +48,8 @@ example_test_cases = [
                 "drop_empty": True,
             },
         },
-        {"message": " , ,this, ,"},
-        ["this"],
-        id="split one item containing the delimiter multiple times then drop any resulting empty sections",
+        event={"message": " , ,this, ,"},
+        expected=["this"],
     ),
 ]
 
