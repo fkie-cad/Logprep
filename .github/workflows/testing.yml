@@ -12,11 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
       - name: Install uv and set the Python version
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # https://github.com/astral-sh/setup-uv/releases/tag/v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # https://github.com/astral-sh/setup-uv/releases/tag/v10.4.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # https://github.com/Azure/setup-helm/releases/tag/v5.0.0
+        uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # https://github.com/Azure/setup-helm/releases/tag/v5.1.0
         with:
           version: "latest"
         id: install
@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
       - name: Install uv and set the Python version
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # https://github.com/astral-sh/setup-uv/releases/tag/v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # https://github.com/astral-sh/setup-uv/releases/tag/v10.4.0
         with:
           python-version: "3.11"
       - name: Install dependencies
