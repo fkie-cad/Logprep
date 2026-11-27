@@ -163,6 +163,46 @@ test_cases = normalize_test_cases(
     *example_test_cases,
     pytest.param(
         {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve_mapping.yml",
+                    "pattern": r"(?P<mapping>.*)",
+                },
+            },
+        },
+        {"to_resolve": "x42.something"},
+        {"to_resolve": "x42.something", "resolved": "in_list"},
+        {
+            "resolve_mapping.yml": {
+                "body": {"x42": "in_list", "x41": "irrelevant"},
+            }
+        },
+        id="test negative",
+    ),
+    pytest.param(
+        {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "resolve_mapping.yml",
+                    "pattern": r"(?P<mapping>.*)\..*",
+                },
+            },
+        },
+        {"to_resolve": "x42.something"},
+        {"to_resolve": "x42.something", "resolved": "in_list"},
+        {
+            "resolve_mapping.yml": {
+                "body": {"x42": "in_list", "x41": "irrelevant"},
+            }
+        },
+        id="test something",
+    ),
+    pytest.param(
+        {
             "filter": "to.other_field",
             "generic_resolver": {
                 "field_mapping": {"to.resolve": "resolved"},
