@@ -53,10 +53,11 @@ example_test_cases = [
     ),
 ]
 
-test_cases = normalize_test_cases(
+test_cases = [
     *example_test_cases,
-    pytest.param(
-        {
+    ProcessorTestCase(
+        id="split on explicitly defined delimiter",
+        rule={
             "filter": "message",
             "string_splitter": {
                 "source_fields": ["message"],
@@ -65,26 +66,12 @@ test_cases = normalize_test_cases(
                 "drop_empty": True,
             },
         },
-        {"message": "this, is, the, message"},
-        ["this", "is", "the", "message"],
-        id="split on explicitly defined delimiter",
+        event={"message": "this, is, the, message"},
+        expected=["this", "is", "the", "message"],
     ),
-    pytest.param(
-        {
-            "filter": "message",
-            "string_splitter": {
-                "source_fields": ["message"],
-                "target_field": "result",
-                "delimiter": ",",
-                "drop_empty": True,
-            },
-        },
-        {"message": "this,"},
-        ["this"],
+    ProcessorTestCase(
         id="split one item on explicitly defined delimiter",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
                 "source_fields": ["message"],
@@ -93,12 +80,12 @@ test_cases = normalize_test_cases(
                 "drop_empty": True,
             },
         },
-        {"message": ",,this,,"},
-        ["this"],
+        event={"message": "this,"},
+        expected=["this"],
+    ),
+    ProcessorTestCase(
         id="split one item containing the delimiter multiple times then drop any resulting empty sections 2",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
                 "source_fields": ["message"],
@@ -107,12 +94,12 @@ test_cases = normalize_test_cases(
                 "drop_empty": True,
             },
         },
-        {"message": ",, this , , "},
-        [" this "],
+        event={"message": ",,this,,"},
+        expected=["this"],
+    ),
+    ProcessorTestCase(
         id="split one item containing the delimiter multiple times then drop any resulting empty sections 3",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
                 "source_fields": ["message"],
@@ -121,12 +108,12 @@ test_cases = normalize_test_cases(
                 "drop_empty": True,
             },
         },
-        {"message": "\n,,this,\t, "},
-        ["this"],
+        event={"message": ",, this , , "},
+        expected=[" this "],
+    ),
+    ProcessorTestCase(
         id="split one item containing the delimiter multiple times and containing newlines",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
                 "source_fields": ["message"],
@@ -135,12 +122,12 @@ test_cases = normalize_test_cases(
                 "drop_empty": True,
             },
         },
-        {"message": ",, this, , "},
-        [" this"],
+        event={"message": "\n,,this,\t, "},
+        expected=["this"],
+    ),
+    ProcessorTestCase(
         id="split one item containing the delimiter multiple times and containing whitespaces only in front",
-    ),
-    pytest.param(
-        {
+        rule={
             "filter": "message",
             "string_splitter": {
                 "source_fields": ["message"],
@@ -149,11 +136,26 @@ test_cases = normalize_test_cases(
                 "drop_empty": True,
             },
         },
-        {"message": "hello , world,this, is a very complex,\n , and even multiline, text,,, "},
-        ["hello ", " world", "this", " is a very complex", " and even multiline", " text"],
-        id="split containing the delimiter multiple times and whitespaces only in front",
+        event={"message": ",, this, , "},
+        expected=[" this"],
     ),
-)
+    ProcessorTestCase(
+        id="split containing the delimiter multiple times and whitespaces only in front",
+        rule={
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        event={
+            "message": "hello , world,this, is a very complex,\n , and even multiline, text,,, "
+        },
+        expected=["hello ", " world", "this", " is a very complex", " and even multiline", " text"],
+    ),
+]
 
 failure_test_cases = normalize_test_cases(
     pytest.param(
