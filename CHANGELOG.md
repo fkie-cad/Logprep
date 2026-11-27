@@ -15,6 +15,9 @@
 * decoder: reject DOCTYPE declarations, entity expansion and excessively nested XML in the `windows_event_log` source format
 * decoder: split the decoders module into one module per source format
 * decoder: document the default Windows Event Log fields and resolve `xmlfields` to a sequence of `XmlFieldSpec`
+* ci: separate workflows and improve workflow triggers
+* ci: exclude dependabot PRs from pushing images to registries
+* ci: make push-mirror warn (not fail) and push affected branch only
 
 ### Bugfix
 * ng: prevent refresh callback failures from interrupting subsequent callbacks

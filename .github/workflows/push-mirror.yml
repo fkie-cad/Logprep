@@ -2,18 +2,30 @@ name: Push mirror
 on:
   push:
     branches: ['**']
+concurrency:
+  group: push-mirror-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   push:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # https://github.com/actions/checkout/releases/tag/v7.0.1
         with:
           fetch-depth: 0
       - name: mirror-repository
+        id: mirror
+        continue-on-error: true
         uses: ppcad/mirror-action@1e6d5f53a19e3bf7bb85bdc9338b0890887dd8a0 # https://github.com/ppcad/mirror-action/releases/tag/v0.4.5
         with:
           REMOTE: ${{ secrets.GIT_REMOTE_URL }}
           GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
           GIT_PASSWORD: ${{ secrets.GIT_PASSWORD }}
           GIT_PUSH_ARGS: '--force --quiet --no-progress'
+          PUSH_ALL_REFS: "false"
           DEBUG: "false"
+      - name: Report mirror failure as warning
+        if: steps.mirror.outcome == 'failure'
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: echo "::warning::Pushing to mirror failed, mirror is out of sync for ${REF_NAME}"

@@ -46,3 +46,4 @@ jobs:
     with:
       tags: "${{ github.ref_name }}, stable, latest"
       release: true
+      push: true
