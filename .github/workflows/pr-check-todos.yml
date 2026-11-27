@@ -1,4 +1,4 @@
-name: PR Check TODOs
+name: "PR: Check TODOs"
 on:
   pull_request:
     types: [opened, reopened, synchronize, edited, ready_for_review]
