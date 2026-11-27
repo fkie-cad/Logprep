@@ -5,8 +5,7 @@ on:
 concurrency:
   group: pr-check-todos-${{ github.ref }}
   cancel-in-progress: true
-permissions:
-  contents: read
+permissions: {}
 jobs:
   check-pr-todos:
     runs-on: ubuntu-24.04

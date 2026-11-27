@@ -74,8 +74,8 @@ jobs:
 
           # replace invalid chars with "-" and collapse
           local_ref=$(printf '%s' "$GITHUB_HEAD_REF" | tr -cs 'A-Za-z0-9' '-')
-          local_ref=${local_ref#-} # remove leading dot
-          local_ref=${local_ref%-} # remove trailing dot
+          local_ref=${local_ref#-} # remove leading dash
+          local_ref=${local_ref%-} # remove trailing dash
           uv version "$(uv version --short).dev0+${local_ref}.$(git rev-parse --short HEAD)"
       - name: Build Image
         run: |
@@ -103,7 +103,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Push Image
-        id: build-and-push
+        id: push-image
         if: ${{ inputs.push }}
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
@@ -128,14 +128,14 @@ jobs:
         if: ${{ inputs.push }}
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # https://github.com/anchore/sbom-action/releases/tag/v0.24.3
         with:
-          image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-          artifact-name: logprep@${{ steps.build-and-push.outputs.digest_no_sha }}.spdx.json
-          output-file: logprep@${{ steps.build-and-push.outputs.digest_no_sha }}.spdx.json
+          image: ghcr.io/fkie-cad/logprep@${{ steps.push-image.outputs.digest }}
+          artifact-name: logprep@${{ steps.push-image.outputs.digest_no_sha }}.spdx.json
+          output-file: logprep@${{ steps.push-image.outputs.digest_no_sha }}.spdx.json
       - name: Sign image with a key and add sbom attestation
         if: ${{ inputs.push }}
         run: |
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.build-and-push.outputs.digest_no_sha }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep@${{ steps.push-image.outputs.digest }}
+          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.push-image.outputs.digest_no_sha }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.push-image.outputs.digest }}
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
