@@ -19,6 +19,6 @@ REGEX_CLF = (
 )
 
 
-def parse_clf(log_line: str) -> dict[str, str]:
+def parse_clf(log_line: str) -> dict[str, str | None]:
     """Parses a common log format line."""
     return parse_with_regexes(log_line, REGEX_CLF)

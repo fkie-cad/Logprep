@@ -1,5 +1,7 @@
 ## Upcoming Changes
 ### Breaking
+* decoder: `syslog_rfc3164*` only parse `ident` and `pid` if the tag ends with a colon
+* decoder: `syslog_rfc3164*` set `ident` to `None` if no tag is present
 
 ### Features
 * ng: introduce asynchronous getters and resource caching
@@ -25,7 +27,9 @@
 * ng: prevent duplicate rules during repeated processor setup
 * ng: remove orphaned getter targets after callback cleanup
 * ng: fix resource cleanup during failed setup and configuration validation
-*
+* decoder: fix `syslog_rfc3164*` truncating messages without tag at the first colon
+* decoder: allow multiple spaces between `syslog_rfc3164*` fields
+
 ## 22.0.0
 ### Breaking
 * domain_resolver: add `lifetime` parameter in addition to `timeout` parameter
